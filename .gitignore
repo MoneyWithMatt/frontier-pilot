@@ -5,3 +5,4 @@ workspaces/
 TestResults/
 .vs/
 *.user
+evidence/avatar-spike/sedona-01/observations.jsonl

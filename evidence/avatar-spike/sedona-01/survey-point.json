@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "source": "SimConnect USER_AVATAR",
+  "phase": "second-walk-done",
+  "latitude": 34.84966717418079,
+  "longitude": -111.78953721758243,
+  "avatarObjectAltitudeMeters": 1458.2796630859375,
+  "trueFacingDegrees": 42.02346197712607,
+  "altitudeReference": "Avatar object altitude; not independently certified terrain elevation",
+  "suitableForAirportGeneration": false,
+  "durationSeconds": 19.416772,
+  "groundAltitudeObservationMeters": 1458.2804667046294,
+  "groundAltitudeCaveat": "Observed avatar-local behaviour conflicts with aircraft-local documentation; do not assume portable behaviour.",
+  "evidenceSha256": "34ab87acd2e29a04e4d1c90ed8e1b83d8a25dbf398e70f20c0c6f21ab64e87f2"
+}

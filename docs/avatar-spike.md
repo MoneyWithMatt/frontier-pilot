@@ -1,6 +1,6 @@
 # Read-only avatar survey diagnostic
 
-Status: recorder implemented; controlled seated/exit/walk/look test pending Matt's participation. No survey source has been approved on the basis of API presence alone. Aircraft survey remains an unproven fallback, not an implemented automatic terrain survey.
+Status: controlled test completed with Matt on the Sedona ramp, 6 September 2026. Avatar world position and true facing are supported for the prototype survey capture workflow in this tested configuration. Ground-elevation portability remains a separate validation gate. Aircraft survey remains a fallback candidate, not an implemented automatic terrain survey.
 
 Initial 2-second live connection check is preserved under evidence/avatar-spike/connection-check-01. The simulator returned aircraft object 524288 and avatar object 32768; current mapped to 524288. No asynchronous exceptions were received. Avatar coordinates were zero/zero in this unclassified state and cannot be accepted as a real position. CameraGet was absent from both header and DLL exports. This check establishes transport and separate object addressing only; it does not establish walking behaviour. Final build completed with zero warnings/errors.
 
@@ -39,4 +39,30 @@ Compare coordinate changes against the stationary aircraft, current-object switc
 
 If only a camera bearing is available, it can at most orient a runway anchored to an explicitly captured, still-valid ground fix. It cannot update that fix while walking, supply terrain height at the camera, or demonstrate a new endpoint. Combining them requires known world/true-north reference and an explicit fixed-anchor interaction. No such camera-bearing workflow is enabled until measured.
 
-Final evidence and workflow decision will be appended after the controlled test. No airport is generated in this experiment.
+## Controlled Sedona result
+
+The recorder completed and closed its connection cleanly, with zero SimConnect exceptions. Raw timestamped observations are losslessly preserved in `evidence/avatar-spike/sedona-01/observations.zip`; extract observations.jsonl alongside analysis.json to rerun the analysis. The uncompressed working file is ignored by Git. `scripts/Analyze-AvatarProbe.py` uses GeographicLib for the displacement bearings; analysis.json records its input SHA256. Phase summaries include circular heading offsets to avoid treating north crossings as full rotations.
+
+| Test | Aircraft | Avatar / current object |
+| --- | --- | --- |
+| Seated view turns | Heading about 316.01 degrees, fixed | Avatar heading also fixed; current points to aircraft |
+| Exit and stand | Object 524288 remains parked | Avatar 32768 has separate coordinates; current switches to avatar |
+| First walk | Zero coordinate displacement | 18.2857 m displacement; Matt first sidestepped around the wing, so displacement bearing is not a facing check |
+| Outside view turns | Coordinates and heading effectively fixed | Latitude, longitude and altitude exactly fixed; heading changes with view turns |
+| Turn right and second walk | Zero coordinate displacement | 15.8888 m at 42.024641 degrees true; final heading 42.023462 degrees, difference -0.001179 degrees |
+
+These observations establish an independently moving avatar position and a usable walking facing/yaw value. They do not establish independent camera world position, camera pitch, or whether head/body separation is exposed in other controls or VR modes. Outside, view turning changed avatar yaw; inside, looking around did not change avatar yaw. Therefore label the survey input **avatar facing**, not a universal camera gaze direction. The final direction-of-travel comparison is evidence for this session, not an accuracy guarantee for every aircraft or control mode.
+
+Avatar object altitude remained stable while standing and changed slightly with movement on the ramp. At the final point it was 1458.279663 m. The avatar-targeted GROUND ALTITUDE returned 1458.280467 m (about 0.8 mm higher), while aircraft-targeted ground altitude remained 1458.261134 m. This suggests object-local ground values on this simulator build, contrary to the official aircraft-local note. Record the discrepancy rather than rewriting the documented contract. An independent sloping-ground/step test is still needed before using this value as a robust airport terrain elevation. Sub-millimetre agreement between two simulator values is not evidence of real-world accuracy.
+
+## Survey workflow now selected
+
+Use the explicit avatar proxy while walking; require the current object to match it and remain distinct from the aircraft. Stop, face the intended runway direction, and capture a stationary sample. `scripts/Capture-AvatarSurvey.py` exports latitude, longitude, avatar object altitude and true facing from an explicitly selected recorded phase. It requires at least five seconds, at least ten finite values per required field, on-ground state, position stability within 5 cm per axis and heading stability within one degree. It refuses overwrites. It does not change MSFS or generate airport XML.
+
+The first point is preserved in `evidence/avatar-spike/sedona-01/survey-point.json`: latitude 34.84966717418079, longitude -111.78953721758243, facing 42.023461977 degrees true. This is a prototype survey point with `suitableForAirportGeneration: false` until altitude semantics are validated. Successful stationary capture and rejection of seated and view-turning phases are recorded in capture-checks.json.
+
+```powershell
+python scripts/Capture-AvatarSurvey.py evidence/avatar-spike/sedona-01 second-walk-done evidence/avatar-spike/sedona-01/new-survey-point.json
+```
+
+A camera-bearing/fixed-ground-anchor workaround is unnecessary for this tested walking mode. If avatar data are unavailable or fail these checks, reject capture and retain aircraft-based surveying as the fallback to investigate; never silently substitute aircraft or camera coordinates. No airport or UI was built, no scenery installation changed, and no movement was commanded by the diagnostic.
