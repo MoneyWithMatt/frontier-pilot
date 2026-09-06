@@ -59,4 +59,4 @@ Official sources:
 - [SimpleAirport in-editor workflow](https://docs.flightsimulator.com/msfs2024/retail/samples-tutorials/samples/sceneries/simpleairport/): Developer Mode and Build and Mount.
 - [Package XML properties](https://docs.flightsimulator.com/msfs2024/html/8_SDK_Tools/Package_Tool/Package_Tool_XML_Properties.htm): `PackageOrderHint`, with `CUSTOM_AIRPORT` for third-party airport packages.
 
-Final harness verification: vidence/diagnosis-20260906-130918-058 reran the untouched baseline with the corrected child environment from the project directory. It again returned 0 but correctly reported validation errors and missing layout; installed sample unchanged. This verifies the updated entry script reports the incomplete package accurately.
+Final harness verification: evidence/diagnosis-20260906-130918-058 reran the untouched baseline with the corrected child environment from the project directory. It again returned 0 but correctly reported validation errors and missing layout; installed sample unchanged. This verifies the updated entry script reports the incomplete package accurately.
