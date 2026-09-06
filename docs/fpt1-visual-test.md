@@ -34,7 +34,7 @@ If FPT1 is absent, try its full name and check the Nassau area. In My Library, c
 
 | Item | Intended result |
 | --- | --- |
-| Position | Nassau sample site, centre 25.035986 N / -77.469426 E |
+| Position | Nassau sample site, centre 25.035986 N / 77.469426 W |
 | Orientation | Almost east–west; true headings about 089.64° and 269.65° |
 | Runway pair | 10 / 28 (magnetic numbering; compass values can differ from true headings) |
 | Dimensions | About **2,529 m long × 46.85 m wide** (8,298 ft × 154 ft) |
