@@ -1,0 +1,14 @@
+  Determining projects to restore...
+  Restored C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\spikes\AvatarProbe\AvatarProbe.csproj (in 70 ms).
+C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\spikes\AvatarProbe\Program.cs(30,6): warning CS8123: The tuple element name 'Name' is ignored because a different name or no name is specified by the target type '(string, string)'. [C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\spikes\AvatarProbe\AvatarProbe.csproj]
+C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\spikes\AvatarProbe\Program.cs(30,30): warning CS8123: The tuple element name 'Units' is ignored because a different name or no name is specified by the target type '(string, string)'. [C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\spikes\AvatarProbe\AvatarProbe.csproj]
+  AvatarProbe -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\spikes\AvatarProbe\bin\Release\net8.0\AvatarProbe.dll
+
+Build succeeded.
+
+C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\spikes\AvatarProbe\Program.cs(30,6): warning CS8123: The tuple element name 'Name' is ignored because a different name or no name is specified by the target type '(string, string)'. [C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\spikes\AvatarProbe\AvatarProbe.csproj]
+C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\spikes\AvatarProbe\Program.cs(30,30): warning CS8123: The tuple element name 'Units' is ignored because a different name or no name is specified by the target type '(string, string)'. [C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\spikes\AvatarProbe\AvatarProbe.csproj]
+    2 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.99
