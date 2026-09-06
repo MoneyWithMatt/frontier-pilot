@@ -1,0 +1,19 @@
+{
+  "SdkRoot": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK",
+  "SdkVersion": "1.2.4",
+  "Tool": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK\\Tools\\bin\\fspackagetool.exe",
+  "ToolSHA256": "34C4D1D8BA46ED9B1F60BC4626649AD9FE582D026C3023BAD884BE0A85A93970",
+  "Source": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK\\Samples\\DevmodeProjects\\Sceneries\\SimpleAirport",
+  "Workspace": "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\simpleairport-20260906-122902",
+  "Arguments": [
+    "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\simpleairport-20260906-122902\\SimpleAirport\\AirportProject.xml",
+    "-outputdir",
+    "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\simpleairport-20260906-122902\\output",
+    "-tempdir",
+    "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\simpleairport-20260906-122902\\temp",
+    "-rebuild",
+    "-forcesteam",
+    "-nopause"
+  ],
+  "StartedUtc": "2026-09-06T11:29:02.2393858Z"
+}

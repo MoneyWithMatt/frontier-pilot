@@ -1,0 +1,47 @@
+[
+  {
+    "Path": "SimpleAirport\\AirportProject.xml",
+    "Bytes": 355,
+    "SHA256": "6E5438A004E4C6E978D3DC49F57094CB4E38399997B3941A30FCA7351964A7F4"
+  },
+  {
+    "Path": "SimpleAirport\\PackageDefinitions\\mycompany-airport.xml",
+    "Bytes": 1156,
+    "SHA256": "A3F8BFB86075156E7126043F1ACC44E6E970B97A093494C263A441FB222A03CA"
+  },
+  {
+    "Path": "SimpleAirport\\PackageDefinitions\\mycompany-airport\\ContentInfo\\Thumbnail.jpg",
+    "Bytes": 35560,
+    "SHA256": "DF41F155704CC57A0F7023898988A5306A96B0CC07647458DC716984DE56A6B0"
+  },
+  {
+    "Path": "SimpleAirport\\PackageSources\\data\\mynn.xml",
+    "Bytes": 3835,
+    "SHA256": "D5E8AC3B9786D3FFB4289D6A2A6D4B4546C32DCB1E3C4464BA7B773EC4A503FA"
+  },
+  {
+    "Path": "SimpleAirport\\PackageSources\\materials\\myasphalt.material",
+    "Bytes": 963,
+    "SHA256": "B494081172A13521BFDD9590384D0144730E68FF600948385D3B464C84BF1DE8"
+  },
+  {
+    "Path": "SimpleAirport\\PackageSources\\materials\\Textures\\Asphalt01_Albedo.png",
+    "Bytes": 1333364,
+    "SHA256": "A0B0DDA10322C5B9135C14F01E8A5107F17D9877C568933417F08E03D2A1FDD0"
+  },
+  {
+    "Path": "SimpleAirport\\PackageSources\\materials\\Textures\\Asphalt01_Albedo.png.FLAGS",
+    "Bytes": 39,
+    "SHA256": "9B6062D74E3665CFB05349BB1A57AF03771AC04F143ED861A7FE2E785BDF4340"
+  },
+  {
+    "Path": "SimpleAirport\\PackageSources\\materials\\Textures\\Asphalt01_COMP.png",
+    "Bytes": 1595449,
+    "SHA256": "36410D83F805A65DE010D99E2A1FDE6E65E1EE63B3E3919E24946AB33F664768"
+  },
+  {
+    "Path": "SimpleAirport\\PackageSources\\materials\\Textures\\Asphalt01_COMP.png.FLAGS",
+    "Bytes": 21,
+    "SHA256": "A4B714A3A8C02DBE401306A972D00F79655F6075E97C706F309A03C5394F6478"
+  }
+]

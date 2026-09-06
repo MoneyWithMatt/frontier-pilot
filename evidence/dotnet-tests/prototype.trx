@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="be2de5b4-999c-4850-8544-991cbb776f1e" name="mattr@MATTSPC 2026-09-06 12:40:47" runUser="MATTSPC\mattr" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-09-06T12:40:47.9702101+01:00" queuing="2026-09-06T12:40:47.9702102+01:00" start="2026-09-06T12:40:46.9563304+01:00" finish="2026-09-06T12:40:47.9749563+01:00" />
+  <TestSettings name="default" id="7166603c-849b-435e-8a3e-dfa7b0296b62">
+    <Deployment runDeploymentRoot="mattr_MATTSPC_2026-09-06_12_40_47" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="9b54951d-8a90-4112-acfe-7b6d799307ea" testId="05e3ce69-8f78-d399-538f-59296c827960" testName="FrontierAirportBuilder.Tests.SdkInspectorTests.InvalidVersionIsRejected" computerName="MATTSPC" duration="00:00:00.0186143" startTime="2026-09-06T12:40:47.8782759+01:00" endTime="2026-09-06T12:40:47.8782900+01:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9b54951d-8a90-4112-acfe-7b6d799307ea" />
+    <UnitTestResult executionId="c125e27b-2a7a-453d-8435-608b38b59883" testId="dac89c83-8dbc-a2f3-8188-356000ccd8f9" testName="FrontierAirportBuilder.Tests.SdkInspectorTests.ReadsVersionAndAbsolutePaths" computerName="MATTSPC" duration="00:00:00.0051696" startTime="2026-09-06T12:40:47.8892149+01:00" endTime="2026-09-06T12:40:47.8892150+01:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="c125e27b-2a7a-453d-8435-608b38b59883" />
+    <UnitTestResult executionId="08366d4d-1cbe-498b-b2fd-c8e3a7f18290" testId="3fac1c3b-b3df-e509-369c-2ac874ed2f14" testName="FrontierAirportBuilder.Tests.SdkInspectorTests.MissingToolIsReported" computerName="MATTSPC" duration="00:00:00.0059346" startTime="2026-09-06T12:40:47.8839997+01:00" endTime="2026-09-06T12:40:47.8839998+01:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="08366d4d-1cbe-498b-b2fd-c8e3a7f18290" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="FrontierAirportBuilder.Tests.SdkInspectorTests.MissingToolIsReported" storage="c:\users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\tests\tests\bin\release\net8.0\frontierairportbuilder.tests.dll" id="3fac1c3b-b3df-e509-369c-2ac874ed2f14">
+      <Execution id="08366d4d-1cbe-498b-b2fd-c8e3a7f18290" />
+      <TestMethod codeBase="C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\tests\Tests\bin\Release\net8.0\FrontierAirportBuilder.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="FrontierAirportBuilder.Tests.SdkInspectorTests" name="MissingToolIsReported" />
+    </UnitTest>
+    <UnitTest name="FrontierAirportBuilder.Tests.SdkInspectorTests.ReadsVersionAndAbsolutePaths" storage="c:\users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\tests\tests\bin\release\net8.0\frontierairportbuilder.tests.dll" id="dac89c83-8dbc-a2f3-8188-356000ccd8f9">
+      <Execution id="c125e27b-2a7a-453d-8435-608b38b59883" />
+      <TestMethod codeBase="C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\tests\Tests\bin\Release\net8.0\FrontierAirportBuilder.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="FrontierAirportBuilder.Tests.SdkInspectorTests" name="ReadsVersionAndAbsolutePaths" />
+    </UnitTest>
+    <UnitTest name="FrontierAirportBuilder.Tests.SdkInspectorTests.InvalidVersionIsRejected" storage="c:\users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\tests\tests\bin\release\net8.0\frontierairportbuilder.tests.dll" id="05e3ce69-8f78-d399-538f-59296c827960">
+      <Execution id="9b54951d-8a90-4112-acfe-7b6d799307ea" />
+      <TestMethod codeBase="C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\tests\Tests\bin\Release\net8.0\FrontierAirportBuilder.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="FrontierAirportBuilder.Tests.SdkInspectorTests" name="InvalidVersionIsRejected" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="05e3ce69-8f78-d399-538f-59296c827960" executionId="9b54951d-8a90-4112-acfe-7b6d799307ea" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="dac89c83-8dbc-a2f3-8188-356000ccd8f9" executionId="c125e27b-2a7a-453d-8435-608b38b59883" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3fac1c3b-b3df-e509-369c-2ac874ed2f14" executionId="08366d4d-1cbe-498b-b2fd-c8e3a7f18290" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="3" executed="3" passed="3" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.5.3.1+6b60a9e56a (64-bit .NET 8.0.30)&#xD;
+[xUnit.net 00:00:00.26]   Discovering: FrontierAirportBuilder.Tests&#xD;
+[xUnit.net 00:00:00.28]   Discovered:  FrontierAirportBuilder.Tests&#xD;
+[xUnit.net 00:00:00.28]   Starting:    FrontierAirportBuilder.Tests&#xD;
+[xUnit.net 00:00:00.35]   Finished:    FrontierAirportBuilder.Tests&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

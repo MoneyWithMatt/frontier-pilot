@@ -1,0 +1,26 @@
+**********************
+PowerShell transcript start
+Start time: 20260906124143
+Username: MATTSPC\mattr
+RunAs User: MATTSPC\mattr
+Configuration Name: 
+Machine: MATTSPC (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Users\mattr\.cache\codex-runtimes\codex-primary-runtime\dependencies\native\powershell\pwsh.dll -Command try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}
+Start-Transcript -Path 'evidence\simpleairport-20260906-123037\console-retry.log'; & '.\evidence\simpleairport-20260906-123037\command.ps1'; $buildExit=$LASTEXITCODE; Stop-Transcript; Write-Output "Package tool exit code: $buildExit"; exit $buildExit
+Process ID: 19028
+PSVersion: 7.6.5
+PSEdition: Core
+GitCommitId: 7.6.5
+OS: Microsoft Windows 10.0.26200
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is evidence\simpleairport-20260906-123037\console-retry.log
+
+**********************
+PowerShell transcript end
+End time: 20260906124344
+**********************

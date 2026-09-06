@@ -1,0 +1,17 @@
+SimpleAirport
+SimpleAirport\PackageDefinitions
+SimpleAirport\PackageSources
+SimpleAirport\AirportProject.xml
+SimpleAirport\PackageDefinitions\mycompany-airport
+SimpleAirport\PackageDefinitions\mycompany-airport.xml
+SimpleAirport\PackageDefinitions\mycompany-airport\ContentInfo
+SimpleAirport\PackageDefinitions\mycompany-airport\ContentInfo\Thumbnail.jpg
+SimpleAirport\PackageSources\data
+SimpleAirport\PackageSources\materials
+SimpleAirport\PackageSources\data\mynn.xml
+SimpleAirport\PackageSources\materials\Textures
+SimpleAirport\PackageSources\materials\myasphalt.material
+SimpleAirport\PackageSources\materials\Textures\Asphalt01_Albedo.png
+SimpleAirport\PackageSources\materials\Textures\Asphalt01_Albedo.png.FLAGS
+SimpleAirport\PackageSources\materials\Textures\Asphalt01_COMP.png
+SimpleAirport\PackageSources\materials\Textures\Asphalt01_COMP.png.FLAGS

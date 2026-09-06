@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{78FC4754-38EA-4BD0-AF0D-A8E3F1F4731E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrontierAirportBuilder.App", "src\App\FrontierAirportBuilder.App.csproj", "{65933411-E7AB-4AFB-B79E-9EA2BB6B6AA4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrontierAirportBuilder.Core", "src\Core\FrontierAirportBuilder.Core.csproj", "{E5AE34EA-03EB-4039-AC13-4DE130E32978}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrontierAirportBuilder.MsfsSdk", "src\MsfsSdk\FrontierAirportBuilder.MsfsSdk.csproj", "{0D70642F-304B-4470-B915-3745C6E6D1CD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{F096FFAA-755F-455D-8526-F4D0DD7B72A6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrontierAirportBuilder.Tests", "tests\Tests\FrontierAirportBuilder.Tests.csproj", "{1B8D3296-B858-4D3F-B6BF-B5DCD7D49FC0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{65933411-E7AB-4AFB-B79E-9EA2BB6B6AA4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{65933411-E7AB-4AFB-B79E-9EA2BB6B6AA4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{65933411-E7AB-4AFB-B79E-9EA2BB6B6AA4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{65933411-E7AB-4AFB-B79E-9EA2BB6B6AA4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5AE34EA-03EB-4039-AC13-4DE130E32978}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5AE34EA-03EB-4039-AC13-4DE130E32978}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5AE34EA-03EB-4039-AC13-4DE130E32978}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5AE34EA-03EB-4039-AC13-4DE130E32978}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0D70642F-304B-4470-B915-3745C6E6D1CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0D70642F-304B-4470-B915-3745C6E6D1CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0D70642F-304B-4470-B915-3745C6E6D1CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D70642F-304B-4470-B915-3745C6E6D1CD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B8D3296-B858-4D3F-B6BF-B5DCD7D49FC0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B8D3296-B858-4D3F-B6BF-B5DCD7D49FC0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B8D3296-B858-4D3F-B6BF-B5DCD7D49FC0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B8D3296-B858-4D3F-B6BF-B5DCD7D49FC0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{65933411-E7AB-4AFB-B79E-9EA2BB6B6AA4} = {78FC4754-38EA-4BD0-AF0D-A8E3F1F4731E}
+		{E5AE34EA-03EB-4039-AC13-4DE130E32978} = {78FC4754-38EA-4BD0-AF0D-A8E3F1F4731E}
+		{0D70642F-304B-4470-B915-3745C6E6D1CD} = {78FC4754-38EA-4BD0-AF0D-A8E3F1F4731E}
+		{1B8D3296-B858-4D3F-B6BF-B5DCD7D49FC0} = {F096FFAA-755F-455D-8526-F4D0DD7B72A6}
+	EndGlobalSection
+EndGlobal
