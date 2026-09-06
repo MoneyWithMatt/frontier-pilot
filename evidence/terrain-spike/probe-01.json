@@ -1,0 +1,31 @@
+{
+  "startedUtc": "2026-09-06T17:41:45.7001771+00:00",
+  "sdkRoot": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK",
+  "sdkVersion": "1.2.4",
+  "dllPath": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK\\SimConnect SDK\\lib\\SimConnect.dll",
+  "dllSha256": "E54A505BE0B0A4CDC98DFB45F0C202BA9637F5D494C0919040BC89AC67D92ADB",
+  "headerSha256": "3684C4B50630DB2ABEC9815105498FA5B921C653F57423B9B5E6214A60CAABEA",
+  "headerDeclaresRequestGroundInfo": false,
+  "arbitraryCoordinateElevationProven": false,
+  "exportsRequestGroundInfo": false,
+  "openHresult": "0x00000000",
+  "requestSimStateHresult": "0x00000000",
+  "messages": [
+    {
+      "id": 2,
+      "bytes": 308
+    },
+    {
+      "id": 15,
+      "bytes": 284
+    }
+  ],
+  "simulatorName": "SunRise",
+  "simulatorVersion": "12.2.282174.999",
+  "simState": 1,
+  "liveHandshakeReceived": true,
+  "systemStateReceived": true,
+  "limitation": "RequestGroundInfo is absent from this MSFS SDK. Documented GROUND ALTITUDE is user-aircraft-local, not a latitude/longitude terrain query. No coordinate elevation returned; generation must remain blocked.",
+  "closeHresult": "0x00000000",
+  "finishedUtc": "2026-09-06T17:41:59.28685+00:00"
+}
