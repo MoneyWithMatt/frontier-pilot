@@ -1,6 +1,6 @@
 # Untouched SimpleAirport build experiment
 
-Date: 2026-09-06. Status: **failed — no compiled package produced**.
+Date: 2026-09-06. Original attempt status: **failed — no compiled package produced**. Follow-up diagnosis resolved the launch failure and identified a separate sample metadata validation problem; see [the current diagnosis](toolchain-diagnosis.md). The historical results below are preserved.
 
 ## Installed environment
 

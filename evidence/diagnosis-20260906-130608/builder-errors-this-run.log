@@ -1,0 +1,9 @@
+Builder/PackageBuilder/Project/Build/mycompany-airport
+{
+[Package Validation] 'mycompany-airport' - Validate Package Manifest: Empty string for 'package_order_hint' key - in file manifest.json
+}
+Builder/PackageBuilder/Project/Build/mycompany-airport
+{
+Package Validation failed for 'mycompany-airport'
+}
+

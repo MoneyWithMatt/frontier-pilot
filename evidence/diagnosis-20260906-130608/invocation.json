@@ -1,0 +1,11 @@
+{
+  "WorkingDirectory": "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\diagnosis-20260906-130608\\SimpleAirport",
+  "Executable": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK\\Tools\\bin\\fspackagetool.exe",
+  "Arguments": [
+    "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\diagnosis-20260906-130608\\SimpleAirport\\AirportProject.xml",
+    "-nopause"
+  ],
+  "MSFS2024_SDK": "C:\\Users\\mattr\\Desktop\\",
+  "CompatibilityFixApplied": false,
+  "StartedUtc": "2026-09-06T12:06:08.6238947Z"
+}

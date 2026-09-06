@@ -1,0 +1,31 @@
+Failed to open 'C:\Users\mattr\Desktop\Golden Scenery\Golden2024\Golden2024.xml'
+Failed to open XML file C:\Users\mattr\Desktop\Golden Scenery\Golden2024\Golden2024.xml as package builder config file
+_ParseMinSize | MinSize '30.o' isn't valid
+Builder/PackageBuilder/Project/Build/png-2-ktx2
+{
+PackageBuilder | Unlisted file 'c:\users\mattr\appdata\roaming\microsoft flight simulator 2024\packages\community\flightfx-ce750-skyjet-execs\simobjects\airplanes\ffx_ce750_skyjetexecs\texture.skyjet\PackageSources\SimObjects\Airplanes\png-2-ktx2\common\texture\engine_logo_decal_comp.png' found in source directory 'c:\users\mattr\appdata\roaming\microsoft flight simulator 2024\packages\community\flightfx-ce750-skyjet-execs\simobjects\airplanes\ffx_ce750_skyjetexecs\texture.skyjet\PackageSources\SimObjects\Airplanes\png-2-ktx2\' (of asset group '2505870063201412388') in package png-2-ktx2. See https://docs.flightsimulator.com/html/Content_Configuration/SimObjects/SimObjects.htm#structure for more information.
+}
+Builder/PackageBuilder/Project/Build/png-2-ktx2
+{
+PackageBuilder | Unlisted file 'c:\users\mattr\appdata\roaming\microsoft flight simulator 2024\packages\community\flightfx-ce750-skyjet-execs\simobjects\airplanes\ffx_ce750_skyjetexecs\texture.skyjet\PackageSources\SimObjects\Airplanes\png-2-ktx2\common\texture\tail_logo_decal_baseColor.png' found in source directory 'c:\users\mattr\appdata\roaming\microsoft flight simulator 2024\packages\community\flightfx-ce750-skyjet-execs\simobjects\airplanes\ffx_ce750_skyjetexecs\texture.skyjet\PackageSources\SimObjects\Airplanes\png-2-ktx2\' (of asset group '2505870063201412388') in package png-2-ktx2. See https://docs.flightsimulator.com/html/Content_Configuration/SimObjects/SimObjects.htm#structure for more information.
+}
+Builder/PackageBuilder/Project/Build/png-2-ktx2
+{
+Package Validation failed for 'png-2-ktx2'
+}
+Builder/PackageBuilder/Project/Build/png-2-ktx2
+{
+[Package Validation] 'png-2-ktx2' - Validate Package Manifest: Empty string for 'package_order_hint' key
+}
+Builder/PackageBuilder/Project/Build/png-2-ktx2
+{
+Package Validation failed for 'png-2-ktx2'
+}
+Builder/PackageBuilder/Project/Build/mycompany-airport
+{
+[Package Validation] 'mycompany-airport' - Validate Package Manifest: Empty string for 'package_order_hint' key - in file manifest.json
+}
+Builder/PackageBuilder/Project/Build/mycompany-airport
+{
+Package Validation failed for 'mycompany-airport'
+}

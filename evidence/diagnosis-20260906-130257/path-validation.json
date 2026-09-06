@@ -1,0 +1,22 @@
+[
+  {
+    "Type": "PackageDefinition",
+    "Path": "workspaces\\diagnosis-20260906-130257\\SimpleAirport\\PackageDefinitions\\mycompany-airport.xml",
+    "Exists": true
+  },
+  {
+    "Type": "Copy",
+    "Path": "workspaces\\diagnosis-20260906-130257\\SimpleAirport\\PackageDefinitions\\mycompany-airport\\ContentInfo\\",
+    "Exists": true
+  },
+  {
+    "Type": "BGL",
+    "Path": "workspaces\\diagnosis-20260906-130257\\SimpleAirport\\PackageSources\\data\\",
+    "Exists": true
+  },
+  {
+    "Type": "MaterialLib",
+    "Path": "workspaces\\diagnosis-20260906-130257\\SimpleAirport\\PackageSources\\materials\\",
+    "Exists": true
+  }
+]

@@ -1,0 +1,21 @@
+[2026-09-06 13:03:40] ExecCommandLine: ""C:\Program Files (x86)\Steam\steam.exe" -silent -nosplash -applaunch 2537590 -I ";" BuildAssetPackages C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\workspaces\diagnosis-20260906-130257\SimpleAirport\AirportProject.xml C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\workspaces\diagnosis-20260906-130257\SimpleAirport C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\workspaces\diagnosis-20260906-130257\SimpleAirport CheckOutputTimestamps LauncherPID 3112 ModelBehaviorDefs "C:\Users\mattr\Desktop\MSFS 2024 SDK\ModelBehaviorDefs""
+[2026-09-06 13:03:40] GameAction [AppID 2537590, ActionID 1] : LaunchApp changed task to CheckShaderDepotManifest with ""
+[2026-09-06 13:03:40] GameAction [AppID 2537590, ActionID 1] : LaunchApp changed task to DownloadingDepots with ""
+[2026-09-06 13:03:40] GameAction [AppID 2537590, ActionID 1] : LaunchApp changed task to DownloadingDepots with ""
+[2026-09-06 13:04:08] GameAction [AppID 2537590, ActionID 1] : LaunchApp changed task to RunningInstallScript with ""
+[2026-09-06 13:04:08] GameAction [AppID 2537590, ActionID 1] : LaunchApp changed task to SynchronizingCloud with ""
+[2026-09-06 13:04:09] GameAction [AppID 2537590, ActionID 1] : LaunchApp changed task to SynchronizingStats with ""
+[2026-09-06 13:04:09] GameAction [AppID 2537590, ActionID 1] : LaunchApp changed task to ShowInterstitials with ""
+[2026-09-06 13:04:09] GameAction [AppID 2537590, ActionID 1] : LaunchApp waiting for user response to ShowInterstitials ""
+[2026-09-06 13:04:09] GameAction [AppID 2537590, ActionID 1] : LaunchApp continues with user response "ShowInterstitials"
+[2026-09-06 13:04:09] GameAction [AppID 2537590, ActionID 1] : LaunchApp changed task to SynchronizingControllerConfig with ""
+[2026-09-06 13:04:10] GameAction [AppID 2537590, ActionID 1] : LaunchApp changed task to SiteLicenseSeatCheckout with ""
+[2026-09-06 13:04:10] GameAction [AppID 2537590, ActionID 1] : LaunchApp changed task to DelayLaunch with ""
+[2026-09-06 13:04:10] GameAction [AppID 2537590, ActionID 1] : LaunchApp changed task to CreatingProcess with ""
+[2026-09-06 13:04:10] GameAction [AppID 2537590, ActionID 1] : LaunchApp waiting for user response to CreatingProcess ""
+[2026-09-06 13:04:10] GameAction [AppID 2537590, ActionID 1] : LaunchApp continues with user response "CreatingProcess"
+[2026-09-06 13:04:10] Game process added : AppID 2537590 ""C:\Program Files (x86)\Steam\steamapps\common\Limitless\FlightSimulator2024.exe" -I ";" BuildAssetPackages C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\workspaces\diagnosis-20260906-130257\SimpleAirpor", ProcID 17948, IP 0.0.0.0:0
+[2026-09-06 13:04:10] GameAction [AppID 2537590, ActionID 1] : LaunchApp changed task to WaitingGameWindow with ""
+[2026-09-06 13:04:10] GameAction [AppID 2537590, ActionID 1] : LaunchApp changed task to Completed with ""
+[2026-09-06 13:04:27] Game process updated : AppID 2537590 ""C:\Program Files (x86)\Steam\steamapps\common\Limitless\FlightSimulator2024.exe" -I ";" BuildAssetPackages C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\workspaces\diagnosis-20260906-130257\SimpleAirpor", ProcID 17948, IP 0.0.0.0:0
+[2026-09-06 13:04:31] Game process removed: AppID 2537590 ""C:\Program Files (x86)\Steam\steamapps\common\Limitless\FlightSimulator2024.exe" -I ";" BuildAssetPackages C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\workspaces\diagnosis-20260906-130257\SimpleAirpor", ProcID 17948 

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AssetPackage Version="0.1.0">
+	<PackageOrderHint>CUSTOM_AIRPORT</PackageOrderHint>
+	<ItemSettings>
+		<ContentType>SCENERY</ContentType>
+		<Title>Airport</Title>
+		<Manufacturer/>
+		<Creator>My Company</Creator>
+	</ItemSettings>
+	<Flags>
+		<VisibleInStore>false</VisibleInStore>
+		<CanBeReferenced>false</CanBeReferenced>
+	</Flags>
+	<AssetGroups>
+		<AssetGroup Name="ContentInfo">
+			<Type>Copy</Type>
+			<Flags>
+				<FSXCompatibility>false</FSXCompatibility>
+			</Flags>
+			<AssetDir>PackageDefinitions\mycompany-airport\ContentInfo\</AssetDir>
+			<OutputDir>ContentInfo\mycompany-airport\</OutputDir>
+		</AssetGroup>
+		<AssetGroup Name="myairport">
+			<Type>BGL</Type>
+			<Flags>
+				<FSXCompatibility>false</FSXCompatibility>
+			</Flags>
+			<AssetDir>PackageSources\data\</AssetDir>
+			<OutputDir>scenery\mycompany\</OutputDir>
+		</AssetGroup>
+		<AssetGroup Name="mymaterials">
+			<Type>MaterialLib</Type>
+			<Flags>
+				<FSXCompatibility>false</FSXCompatibility>
+			</Flags>
+			<AssetDir>PackageSources\materials\</AssetDir>
+			<OutputDir>MaterialLibs\mymaterials\</OutputDir>
+		</AssetGroup>
+	</AssetGroups>
+</AssetPackage>
+

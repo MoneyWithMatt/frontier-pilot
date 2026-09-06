@@ -1,0 +1,14 @@
+{
+  "ExitCode": 0,
+  "TimedOut": false,
+  "Seconds": 93.3059724,
+  "InstalledSampleUnchanged": true,
+  "BglFiles": [
+    {
+      "Path": "SimpleAirport\\Packages\\mycompany-airport\\scenery\\mycompany\\mynn.bgl",
+      "Bytes": 1034,
+      "SHA256": "FA036EDBC4C5AD7E4F368B931602F6CF701A790A64051093D45AB7F0639A99A6"
+    }
+  ],
+  "Evidence": "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\evidence\\diagnosis-20260906-130257"
+}

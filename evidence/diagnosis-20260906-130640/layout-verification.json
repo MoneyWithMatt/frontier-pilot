@@ -1,0 +1,68 @@
+[
+  {
+    "Path": "bglindex.bout",
+    "ExpectedBytes": 754,
+    "Exists": true,
+    "ActualBytes": 754
+  },
+  {
+    "Path": "contentinfo/mycompany-airport/contenthistory.json",
+    "ExpectedBytes": 141,
+    "Exists": true,
+    "ActualBytes": 141
+  },
+  {
+    "Path": "contentinfo/mycompany-airport/thumbnail.jpg",
+    "ExpectedBytes": 35560,
+    "Exists": true,
+    "ActualBytes": 35560
+  },
+  {
+    "Path": "materiallibs/mymaterials/library.xml",
+    "ExpectedBytes": 1802,
+    "Exists": true,
+    "ActualBytes": 1802
+  },
+  {
+    "Path": "materiallibs/mymaterials/textures/asphalt01_albedo.png.ktx2",
+    "ExpectedBytes": 350144,
+    "Exists": true,
+    "ActualBytes": 350144
+  },
+  {
+    "Path": "materiallibs/mymaterials/textures/asphalt01_albedo.png.ktx2.flags",
+    "ExpectedBytes": 39,
+    "Exists": true,
+    "ActualBytes": 39
+  },
+  {
+    "Path": "materiallibs/mymaterials/textures/asphalt01_albedo.png.ktx2.json",
+    "ExpectedBytes": 232,
+    "Exists": true,
+    "ActualBytes": 232
+  },
+  {
+    "Path": "materiallibs/mymaterials/textures/asphalt01_comp.png.ktx2",
+    "ExpectedBytes": 350112,
+    "Exists": true,
+    "ActualBytes": 350112
+  },
+  {
+    "Path": "materiallibs/mymaterials/textures/asphalt01_comp.png.ktx2.flags",
+    "ExpectedBytes": 21,
+    "Exists": true,
+    "ActualBytes": 21
+  },
+  {
+    "Path": "materiallibs/mymaterials/textures/asphalt01_comp.png.ktx2.json",
+    "ExpectedBytes": 176,
+    "Exists": true,
+    "ActualBytes": 176
+  },
+  {
+    "Path": "scenery/mycompany/mynn.bgl",
+    "ExpectedBytes": 1034,
+    "Exists": true,
+    "ActualBytes": 1034
+  }
+]

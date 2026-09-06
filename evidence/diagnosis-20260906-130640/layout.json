@@ -1,0 +1,59 @@
+{
+  "content": [
+    {
+      "path": "bglindex.bout",
+      "size": 754,
+      "date": 132871658100017058
+    },
+    {
+      "path": "contentinfo/mycompany-airport/contenthistory.json",
+      "size": 141,
+      "date": 132871658100000000
+    },
+    {
+      "path": "contentinfo/mycompany-airport/thumbnail.jpg",
+      "size": 35560,
+      "date": 133808040900000000
+    },
+    {
+      "path": "materiallibs/mymaterials/library.xml",
+      "size": 1802,
+      "date": 133808040900000004
+    },
+    {
+      "path": "materiallibs/mymaterials/textures/asphalt01_albedo.png.ktx2",
+      "size": 350144,
+      "date": 133808040900000007
+    },
+    {
+      "path": "materiallibs/mymaterials/textures/asphalt01_albedo.png.ktx2.flags",
+      "size": 39,
+      "date": 133808040900000007
+    },
+    {
+      "path": "materiallibs/mymaterials/textures/asphalt01_albedo.png.ktx2.json",
+      "size": 232,
+      "date": 133808040900000007
+    },
+    {
+      "path": "materiallibs/mymaterials/textures/asphalt01_comp.png.ktx2",
+      "size": 350112,
+      "date": 133808040740000007
+    },
+    {
+      "path": "materiallibs/mymaterials/textures/asphalt01_comp.png.ktx2.flags",
+      "size": 21,
+      "date": 133808040740000007
+    },
+    {
+      "path": "materiallibs/mymaterials/textures/asphalt01_comp.png.ktx2.json",
+      "size": 176,
+      "date": 133808040740000007
+    },
+    {
+      "path": "scenery/mycompany/mynn.bgl",
+      "size": 1034,
+      "date": 132871658100000006
+    }
+  ]
+}
