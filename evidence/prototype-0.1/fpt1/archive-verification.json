@@ -1,0 +1,80 @@
+[
+  {
+    "Entry": "frontier-airport-fpt1/bglIndex.bout",
+    "Bytes": 652,
+    "SHA256": "136621B0875A6FF881A636BF4B25CC65B479583E1349B67F1DAB05E0DCBC6425",
+    "MatchesBuiltFile": true
+  },
+  {
+    "Entry": "frontier-airport-fpt1/layout.json",
+    "Bytes": 1558,
+    "SHA256": "46342635AB74C0CB0415E655503DC6247FC499A54AF612307BBFF764B626F754",
+    "MatchesBuiltFile": true
+  },
+  {
+    "Entry": "frontier-airport-fpt1/manifest.json",
+    "Bytes": 507,
+    "SHA256": "03B3CC05A85C8731A3A7AC25C034F52535826AB0B4246B5C39F2672C6D68EAD6",
+    "MatchesBuiltFile": true
+  },
+  {
+    "Entry": "frontier-airport-fpt1/ContentInfo/frontier-airport-fpt1/ContentHistory.json",
+    "Bytes": 145,
+    "SHA256": "421DE62AD7022C5C6BF83B919DF1432A66438971756B5CC863A2E2E8D2E757A0",
+    "MatchesBuiltFile": true
+  },
+  {
+    "Entry": "frontier-airport-fpt1/ContentInfo/frontier-airport-fpt1/Thumbnail.jpg",
+    "Bytes": 35560,
+    "SHA256": "DF41F155704CC57A0F7023898988A5306A96B0CC07647458DC716984DE56A6B0",
+    "MatchesBuiltFile": true
+  },
+  {
+    "Entry": "frontier-airport-fpt1/MaterialLibs/frontier-airport-fpt1/Library.xml",
+    "Bytes": 1809,
+    "SHA256": "FA77C19B9D86D7A940CF2D6D5053CF9C11BFD2F63372F43CC5E931C6F830CB31",
+    "MatchesBuiltFile": true
+  },
+  {
+    "Entry": "frontier-airport-fpt1/MaterialLibs/frontier-airport-fpt1/Textures/ASPHALT01_ALBEDO.PNG.KTX2",
+    "Bytes": 350144,
+    "SHA256": "6B38B72D050A6ABED456A4ADBFBC398EA2059BC488E5629E0E74E71362BAC7C6",
+    "MatchesBuiltFile": true
+  },
+  {
+    "Entry": "frontier-airport-fpt1/MaterialLibs/frontier-airport-fpt1/Textures/Asphalt01_Albedo.png.ktx2.FLAGS",
+    "Bytes": 39,
+    "SHA256": "9B6062D74E3665CFB05349BB1A57AF03771AC04F143ED861A7FE2E785BDF4340",
+    "MatchesBuiltFile": true
+  },
+  {
+    "Entry": "frontier-airport-fpt1/MaterialLibs/frontier-airport-fpt1/Textures/ASPHALT01_ALBEDO.PNG.KTX2.json",
+    "Bytes": 232,
+    "SHA256": "E092E172911BD6454129E1EC4F6B82FF4B04DA009F7F7FFFAB7B9777B7E871CA",
+    "MatchesBuiltFile": true
+  },
+  {
+    "Entry": "frontier-airport-fpt1/MaterialLibs/frontier-airport-fpt1/Textures/ASPHALT01_COMP.PNG.KTX2",
+    "Bytes": 350112,
+    "SHA256": "DD2F17FC87A01E276937B0229A60046DCC4177CC253DB10E6F3CA95F1E14CFAE",
+    "MatchesBuiltFile": true
+  },
+  {
+    "Entry": "frontier-airport-fpt1/MaterialLibs/frontier-airport-fpt1/Textures/Asphalt01_COMP.png.ktx2.FLAGS",
+    "Bytes": 21,
+    "SHA256": "A4B714A3A8C02DBE401306A972D00F79655F6075E97C706F309A03C5394F6478",
+    "MatchesBuiltFile": true
+  },
+  {
+    "Entry": "frontier-airport-fpt1/MaterialLibs/frontier-airport-fpt1/Textures/ASPHALT01_COMP.PNG.KTX2.json",
+    "Bytes": 176,
+    "SHA256": "5682F615DFD4C4571682D853275D13E7E3F9077ED4D348C0116337B3EB47D570",
+    "MatchesBuiltFile": true
+  },
+  {
+    "Entry": "frontier-airport-fpt1/scenery/frontier/airport.bgl",
+    "Bytes": 514,
+    "SHA256": "4B44124B22C4DB0956B6A56B83C5C6893E56AD9A6DB49FD77F151CD5898E3358",
+    "MatchesBuiltFile": true
+  }
+]

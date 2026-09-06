@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AssetPackage Version="0.1.0">
+  <PackageOrderHint>CUSTOM_AIRPORT</PackageOrderHint>
+  <ItemSettings>
+    <ContentType>SCENERY</ContentType>
+    <Title>Frontier Test Strip</Title>
+    <Manufacturer />
+    <Creator>Frontier Pilot</Creator>
+  </ItemSettings>
+  <Flags>
+    <VisibleInStore>false</VisibleInStore>
+    <CanBeReferenced>false</CanBeReferenced>
+  </Flags>
+  <AssetGroups>
+    <AssetGroup Name="ContentInfo">
+      <Type>Copy</Type>
+      <Flags>
+        <FSXCompatibility>false</FSXCompatibility>
+      </Flags>
+      <AssetDir>PackageDefinitions\frontier-airport-fpt1\ContentInfo\</AssetDir>
+      <OutputDir>ContentInfo\frontier-airport-fpt1\</OutputDir>
+    </AssetGroup>
+    <AssetGroup Name="airport">
+      <Type>BGL</Type>
+      <Flags>
+        <FSXCompatibility>false</FSXCompatibility>
+      </Flags>
+      <AssetDir>PackageSources\data\</AssetDir>
+      <OutputDir>scenery\frontier\</OutputDir>
+    </AssetGroup>
+    <AssetGroup Name="frontier-materials">
+      <Type>MaterialLib</Type>
+      <Flags>
+        <FSXCompatibility>false</FSXCompatibility>
+      </Flags>
+      <AssetDir>PackageSources\materials\</AssetDir>
+      <OutputDir>MaterialLibs\frontier-airport-fpt1\</OutputDir>
+    </AssetGroup>
+  </AssetGroups>
+</AssetPackage>

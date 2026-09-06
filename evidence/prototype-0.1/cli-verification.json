@@ -1,0 +1,64 @@
+[
+  {
+    "Case": "MissingRequiredLength",
+    "ExpectedExit": 1,
+    "ActualExit": 1,
+    "OutputCreated": false,
+    "Passed": true,
+    "Message": "JSON deserialization for type 'FrontierAirportBuilder.Core.AirstripDefinition' was missing required properties, including the following: LengthMeters"
+  },
+  {
+    "Case": "UnknownField",
+    "ExpectedExit": 1,
+    "ActualExit": 1,
+    "OutputCreated": false,
+    "Passed": true,
+    "Message": "The JSON property 'TypoWidth' could not be mapped to any .NET member contained in type 'FrontierAirportBuilder.Core.AirstripDefinition'."
+  },
+  {
+    "Case": "UnsupportedSurface",
+    "ExpectedExit": 1,
+    "ActualExit": 1,
+    "OutputCreated": false,
+    "Passed": true,
+    "Message": "The JSON value could not be converted to FrontierAirportBuilder.Core.RunwaySurface. Path: $.Surface | LineNumber: 10 | BytePositionInLine: 20."
+  },
+  {
+    "Case": "NumericSurface",
+    "ExpectedExit": 1,
+    "ActualExit": 1,
+    "OutputCreated": false,
+    "Passed": true,
+    "Message": "The JSON value could not be converted to FrontierAirportBuilder.Core.RunwaySurface. Path: $.Surface | LineNumber: 10 | BytePositionInLine: 14."
+  },
+  {
+    "Case": "UnsafeIdentifier",
+    "ExpectedExit": 1,
+    "ActualExit": 1,
+    "OutputCreated": false,
+    "Passed": true,
+    "Message": "Identifier must be four uppercase ASCII letters/digits, starting with a letter."
+  },
+  {
+    "Case": "InvalidWidth",
+    "ExpectedExit": 1,
+    "ActualExit": 1,
+    "OutputCreated": false,
+    "Passed": true,
+    "Message": "WidthMeters must be finite and in [1, 500]."
+  },
+  {
+    "Case": "ExistingOutputPreserved",
+    "ExpectedExit": 1,
+    "ActualExit": 1,
+    "Passed": true,
+    "Message": "Output directory must not already exist."
+  },
+  {
+    "Case": "ExtraGenerateArgument",
+    "ExpectedExit": 2,
+    "ActualExit": 2,
+    "Passed": true,
+    "Message": "Frontier Airport Builder 0.1 (CLI spike)\r\nUsage:\r\n  inspect <SDK root>\r\n  generate <airstrip.json> <new output directory>\r\n  build <airstrip.json> <new output directory> [SDK root]\r\nAll geometry is in metres / true degrees. Output directory must not exist."
+  }
+]

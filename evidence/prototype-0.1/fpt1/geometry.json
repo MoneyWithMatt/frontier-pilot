@@ -1,0 +1,19 @@
+{
+  "TrueHeadingDegrees": 89.64241865029217,
+  "Primary": {
+    "Position": {
+      "Latitude": 25.035914224676947,
+      "Longitude": -77.4819565217157
+    },
+    "InwardTrueHeadingDegrees": 89.63711572163152,
+    "Number": 10
+  },
+  "Secondary": {
+    "Position": {
+      "Latitude": 25.03605672514123,
+      "Longitude": -77.45689462842101
+    },
+    "InwardTrueHeadingDegrees": 269.6477215991978,
+    "Number": 28
+  }
+}

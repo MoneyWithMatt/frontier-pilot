@@ -1,0 +1,10 @@
+{
+  "Scope": "User",
+  "Name": "MSFS2024_SDK",
+  "Before": null,
+  "After": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK\\",
+  "MachineValue": "C:\\Users\\mattr\\Desktop\\",
+  "ChangedUtc": "2026-09-06T12:15:03.0462826Z",
+  "SdkVersion": "1.2.4",
+  "Note": "Existing processes may retain old values; CLI sets its child environment explicitly."
+}

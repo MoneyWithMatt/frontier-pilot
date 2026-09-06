@@ -1,0 +1,24 @@
+{
+  "Directory": "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\FPT1 final source check",
+  "ProjectFile": "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\FPT1 final source check\\AirportProject.xml",
+  "PackageName": "frontier-airport-fpt1",
+  "Geometry": {
+    "TrueHeadingDegrees": 89.64241865029217,
+    "Primary": {
+      "Position": {
+        "Latitude": 25.035914224676947,
+        "Longitude": -77.4819565217157
+      },
+      "InwardTrueHeadingDegrees": 89.63711572163152,
+      "Number": 10
+    },
+    "Secondary": {
+      "Position": {
+        "Latitude": 25.03605672514123,
+        "Longitude": -77.45689462842101
+      },
+      "InwardTrueHeadingDegrees": 269.6477215991978,
+      "Number": 28
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "content": [
+    {
+      "path": "bglindex.bout",
+      "size": 652,
+      "date": 134331880910017058
+    },
+    {
+      "path": "contentinfo/frontier-airport-fpt1/contenthistory.json",
+      "size": 145,
+      "date": 134331880910000000
+    },
+    {
+      "path": "contentinfo/frontier-airport-fpt1/thumbnail.jpg",
+      "size": 35560,
+      "date": 134331880910000000
+    },
+    {
+      "path": "materiallibs/frontier-airport-fpt1/library.xml",
+      "size": 1809,
+      "date": 134331880910000004
+    },
+    {
+      "path": "materiallibs/frontier-airport-fpt1/textures/asphalt01_albedo.png.ktx2",
+      "size": 350144,
+      "date": 134331880910000007
+    },
+    {
+      "path": "materiallibs/frontier-airport-fpt1/textures/asphalt01_albedo.png.ktx2.flags",
+      "size": 39,
+      "date": 134331880910000007
+    },
+    {
+      "path": "materiallibs/frontier-airport-fpt1/textures/asphalt01_albedo.png.ktx2.json",
+      "size": 232,
+      "date": 134331880910000007
+    },
+    {
+      "path": "materiallibs/frontier-airport-fpt1/textures/asphalt01_comp.png.ktx2",
+      "size": 350112,
+      "date": 134331880910000007
+    },
+    {
+      "path": "materiallibs/frontier-airport-fpt1/textures/asphalt01_comp.png.ktx2.flags",
+      "size": 21,
+      "date": 134331880910000007
+    },
+    {
+      "path": "materiallibs/frontier-airport-fpt1/textures/asphalt01_comp.png.ktx2.json",
+      "size": 176,
+      "date": 134331880910000007
+    },
+    {
+      "path": "scenery/frontier/airport.bgl",
+      "size": 514,
+      "date": 134331880910000006
+    }
+  ]
+}

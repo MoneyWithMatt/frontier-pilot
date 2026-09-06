@@ -1,13 +1,15 @@
 # Frontier Airport Builder — Prototype 0.1
 
-Initial toolchain proof for Frontier Pilot. The .NET solution builds and its three SDK inspection tests pass. The silent simulator launch failure is resolved. The untouched SDK 1.2.4 sample compiles its BGL but fails current package validation; a separately labelled copy with one metadata addition builds a complete package. See [the diagnosis](docs/toolchain-diagnosis.md) and [the original experiment](docs/sample-build-report.md).
+Frontier Pilot's first generated airport, **Frontier Test Strip (FPT1)**, compiles successfully with MSFS 2024 SDK 1.2.4. All 152 unit tests pass. The CLI produces one airport, one runway and two starts from an explicit airstrip definition. No WPF UI is implemented.
+
+See [the implementation and verification report](docs/prototype-0.1.md), [the compiled package](artifacts/fpt1/frontier-airport-fpt1.zip), and [template provenance](src/MsfsSdk/Templates/PROVENANCE.md). Earlier baseline investigations remain in [the diagnosis](docs/toolchain-diagnosis.md) and [the original experiment](docs/sample-build-report.md).
 
 ## Projects
 
-- `src/App`: temporary console entry point for inspecting an explicitly supplied SDK root. No UI implemented or framework selected.
-- `src/Core`: shared SDK installation record; future airport definitions belong here.
-- `src/MsfsSdk`: read-only SDK inspection. It records version and required paths, but does not certify SDK compatibility.
-- `tests/Tests`: xUnit tests for SDK inspection and incomplete/invalid installations.
+- `src/App`: CLI commands to inspect the SDK, generate an isolated project, or generate and compile it.
+- `src/Core`: airstrip data/validation, heading and runway-number logic, WGS84 runway geometry.
+- `src/MsfsSdk`: embedded working template, deterministic System.Xml.Linq generation, SDK invocation and package validation.
+- `tests/Tests`: xUnit coverage of geometry, validation, generated XML, determinism and build-result checks.
 
 ## Development
 
@@ -16,11 +18,15 @@ The repository-local .NET SDK is `.tools/dotnet/dotnet.exe`, version 8.0.424. It
 ```powershell
 & .\.tools\dotnet\dotnet.exe build FrontierAirportBuilder.sln -c Release
 & .\.tools\dotnet\dotnet.exe test FrontierAirportBuilder.sln -c Release
-& .\.tools\dotnet\dotnet.exe run --project src/App -- 'C:\Users\mattr\Desktop\MSFS 2024 SDK'
+& .\.tools\dotnet\dotnet.exe run --project src/App -- inspect 'C:\Users\mattr\Desktop\MSFS 2024 SDK'
+& .\.tools\dotnet\dotnet.exe run --project src/App -- generate examples/frontier-test-strip.json workspaces/new-source
+& .\.tools\dotnet\dotnet.exe run --project src/App -- build examples/frontier-test-strip.json workspaces/new-build
 ```
 
 Run `scripts/Test-SimpleAirport.ps1` from PowerShell 7 to copy and build a fresh untouched sample in `workspaces/`. This invokes the official tool and may launch the simulator through Steam. Each run saves its command, invocation, process observations, logs, file inventories, hashes and result under `evidence/`. It uses the project directory, project path and `-nopause`, with the correct SDK environment set only for the child process. Inspect validation errors and the generated package; exit 0 alone is insufficient proof.
 
-SDK sample copies and compiled outputs stay in ignored disposable workspaces. Installed SDK files and synced project sources must remain unchanged. Evidence is committed, but third-party sample assets are not vendored.
+Use a new output directory each time. The CLI refuses existing folders and requires existing MSFS/Package Tool sessions to finish before an isolated build. The user-level MSFS2024_SDK override now points to the verified SDK root; an explicit fourth argument to `build` can select another root. Current process environment is also overridden for the child tool.
 
-Next gate: establish an updated official baseline or adopt the proven one-field compatibility migration before developing the UI or airport generator. No settlements, economy or multiplayer are in scope.
+Disposable runs stay in ignored workspaces. The successful FPT1 package and evidence are committed. The minimal embedded template retains SDK-derived asphalt/thumbnail dependencies with provenance and the accompanying license; those assets are not original Frontier artwork. Installed SDK files and synced project sources remain unchanged.
+
+The test definition intentionally reuses the sample's first runway centre, altitude, heading and dimensions. Terrain elevation and in-simulator visual verification remain future work; nothing has been installed into Community. No settlements, economy or multiplayer are in scope.

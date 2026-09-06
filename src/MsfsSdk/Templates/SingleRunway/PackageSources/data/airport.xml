@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FSData version="9.0">
+  <Airport name="Frontier Test Strip" ident="FPT1" lat="25.0359860032238" lon="-77.4694255823066" alt="4.1148001316736" magvar="6">
+    <Runway lat="25.0359860032238" lon="-77.4694255823066" alt="4.1148001316736" surface="{69FBF616-8DA1-3352-5F54-6F71743DEF33}" heading="89.6424186502922" length="2529.31226120966" width="46.8540846268932" number="10" designator="NONE" primaryTakeoff="YES" primaryLanding="YES" secondaryTakeoff="YES" secondaryLanding="YES">
+      <RunwayStart end="PRIMARY" lat="25.0359142246769" lon="-77.4819565217157" alt="4.1148001316736" heading="89.6371157216315" />
+      <RunwayStart end="SECONDARY" lat="25.0360567251412" lon="-77.456894628421" alt="4.1148001316736" heading="269.647721599198" />
+    </Runway>
+  </Airport>
+</FSData>

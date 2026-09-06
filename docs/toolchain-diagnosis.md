@@ -1,5 +1,7 @@
 # Package Tool diagnosis — 2026-09-06
 
+Historical baseline investigation. The following implementation task adopted the proven metadata correction into a Frontier-maintained template and compiled generated FPT1; see [Prototype 0.1](prototype-0.1.md). Original baseline evidence remains unchanged.
+
 ## Outcome
 
 The silent exit-1 launch problem is resolved. The unchanged SDK 1.2.4 SimpleAirport now compiles its BGL, but fails package validation with the current simulator. A separate disposable copy with one package metadata addition produces a complete package with no new builder errors. This does **not** count as a successful strictly untouched baseline. No UI was started and no installed SDK sample was edited.
