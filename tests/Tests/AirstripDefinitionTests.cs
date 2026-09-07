@@ -12,7 +12,7 @@ public sealed class AirstripDefinitionTests
         foreach (var name in new[] { "", " ", " spaced", "trailing ", new string('a', 49), "newline\n", "bad\u0000", "bad\uFFFE", "bad\ud800" })
             yield return new object[] { d with { Name = name }, "Name" };
         yield return new object[] { d with { Name = null! }, "Name" };
-        foreach (var id in new[] { "", "FP1", "FPT12", "fpt1", "1FPT", "F../", "F P1", "FPT1\n", "ÉPT1" })
+        foreach (var id in new[] { "", "FP", "FPT123456", "fpt1", "1FPT", "F../", "F P1", "FPT1\n", "ÉPT1" })
             yield return new object[] { d with { Identifier = id }, "Identifier" };
         yield return new object[] { d with { Identifier = null! }, "Identifier" };
         foreach (var value in new[] { -90d, 90d, -91d, 91d, double.NaN, double.PositiveInfinity, double.NegativeInfinity })
@@ -52,4 +52,6 @@ public sealed class AirstripDefinitionTests
     }
 
     [Fact] public void MultipleErrorsAreCollected() => Assert.True((Fixtures.Strip with { Name = "", Identifier = "", WidthMeters = -1 }).Validate().Count >= 3);
+    [Theory] [InlineData("FP1")] [InlineData("FPT12345")]
+    public void AcceptsSdkIdentifierLengths(string id) => Assert.Empty((Fixtures.Strip with { Identifier = id }).Validate());
 }

@@ -24,8 +24,8 @@ public sealed record AirstripDefinition
         if (string.IsNullOrWhiteSpace(Name) || Name.Length > 48 || Name != Name.Trim() ||
             Name.Any(c => char.IsControl(c) || char.IsSurrogate(c) || c is '\uFFFE' or '\uFFFF'))
             errors.Add("Name must be 1–48 printable BMP characters, without surrounding whitespace.");
-        if (Identifier is null || !Regex.IsMatch(Identifier, "\\A[A-Z][A-Z0-9]{3}\\z", RegexOptions.CultureInvariant))
-            errors.Add("Identifier must be four uppercase ASCII letters/digits, starting with a letter.");
+        if (Identifier is null || !Regex.IsMatch(Identifier, "\\A[A-Z][A-Z0-9]{2,7}\\z", RegexOptions.CultureInvariant))
+            errors.Add("Identifier must be 3–8 uppercase letters/digits, starting with a letter.");
         if (!double.IsFinite(Latitude) || Latitude <= -90 || Latitude >= 90)
             errors.Add("Latitude must be finite and strictly between -90 and 90 (polar heading is undefined).");
         CheckRange(Longitude, -180, 180, nameof(Longitude), errors);

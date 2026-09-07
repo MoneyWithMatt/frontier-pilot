@@ -13,6 +13,49 @@ public static class LiveSurveyCapture
     public const string TestedSimConnectHash = "E54A505BE0B0A4CDC98DFB45F0C202BA9637F5D494C0919040BC89AC67D92ADB";
     public const string TestedHeaderHash = "3684C4B50630DB2ABEC9815105498FA5B921C653F57423B9B5E6214A60CAABEA";
 
+    public static void CheckConnection(string sdkRoot, CancellationToken cancel)
+    {
+        if (!OperatingSystem.IsWindows() || !Environment.Is64BitProcess) throw new PlatformNotSupportedException("Windows x64 is required.");
+        var sdk = SdkInspector.Inspect(sdkRoot);
+        string Hash(string path) { using var stream = File.OpenRead(path); return Convert.ToHexString(SHA256.HashData(stream)); }
+        string dll = Path.Combine(sdk.Root, "SimConnect SDK/lib/SimConnect.dll");
+        var processes = Process.GetProcessesByName("FlightSimulator2024");
+        try
+        {
+            if (processes.Length != 1) throw new IOException("Launch MSFS 2024 and load a flight, then check again.");
+            if (sdk.Version != "1.2.4" || Hash(dll) != TestedSimConnectHash || Hash(processes[0].MainModule!.FileName) != TestedSimulatorHash ||
+                Hash(Path.Combine(sdk.Root, "SimConnect SDK/include/SimConnect.h")) != TestedHeaderHash)
+                throw new IOException("This simulator/SDK build is not qualified for avatar elevation. Capture remains disabled.");
+        }
+        finally { foreach (var p in processes) p.Dispose(); }
+        cancel.ThrowIfCancellationRequested();
+        var library = NativeLibrary.Load(dll); IntPtr connection = IntPtr.Zero;
+        try
+        {
+            if (Marshal.GetDelegateForFunctionPointer<Open>(NativeLibrary.GetExport(library, "SimConnect_Open"))(out connection,
+                    "Frontier prerequisites read only", IntPtr.Zero, 0, IntPtr.Zero, uint.MaxValue) < 0) throw new IOException("MSFS is not accepting a SimConnect connection yet.");
+            var dispatch = Marshal.GetDelegateForFunctionPointer<Dispatch>(NativeLibrary.GetExport(library, "SimConnect_GetNextDispatch"));
+            var timer = Stopwatch.StartNew();
+            while (timer.Elapsed.TotalSeconds < 10)
+            {
+                cancel.ThrowIfCancellationRequested();
+                if (dispatch(connection, out var data, out uint size) >= 0 && size >= 12)
+                {
+                    int id = Marshal.ReadInt32(data, 8);
+                    if (id == 2) return;
+                    if (id is 1 or 3) throw new IOException("MSFS refused or closed the connection.");
+                }
+                Thread.Sleep(25);
+            }
+            throw new IOException("No simulator handshake within 10 seconds. Load a flight and retry.");
+        }
+        finally
+        {
+            if (connection != IntPtr.Zero) Marshal.GetDelegateForFunctionPointer<Close>(NativeLibrary.GetExport(library, "SimConnect_Close"))(connection);
+            NativeLibrary.Free(library);
+        }
+    }
+
     // Synchronous dispatch keeps all SDK calls on one thread. No SDK write or movement functions are bound.
     public static SurveyPoint Capture(string sdkRoot, string newDirectory, CancellationToken cancel = default)
     {

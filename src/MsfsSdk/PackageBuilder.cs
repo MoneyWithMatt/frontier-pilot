@@ -12,7 +12,7 @@ public static class PackageBuilder
 {
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
-    public static async Task<BuildResult> BuildAsync(GeneratedProject project, SdkInstallation sdk, TimeSpan timeout, CancellationToken cancellation = default)
+    public static async Task<BuildResult> BuildAsync(GeneratedProject project, SdkInstallation sdk, TimeSpan timeout, CancellationToken cancellation = default, IProgress<string>? progress = null)
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("MSFS Package Tool requires Windows.");
         if (timeout <= TimeSpan.Zero || timeout > TimeSpan.FromHours(1)) throw new ArgumentOutOfRangeException(nameof(timeout));
@@ -20,6 +20,8 @@ public static class PackageBuilder
         if (!gate.WaitOne(0)) throw new IOException("Another Frontier build is running.");
         try
         {
+            cancellation.ThrowIfCancellationRequested();
+            progress?.Report("Checking simulator is closed");
             // The simulator error log is shared. Don't conflate errors with an existing editor/build.
             foreach (var name in new[] { "fspackagetool", "FlightSimulator2024" })
             {
@@ -59,6 +61,8 @@ public static class PackageBuilder
             var timedOut = false;
             try
             {
+                cancellation.ThrowIfCancellationRequested();
+                progress?.Report("Compiling with MSFS Package Tool — this may take a few minutes");
                 if (!process.Start()) throw new IOException("Could not start Package Tool.");
                 process.StandardInput.Close();
                 var stdout = Pump(process.StandardOutput, Path.Combine(evidence, "stdout.log"), streamsCancellation.Token);
@@ -80,6 +84,7 @@ public static class PackageBuilder
                 throw;
             }
             var afterLog = ReadSharedLog(logPath);
+            progress?.Report("Checking package manifest, layout and builder diagnostics");
             var delta = afterLog.StartsWith(beforeLog, StringComparison.Ordinal) ? afterLog[beforeLog.Length..] : afterLog;
             await File.WriteAllTextAsync(Path.Combine(evidence, "builder-errors-this-run.log"), delta);
             var packageDirectory = Path.Combine(project.Directory, "Packages", project.PackageName);

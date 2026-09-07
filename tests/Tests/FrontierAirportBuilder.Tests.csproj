@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Core\FrontierAirportBuilder.Core.csproj" />
     <ProjectReference Include="..\..\src\MsfsSdk\FrontierAirportBuilder.MsfsSdk.csproj" />
+    <ProjectReference Include="..\..\src\Workflow\FrontierAirportBuilder.Workflow.csproj" />
   </ItemGroup>
 
 </Project>
