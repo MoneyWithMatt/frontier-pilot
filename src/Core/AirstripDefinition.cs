@@ -2,8 +2,8 @@ using System.Text.RegularExpressions;
 
 namespace FrontierAirportBuilder.Core;
 
-// Only the baseline-proven material is exposed in 0.1. More surfaces need separate validation.
-public enum RunwaySurface { Asphalt }
+// Dirt is the experimental Namibia branch; Asphalt retains the original FPT1 output.
+public enum RunwaySurface { Asphalt, Dirt }
 
 public sealed record AirstripDefinition
 {
@@ -35,7 +35,7 @@ public sealed record AirstripDefinition
         CheckRange(LengthMeters, 10, 10000, nameof(LengthMeters), errors);
         CheckRange(WidthMeters, 1, 500, nameof(WidthMeters), errors);
         if (WidthMeters >= LengthMeters) errors.Add("WidthMeters must be smaller than LengthMeters.");
-        if (Surface != RunwaySurface.Asphalt) errors.Add("Prototype 0.1 supports only the proven Asphalt surface.");
+        if (!Enum.IsDefined(Surface)) errors.Add("Unsupported runway surface.");
         return errors;
     }
 

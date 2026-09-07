@@ -23,7 +23,8 @@ public static class ProjectGenerator
         // Never mix generated files with existing work, SDK samples, or previous build output.
         if (Directory.Exists(root) || File.Exists(root)) throw new IOException("Output directory must not already exist.");
         var packageName = "frontier-airport-" + definition.Identifier.ToLowerInvariant();
-        var materialGuid = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes("FrontierPilot/Asphalt/" + definition.Identifier)).AsSpan(0, 16))
+        var materialName = "frontier-" + definition.Surface.ToString().ToLowerInvariant();
+        var materialGuid = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes("FrontierPilot/" + definition.Surface + "/" + definition.Identifier)).AsSpan(0, 16))
             .ToString("B").ToUpperInvariant();
         var project = LoadXml("AirportProject.xml");
         project.Root!.Element("Packages")!.Element("Package")!.Value = $"PackageDefinitions\\{packageName}.xml";
@@ -55,18 +56,26 @@ public static class ProjectGenerator
             start.SetAttributeValue("heading", Number(value.InwardTrueHeadingDegrees));
         }
         var material = LoadXml("PackageSources.materials.frontier-asphalt.material");
-        material.Root!.SetAttributeValue("Name", "frontier-asphalt");
+        material.Root!.SetAttributeValue("Name", materialName);
         material.Root.SetAttributeValue("Guid", materialGuid);
+        if (definition.Surface == RunwaySurface.Dirt)
+        {
+            material.Root.SetAttributeValue("SurfaceType", "DIRT");
+            material.Root.Element("TextureList")!.RemoveNodes();
+            var diffuse = material.Root.Element("Attributes")!.Element("Diffuse")!;
+            diffuse.SetAttributeValue("Red", "0.52"); diffuse.SetAttributeValue("Green", "0.40"); diffuse.SetAttributeValue("Blue", "0.26");
+            runway.SetAttributeValue("groundMerging", "TRUE");
+        }
 
         // All XML is built before creating output; there are no culture-dependent text substitutions.
         Directory.CreateDirectory(root);
         Save(project, Path.Combine(root, "AirportProject.xml"));
         Save(package, Path.Combine(root, "PackageDefinitions", packageName + ".xml"));
         Save(airportXml, Path.Combine(root, "PackageSources", "data", "airport.xml"));
-        Save(material, Path.Combine(root, "PackageSources", "materials", "frontier-asphalt.material"));
+        Save(material, Path.Combine(root, "PackageSources", "materials", materialName + ".material"));
         // MSBuild normalizes hyphens in resource directory segments (but not file names).
         CopyResource($"PackageDefinitions.{TemplatePackage.Replace('-', '_')}.ContentInfo.Thumbnail.jpg", Path.Combine(root, "PackageDefinitions", packageName, "ContentInfo", "Thumbnail.jpg"));
-        foreach (var file in new[] { "Asphalt01_Albedo.png", "Asphalt01_Albedo.png.FLAGS", "Asphalt01_COMP.png", "Asphalt01_COMP.png.FLAGS" })
+        foreach (var file in definition.Surface == RunwaySurface.Asphalt ? new[] { "Asphalt01_Albedo.png", "Asphalt01_Albedo.png.FLAGS", "Asphalt01_COMP.png", "Asphalt01_COMP.png.FLAGS" } : Array.Empty<string>())
             CopyResource("PackageSources.materials.Textures." + file, Path.Combine(root, "PackageSources", "materials", "Textures", file));
         return new(root, Path.Combine(root, "AirportProject.xml"), packageName, geometry);
     }

@@ -10,6 +10,15 @@ var json = new JsonSerializerOptions
 };
 try
 {
+    if (args.Length is 2 or 3 && args[0] == "capture-survey")
+    {
+        using var stop = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
+        var root = args.Length == 3 ? args[2] : Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.User)
+            ?? throw new ArgumentException("Supply the SDK root or set MSFS2024_SDK.");
+        Console.WriteLine(JsonSerializer.Serialize(LiveSurveyCapture.Capture(root, args[1], stop.Token), json));
+        return 0;
+    }
     if (args.Length == 2 && args[0] == "inspect")
     {
         Console.WriteLine(JsonSerializer.Serialize(SdkInspector.Inspect(args[1]), json));
@@ -40,7 +49,7 @@ try
     Console.WriteLine(JsonSerializer.Serialize(result, json));
     return result.Validation.Success ? 0 : 1;
 }
-catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or JsonException or ArithmeticException or PlatformNotSupportedException or System.ComponentModel.Win32Exception)
+catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or JsonException or ArithmeticException or PlatformNotSupportedException or System.ComponentModel.Win32Exception or OperationCanceledException)
 {
     Console.Error.WriteLine(error.Message);
     return 1;

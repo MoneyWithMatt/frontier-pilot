@@ -1,0 +1,8 @@
+Test run for C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\tests\Tests\bin\Release\net8.0\FrontierAirportBuilder.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\evidence\live-survey\final.trx
+
+Passed!  - Failed:     0, Passed:   169, Skipped:     0, Total:   169, Duration: 152 ms - FrontierAirportBuilder.Tests.dll (net8.0)
