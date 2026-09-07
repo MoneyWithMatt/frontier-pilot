@@ -33,3 +33,5 @@ FPT1 retains the original sample-location baseline and is installed separately i
 
 ## Guided Windows interface
 Run scripts/Start-Desktop.ps1 after building the solution. The WPF window guides you through connecting, capturing your walking-avatar runway centre, defining a strip, compiling and safely installing it. Keep the builder open while closing MSFS between capture and compilation. See docs/TECHNICAL_STATUS.md for supported versions, evidence and current limitations.
+
+Offline regression workflow: scripts/Start-Desktop.ps1 -DryRun. Build Release first; no simulator or SDK is required in this mode. The compiler is simulated and its packages must never be copied to MSFS. See docs/offline-workflow.md for the complete procedure.

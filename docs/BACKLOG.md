@@ -20,3 +20,15 @@
 
 ## Later product work
 Economy, careers, settlements and multiplayer require separate design decisions and are outside Airport Builder 0.1.
+
+## Completed in workflow hardening
+- Explicit validation/recovery states and prerequisite gating.
+- Recorded-survey offline end-to-end test mode.
+- Integration tests for duplicate IDs, changed packages, reinstall, unrelated content and synthetic/live isolation.
+- Technical log copy/save and stricter destination checks.
+
+## Newly identified limitations
+- Add durable install journal/recovery for power loss between directory renames.
+- Reduce conservative path restrictions only with corresponding safety tests.
+- Optional offline session browser/cleanup with explicit ownership and user-data protection.
+- Perform the updated live WPF acceptance when the user is present; this task deliberately did not launch/control MSFS.

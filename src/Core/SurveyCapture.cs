@@ -10,6 +10,21 @@ public sealed record SurveyPoint(double Latitude, double Longitude, double Altit
 
 public static class SurveyCapture
 {
+    // Boundary validation for an already-captured point; never replaces the live frame safeguards.
+    public static string? ValidatePoint(SurveyPoint point)
+    {
+        if (new[] { point.Latitude, point.Longitude, point.AltitudeMeters, point.TrueHeadingDegrees,
+            point.AvatarObjectAltitudeMeters, point.ObjectGroundOffsetMeters, point.MagneticVariationDegrees }.Any(v => !double.IsFinite(v)))
+            return "Survey contains a non-finite reading.";
+        if (Math.Abs(point.Latitude) >= 90 || Math.Abs(point.Longitude) > 180 || point.AltitudeMeters is < -500 or > 9000 ||
+            point.TrueHeadingDegrees is < 0 or >= 360 || Math.Abs(point.MagneticVariationDegrees) > 180)
+            return "Survey reading outside the supported range.";
+        if (Math.Abs(point.ObjectGroundOffsetMeters) > .05 || Math.Abs(point.AvatarObjectAltitudeMeters - point.AltitudeMeters - point.ObjectGroundOffsetMeters) > .02)
+            return "Survey avatar altitude and ground readings disagree.";
+        if (string.IsNullOrWhiteSpace(point.Source)) return "Survey provenance is missing.";
+        return null;
+    }
+
     public static string? Validate(IReadOnlyList<SurveyFrame> frames)
     {
         if (frames.Count < 2) return "Waiting for live samples.";

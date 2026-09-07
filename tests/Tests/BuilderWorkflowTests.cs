@@ -8,15 +8,15 @@ public class BuilderViewModelTests
     private sealed class Fake : IBuilderServices
     {
         public string EvidenceDirectory => ""; public string ProjectDirectory => ""; public string LogPath => "";
-        public int Builds, Installs; public bool Fail, Wait;
+        public int Builds, Installs; public bool Fail, Wait; public SurveyPoint? Point;
         public Task<string> CheckAsync(string s, CancellationToken t) => Task.FromResult("Connected");
-        public async Task<SurveyPoint> CaptureAsync(string s, CancellationToken t) { if (Wait) await Task.Delay(Timeout.Infinite,t); if(Fail) throw new IOException("Avatar unavailable"); return new(-22,14,10,90,10,0,0); }
+        public async Task<SurveyPoint> CaptureAsync(string s, CancellationToken t) { if (Wait) await Task.Delay(Timeout.Infinite,t); if(Fail) throw new IOException("Avatar unavailable"); return Point ?? new(-22,14,10,90,10,0,0); }
         public Task<string> ValidateIdentifierAsync(string s, CancellationToken t) => Task.FromResult("Available");
         public Task<BuiltAirport> BuildAsync(string s, AirstripDefinition d, IProgress<string> p, CancellationToken t) { Builds++; if(Fail) throw new IOException("Compiler failed"); return Task.FromResult(new BuiltAirport(d,"project","package","log",[])); }
         public Task<string> InstallAsync(BuiltAirport b, IProgress<string> p, CancellationToken t) { Installs++; if(Fail) throw new IOException("MSFS running"); return Task.FromResult("installed"); }
         public void OpenPath(string p) { }
     }
-    private static async Task<BuilderViewModel> Ready(Fake f) { var v=new BuilderViewModel(f,"sdk"); await v.CheckAsync(); await v.CaptureAsync(); v.AirportName="Test";v.Identifier="FPNEW";v.SiteConfirmed=true;return v; }
+    private static async Task<BuilderViewModel> Ready(Fake f) { var v=new BuilderViewModel(f,"sdk"); await v.CheckAsync(); await v.CaptureAsync(); v.AirportName="Test";v.Identifier="FPNEW";v.SiteConfirmed=true;await v.ValidateAsync();return v; }
     [Fact] public async Task InvalidInputNeverBuilds() { var f=new Fake(); var v=new BuilderViewModel(f,"sdk"); await v.BuildAsync();Assert.Equal(0,f.Builds);Assert.NotEmpty(v.Error); }
     [Fact] public async Task CompleteFlowAndEditsInvalidatePackage() { var f=new Fake();var v=await Ready(f);Assert.Equal("09 / 27",v.Designators);await v.BuildAsync();Assert.True(v.InstallCommand.CanExecute(null));await v.InstallAsync();Assert.Contains("Restart",v.Status);Assert.Equal(1,f.Installs);v.Length="250";Assert.Null(v.Built);Assert.False(v.InstallCommand.CanExecute(null)); }
     [Theory] [InlineData("NaN")] [InlineData("-1")] [InlineData("abc")] public async Task InvalidDimensionsRefuse(string value) {var f=new Fake();var v=await Ready(f);v.Length=value;await v.BuildAsync();Assert.Equal(0,f.Builds);}
@@ -25,8 +25,35 @@ public class BuilderViewModelTests
     [Fact] public async Task CaptureFailureClearsOldSurvey() {var f=new Fake();var v=await Ready(f);f.Fail=true;await v.CaptureAsync();Assert.Null(v.Survey);Assert.Contains("Avatar unavailable",v.Error);}
     [Fact] public async Task BuildFailureCannotInstall() {var f=new Fake();var v=await Ready(f);f.Fail=true;await v.BuildAsync();Assert.Null(v.Built);Assert.Contains("Compiler failed",v.Error);Assert.False(v.IsBusy);}
     [Fact] public async Task InstallationFailureCanRetry() {var f=new Fake();var v=await Ready(f);await v.BuildAsync();f.Fail=true;await v.InstallAsync();Assert.Equal("",v.InstalledPath);Assert.Contains("MSFS running",v.Error);Assert.True(v.InstallCommand.CanExecute(null));}
+    [Fact] public async Task InvalidPointFromServiceCannotEnableValidation()
+    {
+        var f=new Fake{Point=new(-22,14,double.NaN,90,10,0,0)};
+        var v=new BuilderViewModel(f,"sdk");await v.CheckAsync();await v.CaptureAsync();
+        Assert.Equal(WorkflowState.Error,v.State);Assert.Null(v.Survey);Assert.False(v.ValidateCommand.CanExecute(null));
+    }
+    [Fact] public async Task ReconnectingClearsPreviouslyValidatedWork()
+    {
+        var f=new Fake();var v=await Ready(f);await v.BuildAsync();await v.CheckAsync();
+        Assert.Equal(WorkflowState.ReadyToSurvey,v.State);Assert.Null(v.Survey);Assert.Null(v.Built);
+        Assert.False(v.BuildCommand.CanExecute(null));Assert.False(v.InstallCommand.CanExecute(null));
+    }
+    [Fact] public async Task BuildFailureRecoversFromValidatedState()
+    {
+        var f=new Fake();var v=await Ready(f);f.Fail=true;await v.BuildAsync();
+        Assert.Equal(WorkflowState.Error,v.State);Assert.Equal(WorkflowState.Validated,v.RecoveryState);
+        Assert.True(v.BuildCommand.CanExecute(null));Assert.Contains("IOException",v.TechnicalLog);
+        f.Fail=false;await v.BuildAsync();Assert.Equal(WorkflowState.Built,v.State);
+    }
+    [Fact] public async Task BusyCaptureRefusesInputChangesAndReentry()
+    {
+        var f=new Fake{Wait=true};var v=new BuilderViewModel(f,"sdk");await v.CheckAsync();
+        var pending=v.CaptureAsync();v.SdkRoot="other";await v.CheckAsync();
+        Assert.Equal("sdk",v.SdkRoot);Assert.True(v.IsBusy);
+        v.Cancel();await pending;Assert.Equal(WorkflowState.Cancelled,v.State);Assert.True(v.CaptureCommand.CanExecute(null));
+    }
     [Fact] public async Task ChangingSdkRequiresNewConnectionAndSurvey() {var f=new Fake();var v=await Ready(f);v.SdkRoot="other";Assert.Null(v.Survey);Assert.False(v.CaptureCommand.CanExecute(null));}
 }
+[Collection("Community installation")]
 public sealed class CommunityInstallerTests : TemporaryDirectoryTest
 {
     private string Source => Path.Combine(Root,"build","frontier-airport-fpnew");
@@ -80,5 +107,3 @@ public sealed class CommunityInstallerTests : TemporaryDirectoryTest
     [Fact] public void PathEscapeRefused() => Assert.Throws<IOException>(()=>CommunityInstaller.Within(Path.Combine(Root,"other"),Path.Combine(Root,"stage")));
     [Fact] public void SimulatorStartingDuringStagingLeavesCommunityUntouched() {int calls=0;var i=Create(()=>{if(++calls==2)throw new IOException("started");});Assert.Throws<IOException>(()=>i.Install("FPNEW",Source,CommunityInstaller.Inventory(Source)));Assert.Empty(Directory.GetFileSystemEntries(i.Community));}
 }
-
-

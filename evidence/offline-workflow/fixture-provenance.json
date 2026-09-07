@@ -1,0 +1,9 @@
+{
+  "source": "evidence/live-survey/namibia-centre-01/observations.jsonl",
+  "sourceSha256": "68BF3E5FE7A521DCE8EFD2ACC4433A774938FC3A415F33B446E1BA5D5BCD4FC1",
+  "fixture": "src/Workflow/Fixtures/namibia-centre-frames.json",
+  "fixtureSha256": "BD5669EFE22B3ECEEF1A08E15A4D1FF68BD28EFB6DE50D4EF8CDEA9CFD653A20",
+  "frames": 19,
+  "semanticallyEquivalent": true,
+  "processing": "Selected kind=frame data rows, retained order and values, formatted JSON array; source unchanged"
+}

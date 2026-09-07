@@ -1,0 +1,30 @@
+{
+  "mode": "DRY RUN",
+  "state": "Installed",
+  "sandbox": "C:\\Users\\mattr\\AppData\\Local\\Temp\\FrontierAirportBuilder-DryRuns\\b5f6d06e7d2a4fbabd9f718b639f462f",
+  "receipt": {
+    "Identifier": "FPDRY01",
+    "PackageName": "frontier-airport-fpdry01",
+    "InstallPath": "C:\\Users\\mattr\\AppData\\Local\\Temp\\FrontierAirportBuilder-DryRuns\\b5f6d06e7d2a4fbabd9f718b639f462f\\Packages\\Community2024\\frontier-airport-fpdry01",
+    "BackupPath": "C:\\Users\\mattr\\AppData\\Local\\Temp\\FrontierAirportBuilder-DryRuns\\b5f6d06e7d2a4fbabd9f718b639f462f\\state\\installations\\11a1329f5008482b8f27c95c8b46b6b2\\previous",
+    "InstalledUtc": "2026-09-07T12:00:58.5911341+00:00",
+    "Files": [
+      {
+        "Path": "airport.bgl",
+        "Bytes": 879,
+        "Sha256": "C47FB86732FD6E0B4D81B6233FC3212AB82DFFBDED6C2295F75CD43A55BEE2C9"
+      },
+      {
+        "Path": "layout.json",
+        "Bytes": 88,
+        "Sha256": "B90B1C872FE82AE413DA4165D62BCD9657943B58307C61FF8FDB9ED6F3D66068"
+      },
+      {
+        "Path": "manifest.json",
+        "Bytes": 92,
+        "Sha256": "362CE428C88F2E1CCC18ACBD3CA2994E00622EC5FDEF82CC38C2C24AC7FDD144"
+      }
+    ]
+  },
+  "log": "DRY RUN \u00B7 recorded survey \u00B7 simulated compiler \u00B7 isolated test Community \u00B7 no MSFS connection\nState: Installed; recovery: Installed\nSDK: SDK deliberately unavailable\nProject: C:\\Users\\mattr\\AppData\\Local\\Temp\\FrontierAirportBuilder-DryRuns\\b5f6d06e7d2a4fbabd9f718b639f462f\\state\\projects\\20260907-120058-418a2fd5\nEvidence: C:\\Users\\mattr\\AppData\\Local\\Temp\\FrontierAirportBuilder-DryRuns\\b5f6d06e7d2a4fbabd9f718b639f462f\\state\\projects\\20260907-120058-418a2fd5\\.build\nBuild log: C:\\Users\\mattr\\AppData\\Local\\Temp\\FrontierAirportBuilder-DryRuns\\b5f6d06e7d2a4fbabd9f718b639f462f\\state\\projects\\20260907-120058-418a2fd5\\build-report.txt\n\n2026-09-07T12:00:58.4565635\u002B00:00 DRY RUN \u00B7 recorded survey \u00B7 simulated compiler \u00B7 isolated test Community \u00B7 no MSFS connection\n2026-09-07T12:00:58.4565739\u002B00:00 Check prerequisites\n2026-09-07T12:00:58.4607266\u002B00:00 Dry-run sandbox ready. No simulator connection.\n2026-09-07T12:00:58.4607501\u002B00:00 Capture survey\n2026-09-07T12:00:58.4635957\u002B00:00 Survey captured. Enter details and Validate.\n2026-09-07T12:00:58.4638311\u002B00:00 Validate definition\n2026-09-07T12:00:58.4672665\u002B00:00 Validated. Available in your managed Community packages. Ready for simulated compilation.\n2026-09-07T12:00:58.4672880\u002B00:00 Generate and compile\n2026-09-07T12:00:58.4705108\u002B00:00 Available in your managed Community packages.\n2026-09-07T12:00:58.4736881\u002B00:00 Generating isolated airport project\n2026-09-07T12:00:58.4809712\u002B00:00 DRY RUN: simulating compiler output; no Package Tool or MSFS process\n2026-09-07T12:00:58.4881100\u002B00:00 Test artifact verified. Install into the sandbox.\n2026-09-07T12:00:58.4890896\u002B00:00 Install airport\n2026-09-07T12:00:58.5009780\u002B00:00 Staging and verifying this airport\u0027s package\n2026-09-07T12:00:58.5167318\u002B00:00 Installing \u2014 preserving any previous version\n2026-09-07T12:00:58.5221524\u002B00:00 Dry run installed and verified in the sandbox.\n2026-09-07T12:00:58.5223572\u002B00:00 Validate definition\n2026-09-07T12:00:58.5283013\u002B00:00 Validated. Replace this app\u0027s previous package; a backup will be kept. Ready for simulated compilation.\n2026-09-07T12:00:58.5283257\u002B00:00 Generate and compile\n2026-09-07T12:00:58.5342973\u002B00:00 Replace this app\u0027s previous package; a backup will be kept.\n2026-09-07T12:00:58.5401382\u002B00:00 Generating isolated airport project\n2026-09-07T12:00:58.5475569\u002B00:00 DRY RUN: simulating compiler output; no Package Tool or MSFS process\n2026-09-07T12:00:58.5549397\u002B00:00 Test artifact verified. Install into the sandbox.\n2026-09-07T12:00:58.5549449\u002B00:00 Install airport\n2026-09-07T12:00:58.5688843\u002B00:00 Staging and verifying this airport\u0027s package\n2026-09-07T12:00:58.5872491\u002B00:00 Installing \u2014 preserving any previous version\n2026-09-07T12:00:58.5931375\u002B00:00 Dry run installed and verified in the sandbox."
+}

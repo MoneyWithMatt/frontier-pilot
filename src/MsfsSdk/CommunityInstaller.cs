@@ -10,7 +10,7 @@ public sealed record InstallationReceipt(string Identifier, string PackageName, 
 
 /// <summary>The proven stage/hash/backup/install workflow, extracted from the dedicated PowerShell installers.
 /// Only receipt-owned packages may be replaced. All recursive traversal rejects reparse points.</summary>
-public sealed class CommunityInstaller(string packagesRoot, string stateRoot, Action assertSimulatorClosed)
+public sealed class CommunityInstaller(string packagesRoot, string stateRoot, Action assertSimulatorClosed, bool allowTestPackages = false)
 {
     public string Community => System.IO.Path.Combine(packagesRoot, "Community2024");
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
@@ -24,9 +24,7 @@ public sealed class CommunityInstaller(string packagesRoot, string stateRoot, Ac
     public string CheckIdentifier(string id)
     {
         string name = PackageName(id);
-        SafePath(packagesRoot); SafePath(Community); SafePath(stateRoot);
-        if (!string.Equals(System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(packagesRoot)), System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(stateRoot)), StringComparison.OrdinalIgnoreCase)) throw new IOException("This prototype requires Community and app storage on the same drive for safe replacement.");
-        if (!Directory.Exists(Community)) throw new IOException("The configured Community2024 folder does not exist.");
+        ValidateDestination();
         string legacy = System.IO.Path.Combine(packagesRoot, "Community", name), target = System.IO.Path.Combine(Community, name);
         SafePath(legacy); SafePath(target); SafePath(Ledger(id));
         if (Directory.Exists(legacy) || File.Exists(legacy)) throw new IOException("A matching legacy Community package exists; choose another identifier.");
@@ -50,13 +48,20 @@ public sealed class CommunityInstaller(string packagesRoot, string stateRoot, Ac
         {
             cancellation.ThrowIfCancellationRequested(); assertSimulatorClosed(); CheckIdentifier(id);
             string name = PackageName(id), target = System.IO.Path.Combine(Community, name);
+            SafePath(source);
+            if (Overlaps(source, packagesRoot) || IsUnder(stateRoot, source))
+                throw new IOException("Source overlaps installation storage or Community.");
             source = System.IO.Path.GetFullPath(source);
             if (!string.Equals(new DirectoryInfo(source).Name, name, StringComparison.OrdinalIgnoreCase)) throw new IOException("Wrong source package name.");
             SafePath(source); Compare(expected, Inventory(source));
             var validation = PackageValidator.Validate(source, 0, false, "");
             if (!validation.Success) throw new IOException(string.Join("\n", validation.Errors));
             using (var m = JsonDocument.Parse(File.ReadAllText(System.IO.Path.Combine(source, "manifest.json"))))
+            {
                 if (m.RootElement.GetProperty("creator").GetString() != "Frontier Pilot") throw new IOException("Package creator is not Frontier Pilot.");
+                bool synthetic = m.RootElement.TryGetProperty("frontier_test_only", out var flag) && flag.ValueKind == JsonValueKind.True;
+                if (synthetic != allowTestPackages) throw new IOException("Test packages may only be installed by an isolated dry-run installer.");
+            }
             string transaction = System.IO.Path.Combine(stateRoot, "installations", Guid.NewGuid().ToString("N"));
             string staged = System.IO.Path.Combine(transaction, name), backup = System.IO.Path.Combine(transaction, "previous");
             Within(transaction, stateRoot); Within(target, Community); Within(staged, transaction); Within(backup, transaction);
@@ -127,11 +132,47 @@ public sealed class CommunityInstaller(string packagesRoot, string stateRoot, Ac
             throw new IOException("Path escapes its intended directory.");
         SafePath(path);
     }
+    private static bool IsUnder(string child, string parent) =>
+        SamePath(child,parent) || System.IO.Path.GetFullPath(child).StartsWith(System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(parent)) + System.IO.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+    private static bool Overlaps(string a, string b) => IsUnder(a,b) || IsUnder(b,a);
+    public void ValidateDestination()
+    {
+        StrictRoot(packagesRoot); StrictRoot(stateRoot);
+        SafePath(Community);
+        if (Overlaps(packagesRoot, stateRoot)) throw new IOException("Community packages and app state must be separate directories.");
+        if (!string.Equals(System.IO.Path.GetPathRoot(packagesRoot), System.IO.Path.GetPathRoot(stateRoot), StringComparison.OrdinalIgnoreCase))
+            throw new IOException("This prototype requires Community and app storage on the same drive for safe replacement.");
+        if (!Directory.Exists(Community)) throw new IOException("The configured Community2024 folder does not exist.");
+        if (allowTestPackages)
+        {
+            string sandbox = System.IO.Path.GetDirectoryName(packagesRoot)!;
+            string testParent = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "FrontierAirportBuilder-DryRuns");
+            Within(sandbox, testParent);
+            if (!Guid.TryParseExact(new DirectoryInfo(sandbox).Name,"N",out _) ||
+                !SamePath(packagesRoot,System.IO.Path.Combine(sandbox,"Packages")) ||
+                !SamePath(stateRoot,System.IO.Path.Combine(sandbox,"state")))
+                throw new IOException("Dry-run destination is not an isolated Frontier sandbox.");
+        }
+    }
+    private static void StrictRoot(string path)
+    {
+        SafePath(path);
+        if (SamePath(path,System.IO.Path.GetPathRoot(path)!)) throw new IOException("A drive root is not an installation directory.");
+    }
     public static void SafePath(string path)
     {
+        if (string.IsNullOrWhiteSpace(path) || !System.IO.Path.IsPathFullyQualified(path) || path.StartsWith(@"\\") ||
+            path.Contains('/') || path.Length > 240 || path.Skip(2).Contains(':') ||
+            path.Split('\\').Skip(1).Any(p => p is "." or ".." || p.EndsWith('.') || p.EndsWith(' ')))
+            throw new IOException("Use an unambiguous absolute local path without redirection, traversal or alternate streams.");
         for (string? p = System.IO.Path.GetFullPath(path); p != null; p = System.IO.Path.GetDirectoryName(p))
-            if ((File.Exists(p) || Directory.Exists(p)) && (File.GetAttributes(p) & FileAttributes.ReparsePoint) != 0)
+        {
+            FileAttributes attributes;
+            try { attributes = File.GetAttributes(p); }
+            catch (FileNotFoundException) { continue; }
+            catch (DirectoryNotFoundException) { continue; }
+            if ((attributes & FileAttributes.ReparsePoint) != 0)
                 throw new IOException("Redirected files/folders are not supported for safe installation: " + p);
+        }
     }
 }
-

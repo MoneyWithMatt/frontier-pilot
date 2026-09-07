@@ -9,3 +9,5 @@ Never weaken avatar capture safeguards or substitute aircraft/camera data. Quali
 Do not modify FPT1 or FPSC, prior evidence or unrelated Community content. Desktop replacement requires an intact ownership receipt and matching hashes; never adopt an unknown existing package. Keep backups and fail safely if MSFS is running. Do not delete installed packages to make tests pass.
 
 Build/test with .tools/dotnet/dotnet.exe; set DOTNET_CLI_HOME=.tools/home and NUGET_PACKAGES=.tools/nuget. Run focused tests and a solution build. Tests use temporary packages, never the real Community folder. Local UI launch uses scripts/Start-Desktop.ps1. Commit implementation and accurate evidence; distinguish automated tests from live simulator verification. No remote is configured at this time.
+
+For work without the user/simulator: use the isolated dry-run backend and tests; never invoke Package Tool because it launches MSFS. Build Release if an existing Debug UI is open instead of closing a window that may hold user work. Dry-run artifacts are synthetic and must not be installed into real Community. See docs/offline-workflow.md.
