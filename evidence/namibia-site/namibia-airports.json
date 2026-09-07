@@ -1,0 +1,2123 @@
+[
+  {
+    "ident": "FYAA",
+    "name": "Ai-Ais Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-27.995, 17.5966"
+  },
+  {
+    "ident": "FYAB",
+    "name": "Aroab B Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-26.7761, 19.633101"
+  },
+  {
+    "ident": "FYAD",
+    "name": "Aandster Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.355245, 16.105086"
+  },
+  {
+    "ident": "FYAH",
+    "name": "Okombahe Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.296165, 15.396506"
+  },
+  {
+    "ident": "FYAI",
+    "name": "Ameib Ranch Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.818012, 15.620645"
+  },
+  {
+    "ident": "FYAK",
+    "name": "Aussenkehr Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-28.4587, 17.4645"
+  },
+  {
+    "ident": "FYAM",
+    "name": "Aminuis Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.6558, 19.3517"
+  },
+  {
+    "ident": "FYAR",
+    "name": "Arandis Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.461875, 14.979322"
+  },
+  {
+    "ident": "FYAS",
+    "name": "Aus Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-26.668127, 16.29312"
+  },
+  {
+    "ident": "FYAT",
+    "name": "Autabib Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.009534, 17.686425"
+  },
+  {
+    "ident": "FYAV",
+    "name": "Ariamsvlei Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-28.127166, 19.837872"
+  },
+  {
+    "ident": "FYBC",
+    "name": "Bethanien Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-26.5448, 17.1816"
+  },
+  {
+    "ident": "FYBE",
+    "name": "Betesda Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.618554, 15.997697"
+  },
+  {
+    "ident": "FYBI",
+    "name": "Arabi Hunting Farm Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-26.391909, 19.68725"
+  },
+  {
+    "ident": "FYBJ",
+    "name": "Bitterwasser Lodge & Flying Club Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.875, 17.9911"
+  },
+  {
+    "ident": "FYBM",
+    "name": "B2Gold Otjikoto Mine Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.992261, 17.127671"
+  },
+  {
+    "ident": "FYBO",
+    "name": "Blumfelde Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.549891, 18.323268"
+  },
+  {
+    "ident": "FYBR",
+    "name": "Berseba Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.982345, 17.839329"
+  },
+  {
+    "ident": "FYBW",
+    "name": "Bwabwata Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.819553, 22.56441"
+  },
+  {
+    "ident": "FYBY",
+    "name": "Byseewah Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.607944, 15.430402"
+  },
+  {
+    "ident": "FYCC",
+    "name": "Cape Cross Airstrip.",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.762412, 13.9912"
+  },
+  {
+    "ident": "FYCV",
+    "name": "Cordova Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.733142, 18.521281"
+  },
+  {
+    "ident": "FYDC",
+    "name": "Damaraland Wilderness Camp Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.431705, 14.127124"
+  },
+  {
+    "ident": "FYDN",
+    "name": "Doro Nawas Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.451007, 14.287337"
+  },
+  {
+    "ident": "FYEA",
+    "name": "Etendeka Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.803039, 13.928163"
+  },
+  {
+    "ident": "FYEF",
+    "name": "Epupa Falls Airstrip.",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.029332, 13.210312"
+  },
+  {
+    "ident": "FYEG",
+    "name": "Erongo Mountain Ombu Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.667778, 15.671146"
+  },
+  {
+    "ident": "FYEK",
+    "name": "Epukiro Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.786699, 19.1061"
+  },
+  {
+    "ident": "FYEM",
+    "name": "Emeritus (Onanis) Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.892724, 15.701427"
+  },
+  {
+    "ident": "FYEN",
+    "name": "Eenhana Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.483, 16.322001"
+  },
+  {
+    "ident": "FYEP",
+    "name": "Epacha Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.42956, 15.676921"
+  },
+  {
+    "ident": "FYER",
+    "name": "Ermo Game Farm Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.296402, 14.561886"
+  },
+  {
+    "ident": "FYET",
+    "name": "Etusis Lodge Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.179404, 15.755858"
+  },
+  {
+    "ident": "FYGB",
+    "name": "Gobabis Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.5044, 18.973101"
+  },
+  {
+    "ident": "FYGC",
+    "name": "Gochas Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.8564, 18.817801"
+  },
+  {
+    "ident": "FYGF",
+    "name": "Grootfontein Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.6022, 18.1227"
+  },
+  {
+    "ident": "FYGK",
+    "name": "Farm Whitwater East Landing Strip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.629999, 15.9392"
+  },
+  {
+    "ident": "FYGL",
+    "name": "Omaruru Game Lodge Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.326099, 16.089399"
+  },
+  {
+    "ident": "FYGO",
+    "name": "Gobabeb Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.5443, 15.04492"
+  },
+  {
+    "ident": "FYGT",
+    "name": "Gross Tsaub Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.027908, 15.066459"
+  },
+  {
+    "ident": "FYGV",
+    "name": "Gravenstein Prv Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.4589, 17.497801"
+  },
+  {
+    "ident": "FYHH",
+    "name": "Helmeringhausen Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.863598, 16.816362"
+  },
+  {
+    "ident": "FYHI",
+    "name": "Halali Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.0285, 16.4585"
+  },
+  {
+    "ident": "FYHN",
+    "name": "Henties Bay Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.10345, 14.3025"
+  },
+  {
+    "ident": "FYHO",
+    "name": "Hoanib Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.3864, 13.1327"
+  },
+  {
+    "ident": "FYHS",
+    "name": "Hobas Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-27.624399185180664, 17.693300247192383"
+  },
+  {
+    "ident": "FYHV",
+    "name": "Hartmann Valley Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.377134, 12.254745"
+  },
+  {
+    "ident": "FYIA",
+    "name": "Intu Africa Pan Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.088300704956055, 17.95170021057129"
+  },
+  {
+    "ident": "FYKA",
+    "name": "Karibib Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.847799, 15.9028"
+  },
+  {
+    "ident": "FYKB",
+    "name": "Karasburg Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-28.0297, 18.7385"
+  },
+  {
+    "ident": "FYKD",
+    "name": "Kalkfeld Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.901399612426758, 16.207799911499023"
+  },
+  {
+    "ident": "FYKE",
+    "name": "Kalahari Game Lodge Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.651100158691406, 19.87809944152832"
+  },
+  {
+    "ident": "FYKJ",
+    "name": "Kamanjab Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.520599, 14.8233"
+  },
+  {
+    "ident": "FYKM",
+    "name": "Katima Mulilo Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.634258, 24.176688"
+  },
+  {
+    "ident": "FYKN",
+    "name": "Okonjima Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.866986, 16.639363"
+  },
+  {
+    "ident": "FYKR",
+    "name": "Okorusu Mine Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.062512, 16.725565"
+  },
+  {
+    "ident": "FYKT",
+    "name": "Keetmanshoop Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-26.539801, 18.111401"
+  },
+  {
+    "ident": "FYKU",
+    "name": "Kuidas Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.650026, 13.860082"
+  },
+  {
+    "ident": "FYKY",
+    "name": "Uitkyk Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.122049, 16.265716"
+  },
+  {
+    "ident": "FYKZ",
+    "name": "Kuzikus Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.229516, 18.3867"
+  },
+  {
+    "ident": "FYLO",
+    "name": "Lodge Okajo Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.727778, 16.195833"
+  },
+  {
+    "ident": "FYLR",
+    "name": "La Rochelle Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-18.978958, 17.86126"
+  },
+  {
+    "ident": "FYLS",
+    "name": "Lianshulu Lodge Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-18.116495, 23.39346"
+  },
+  {
+    "ident": "FYLW",
+    "name": "Langverwacht Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.000236, 18.532866"
+  },
+  {
+    "ident": "FYLZ",
+    "name": "Luderitz Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-26.687400817871094, 15.242899894714355"
+  },
+  {
+    "ident": "FYMB",
+    "name": "Meob Bay Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.617235, 14.697224"
+  },
+  {
+    "ident": "FYME",
+    "name": "Mount Etjo Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.0233001709, 16.4528007507"
+  },
+  {
+    "ident": "FYMG",
+    "name": "Midgard Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.0106, 17.37"
+  },
+  {
+    "ident": "FYMH",
+    "name": "Maltahoehe Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.770477, 16.977822"
+  },
+  {
+    "ident": "FYMI",
+    "name": "Mile 72 Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.870352, 14.079146"
+  },
+  {
+    "ident": "FYMK",
+    "name": "Kunene Mouth Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.270771, 11.762853"
+  },
+  {
+    "ident": "FYML",
+    "name": "Mariental Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.6054, 17.9254"
+  },
+  {
+    "ident": "FYMM",
+    "name": "Omatako Hunting Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.542781, 16.798682"
+  },
+  {
+    "ident": "FYMO",
+    "name": "Mokuti Lodge Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-18.812799, 17.059401"
+  },
+  {
+    "ident": "FYMW",
+    "name": "Moewe Bay Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.389049, 12.743769"
+  },
+  {
+    "ident": "FYNA",
+    "name": "Namutoni Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-18.8064, 16.9272"
+  },
+  {
+    "ident": "FYNG",
+    "name": "Ongava Lodge Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.328533, 15.915003"
+  },
+  {
+    "ident": "FYOA",
+    "name": "Ondangwa Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.878201, 15.9526"
+  },
+  {
+    "ident": "FYOE",
+    "name": "Omega Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-18.0303, 22.189699"
+  },
+  {
+    "ident": "FYOG",
+    "name": "Oranjemund Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-28.585318, 16.44638"
+  },
+  {
+    "ident": "FYOH",
+    "name": "Okahao Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.881137, 15.076249"
+  },
+  {
+    "ident": "FYOJ",
+    "name": "Outjo Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.0753, 16.124701"
+  },
+  {
+    "ident": "FYOM",
+    "name": "Omaruru Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.415000915527344, 15.93809986114502"
+  },
+  {
+    "ident": "FYON",
+    "name": "Okahandja Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.013900756835938, 16.897499084472656"
+  },
+  {
+    "ident": "FYOO",
+    "name": "Okaukuejo Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.1492, 15.9119"
+  },
+  {
+    "ident": "FYOP",
+    "name": "Opuwa Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-18.056022, 13.852061"
+  },
+  {
+    "ident": "FYOS",
+    "name": "Oshakati Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.797, 15.6993"
+  },
+  {
+    "ident": "FYOU",
+    "name": "Operet Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-18.609399795532227, 17.149700164794922"
+  },
+  {
+    "ident": "FYOW",
+    "name": "Otjiwarongo Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.433012, 16.660801"
+  },
+  {
+    "ident": "FYPO",
+    "name": "Pokweni Glider Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.649999618530273, 17.729999542236328"
+  },
+  {
+    "ident": "FYRC",
+    "name": "Ruacana Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.420601, 14.3717"
+  },
+  {
+    "ident": "FYRR",
+    "name": "Rag Rock Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.536484, 14.428286"
+  },
+  {
+    "ident": "FYRU",
+    "name": "Rundu Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.956499, 19.7194"
+  },
+  {
+    "ident": "FYSA",
+    "name": "Skorpion Mine Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-27.8764, 16.6478"
+  },
+  {
+    "ident": "FYSF",
+    "name": "Sesfontein Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.10185, 13.64785"
+  },
+  {
+    "ident": "FYSL",
+    "name": "Sossusvlei Mountain Lodge Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.803301, 15.8911"
+  },
+  {
+    "ident": "FYSM",
+    "name": "Swakopmund Municipal Aerodrome",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.6619, 14.5681"
+  },
+  {
+    "ident": "FYSN",
+    "name": "Osona Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.107799530029297, 16.979700088500977"
+  },
+  {
+    "ident": "FYSO",
+    "name": "Solitaire Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.900800704956055, 16.00469970703125"
+  },
+  {
+    "ident": "FYSP",
+    "name": "Stampriet Pan Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.35219955444336, 18.433300018310547"
+  },
+  {
+    "ident": "FYSS",
+    "name": "Sesriem Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.5128, 15.7467"
+  },
+  {
+    "ident": "FYST",
+    "name": "Strate Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.96780014038086, 18.548900604248047"
+  },
+  {
+    "ident": "FYTE",
+    "name": "Terrace Bay Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.972112, 13.025486"
+  },
+  {
+    "ident": "FYTF",
+    "name": "Twyfelfontein Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.54424, 14.35879"
+  },
+  {
+    "ident": "FYTK",
+    "name": "Tsumkwe Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.584999, 20.452801"
+  },
+  {
+    "ident": "FYTM",
+    "name": "Tsumeb Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.262079, 17.732509"
+  },
+  {
+    "ident": "FYUS",
+    "name": "Uis Mine Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.230032, 14.866888"
+  },
+  {
+    "ident": "FYVF",
+    "name": "Veronica Gliding Center",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.433285, 18.269556"
+  },
+  {
+    "ident": "FYWB",
+    "name": "Walvis Bay International Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.979332, 14.647102"
+  },
+  {
+    "ident": "FYWD",
+    "name": "Wolwedans Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.116899490356445, 16.000600814819336"
+  },
+  {
+    "ident": "FYWE",
+    "name": "Eros Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.60492, 17.079002"
+  },
+  {
+    "ident": "FYWH",
+    "name": "Hosea Kutako International Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.4799, 17.4709"
+  },
+  {
+    "ident": "FYWI",
+    "name": "Witvlei Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.40530014038086, 18.459199905395508"
+  },
+  {
+    "ident": "FYWL",
+    "name": "Wabi Lodge Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.330422, 17.535482"
+  },
+  {
+    "ident": "FYWN",
+    "name": "Waterberg Wilderness Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.486877, 17.313874"
+  },
+  {
+    "ident": "FYXX",
+    "name": "Canon Lodge Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-27.659700393676758, 17.837799072265625"
+  },
+  {
+    "ident": "FYZR",
+    "name": "Zebra River Lodge Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.524926, 16.297041"
+  },
+  {
+    "ident": "NA-0001",
+    "name": "Kwessi Dunes Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.837799, 15.9069"
+  },
+  {
+    "ident": "NA-0002",
+    "name": "Aminuis Pan Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.607200622558594, 19.915800094604492"
+  },
+  {
+    "ident": "NA-0003",
+    "name": "Anib Lodge Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.4347, 18.104401"
+  },
+  {
+    "ident": "NA-0004",
+    "name": "Aranos Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.128295, 19.114591"
+  },
+  {
+    "ident": "NA-0005",
+    "name": "Aranos Pan Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.109399795532227, 19.288299560546875"
+  },
+  {
+    "ident": "NA-0006",
+    "name": "Auob Lodge Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.822194, 18.762192"
+  },
+  {
+    "ident": "NA-0007",
+    "name": "Basaroot Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.7583007812, 18.2938995361"
+  },
+  {
+    "ident": "NA-0008",
+    "name": "Bitterwasser N. Sta Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.865800857543945, 17.991100311279297"
+  },
+  {
+    "ident": "NA-0009",
+    "name": "Bitterwasser North Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.86720085144043, 17.979999542236328"
+  },
+  {
+    "ident": "NA-0010",
+    "name": "Blumfelde Pan Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.565000534057617, 18.3710994720459"
+  },
+  {
+    "ident": "NA-0011",
+    "name": "Bush Breaks Lodge Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.327800750732422, 19.750600814819336"
+  },
+  {
+    "ident": "NA-0012",
+    "name": "Bagani Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-18.11848, 21.623296"
+  },
+  {
+    "ident": "NA-0013",
+    "name": "Derm East Pan Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.66670036315918, 18.216699600219727"
+  },
+  {
+    "ident": "NA-0014",
+    "name": "Dordabis Carpet Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.95439910888672, 17.639699935913086"
+  },
+  {
+    "ident": "NA-0015",
+    "name": "Eirup Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.23189926147461, 18.40920066833496"
+  },
+  {
+    "ident": "NA-0016",
+    "name": "Eureka Farm Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.198099, 17.8211"
+  },
+  {
+    "ident": "NA-0017",
+    "name": "Georgia Peter Schomarz Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.28059959411621, 18.634199142456055"
+  },
+  {
+    "ident": "NA-0018",
+    "name": "Greub Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.12190055847168, 16.733600616455078"
+  },
+  {
+    "ident": "NA-0019",
+    "name": "Grootpan East Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.543100357055664, 18.384199142456055"
+  },
+  {
+    "ident": "NA-0020",
+    "name": "Hannover N Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.361900329589844, 17.80389976501465"
+  },
+  {
+    "ident": "NA-0021",
+    "name": "Haribes Dam Strip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.6210994720459, 17.540800094604492"
+  },
+  {
+    "ident": "NA-0022",
+    "name": "Hetaku Game Lodge Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.98189926147461, 18.507200241088867"
+  },
+  {
+    "ident": "NA-0023",
+    "name": "Judaea Strip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.745800018310547, 18.091100692749023"
+  },
+  {
+    "ident": "NA-0024",
+    "name": "Julia Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.969999313354492, 18.193899154663086"
+  },
+  {
+    "ident": "NA-0025",
+    "name": "Kalkrand Pan Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.06220054626465, 17.596900939941406"
+  },
+  {
+    "ident": "NA-0026",
+    "name": "Kamombombe East Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.614200592041016, 16.055599212646484"
+  },
+  {
+    "ident": "NA-0027",
+    "name": "Kansimba Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.044443, 16.178859"
+  },
+  {
+    "ident": "NA-0028",
+    "name": "Kentani Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.862199783325195, 17.857200622558594"
+  },
+  {
+    "ident": "NA-0029",
+    "name": "Kentucky Sud Pan Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.7450008392334, 19.31329917907715"
+  },
+  {
+    "ident": "NA-0030",
+    "name": "Kerweder Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.96310043334961, 16.013599395751953"
+  },
+  {
+    "ident": "NA-0031",
+    "name": "Khorab Safari Lodge Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.641399, 17.319401"
+  },
+  {
+    "ident": "NA-0032",
+    "name": "Kiripotib Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.32830047607422, 17.946399688720703"
+  },
+  {
+    "ident": "NA-0033",
+    "name": "Klein Aub 15M Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.790599822998047, 16.658599853515625"
+  },
+  {
+    "ident": "NA-0034",
+    "name": "Klein Aub Pan Ok Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.78059959411621, 16.645000457763672"
+  },
+  {
+    "ident": "NA-0035",
+    "name": "Louwater Pan Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.267104, 17.733651"
+  },
+  {
+    "ident": "NA-0036",
+    "name": "Maltahoehe 4 Kal Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.531400680541992, 17.18440055847168"
+  },
+  {
+    "ident": "NA-0037",
+    "name": "Maltahoehe 5 Kal Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.11079978942871, 17.564199447631836"
+  },
+  {
+    "ident": "NA-0038",
+    "name": "Maltahoehe 6 Kal Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.12529945373535, 17.55780029296875"
+  },
+  {
+    "ident": "NA-0039",
+    "name": "Maltahoehe 7 Kal Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.336700439453125, 17.340599060058594"
+  },
+  {
+    "ident": "NA-0040",
+    "name": "Maltahoehe 8 Kal Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.343900680541992, 17.332199096679688"
+  },
+  {
+    "ident": "NA-0041",
+    "name": "Maltahoehe 9 Kal Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.510799407958984, 17.18829917907715"
+  },
+  {
+    "ident": "NA-0042",
+    "name": "Mbela Big Wings Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.74250030517578, 17.911699295043945"
+  },
+  {
+    "ident": "NA-0043",
+    "name": "Hammerstein Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.889386, 16.198004"
+  },
+  {
+    "ident": "NA-0044",
+    "name": "Moscow Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.183300018310547, 19.256900787353516"
+  },
+  {
+    "ident": "NA-0045",
+    "name": "Vredeshoop Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-27.100282669067383, 19.53445053100586"
+  },
+  {
+    "ident": "NA-0046",
+    "name": "Namib Naukluft Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.9950008392334, 15.9306001663208"
+  },
+  {
+    "ident": "NA-0047",
+    "name": "Namibia East Air Base",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.775299, 25.186701"
+  },
+  {
+    "ident": "NA-0048",
+    "name": "Oha Kaua/Otjiwa Lodge Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.751699447631836, 16.798599243164062"
+  },
+  {
+    "ident": "NA-0049",
+    "name": "Ohlsenhagen Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.271099090576172, 19.00189971923828"
+  },
+  {
+    "ident": "NA-0050",
+    "name": "Okosongoro Airport Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.118099, 16.0858"
+  },
+  {
+    "ident": "NA-0051",
+    "name": "Omawewoz Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.608299255371094, 19.408599853515625"
+  },
+  {
+    "ident": "NA-0052",
+    "name": "Omuramba Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.423099517822266, 19.283599853515625"
+  },
+  {
+    "ident": "NA-0053",
+    "name": "Onjossa Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.16830062866211, 16.301700592041016"
+  },
+  {
+    "ident": "NA-0054",
+    "name": "Roidina Peter Jo Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.18779945373535, 16.06220054626465"
+  },
+  {
+    "ident": "NA-0055",
+    "name": "Rostock Ritz Lodge Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.542200088500977, 15.838899612426758"
+  },
+  {
+    "ident": "NA-0056",
+    "name": "Schlip 1 Road113 Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.963600158691406, 17.890600204467773"
+  },
+  {
+    "ident": "NA-0057",
+    "name": "Schlip 2 67 Road Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.05190086364746, 17.369699478149414"
+  },
+  {
+    "ident": "NA-0058",
+    "name": "Schlip 2 87 Road Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.057199478149414, 17.15999984741211"
+  },
+  {
+    "ident": "NA-0059",
+    "name": "Schlip Kalkrand1 Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.00189971923828, 16.89419937133789"
+  },
+  {
+    "ident": "NA-0060",
+    "name": "Sossusvlei Lodge Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.49139976501465, 15.823599815368652"
+  },
+  {
+    "ident": "NA-0061",
+    "name": "Stamprietpan Ok Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.349700927734375, 18.32670021057129"
+  },
+  {
+    "ident": "NA-0062",
+    "name": "Tatave Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.389999389648438, 18.668100357055664"
+  },
+  {
+    "ident": "NA-0063",
+    "name": "Tivoli Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.461700439453125, 18.014400482177734"
+  },
+  {
+    "ident": "NA-0064",
+    "name": "Unbekannt Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.130800247192383, 18.78969955444336"
+  },
+  {
+    "ident": "NA-0065",
+    "name": "Weltevrede Rest Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.18079948425293, 15.977499961853027"
+  },
+  {
+    "ident": "NA-0066",
+    "name": "Wittenau Pfanne Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.463899612426758, 18.873300552368164"
+  },
+  {
+    "ident": "NA-0067",
+    "name": "Geluk Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.6733, 15.7919"
+  },
+  {
+    "ident": "NA-0068",
+    "name": "Wohlzufrieden Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.19059944152832, 18.161100387573242"
+  },
+  {
+    "ident": "NA-0069",
+    "name": "Rietfontein Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-26.728918, 20.033333"
+  },
+  {
+    "ident": "NA-0070",
+    "name": "Guibes Landing Strip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-26.700000762939453, 16.950000762939453"
+  },
+  {
+    "ident": "NA-0071",
+    "name": "Keetmansh Railroad Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-26.593050003051758, 18.1422176361084"
+  },
+  {
+    "ident": "NA-0072",
+    "name": "Klipdrif Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-26.516666412353516, 16.916667938232422"
+  },
+  {
+    "ident": "NA-0073",
+    "name": "Zuuberg Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-26.266666412353516, 17"
+  },
+  {
+    "ident": "NA-0074",
+    "name": "Koes Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.934582, 19.115206"
+  },
+  {
+    "ident": "NA-0075",
+    "name": "Tses Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.890283584594727, 18.12638282775879"
+  },
+  {
+    "ident": "NA-0077",
+    "name": "Mata Mata Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.7677822113, 20"
+  },
+  {
+    "ident": "NA-0078",
+    "name": "Brukkaros Landing Strip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.69945, 18.053049"
+  },
+  {
+    "ident": "NA-0079",
+    "name": "Finger Gottes Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.497217178344727, 18.172500610351562"
+  },
+  {
+    "ident": "NA-0080",
+    "name": "Tweerivier Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.456382751464844, 19.43833351135254"
+  },
+  {
+    "ident": "NA-0081",
+    "name": "Guamus Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.197782516479492, 18.273616790771484"
+  },
+  {
+    "ident": "NA-0082",
+    "name": "Gibeon Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.127216339111328, 17.76194953918457"
+  },
+  {
+    "ident": "NA-0083",
+    "name": "Witbooisvley Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-25.068883895874023, 18.45166778564453"
+  },
+  {
+    "ident": "NA-0084",
+    "name": "Maltahoehe S Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.835599899291992, 16.975200653076172"
+  },
+  {
+    "ident": "NA-0085",
+    "name": "Katzensteg Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.769716262817383, 18.988332748413086"
+  },
+  {
+    "ident": "NA-0086",
+    "name": "Plum Aerodrome",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.054218, 14.604663"
+  },
+  {
+    "ident": "NA-0089",
+    "name": "Wandervogel Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.63916778564453, 19.703332901000977"
+  },
+  {
+    "ident": "NA-0090",
+    "name": "Kouwater Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.62638282775879, 18.043617248535156"
+  },
+  {
+    "ident": "NA-0091",
+    "name": "Salzbrunn Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.382699966430664, 17.96980094909668"
+  },
+  {
+    "ident": "NA-0092",
+    "name": "Gianti-1 Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.252599716186523, 16.315500259399414"
+  },
+  {
+    "ident": "NA-0093",
+    "name": "Kub Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.21554946899414, 17.49333381652832"
+  },
+  {
+    "ident": "NA-0094",
+    "name": "Twilight Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.167217254638672, 17.989166259765625"
+  },
+  {
+    "ident": "NA-0095",
+    "name": "Bullsport Landig Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.116666793823242, 16.366666793823242"
+  },
+  {
+    "ident": "NA-0096",
+    "name": "Morester Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.116117477416992, 19.977783203125"
+  },
+  {
+    "ident": "NA-0097",
+    "name": "Lidfontein Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.078646, 18.184487"
+  },
+  {
+    "ident": "NA-0098",
+    "name": "Orutjandja Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-18.8839, 13.481598"
+  },
+  {
+    "ident": "NA-0099",
+    "name": "Nabus Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.038333892822266, 18.975000381469727"
+  },
+  {
+    "ident": "NA-0100",
+    "name": "Runnersrest Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.01333236694336, 17.74471664428711"
+  },
+  {
+    "ident": "NA-0101",
+    "name": "Victory Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.969717025756836, 18.269166946411133"
+  },
+  {
+    "ident": "NA-0102",
+    "name": "Rietoog Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.96666717529297, 16.56388282775879"
+  },
+  {
+    "ident": "NA-0103",
+    "name": "Hoachanas Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.915000915527344, 18.04916763305664"
+  },
+  {
+    "ident": "NA-0104",
+    "name": "Droeplaas Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.81861686706543, 19.082500457763672"
+  },
+  {
+    "ident": "NA-0105",
+    "name": "Tsumis Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.72861671447754, 17.440000534057617"
+  },
+  {
+    "ident": "NA-0106",
+    "name": "Bimsfarm Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.72833251953125, 18.147216796875"
+  },
+  {
+    "ident": "NA-0107",
+    "name": "Olifantwater West Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.704999923706055, 18.36166763305664"
+  },
+  {
+    "ident": "NA-0108",
+    "name": "Gomnab Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.69179916381836, 18.27239990234375"
+  },
+  {
+    "ident": "NA-0109",
+    "name": "Neuloore Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.68221664428711, 18.405550003051758"
+  },
+  {
+    "ident": "NA-0110",
+    "name": "Nauchas Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.633333206176758, 16.325000762939453"
+  },
+  {
+    "ident": "NA-0111",
+    "name": "Kaukerus Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.63937, 17.864017"
+  },
+  {
+    "ident": "NA-0112",
+    "name": "Cowdray Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.54471778869629, 17.787782669067383"
+  },
+  {
+    "ident": "NA-0113",
+    "name": "Rheinpfalz Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.538126, 17.991291"
+  },
+  {
+    "ident": "NA-0114",
+    "name": "Leonardville Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.51502, 18.789507"
+  },
+  {
+    "ident": "NA-0115",
+    "name": "Beenbreek Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.474603, 17.948042"
+  },
+  {
+    "ident": "NA-0116",
+    "name": "Gamsberg Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.36669921875, 16.25"
+  },
+  {
+    "ident": "NA-0117",
+    "name": "Gams Farm Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.366666793823242, 16.299999237060547"
+  },
+  {
+    "ident": "NA-0118",
+    "name": "Rehoboth Town Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.321667, 17.071117"
+  },
+  {
+    "ident": "NA-0119",
+    "name": "Klein Nauas Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.316667556762695, 17.844167709350586"
+  },
+  {
+    "ident": "NA-0120",
+    "name": "Rehoboth (Oanob Resort) Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.313496, 17.042046"
+  },
+  {
+    "ident": "NA-0121",
+    "name": "Rehoboth Station Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.310551, 17.188334"
+  },
+  {
+    "ident": "NA-0122",
+    "name": "Rooisand Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.291201, 16.110701"
+  },
+  {
+    "ident": "NA-0123",
+    "name": "Goellschau Farm Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.274999618530273, 16.538883209228516"
+  },
+  {
+    "ident": "NA-0124",
+    "name": "Louwater S M7 Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.258301, 17.9699"
+  },
+  {
+    "ident": "NA-0125",
+    "name": "Garib Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.135000228881836, 17.63279914855957"
+  },
+  {
+    "ident": "NA-0126",
+    "name": "Nossob Gabel Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.120283126831055, 18.70166778564453"
+  },
+  {
+    "ident": "NA-0127",
+    "name": "Doornpoort Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.073883056640625, 18.051382064819336"
+  },
+  {
+    "ident": "NA-0128",
+    "name": "Oamites Landing Strip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.00749969482422, 17.1169490814209"
+  },
+  {
+    "ident": "NA-0129",
+    "name": "Bergland Landing  Strip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.973333, 17.144716"
+  },
+  {
+    "ident": "NA-0130",
+    "name": "Krumneck Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.961383819580078, 16.934450149536133"
+  },
+  {
+    "ident": "NA-0131",
+    "name": "Keitzaub Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.810283660888672, 18.849716186523438"
+  },
+  {
+    "ident": "NA-0132",
+    "name": "Spatzenfeld Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.785282135009766, 18.88971710205078"
+  },
+  {
+    "ident": "NA-0133",
+    "name": "Aris Landrig Strip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.756383895874023, 17.13526725769043"
+  },
+  {
+    "ident": "NA-0134",
+    "name": "Okapanje Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.58916664123535, 17.96554946899414"
+  },
+  {
+    "ident": "NA-0135",
+    "name": "Gobabis Street-T Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.43611717224121, 19.01361656188965"
+  },
+  {
+    "ident": "NA-0136",
+    "name": "Ninette Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.399999618530273, 18.75"
+  },
+  {
+    "ident": "NA-0137",
+    "name": "Solingen Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.39638328552246, 19.11083221435547"
+  },
+  {
+    "ident": "NA-0138",
+    "name": "Eintracht Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.353050231933594, 18.2450008392334"
+  },
+  {
+    "ident": "NA-0139",
+    "name": "Otjihaenena Landing Strip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.290283203125, 17.77138328552246"
+  },
+  {
+    "ident": "NA-0140",
+    "name": "Sandfontein Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.280282974243164, 20"
+  },
+  {
+    "ident": "NA-0141",
+    "name": "Buitepos Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.266707, 19.99906"
+  },
+  {
+    "ident": "NA-0142",
+    "name": "Drimiopsis Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22.066667556762695, 19.066667556762695"
+  },
+  {
+    "ident": "NA-0143",
+    "name": "Swa Knie Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22, 20"
+  },
+  {
+    "ident": "NA-0144",
+    "name": "Wilskrag Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-22, 20.627782821655273"
+  },
+  {
+    "ident": "NA-0145",
+    "name": "Albrechts Aistrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.9455509185791, 16.06999969482422"
+  },
+  {
+    "ident": "NA-0146",
+    "name": "Okahennesiva Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.86528205871582, 18.402782440185547"
+  },
+  {
+    "ident": "NA-0147",
+    "name": "Steinhausen Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.82444953918457, 18.231950759887695"
+  },
+  {
+    "ident": "NA-0148",
+    "name": "Fortuna Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.808332443237305, 19.90833282470703"
+  },
+  {
+    "ident": "NA-0149",
+    "name": "Okamapu Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.745815, 17.887208"
+  },
+  {
+    "ident": "NA-0150",
+    "name": "Epukiro North Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.67526626586914, 19.21693229675293"
+  },
+  {
+    "ident": "NA-0151",
+    "name": "Epukiru Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.616666793823242, 19.399999618530273"
+  },
+  {
+    "ident": "NA-0152",
+    "name": "Onduruqea Lodge Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.602500915527344, 16.073299407958984"
+  },
+  {
+    "ident": "NA-0153",
+    "name": "Hochfeld Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.49028205871582, 17.85194969177246"
+  },
+  {
+    "ident": "NA-0154",
+    "name": "Godehoop Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.28333282470703, 15.533332824707031"
+  },
+  {
+    "ident": "NA-0155",
+    "name": "Rhenoster K Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.165283203125, 16.40250015258789"
+  },
+  {
+    "ident": "NA-0156",
+    "name": "Omaha Landing Site",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.13195037841797, 16.5261173248291"
+  },
+  {
+    "ident": "NA-0157",
+    "name": "Otjiwarongo Center Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.463882446289062, 16.647783279418945"
+  },
+  {
+    "ident": "NA-0158",
+    "name": "Isibis Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-23.4178, 16.5075"
+  },
+  {
+    "ident": "NA-0159",
+    "name": "Khorixas Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.366192, 15.059298"
+  },
+  {
+    "ident": "NA-0160",
+    "name": "Okangwati Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.43873, 13.2782"
+  },
+  {
+    "ident": "NA-0161",
+    "name": "Okongo Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.565947, 17.225298"
+  },
+  {
+    "ident": "NA-0162",
+    "name": "Kongola Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.775197, 23.307089"
+  },
+  {
+    "ident": "NA-0163",
+    "name": "Susuwe Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.775984, 23.278472"
+  },
+  {
+    "ident": "NA-0164",
+    "name": "Sikereti Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.104117, 20.698375"
+  },
+  {
+    "ident": "NA-0165",
+    "name": "Otjituuo Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.652406, 18.558635"
+  },
+  {
+    "ident": "NA-0166",
+    "name": "Okakarara Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.601996, 17.468807"
+  },
+  {
+    "ident": "NA-0167",
+    "name": "B8 Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.059552, 18.664579"
+  },
+  {
+    "ident": "NA-0168",
+    "name": "Palmwag Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-19.873201, 13.943931"
+  },
+  {
+    "ident": "NA-0169",
+    "name": "Ehomba Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.488, 13.836836"
+  },
+  {
+    "ident": "NA-0170",
+    "name": "Uukwaluudhi Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-18.109282, 14.410431"
+  },
+  {
+    "ident": "NA-0171",
+    "name": "Outapi Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.574847, 15.007946"
+  },
+  {
+    "ident": "NA-0172",
+    "name": "Haklesdoorn Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-28.886092, 18.239166"
+  },
+  {
+    "ident": "NA-0173",
+    "name": "Ndonga Linena Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.98345, 20.534708"
+  },
+  {
+    "ident": "NA-0174",
+    "name": "Farm Etemba Landing Strip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.405111, 15.606778"
+  },
+  {
+    "ident": "NA-0175",
+    "name": "Farm Dawib Ost Landing Strip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.774528, 15.515361"
+  },
+  {
+    "ident": "NA-0176",
+    "name": "Kalkrand Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-24.07675, 17.610417"
+  },
+  {
+    "ident": "NA-0177",
+    "name": "Desert Rhino Camp Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.036661, 13.844147"
+  },
+  {
+    "ident": "NA-0178",
+    "name": "Namushasha River Lodge Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.98384, 23.30932"
+  },
+  {
+    "ident": "NA-0179",
+    "name": "Skuit Drift Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-28.37664, 19.77924"
+  },
+  {
+    "ident": "NA-0180",
+    "name": "Rosh Pinah Airport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-27.9643, 16.753901"
+  },
+  {
+    "ident": "NA-0181",
+    "name": "Bakers Bay Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-27.66285, 15.53276"
+  },
+  {
+    "ident": "NA-0182",
+    "name": "Former Aus Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-26.69351, 16.31889"
+  },
+  {
+    "ident": "NA-0183",
+    "name": "Mushara Lodge Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-18.8231, 17.14528"
+  },
+  {
+    "ident": "NA-0184",
+    "name": "Okahirongo River Camp Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.2584, 12.43087"
+  },
+  {
+    "ident": "NA-0185",
+    "name": "Brandberg White Lady Lodge Airfield",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.0267, 14.67952"
+  },
+  {
+    "ident": "NA-0186",
+    "name": "Onduli Ridge Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-20.67293, 14.51987"
+  },
+  {
+    "ident": "NA-0187",
+    "name": "Omdel Dam Heliport",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.89777, 14.54236"
+  },
+  {
+    "ident": "NA-0188",
+    "name": "Mapulanga Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-17.86823, 23.34095"
+  },
+  {
+    "ident": "NA-0189",
+    "name": "Erindi Ranch Airstrip",
+    "latitude_deg": null,
+    "longitude_deg": null,
+    "coordinates": "-21.536138, 16.392607"
+  }
+]

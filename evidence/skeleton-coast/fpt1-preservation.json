@@ -1,0 +1,57 @@
+{
+  "Files": [
+    {
+      "Path": "bglIndex.bout",
+      "Matches": true
+    },
+    {
+      "Path": "ContentInfo/frontier-airport-fpt1/ContentHistory.json",
+      "Matches": true
+    },
+    {
+      "Path": "ContentInfo/frontier-airport-fpt1/Thumbnail.jpg",
+      "Matches": true
+    },
+    {
+      "Path": "layout.json",
+      "Matches": true
+    },
+    {
+      "Path": "manifest.json",
+      "Matches": true
+    },
+    {
+      "Path": "MaterialLibs/frontier-airport-fpt1/Library.xml",
+      "Matches": true
+    },
+    {
+      "Path": "MaterialLibs/frontier-airport-fpt1/Textures/ASPHALT01_ALBEDO.PNG.KTX2",
+      "Matches": true
+    },
+    {
+      "Path": "MaterialLibs/frontier-airport-fpt1/Textures/Asphalt01_Albedo.png.ktx2.FLAGS",
+      "Matches": true
+    },
+    {
+      "Path": "MaterialLibs/frontier-airport-fpt1/Textures/ASPHALT01_ALBEDO.PNG.KTX2.json",
+      "Matches": true
+    },
+    {
+      "Path": "MaterialLibs/frontier-airport-fpt1/Textures/ASPHALT01_COMP.PNG.KTX2",
+      "Matches": true
+    },
+    {
+      "Path": "MaterialLibs/frontier-airport-fpt1/Textures/Asphalt01_COMP.png.ktx2.FLAGS",
+      "Matches": true
+    },
+    {
+      "Path": "MaterialLibs/frontier-airport-fpt1/Textures/ASPHALT01_COMP.PNG.KTX2.json",
+      "Matches": true
+    },
+    {
+      "Path": "scenery/frontier/airport.bgl",
+      "Matches": true
+    }
+  ],
+  "Fpt1Unchanged": true
+}

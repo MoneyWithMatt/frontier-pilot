@@ -1,0 +1,18 @@
+{
+  "InstalledUtc": "2026-09-07T06:30:32.4391123Z",
+  "SimulatorClosedChecksUtc": [
+    "2026-09-07T06:30:31.9676528Z",
+    "2026-09-07T06:30:32.3247923Z"
+  ],
+  "UserConfig": "C:\\Users\\mattr\\AppData\\Roaming\\Microsoft Flight Simulator 2024\\UserCfg.opt",
+  "UserConfigUnchanged": true,
+  "PackagesRoot": "C:\\Users\\mattr\\AppData\\Roaming\\Microsoft Flight Simulator 2024\\Packages",
+  "InstallPath": "C:\\Users\\mattr\\AppData\\Roaming\\Microsoft Flight Simulator 2024\\Packages\\Community2024\\frontier-airport-fpsc",
+  "ArchiveSHA256": "6EF64C76CA8D23CB0D9FD7CBF85D80F79AE2043B5CC973B7DBD9ED7E0417E62C",
+  "VerifiedFiles": 10,
+  "ExistingFpscBackups": [],
+  "UnrelatedEntriesUnchanged": true,
+  "UnrelatedEntryCount": 36,
+  "ReceiptPath": "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\evidence\\skeleton-coast\\install-20260907-073032-004",
+  "StagingPath": "C:\\Users\\mattr\\AppData\\Local\\FrontierAirportBuilder\\staging\\20260907-073032-004"
+}

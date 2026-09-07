@@ -1,0 +1,37 @@
+[
+  {
+    "Path": "AirportProject.xml",
+    "Bytes": 362,
+    "SHA256": "2D535A8C8AA1835BE0A59A7071D0A16BBA76F2F2CC7854A3C2073C45674F48D2"
+  },
+  {
+    "Path": "PackageDefinitions\\frontier-airport-fpsc.xml",
+    "Bytes": 1300,
+    "SHA256": "5342D4E40AFFCDAE13E3CD199CD84B5F7CEBB33E8189418807D2D88DFABE4AA4"
+  },
+  {
+    "Path": "PackageDefinitions\\frontier-airport-fpsc\\ContentInfo\\Thumbnail.jpg",
+    "Bytes": 35560,
+    "SHA256": "DF41F155704CC57A0F7023898988A5306A96B0CC07647458DC716984DE56A6B0"
+  },
+  {
+    "Path": "PackageSources\\data\\airport.xml",
+    "Bytes": 842,
+    "SHA256": "2D1DD3B1690D6D1D0040226697715AFBD9840AB271DFBA1EE7B80FF41D6DA2CC"
+  },
+  {
+    "Path": "PackageSources\\materials\\Textures\\FrontierDirt_Albedo.png",
+    "Bytes": 62188,
+    "SHA256": "D8B09E632D23E1204C1ED03F04FA656B388A554472714D5F001574569E977DC1"
+  },
+  {
+    "Path": "PackageSources\\materials\\Textures\\FrontierDirt_Albedo.png.FLAGS",
+    "Bytes": 39,
+    "SHA256": "9B6062D74E3665CFB05349BB1A57AF03771AC04F143ED861A7FE2E785BDF4340"
+  },
+  {
+    "Path": "PackageSources\\materials\\frontier-dirt.material",
+    "Bytes": 920,
+    "SHA256": "EADB05006E6D558AAA852F8C618B5DA3929539C452153E59E02F51239A51E394"
+  }
+]

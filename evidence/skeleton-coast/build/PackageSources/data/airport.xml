@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FSData version="9.0">
+  <Airport name="Skeleton Coast Test Strip" ident="FPSC" lat="-22.5861667992128" lon="14.5390712856577" alt="13.9477994050831" magvar="12.5037344691817">
+    <Runway lat="-22.5861667992128" lon="14.5390712856577" alt="13.9477994050831" surface="{7AFC8245-9B3C-50C0-730C-52BD4760D1EA}" heading="108.633249711437" length="200" width="20" number="12" designator="NONE" primaryTakeoff="YES" primaryLanding="YES" secondaryTakeoff="YES" secondaryLanding="YES" groundMerging="TRUE">
+      <RunwayStart end="PRIMARY" lat="-22.5858782700486" lon="14.5381498045349" alt="13.9477994050831" heading="108.633603624776" />
+      <RunwayStart end="SECONDARY" lat="-22.5864553230811" lon="14.5399927706191" alt="13.9477994050831" heading="288.632895792339" />
+    </Runway>
+  </Airport>
+</FSData>

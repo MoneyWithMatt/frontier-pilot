@@ -1,0 +1,75 @@
+{
+  "Source": "https://davidmegginson.github.io/ourairports-data/airports.csv",
+  "CandidateLongitude": 14.48,
+  "CandidateLatitude": -22.48,
+  "Sha256": "2525B882DA142AC7BFDF472914431DCA8471ED7D6F471E4345BCD3D0A6B6CB27",
+  "Status": "Scouting area only, no elevation or flatness assumed",
+  "FPSCIdentifierFound": false,
+  "RetrievedUtc": "2026-09-07T06:02:05.1193072+00:00",
+  "Nearest": [
+    {
+      "ident": "FYSM",
+      "name": "Swakopmund Municipal Aerodrome",
+      "type": "small_airport",
+      "ApproxKm": 22.18439570163266,
+      "lat": "-22.6619",
+      "lon": "14.5681"
+    },
+    {
+      "ident": "FYHN",
+      "name": "Henties Bay Airport",
+      "type": "small_airport",
+      "ApproxKm": 45.72121819985772,
+      "lat": "-22.10345",
+      "lon": "14.3025"
+    },
+    {
+      "ident": "FYAR",
+      "name": "Arandis Airport",
+      "type": "medium_airport",
+      "ApproxKm": 51.400443169764,
+      "lat": "-22.461875",
+      "lon": "14.979322"
+    },
+    {
+      "ident": "FYWB",
+      "name": "Walvis Bay International Airport",
+      "type": "large_airport",
+      "ApproxKm": 58.182479105991625,
+      "lat": "-22.979332",
+      "lon": "14.647102"
+    },
+    {
+      "ident": "NA-0187",
+      "name": "Omdel Dam Heliport",
+      "type": "heliport",
+      "ApproxKm": 65.1304775806732,
+      "lat": "-21.89777",
+      "lon": "14.54236"
+    },
+    {
+      "ident": "NA-0086",
+      "name": "Plum Aerodrome",
+      "type": "small_airport",
+      "ApproxKm": 65.19543049460971,
+      "lat": "-23.054218",
+      "lon": "14.604663"
+    },
+    {
+      "ident": "FYMI",
+      "name": "Mile 72 Airfield",
+      "type": "small_airport",
+      "ApproxKm": 79.40968671730867,
+      "lat": "-21.870352",
+      "lon": "14.079146"
+    },
+    {
+      "ident": "FYCC",
+      "name": "Cape Cross Airstrip.",
+      "type": "small_airport",
+      "ApproxKm": 94.38774877882686,
+      "lat": "-21.762412",
+      "lon": "13.9912"
+    }
+  ]
+}

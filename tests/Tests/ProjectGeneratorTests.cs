@@ -14,8 +14,8 @@ public sealed class ProjectGeneratorTests : TemporaryDirectoryTest
         var g = ProjectGenerator.Generate(Fixtures.Strip with { Surface = RunwaySurface.Dirt }, Path.Combine(Root, "dirt"));
         var m = XDocument.Load(Path.Combine(g.Directory, "PackageSources/materials/frontier-dirt.material"));
         Assert.Equal("DIRT", (string?)m.Root!.Attribute("SurfaceType"));
-        Assert.Empty(m.Root.Element("TextureList")!.Elements());
-        Assert.False(Directory.Exists(Path.Combine(g.Directory, "PackageSources/materials/Textures")));
+        Assert.Equal("FrontierDirt_Albedo.png", (string?)Assert.Single(m.Root.Element("TextureList")!.Elements()).Attribute("FileName"));
+        Assert.Empty(Directory.GetFiles(Path.Combine(g.Directory, "PackageSources/materials/Textures"), "Asphalt*"));
         var a = XDocument.Load(Path.Combine(g.Directory, "PackageSources/data/airport.xml"));
         Assert.Equal((string?)m.Root.Attribute("Guid"), (string?)a.Descendants("Runway").Single().Attribute("surface"));
     }

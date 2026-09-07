@@ -62,8 +62,9 @@ public static class ProjectGenerator
         {
             material.Root.SetAttributeValue("SurfaceType", "DIRT");
             material.Root.Element("TextureList")!.RemoveNodes();
+            material.Root.Element("TextureList")!.Add(new XElement("Texture", new XAttribute("FileName", "FrontierDirt_Albedo.png"), new XAttribute("Binding", "MTL_BITMAP_DECAL0")));
             var diffuse = material.Root.Element("Attributes")!.Element("Diffuse")!;
-            diffuse.SetAttributeValue("Red", "0.52"); diffuse.SetAttributeValue("Green", "0.40"); diffuse.SetAttributeValue("Blue", "0.26");
+            diffuse.SetAttributeValue("Red", "1"); diffuse.SetAttributeValue("Green", "1"); diffuse.SetAttributeValue("Blue", "1");
             runway.SetAttributeValue("groundMerging", "TRUE");
         }
 
@@ -77,6 +78,11 @@ public static class ProjectGenerator
         CopyResource($"PackageDefinitions.{TemplatePackage.Replace('-', '_')}.ContentInfo.Thumbnail.jpg", Path.Combine(root, "PackageDefinitions", packageName, "ContentInfo", "Thumbnail.jpg"));
         foreach (var file in definition.Surface == RunwaySurface.Asphalt ? new[] { "Asphalt01_Albedo.png", "Asphalt01_Albedo.png.FLAGS", "Asphalt01_COMP.png", "Asphalt01_COMP.png.FLAGS" } : Array.Empty<string>())
             CopyResource("PackageSources.materials.Textures." + file, Path.Combine(root, "PackageSources", "materials", "Textures", file));
+        if (definition.Surface == RunwaySurface.Dirt)
+        {
+            CopyResource("Dirt.Textures.FrontierDirt_Albedo.png", Path.Combine(root, "PackageSources/materials/Textures/FrontierDirt_Albedo.png"));
+            CopyResource("PackageSources.materials.Textures.Asphalt01_Albedo.png.FLAGS", Path.Combine(root, "PackageSources/materials/Textures/FrontierDirt_Albedo.png.FLAGS"));
+        }
         return new(root, Path.Combine(root, "AirportProject.xml"), packageName, geometry);
     }
 

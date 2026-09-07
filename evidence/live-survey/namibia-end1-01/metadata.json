@@ -1,0 +1,12 @@
+{
+  "sdkRoot": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK",
+  "sdkVersion": "1.2.4",
+  "dll": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK\\SimConnect SDK/lib/SimConnect.dll",
+  "sdkHash": "E54A505BE0B0A4CDC98DFB45F0C202BA9637F5D494C0919040BC89AC67D92ADB",
+  "headerHash": "3684C4B50630DB2ABEC9815105498FA5B921C653F57423B9B5E6214A60CAABEA",
+  "simulatorPath": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Limitless\\FlightSimulator2024.exe",
+  "simulatorHash": "82AF1D70611D0FA43291BB5D0DE71310A3AD458ADA8883AC3BBA370CF2A01F48",
+  "simulatorVersion": "1,8,16,0",
+  "qualification": "Sedona empirical prototype; Microsoft documents GROUND ALTITUDE as aircraft-local. Return A was 66 cm away, outside original 50 cm criterion; accepted by product owner.",
+  "scope": "Single avatar ground point; does not certify runway footprint flatness or airport separation."
+}

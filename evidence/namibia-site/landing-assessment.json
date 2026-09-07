@@ -1,0 +1,45 @@
+{
+  "UserObservation": "Landed; very flat but a bit rocky",
+  "NearestListedAirports": [
+    {
+      "ident": "FYSM",
+      "name": "Swakopmund Municipal Aerodrome",
+      "ApproxKm": 8.969512185513834
+    },
+    {
+      "ident": "FYWB",
+      "name": "Walvis Bay International Airport",
+      "ApproxKm": 45.17859901989598
+    },
+    {
+      "ident": "FYAR",
+      "name": "Arandis Airport",
+      "ApproxKm": 47.335062227890134
+    },
+    {
+      "ident": "NA-0086",
+      "name": "Plum Aerodrome",
+      "ApproxKm": 52.5603694538654
+    },
+    {
+      "ident": "FYHN",
+      "name": "Henties Bay Airport",
+      "ApproxKm": 58.9535851994699
+    }
+  ],
+  "Aircraft": {
+    "SIM ON GROUND": 1,
+    "PLANE BANK DEGREES": -0.6012254503464313,
+    "PLANE LONGITUDE": 14.538839654620144,
+    "PLANE ALTITUDE": 15.045295099478107,
+    "IS CROUCH": 0,
+    "PLANE ALT ABOVE GROUND": 1.1385102530306996,
+    "GROUND ALTITUDE": 13.906784846447408,
+    "PLANE HEADING DEGREES TRUE": 331.7320725364157,
+    "MAGVAR": -12.503567129547008,
+    "PLANE PITCH DEGREES": -1.045211415404859,
+    "CAMERA SUBSTATE": 1,
+    "PLANE LATITUDE": -22.58599008304908,
+    "CAMERA STATE": 3
+  }
+}

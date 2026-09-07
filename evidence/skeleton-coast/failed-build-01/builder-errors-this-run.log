@@ -1,0 +1,20 @@
+Builder/PackageBuilder/Project/Build/frontier-airport-fpsc/frontier-materials/MaterialLibLister/VALIDATION
+{
+Material frontier-dirt (c:\users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\workspaces\fpsc-generated-01\PackageSources\materials\frontier-dirt.material) : has no diffuse texture.
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-fpsc/frontier-materials/MaterialLibLister
+{
+MaterialLibCompilerCommand | Invalid material lib
+}
+Builder/PackageBuilder/Project/Build/AssetGroups
+{
+PackageBuilder | Output path does not exist: c:\users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\workspaces\fpsc-generated-01\Packages\frontier-airport-fpsc\MaterialLibs\frontier-airport-fpsc\Library.xml
+}
+Builder/PackageBuilder/Project/Build/AssetGroups
+{
+PackageBuilder | Package 'frontier-airport-fpsc' have encountered errors during _EndTreatCommands. See attached
+}
+Builder/PackageBuilder/Project/Build/AssetGroups
+{
+PackageBuilder | EndExecuteCommandsForPackage : Failed to build package frontier-airport-fpsc
+}
