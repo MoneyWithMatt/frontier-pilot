@@ -1,0 +1,314 @@
+[
+  {
+    "target": "aircraft",
+    "field": "CAMERA STATE",
+    "count": 31,
+    "min": 2.0,
+    "max": 2.0,
+    "mean": 2.0
+  },
+  {
+    "target": "aircraft",
+    "field": "CAMERA SUBSTATE",
+    "count": 31,
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0
+  },
+  {
+    "target": "aircraft",
+    "field": "GROUND ALTITUDE",
+    "count": 31,
+    "min": 1458.2611341057343,
+    "max": 1458.2611341057343,
+    "mean": 1458.2611341057343
+  },
+  {
+    "target": "aircraft",
+    "field": "IS CROUCH",
+    "count": 31,
+    "min": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+  },
+  {
+    "target": "aircraft",
+    "field": "MAGVAR",
+    "count": 31,
+    "min": 9.88209186099828,
+    "max": 9.88209186099828,
+    "mean": 9.882091860998285
+  },
+  {
+    "target": "aircraft",
+    "field": "PLANE ALT ABOVE GROUND",
+    "count": 31,
+    "min": 1.1303154331203682,
+    "max": 1.1303154342422532,
+    "mean": 1.130315433660247
+  },
+  {
+    "target": "aircraft",
+    "field": "PLANE ALTITUDE",
+    "count": 31,
+    "min": 1459.3914495388547,
+    "max": 1459.3914495399765,
+    "mean": 1459.3914495393944
+  },
+  {
+    "target": "aircraft",
+    "field": "PLANE BANK DEGREES",
+    "count": 31,
+    "min": 0.016729000840597516,
+    "max": 0.016729005524673126,
+    "mean": 0.01672900321742339
+  },
+  {
+    "target": "aircraft",
+    "field": "PLANE HEADING DEGREES TRUE",
+    "count": 31,
+    "min": 316.0248491762399,
+    "max": 316.0248521770815,
+    "mean": 316.02485067582467
+  },
+  {
+    "target": "aircraft",
+    "field": "PLANE LATITUDE",
+    "count": 31,
+    "min": 34.8494234690644,
+    "max": 34.8494234690644,
+    "mean": 34.849423469064405
+  },
+  {
+    "target": "aircraft",
+    "field": "PLANE LONGITUDE",
+    "count": 31,
+    "min": -111.78957985636391,
+    "max": -111.78957985636391,
+    "mean": -111.78957985636397
+  },
+  {
+    "target": "aircraft",
+    "field": "PLANE PITCH DEGREES",
+    "count": 31,
+    "min": -3.565737443165296,
+    "max": -3.5657374175690584,
+    "mean": -3.5657374300984497
+  },
+  {
+    "target": "aircraft",
+    "field": "SIM ON GROUND",
+    "count": 31,
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0
+  },
+  {
+    "target": "avatar",
+    "field": "CAMERA STATE",
+    "count": 31,
+    "min": 26.0,
+    "max": 26.0,
+    "mean": 26.0
+  },
+  {
+    "target": "avatar",
+    "field": "CAMERA SUBSTATE",
+    "count": 31,
+    "min": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+  },
+  {
+    "target": "avatar",
+    "field": "GROUND ALTITUDE",
+    "count": 31,
+    "min": 1455.0039110621437,
+    "max": 1455.0039110621437,
+    "mean": 1455.0039110621437
+  },
+  {
+    "target": "avatar",
+    "field": "IS CROUCH",
+    "count": 31,
+    "min": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+  },
+  {
+    "target": "avatar",
+    "field": "MAGVAR",
+    "count": 31,
+    "min": 9.882404342152808,
+    "max": 9.882404342152808,
+    "mean": 9.882404342152807
+  },
+  {
+    "target": "avatar",
+    "field": "PLANE ALT ABOVE GROUND",
+    "count": 31,
+    "min": 0.00020881090313487223,
+    "max": 0.00020881090313487223,
+    "mean": 0.00020881090313487207
+  },
+  {
+    "target": "avatar",
+    "field": "PLANE ALTITUDE",
+    "count": 31,
+    "min": 1455.0041198730469,
+    "max": 1455.0041198730469,
+    "mean": 1455.0041198730469
+  },
+  {
+    "target": "avatar",
+    "field": "PLANE BANK DEGREES",
+    "count": 31,
+    "min": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+  },
+  {
+    "target": "avatar",
+    "field": "PLANE HEADING DEGREES TRUE",
+    "count": 31,
+    "min": 48.76580920438366,
+    "max": 48.76581092617409,
+    "mean": 48.765809969286224
+  },
+  {
+    "target": "avatar",
+    "field": "PLANE LATITUDE",
+    "count": 31,
+    "min": 34.84818404199003,
+    "max": 34.84818404199003,
+    "mean": 34.84818404199004
+  },
+  {
+    "target": "avatar",
+    "field": "PLANE LONGITUDE",
+    "count": 31,
+    "min": -111.79108116703073,
+    "max": -111.79108116703073,
+    "mean": -111.7910811670308
+  },
+  {
+    "target": "avatar",
+    "field": "PLANE PITCH DEGREES",
+    "count": 31,
+    "min": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+  },
+  {
+    "target": "avatar",
+    "field": "SIM ON GROUND",
+    "count": 31,
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0
+  },
+  {
+    "target": "current",
+    "field": "CAMERA STATE",
+    "count": 31,
+    "min": 26.0,
+    "max": 26.0,
+    "mean": 26.0
+  },
+  {
+    "target": "current",
+    "field": "CAMERA SUBSTATE",
+    "count": 31,
+    "min": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+  },
+  {
+    "target": "current",
+    "field": "GROUND ALTITUDE",
+    "count": 31,
+    "min": 1455.0039110621437,
+    "max": 1455.0039110621437,
+    "mean": 1455.0039110621437
+  },
+  {
+    "target": "current",
+    "field": "IS CROUCH",
+    "count": 31,
+    "min": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+  },
+  {
+    "target": "current",
+    "field": "MAGVAR",
+    "count": 31,
+    "min": 9.882404342152808,
+    "max": 9.882404342152808,
+    "mean": 9.882404342152807
+  },
+  {
+    "target": "current",
+    "field": "PLANE ALT ABOVE GROUND",
+    "count": 31,
+    "min": 0.00020881090313487223,
+    "max": 0.00020881090313487223,
+    "mean": 0.00020881090313487207
+  },
+  {
+    "target": "current",
+    "field": "PLANE ALTITUDE",
+    "count": 31,
+    "min": 1455.0041198730469,
+    "max": 1455.0041198730469,
+    "mean": 1455.0041198730469
+  },
+  {
+    "target": "current",
+    "field": "PLANE BANK DEGREES",
+    "count": 31,
+    "min": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+  },
+  {
+    "target": "current",
+    "field": "PLANE HEADING DEGREES TRUE",
+    "count": 31,
+    "min": 48.76580920438366,
+    "max": 48.76581092617409,
+    "mean": 48.765809969286224
+  },
+  {
+    "target": "current",
+    "field": "PLANE LATITUDE",
+    "count": 31,
+    "min": 34.84818404199003,
+    "max": 34.84818404199003,
+    "mean": 34.84818404199004
+  },
+  {
+    "target": "current",
+    "field": "PLANE LONGITUDE",
+    "count": 31,
+    "min": -111.79108116703073,
+    "max": -111.79108116703073,
+    "mean": -111.7910811670308
+  },
+  {
+    "target": "current",
+    "field": "PLANE PITCH DEGREES",
+    "count": 31,
+    "min": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+  },
+  {
+    "target": "current",
+    "field": "SIM ON GROUND",
+    "count": 31,
+    "min": 1.0,
+    "max": 1.0,
+    "mean": 1.0
+  }
+]

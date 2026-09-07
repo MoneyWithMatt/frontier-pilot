@@ -1,0 +1,43 @@
+{
+  "RawSha256": "E6C6AED0F896807B175681F403E2D9C764C98B82AEB4CC01DB830842DDA976F2",
+  "Files": [
+    {
+      "Name": "analysis.json",
+      "Unchanged": true
+    },
+    {
+      "Name": "archive-verification.json",
+      "Unchanged": true
+    },
+    {
+      "Name": "capture-checks.json",
+      "Unchanged": true
+    },
+    {
+      "Name": "observations.jsonl",
+      "Unchanged": true
+    },
+    {
+      "Name": "observations.zip",
+      "Unchanged": true
+    },
+    {
+      "Name": "operator-notes.jsonl",
+      "Unchanged": true
+    },
+    {
+      "Name": "phase.txt",
+      "Unchanged": true
+    },
+    {
+      "Name": "stop.txt",
+      "Unchanged": true
+    },
+    {
+      "Name": "survey-point.json",
+      "Unchanged": true
+    }
+  ],
+  "PriorSedonaUnchanged": true,
+  "ArchiveSha256": "30C3CB5E9DB5ABDE1A7BCD803AA1CD14EF3ED7A159FCAE294AAD1FDF36BDC648"
+}

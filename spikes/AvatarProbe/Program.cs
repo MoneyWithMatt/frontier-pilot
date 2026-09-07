@@ -31,7 +31,8 @@ var fields = new[] {
     ("PLANE ALTITUDE", "meters"), ("PLANE HEADING DEGREES TRUE", "degrees"),
     ("PLANE PITCH DEGREES", "degrees"), ("PLANE BANK DEGREES", "degrees"),
     ("SIM ON GROUND", "bool"), ("PLANE ALT ABOVE GROUND", "meters"),
-    ("GROUND ALTITUDE", "meters"), ("CAMERA STATE", "number"), ("CAMERA SUBSTATE", "number")
+    ("GROUND ALTITUDE", "meters"), ("CAMERA STATE", "number"), ("CAMERA SUBSTATE", "number"),
+    ("MAGVAR", "degrees"), ("IS CROUCH", "bool")
 };
 try
 {
@@ -40,6 +41,13 @@ try
         sdkVersion = File.ReadAllText(Path.Combine(root, "version.txt")).Trim(), root, dll,
         dllSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(dll))),
         headerSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(header))),
+        simulatorFiles = Process.GetProcessesByName("FlightSimulator2024").Select(p => {
+            using (p) {
+                var path = p.MainModule!.FileName;
+                return new { path, fileVersion = FileVersionInfo.GetVersionInfo(path).FileVersion,
+                    sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))) };
+            }
+        }).ToArray(),
         cameraGetDeclared = File.ReadAllText(header).Contains("SimConnect_CameraGet("),
         cameraGetExported = NativeLibrary.TryGetExport(library, "SimConnect_CameraGet", out _),
         targets = targets.Select(t => new { t.Name, t.Id }),

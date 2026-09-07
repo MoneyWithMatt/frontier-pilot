@@ -6,3 +6,4 @@ TestResults/
 .vs/
 *.user
 evidence/avatar-spike/sedona-01/observations.jsonl
+evidence/elevation-validation/session-01/observations.jsonl
