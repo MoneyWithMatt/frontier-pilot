@@ -35,6 +35,39 @@
 <Grid Height="250" Background="#E3EBDF" ClipToBounds="True"><TextBlock Text="N ↑" HorizontalAlignment="Center" Margin="0,8" VerticalAlignment="Top"/><Rectangle Width="{Binding PreviewWidth}" Height="180" Fill="#9C8761" Stroke="#6D6048" RenderTransformOrigin=".5,.5"><Rectangle.RenderTransform><RotateTransform Angle="{Binding PreviewHeading}"/></Rectangle.RenderTransform></Rectangle><Ellipse Width="8" Height="8" Fill="#203C35"/></Grid>
 <TextBlock Text="North up · centre dot is your survey. Designators use magnetic heading; orientation uses true heading. Width is exaggerated for narrow strips." FontSize="12" Margin="0,10"/>
 </StackPanel></Grid></Border>
+<Border Style="{StaticResource Card}"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="270"/></Grid.ColumnDefinitions>
+<StackPanel IsEnabled="{Binding CanEdit}">
+<TextBlock Style="{StaticResource Title}" Text="Parking stands · optional"/>
+<TextBlock Text="Positions are metres from your runway centre. Forward follows your captured facing; right is the right-hand side. Turn 0° faces along the runway, 180° faces back. Radius reserves space for the aircraft."/>
+<WrapPanel><Button Content="Add parking stand" Command="{Binding AddParkingCommand}"/><Button Content="Remove selected" Command="{Binding RemoveParkingCommand}"/></WrapPanel>
+<DataGrid ItemsSource="{Binding ParkingStands}" SelectedItem="{Binding SelectedParking}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="False" HeadersVisibility="Column" MinHeight="70" MaxHeight="235" Margin="0,6,12,12">
+<DataGrid.Columns>
+<DataGridTextColumn Header="Stand" Binding="{Binding Number}" IsReadOnly="True" Width="55"/>
+<DataGridTextColumn Header="Forward m" Binding="{Binding Forward, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+<DataGridTextColumn Header="Right m" Binding="{Binding Right, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+<DataGridTextColumn Header="Turn °" Binding="{Binding Facing, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+<DataGridTextColumn Header="Radius m" Binding="{Binding Radius, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+</DataGrid.Columns>
+</DataGrid>
+<TextBlock Text="Experimental GA parking starts on existing ground. No apron, ground clearing or taxiway routes are added. Check terrain and aircraft clearance in the simulator." FontSize="12"/>
+</StackPanel>
+<StackPanel Grid.Column="1"><TextBlock Text="Parking layout · runway facing up ↑" FontWeight="SemiBold" Margin="0,0,0,8"/>
+<Grid Width="240" Height="240" Background="#E3EBDF" ClipToBounds="True">
+<Rectangle Width="{Binding ParkingRunwayWidth}" Height="{Binding ParkingRunwayLength}" Fill="#9C8761"/>
+<Ellipse Width="5" Height="5" Fill="#203C35"/>
+<ItemsControl ItemsSource="{Binding ParkingPreview}">
+<ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+<ItemsControl.ItemContainerStyle><Style TargetType="ContentPresenter"><Setter Property="Canvas.Left" Value="{Binding Left}"/><Setter Property="Canvas.Top" Value="{Binding Top}"/></Style></ItemsControl.ItemContainerStyle>
+<ItemsControl.ItemTemplate><DataTemplate><Grid Width="{Binding Diameter}" Height="{Binding Diameter}">
+<Ellipse Stroke="#205D87" Fill="#D9ECF5" StrokeThickness="1.5"/>
+<TextBlock Text="↑" HorizontalAlignment="Center" VerticalAlignment="Top" RenderTransformOrigin=".5,.5"><TextBlock.RenderTransform><RotateTransform Angle="{Binding Facing}"/></TextBlock.RenderTransform></TextBlock>
+<TextBlock Text="{Binding Number}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10"/>
+</Grid></DataTemplate></ItemsControl.ItemTemplate>
+</ItemsControl>
+</Grid><TextBlock Text="Circles show stand radius. This layout is runway-up; the runway preview above is north-up." FontSize="12" Margin="0,8"/>
+</StackPanel>
+</Grid></Border>
 <Border Style="{StaticResource Card}"><StackPanel><TextBlock Style="{StaticResource Title}" Text="4. Build, install and fly"/><TextBlock Text="Generate and compile creates an isolated project. Install verifies the package and backs up any previous installation owned by this app. FPT1 and FPSC are protected. The full runway footprint still needs a visual terrain check."/><TextBlock Text="{Binding SuccessInstructions}" FontWeight="SemiBold" Margin="0,10"/><Expander Header="Technical log (select text to copy)"><StackPanel><WrapPanel><Button Content="Copy technical log" Click="CopyLog"/><Button Content="Save technical log…" Click="SaveLog"/></WrapPanel><TextBox Text="{Binding TechnicalLog, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="220" VerticalScrollBarVisibility="Auto"/></StackPanel></Expander></StackPanel></Border>
 </StackPanel></ScrollViewer>
 </DockPanel></Window>
+

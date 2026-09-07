@@ -1,0 +1,28 @@
+{
+  "Name": "Frontier Parking Test",
+  "Identifier": "FPPARK",
+  "Latitude": -22.58616679921284,
+  "Longitude": 14.539071285657734,
+  "AltitudeMeters": 13.94779940508306,
+  "TrueHeadingDegrees": 108.63324971143716,
+  "MagneticVariationDegreesEast": -12.503734469181675,
+  "LengthMeters": 200,
+  "WidthMeters": 20,
+  "Surface": "Dirt",
+  "ParkingStands": [
+    {
+      "Number": 1,
+      "RadiusMeters": 10,
+      "ForwardMeters": 0,
+      "FacingOffsetDegrees": 180,
+      "RightMeters": 35
+    },
+    {
+      "Number": 2,
+      "RadiusMeters": 10,
+      "ForwardMeters": 35,
+      "FacingOffsetDegrees": 180,
+      "RightMeters": 35
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+PASS: generated airport XML validates against installed SDK 1.2.4 bglcomp.xsd. No Package Tool or MSFS execution.

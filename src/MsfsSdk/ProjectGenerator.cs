@@ -55,6 +55,17 @@ public static class ProjectGenerator
             SetPosition(start, value.Position, definition.AltitudeMeters);
             start.SetAttributeValue("heading", Number(value.InwardTrueHeadingDegrees));
         }
+        // No taxiway points/paths are generated in this placement spike. Reserve each parking index by its unique number.
+        foreach (var stand in definition.ParkingStands.OrderBy(s => s.Number))
+        {
+            var placement = ParkingGeometry.Calculate(definition, stand);
+            airport.Add(new XElement("TaxiwayParking",
+                new XAttribute("index", stand.Number), new XAttribute("type", "RAMP_GA_SMALL"),
+                new XAttribute("lat", Number(placement.Position.Latitude)), new XAttribute("lon", Number(placement.Position.Longitude)),
+                new XAttribute("heading", Number(placement.TrueHeadingDegrees)), new XAttribute("radius", Number(stand.RadiusMeters)),
+                new XAttribute("name", "PARKING"), new XAttribute("number", stand.Number), new XAttribute("suffix", "NONE"),
+                new XAttribute("numberMarking", "FALSE"), new XAttribute("has3DMesh", "FALSE")));
+        }
         var material = LoadXml("PackageSources.materials.frontier-asphalt.material");
         material.Root!.SetAttributeValue("Name", materialName);
         material.Root.SetAttributeValue("Guid", materialGuid);
@@ -114,3 +125,4 @@ public static class ProjectGenerator
         document.Save(writer);
     }
 }
+

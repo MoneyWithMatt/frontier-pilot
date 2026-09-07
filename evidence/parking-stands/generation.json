@@ -1,0 +1,24 @@
+{
+  "Directory": "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\parking-schema-b84fc262e7d74b8986f1bcc4ba1a3553",
+  "ProjectFile": "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\parking-schema-b84fc262e7d74b8986f1bcc4ba1a3553\\AirportProject.xml",
+  "PackageName": "frontier-airport-fppark",
+  "Geometry": {
+    "TrueHeadingDegrees": 108.63324971143716,
+    "Primary": {
+      "Position": {
+        "Latitude": -22.58587827004856,
+        "Longitude": 14.538149804534868
+      },
+      "InwardTrueHeadingDegrees": 108.63360362477636,
+      "Number": 12
+    },
+    "Secondary": {
+      "Position": {
+        "Latitude": -22.58645532308112,
+        "Longitude": 14.539992770619099
+      },
+      "InwardTrueHeadingDegrees": 288.63289579233924,
+      "Number": 30
+    }
+  }
+}

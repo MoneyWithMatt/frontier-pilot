@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -22,6 +23,34 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
     private bool busy, checkedReady, siteConfirmed;
     private string sdkRoot, airportName = "", identifier = "", length = "200", width = "20", status = "Check prerequisites to begin.", error = "", activity = "";
     private RunwaySurface surface = RunwaySurface.Dirt;
+    private readonly ObservableCollection<ParkingStandInput> parking = [];
+    public ReadOnlyObservableCollection<ParkingStandInput> ParkingStands { get; }
+    public ParkingStandInput? SelectedParking { get; set; }
+    public ActionCommand AddParkingCommand { get; }
+    public ActionCommand RemoveParkingCommand { get; }
+    public double ParkingScale
+    {
+        get
+        {
+            try {
+                var d=Definition();
+                var stands=d.ParkingStands;
+                double extentX=Math.Max(d.WidthMeters/2,stands.Select(s=>Math.Abs(s.RightMeters)+s.RadiusMeters).DefaultIfEmpty(0).Max());
+                double extentY=Math.Max(d.LengthMeters/2,stands.Select(s=>Math.Abs(s.ForwardMeters)+s.RadiusMeters).DefaultIfEmpty(0).Max());
+                return double.IsFinite(extentX+extentY) && extentX>0 && extentY>0 ? Math.Min(100/extentX,100/extentY) : 1;
+            } catch { return 1; }
+        }
+    }
+    public double ParkingRunwayWidth { get { try { var w=Definition().WidthMeters;return double.IsFinite(w)?Math.Clamp(w*ParkingScale,1,200):20; } catch { return 20; } } }
+    public double ParkingRunwayLength { get { try { var l=Definition().LengthMeters;return double.IsFinite(l)?Math.Clamp(l*ParkingScale,1,200):200; } catch { return 200; } } }
+    public IReadOnlyList<ParkingPreviewItem> ParkingPreview
+    {
+        get {
+            try { var d=Definition(); if(d.Validate().Count!=0)return []; return d.ParkingStands.Where(s=>new[]{s.RightMeters,s.ForwardMeters,s.RadiusMeters,s.FacingOffsetDegrees}.All(double.IsFinite) && s.RadiusMeters>0)
+                .Select(s=>new ParkingPreviewItem(s.Number,120+(s.RightMeters-s.RadiusMeters)*ParkingScale,120-(s.ForwardMeters+s.RadiusMeters)*ParkingScale,2*s.RadiusMeters*ParkingScale,Headings.Normalize(s.FacingOffsetDegrees))).ToArray(); }
+            catch { return []; }
+        }
+    }
     public SurveyPoint? Survey { get; private set; }
     public BuiltAirport? Built { get; private set; }
     public string InstalledPath { get; private set; } = "";
@@ -41,6 +70,9 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
     public BuilderViewModel(IBuilderServices services, string sdkRoot)
     {
         this.services = services; this.sdkRoot = sdkRoot;
+        ParkingStands = new(parking);
+        AddParkingCommand = new(AddParking,()=>!busy && Survey!=null && parking.Count<8);
+        RemoveParkingCommand = new(RemoveParking,()=>!busy && parking.Count>0);
         CheckCommand = new(() => _ = CheckAsync(), () => !IsBusy);
         CaptureCommand = new(() => _ = CaptureAsync(), () => !IsBusy && checkedReady);
         ValidateCommand = new(() => _ = ValidateAsync(), () => !IsBusy && Survey != null && ValidationMessage == "");
@@ -77,7 +109,7 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
     public string Error => error;
     public string ActivityLog => activity;
     public string TechnicalLog => $"{ModeDescription}\nState: {State}; recovery: {RecoveryState}\nSDK: {sdkRoot}\nProject: {services.ProjectDirectory}\nEvidence: {services.EvidenceDirectory}\nBuild log: {services.LogPath}\n\n{activity}";
-    public string SdkRoot { get => sdkRoot; set { if (busy || value == sdkRoot) return; sdkRoot = value; checkedReady = false; Survey = null; Invalidate(); } }
+    public string SdkRoot { get => sdkRoot; set { if (busy || value == sdkRoot) return; sdkRoot = value; checkedReady = false; Survey = null; ClearParking(); Invalidate(); } }
     public string AirportName { get => airportName; set { if (!busy && value != airportName) { airportName = value; Invalidate(); } } }
     public string Identifier { get => identifier; set { if (!busy && value.ToUpperInvariant() != identifier) { identifier = value.ToUpperInvariant(); Invalidate(); } } }
     public string Length { get => length; set { if (!busy && value != length) { length = value; Invalidate(); } } }
@@ -109,20 +141,36 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
             throw new ArgumentException("Enter length and width in metres using numbers (for example 200 and 20).");
         return new() { Name = airportName, Identifier = identifier, Latitude = Survey?.Latitude ?? 0, Longitude = Survey?.Longitude ?? 0,
             AltitudeMeters = Survey?.AltitudeMeters ?? 0, TrueHeadingDegrees = Survey?.TrueHeadingDegrees ?? 0,
-            MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface };
+            MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface, ParkingStands = parking.Select(p=>p.ToDefinition()).ToArray() };
     }
+    private void AddParking()
+    {
+        if(busy||Survey==null||parking.Count>=8)return;
+        int number=Enumerable.Range(1,99).First(n=>parking.All(p=>p.Number!=n));
+        double runwayWidth=double.TryParse(width,NumberStyles.Float,CultureInfo.InvariantCulture,out var w)&&double.IsFinite(w)?w:20;
+        var item=new ParkingStandInput(number,()=>!busy,runwayWidth/2+25) { Forward = (parking.Count*30).ToString(CultureInfo.InvariantCulture) };
+        item.PropertyChanged += ParkingChanged; parking.Add(item);SelectedParking=item;Invalidate();
+    }
+    private void RemoveParking()
+    {
+        if(busy||parking.Count==0)return;
+        var item=SelectedParking ?? parking[^1];
+        item.PropertyChanged -= ParkingChanged;parking.Remove(item);SelectedParking=null;Invalidate();
+    }
+    private void ParkingChanged(object? sender,PropertyChangedEventArgs e) => Invalidate();
+    private void ClearParking() { foreach(var item in parking)item.PropertyChanged-=ParkingChanged;parking.Clear();SelectedParking=null; }
     private void SetState(WorkflowState value) { State = value; RecoveryState = value; }
     private void Invalidate() { Built = null; InstalledPath = ""; error = ""; SetState(Survey != null ? WorkflowState.SurveyCaptured : checkedReady ? WorkflowState.ReadyToSurvey : WorkflowState.Disconnected); Refresh(); }
     public Task CheckAsync()
     {
         if (busy) return Task.CompletedTask;
-        checkedReady = false; Survey = null; siteConfirmed = false; Invalidate();
+        checkedReady = false; Survey = null; siteConfirmed = false; ClearParking(); Invalidate();
         return Run("Check prerequisites", async token => { status = await services.CheckAsync(sdkRoot, token); token.ThrowIfCancellationRequested(); checkedReady = true; SetState(WorkflowState.ReadyToSurvey); });
     }
     public Task CaptureAsync()
     {
         if (!checkedReady || busy) return Task.CompletedTask;
-        Survey = null; siteConfirmed = false; Invalidate();
+        Survey = null; siteConfirmed = false; ClearParking(); Invalidate();
         return Run("Capture survey", async token => {
             status = IsDryRun ? "Validating recorded avatar frames" : "Capturing — stay upright and still for at least five seconds"; Refresh();
             var captured = await services.CaptureAsync(sdkRoot, token); token.ThrowIfCancellationRequested();
@@ -180,6 +228,8 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
     private void Refresh()
     {
         Changed("");
-        foreach (var c in new[] { CheckCommand, CaptureCommand, ValidateCommand, BuildCommand, InstallCommand, CancelCommand, OpenProjectCommand, OpenPackageCommand, OpenLogCommand, OpenEvidenceCommand }) c.Refresh();
+        foreach (var c in new[] { AddParkingCommand, RemoveParkingCommand, CheckCommand, CaptureCommand, ValidateCommand, BuildCommand, InstallCommand, CancelCommand, OpenProjectCommand, OpenPackageCommand, OpenLogCommand, OpenEvidenceCommand }) c.Refresh();
     }
 }
+
+
