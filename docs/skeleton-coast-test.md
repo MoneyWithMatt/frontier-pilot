@@ -26,4 +26,8 @@ Installed to `C:\Users\mattr\AppData\Roaming\Microsoft Flight Simulator 2024\Pac
 3. In external view, check dirt surface, approximate 200 x 20 m footprint, east-southeast/west-northwest alignment, rocks, bumps and buried/floating edges. Taxi slowly if the surface looks usable.
 4. Start a second flight from runway 30 and check that you spawn at the opposite end facing the other way.
 
-Report whether FPSC appears, whether both starts work, and the largest visible surface/terrain issue. A screenshot is useful if something looks wrong. Installation is confirmed; in-simulator appearance and usability await this test.
+## User visual-test result — 7 September 2026
+
+Matt reported: “it worked perfectly, no rocks, bumps or buried or floatng edges. Terrain looks good”. This is user-observed confirmation that FPSC loaded and its visible terrain fit was satisfactory at the surveyed Namibia site. Individual runway-start outcomes were not separately enumerated, and no screenshot or independent measurement was supplied; do not infer additional quantitative checks.
+
+The prototype chain is demonstrated at this site: live avatar capture → automatic ground elevation → deterministic airport generation → SDK compilation → safe Community installation → successful user visual test. This does not establish terrain correctness at all locations or remove the documented SDK contradiction and installed-build restrictions. No additional work was required on the package after the visual report.
