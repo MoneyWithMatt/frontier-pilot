@@ -1,0 +1,7 @@
+FrontierPilot.exe
+SizeBytes: 165000866
+SHA256: DC3D3D9AF036046E60A907688C86F90E1205E7D03BC79D3966A11965B9424993
+ProductVersion: 0.1.0
+Runtime: win-x64, self-contained
+PublishSingleFile: true
+DirectoryFileCount: 1

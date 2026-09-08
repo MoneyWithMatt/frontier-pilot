@@ -46,3 +46,7 @@ Release build: zero warnings/errors; 278 tests pass. Generated XML validates aga
 Airport definitions now persist as versioned JSON in `%LOCALAPPDATA%\FrontierAirportBuilder\desktop\airports`. The definition includes the guarded survey archive, runway, parking and taxiways; generated MSFS packages remain derived artifacts. My Airports can reopen a saved definition, but always restores it at Survey Captured and requires confirmation, validation and a new build before install authority exists.
 
 Delete Airport uses a two-step preview/confirmation and verifies saved revision, project ownership/inventory and installed receipt/inventory immediately before cleanup. Unknown, changed, redirected or unrelated content causes refusal. Tests cover restart, multiple airports, corrupt/tampered documents, stale writes/previews, partial outputs, rollback and unrelated-file protection. The dry-run UI was closed/reopened and visually checked. See [airport-management.md](airport-management.md) and evidence/airport-management/.
+
+## Development distribution — 2026-09-08
+
+The Desktop project publishes as `dist\FrontierPilot\FrontierPilot.exe`, a Windows x64 self-contained single-file application. The stable path supports a user-level Desktop or Start Menu shortcut and does not alter normal build/debug outputs. The generated runtime is intentionally ignored by Git and recreated through `scripts\Publish-Development.ps1`. See [development-distribution.md](development-distribution.md) and evidence/development-distribution/.

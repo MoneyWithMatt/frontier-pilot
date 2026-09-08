@@ -11,7 +11,7 @@
 - Explore authoritative global airport identifier collision checks.
 - Support Community storage on other drives through tested on-volume staging.
 - Improve progress detail for long Package Tool runs; preserve child-process safety.
-- Package a convenient distributable launcher; reduce SDK setup burden.
+- Replace the implemented self-contained development executable/shortcut with a signed customer installer, updater and prerequisite handling when distribution work begins.
 
 ## Research
 - Requalify avatar elevation after simulator/SDK changes.

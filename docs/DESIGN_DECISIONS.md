@@ -33,3 +33,8 @@
 - **Implemented:** historical build/install labels are informational. Opening an airport restores Survey Captured and requires a fresh validation/build before install.
 - **Implemented:** permanent administrative deletion is a narrowly scoped operation over registered, verified artifacts. It does not model future selling, closing or abandonment gameplay.
 - **Limit:** project cleanup is exact-inventory conservative; user-added files cause refusal. Recovery handles ordinary failures, while durable crash journaling remains future work.
+
+## Development launch decision — 2026-09-08
+- **Implemented:** publish Windows x64 self-contained and single-file to a stable repository-local `dist\FrontierPilot` path. This avoids a machine-wide .NET runtime dependency while preserving ordinary source builds.
+- **Implemented:** a user-level shortcut points to the stable path. Republishing stages a complete output before replacing the previous distribution; it does not touch airport data.
+- **Deferred:** signed installer, updater, SDK bootstrap/distribution, uninstall/repair and release channels belong to customer distribution work.

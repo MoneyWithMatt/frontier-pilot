@@ -3,6 +3,7 @@ workspaces/
 **/bin/
 **/obj/
 TestResults/
+dist/
 .vs/
 *.user
 evidence/avatar-spike/sedona-01/observations.jsonl

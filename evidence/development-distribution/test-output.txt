@@ -1,0 +1,18 @@
+  Determining projects to restore...
+  Restored C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Core\FrontierAirportBuilder.Core.csproj (in 77 ms).
+  Restored C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\MsfsSdk\FrontierAirportBuilder.MsfsSdk.csproj (in 82 ms).
+  Restored C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Desktop\FrontierAirportBuilder.Desktop.csproj (in 83 ms).
+  Restored C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Workflow\FrontierAirportBuilder.Workflow.csproj (in 83 ms).
+  2 of 6 projects are up-to-date for restore.
+  FrontierAirportBuilder.Core -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Core\bin\Release\net8.0\FrontierAirportBuilder.Core.dll
+  FrontierAirportBuilder.MsfsSdk -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\MsfsSdk\bin\Release\net8.0\FrontierAirportBuilder.MsfsSdk.dll
+  FrontierAirportBuilder.Workflow -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Workflow\bin\Release\net8.0\FrontierAirportBuilder.Workflow.dll
+  FrontierAirportBuilder.Tests -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\tests\Tests\bin\Release\net8.0\FrontierAirportBuilder.Tests.dll
+Test run for C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\tests\Tests\bin\Release\net8.0\FrontierAirportBuilder.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\evidence\development-distribution\tests.trx
+
+Passed!  - Failed:     0, Passed:   300, Skipped:     0, Total:   300, Duration: 4 s - FrontierAirportBuilder.Tests.dll (net8.0)
