@@ -38,6 +38,7 @@ public sealed partial class BuilderViewModel
     private void SetAirports(AirportList list)
     {
         var id=selectedAirport?.Id;Airports=list.Airports;selectedAirport=Airports.FirstOrDefault(a=>a.Id==id);
+        Tracking.UpdateAirports(Airports.Select(airport=>airport.Definition));
         libraryWarnings=string.Join("\n",list.Warnings);Changed(nameof(Airports));Changed(nameof(SelectedAirport));Changed(nameof(LibraryWarnings));
     }
     public Task RefreshAirportsAsync()

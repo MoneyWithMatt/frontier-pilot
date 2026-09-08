@@ -21,12 +21,17 @@ public sealed class TrackingViewModel : INotifyPropertyChanged, IDisposable
     private TrackingState state;
     private TrackingWorldState? world;
     private AircraftTelemetry? lastKnown, latestValid;
+    private AircraftLocationContext? lastKnownLocation,latestLocation;
+    private AircraftLocationContext? lastPersistedLocation;
+    private AircraftLocationRecognition? recognition;
+    private AirstripDefinition[] airports=[];
+    private readonly AirportLocationRecognizer locationRecognizer=new();
     private DateTimeOffset lastPersistedObservation;
     private string error = "", persistenceWarning = "";
     private readonly List<string> diagnostic = [];
     private PlayerControlMode lastLoggedMode = (PlayerControlMode)(-1);
     private DateTimeOffset lastSampleLog;
-    private bool initialized, disposed;
+    private bool initialized, disposed,airportCatalogueLoaded;
 
     public TrackingViewModel(ITrackingTelemetrySource source, IAircraftStateStore store, Func<string> sdkRoot,
         bool enabled = true, TimeSpan? persistenceInterval = null)
@@ -45,6 +50,7 @@ public sealed class TrackingViewModel : INotifyPropertyChanged, IDisposable
     public TrackingState State => state;
     public TrackingWorldState? World => world;
     public AircraftTelemetry? Current => world?.Aircraft ?? lastKnown;
+    public AircraftLocationContext? CurrentLocation => world is not null ? latestLocation : lastKnownLocation;
     public bool IsLive => world is not null;
     public bool HasTelemetry => Current is not null;
     public bool HasPlayer => world?.Player is not null;
@@ -72,6 +78,18 @@ public sealed class TrackingViewModel : INotifyPropertyChanged, IDisposable
     public string Heading => Current is null ? "—" : string.Create(CultureInfo.InvariantCulture, $"{Current.TrueHeadingDegrees:000}° true");
     public string GroundSpeed => Current is null ? "—" : string.Create(CultureInfo.InvariantCulture, $"{Current.GroundSpeedKnots:N1} kt");
     public string FlightState => Current is null ? "—" : Current.IsOnGround ? "On Ground" : "Airborne";
+    public string FrontierAirport => CurrentLocation is { } location ? $"{location.AirportName} ({location.AirportIdentifier})" :
+        Current is null ? "—" : IsLive ? "Outside Frontier Pilot Airport" : "No saved Frontier airport association";
+    public string FrontierStand => CurrentLocation?.ParkingStandNumber is { } number ? $"Stand {number:00} · {CurrentLocation.ParkingStandName}" : "None";
+    public string FrontierStandDistance => CurrentLocation?.ParkingStandDistanceMeters is { } distance ? string.Create(CultureInfo.InvariantCulture,$"{distance:N1} m") : "—";
+    public string FrontierParkingState => CurrentLocation?.ParkingState switch
+    {
+        AircraftParkingState.NearStand => "Near Stand",
+        AircraftParkingState.Parked => "Parked",
+        _ => "Not at Stand"
+    };
+    public string FrontierLocationDebug => IsLive ? recognition?.DebugReason ?? "No saved Frontier airports are available." :
+        CurrentLocation is { } location ? "Last-known recognition: "+location.Reason : "No persisted airport/stand recognition.";
     public string PlayerState => world?.PlayerMode switch { PlayerControlMode.InAircraft => "In Aircraft", PlayerControlMode.OnFoot => "On Foot", PlayerControlMode.Unknown => "Unknown · position refused", _ => "—" };
     public string PlayerPosition => world?.Player is { } p ? string.Create(CultureInfo.InvariantCulture, $"{p.Latitude:F5}, {p.Longitude:F5}") : "—";
     public string PlayerAltitude => world?.Player is { } p ? string.Create(CultureInfo.InvariantCulture, $"{p.AltitudeFeet:N0} ft") : "—";
@@ -91,8 +109,10 @@ public sealed class TrackingViewModel : INotifyPropertyChanged, IDisposable
             var saved = await store.LoadActiveAsync();
             if (saved is not null && world is null && latestValid is null)
             {
-                lastKnown = saved.EnsureValid().Telemetry;
+                var valid=saved.EnsureValid();
+                lastKnown = valid.Telemetry;lastKnownLocation=lastPersistedLocation=valid.Location;
                 lastPersistedObservation = lastKnown.ObservedUtc;
+                ReconcileSavedAssociation();
                 AppendDiagnostic($"Loaded last-known aircraft from {store.StoragePath}.");
                 NotifyTelemetry(); NotifyDisplay();
             }
@@ -128,6 +148,8 @@ public sealed class TrackingViewModel : INotifyPropertyChanged, IDisposable
                         TelemetryChanged?.Invoke(null); NotifyDisplay(); operation.Cancel(); return;
                     }
                     latestValid = lastKnown = world.Aircraft;
+                    recognition=locationRecognizer.Evaluate(world.Aircraft,airports);
+                    latestLocation=lastKnownLocation=recognition.Context;
                     _ = PersistLatestAsync(false);
                     if (state != TrackingState.Connected) SetState(TrackingState.Connected); else NotifyTelemetry();
                     if (world.PlayerMode != lastLoggedMode)
@@ -181,21 +203,27 @@ public sealed class TrackingViewModel : INotifyPropertyChanged, IDisposable
     {
         if (!CanClearSavedState) throw new InvalidOperationException("Disconnect Tracking before clearing saved aircraft state.");
         await store.ClearAsync();
-        lastKnown = latestValid = null; lastPersistedObservation = default; persistenceWarning = "";
+        lastKnown = latestValid = null;lastKnownLocation=latestLocation=lastPersistedLocation=null;recognition=null; lastPersistedObservation = default; persistenceWarning = "";
         AppendDiagnostic("Cleared saved aircraft state."); NotifyTelemetry(); NotifyDisplay();
     }
 
     private async Task PersistLatestAsync(bool force)
     {
         var candidate = latestValid;
-        if (candidate is null || candidate.ObservedUtc <= lastPersistedObservation || (!force && candidate.ObservedUtc - lastPersistedObservation < persistenceInterval)) return;
+        var candidateLocation=latestLocation?.ObservedUtc==candidate?.ObservedUtc?latestLocation:null;
+        if (candidate is null || candidate.ObservedUtc < lastPersistedObservation ||
+            candidate.ObservedUtc==lastPersistedObservation&&Equals(candidateLocation,lastPersistedLocation) ||
+            !force&&candidate.ObservedUtc>lastPersistedObservation&&candidate.ObservedUtc-lastPersistedObservation<persistenceInterval) return;
         await persistenceGate.WaitAsync().ConfigureAwait(false);
         try
         {
             candidate = latestValid;
-            if (candidate is null || candidate.ObservedUtc <= lastPersistedObservation || (!force && candidate.ObservedUtc - lastPersistedObservation < persistenceInterval)) return;
-            await store.SaveActiveAsync(candidate).ConfigureAwait(false);
-            lastPersistedObservation = candidate.ObservedUtc; persistenceWarning = "";
+            candidateLocation=latestLocation?.ObservedUtc==candidate?.ObservedUtc?latestLocation:null;
+            if (candidate is null || candidate.ObservedUtc < lastPersistedObservation ||
+                candidate.ObservedUtc==lastPersistedObservation&&Equals(candidateLocation,lastPersistedLocation) ||
+                !force&&candidate.ObservedUtc>lastPersistedObservation&&candidate.ObservedUtc-lastPersistedObservation<persistenceInterval) return;
+            await store.SaveActiveAsync(candidate,candidateLocation).ConfigureAwait(false);
+            lastPersistedObservation = candidate.ObservedUtc;lastPersistedLocation=candidateLocation; persistenceWarning = "";
         }
         catch (Exception ex)
         {
@@ -206,10 +234,33 @@ public sealed class TrackingViewModel : INotifyPropertyChanged, IDisposable
     }
 
     private void NotifyDisplay() => DisplayChanged?.Invoke(Current, world?.Player, IsLive);
+    public void UpdateAirports(IEnumerable<AirstripDefinition> definitions)
+    {
+        airports=definitions?.Where(definition=>definition!=null).ToArray()??[];airportCatalogueLoaded=true;
+        if(world is not null)
+        {
+            recognition=locationRecognizer.Evaluate(world.Aircraft,airports);
+            latestLocation=lastKnownLocation=recognition.Context;
+            _=PersistLatestAsync(true);
+        }
+        else ReconcileSavedAssociation();
+        AppendDiagnostic($"Frontier airport recognition catalogue: {airports.Length} airport(s).");
+        NotifyTelemetry();
+    }
+    private void ReconcileSavedAssociation()
+    {
+        if(!airportCatalogueLoaded||lastKnownLocation is null)return;
+        var airport=airports.FirstOrDefault(candidate=>candidate.Identifier==lastKnownLocation.AirportIdentifier);
+        var standExists=lastKnownLocation.ParkingStandNumber is not {} stand || airport?.ParkingStands.Any(candidate=>candidate.Number==stand)==true;
+        if(airport is not null&&standExists)return;
+        lastKnownLocation=latestLocation=null;
+        if(lastKnown is not null){latestValid=lastKnown;_=PersistLatestAsync(true);}
+        AppendDiagnostic("Cleared a last-known Frontier location association because its saved airport or stand no longer exists.");
+    }
     private void SetState(TrackingState value) { state = value; NotifyTelemetry(); ConnectCommand.Refresh(); DisconnectCommand.Refresh(); }
     private void NotifyTelemetry()
     {
-        foreach (var property in new[] { nameof(State), nameof(World), nameof(Current), nameof(IsLive), nameof(HasTelemetry), nameof(HasPlayer), nameof(CanClearSavedState), nameof(StoragePath), nameof(Status), nameof(Freshness), nameof(Error), nameof(PersistenceWarning), nameof(Aircraft), nameof(AircraftType), nameof(Position), nameof(Altitude), nameof(Heading), nameof(GroundSpeed), nameof(FlightState), nameof(PlayerState), nameof(PlayerPosition), nameof(PlayerAltitude), nameof(PlayerHeading), nameof(PlayerDistance), nameof(PlayerTrackingStatus), nameof(IntegrationDetails), nameof(DiagnosticLog), nameof(LastUpdate) }) Changed(property);
+        foreach (var property in new[] { nameof(State), nameof(World), nameof(Current), nameof(CurrentLocation), nameof(IsLive), nameof(HasTelemetry), nameof(HasPlayer), nameof(CanClearSavedState), nameof(StoragePath), nameof(Status), nameof(Freshness), nameof(Error), nameof(PersistenceWarning), nameof(Aircraft), nameof(AircraftType), nameof(Position), nameof(Altitude), nameof(Heading), nameof(GroundSpeed), nameof(FlightState), nameof(FrontierAirport), nameof(FrontierStand), nameof(FrontierStandDistance), nameof(FrontierParkingState), nameof(FrontierLocationDebug), nameof(PlayerState), nameof(PlayerPosition), nameof(PlayerAltitude), nameof(PlayerHeading), nameof(PlayerDistance), nameof(PlayerTrackingStatus), nameof(IntegrationDetails), nameof(DiagnosticLog), nameof(LastUpdate) }) Changed(property);
     }
     private void AppendDiagnostic(string message) { lock (diagnostic) diagnostic.Add($"{DateTimeOffset.Now:O} {message}"); Changed(nameof(DiagnosticLog)); }
     private void AppendDiagnosticThreadSafe(string message)

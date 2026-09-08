@@ -88,3 +88,9 @@ Tracking loads last-known state without MSFS. The map distinguishes LIVE, LAST K
 ## Desktop startup correction — 2026-09-08
 
 The first Tracking V3 distribution crashed while WPF created the Tracking diagnostics text box: its read-only view-model property was bound with TextBox's default two-way mode. The binding is now explicitly one-way and a source-level regression test protects that contract. All 344 tests and the Release build pass; the republished self-contained executable launched responsively through the Desktop shortcut. Airport and tracking persistence were not involved and were left unchanged. See evidence/startup-binding-regression/.
+
+## Tracking V4 — 2026-09-08
+
+Tracking now recognises aircraft against every valid definition loaded from My Airports. Core uses WGS84 inverse geometry and the actual runway, taxiway and parking footprints; a separate 250 m operational margin avoids misusing the 3 km authoring envelope. An on-ground aircraft inside stand radius + 5 m is Near Stand, and becomes Parked after five continuous seconds at no more than 1 kt with no long sample gap.
+
+The Tracking panel shows airport, stand, distance, state and the tuning reason. Aircraft persistence schema 2 records the optional derived Frontier context alongside authoritative coordinates and remains compatible with schema 1. Avatar state is unchanged. Full automated and simulator acceptance details: [tracking-v4-airport-recognition.md](tracking-v4-airport-recognition.md) and evidence/tracking-v4/.

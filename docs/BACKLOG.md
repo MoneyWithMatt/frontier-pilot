@@ -1,6 +1,7 @@
 # Backlog
 
 ## Next acceptance test
+- Run Tracking V4 at a saved Frontier airport: taxi across the operational area, pass and stop at two stands, verify Near Stand/Parked timing and distances, then restart offline and check the LAST KNOWN association. Tune only from observed results; see tracking-v4-airport-recognition.md.
 - Run Tracking V2 against a loaded MSFS flight: verify In Aircraft → On Foot identity transition, stationary aircraft plus independently moving avatar, distance/facing, return to aircraft, manual viewport control and disconnect recovery. See tracking-v2-avatar.md. Tracking V1 aircraft movement was accepted by Matt.
 - Run Tracking V3 persistence acceptance: move the aircraft, disconnect, verify LAST KNOWN, restart Frontier Pilot without MSFS, then reconnect and verify LIVE. See tracking-v3-persistence.md.
 - Rebuild the accepted `Gen_Hangar56` placement and verify the 46.2 × 94.4 m map outline, foundation elevation, rear terrain contact and 8 m blended edge in MSFS. See object-footprints-and-foundations.md.

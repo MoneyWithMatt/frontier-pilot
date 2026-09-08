@@ -79,3 +79,11 @@
 - **Implemented:** update memory at telemetry rate, write at most every ten seconds, and force the latest valid sample on disconnect/shutdown. Use flushed temporary-file replacement; preserve and report corrupt or future documents.
 - **Implemented:** retain the saved marker through startup, connection attempts and loss. LIVE/LAST KNOWN/NO SAVED POSITION are explicit; the first live fix may recenter once and later updates preserve manual viewport control.
 - **Deferred:** parking legitimacy, engine/brake rules, stand association, ownership, stable airframe identity and spawn enforcement.
+
+## Tracking V4 — 2026-09-08
+
+- **Implemented:** derive Frontier location only from saved Frontier airport definitions and authoritative aircraft coordinates. Do not query or label stock MSFS airports.
+- **Implemented:** measure WGS84 aircraft position against runway rectangles, buffered taxiway segments and parking circles. Use a 250 m recognition margin separate from the 3 km infrastructure-authoring envelope.
+- **Implemented:** recognise a stand on ground within its radius plus 5 m; require five continuous seconds at no more than 1 kt for Parked. Centralise these values in `AirportRecognitionOptions` for live-test tuning.
+- **Implemented:** keep coordinates authoritative and persist optional airport/stand context as schema 2 while reading schema 1. Clear associations whose saved airport or stand is removed.
+- **Deferred:** heading/nose-wheel alignment, brakes, engines, confirmed parking authority, ownership and spawn enforcement.

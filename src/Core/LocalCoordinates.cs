@@ -9,6 +9,16 @@ public static class LocalCoordinates
         double distance=Math.Sqrt(offset.East*offset.East+offset.North*offset.North);
         return Geodesy.Direct(anchor,Math.Atan2(offset.East,offset.North)*180/Math.PI,distance).Position;
     }
+    /// <summary>WGS84 local tangent-plane offset for airport-scale inverse calculations.</summary>
+    public static LocalPoint FromGeographic(GeoPoint anchor, GeoPoint position)
+    {
+        if(new[]{anchor.Latitude,anchor.Longitude,position.Latitude,position.Longitude}.Any(v=>!double.IsFinite(v)) ||
+           Math.Abs(anchor.Latitude)>=90 || Math.Abs(position.Latitude)>=90 ||
+           Math.Abs(anchor.Longitude)>180 || Math.Abs(position.Longitude)>180)
+            throw new ArgumentOutOfRangeException(nameof(position));
+        var inverse=Geodesy.Inverse(anchor,position);var bearing=inverse.InitialBearingDegrees*Math.PI/180;
+        return new(inverse.DistanceMeters*Math.Sin(bearing),inverse.DistanceMeters*Math.Cos(bearing));
+    }
     // Return East=right, North=forward in a runway-aligned frame.
     public static LocalPoint ToRunway(LocalPoint p,double heading)
     {

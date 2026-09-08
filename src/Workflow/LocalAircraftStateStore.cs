@@ -48,17 +48,20 @@ public sealed class LocalAircraftStateStore : IAircraftStateStore
         finally { gate.Release(); }
     }
 
-    public async Task SaveActiveAsync(AircraftTelemetry aircraft, CancellationToken cancellationToken = default)
+    public async Task SaveActiveAsync(AircraftTelemetry aircraft, AircraftLocationContext? location = null, CancellationToken cancellationToken = default)
     {
         aircraft = aircraft.EnsureValid();
+        location=location?.EnsureValid();
+        if(location is not null && location.ObservedUtc!=aircraft.ObservedUtc)
+            throw new InvalidDataException("Aircraft telemetry and Frontier location timestamps do not agree.");
         var id = Identity(aircraft);
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var previous = await ReadUnlockedAsync(cancellationToken).ConfigureAwait(false);
             var records = previous?.Aircraft.ToDictionary(a => a.Id, StringComparer.Ordinal) ?? new Dictionary<string, PersistedAircraftState>(StringComparer.Ordinal);
-            records[id] = new PersistedAircraftState(id, aircraft).EnsureValid();
-            var document = new Document(1, id, records.Values.OrderBy(a => a.Id, StringComparer.Ordinal).ToArray());
+            records[id] = new PersistedAircraftState(id, aircraft, location).EnsureValid();
+            var document = new Document(2, id, records.Values.OrderBy(a => a.Id, StringComparer.Ordinal).ToArray());
             Directory.CreateDirectory(directory);
             var temporary = Path.Combine(directory, ".aircraft-state-" + Guid.NewGuid().ToString("N") + ".tmp");
             EnsureOwnedPath(temporary);
@@ -93,7 +96,7 @@ public sealed class LocalAircraftStateStore : IAircraftStateStore
         Document document;
         try { document = await JsonSerializer.DeserializeAsync<Document>(stream, Json, cancellationToken).ConfigureAwait(false) ?? throw new IOException("Saved aircraft-state document is empty."); }
         catch (JsonException error) { throw new IOException("Saved aircraft-state document is corrupt or unsupported. File preserved.", error); }
-        if (document.SchemaVersion != 1 || string.IsNullOrWhiteSpace(document.ActiveAircraftId) || document.Aircraft is null || document.Aircraft.Count is < 1 or > 1000)
+        if (document.SchemaVersion is not (1 or 2) || string.IsNullOrWhiteSpace(document.ActiveAircraftId) || document.Aircraft is null || document.Aircraft.Count is < 1 or > 1000)
             throw new IOException("Saved aircraft-state document is unsupported. File preserved.");
         var validated = document.Aircraft.Select(a => a.EnsureValid()).ToArray();
         if (validated.Select(a => a.Id).Distinct(StringComparer.Ordinal).Count() != validated.Length || validated.All(a => a.Id != document.ActiveAircraftId))
@@ -121,6 +124,6 @@ internal sealed class MemoryAircraftStateStore : IAircraftStateStore
     public string StoragePath => "Dry-run memory only";
     public Task<PersistedAircraftState?> LoadActiveAsync(CancellationToken cancellationToken = default) => Task.FromResult(state);
     public Task<IReadOnlyList<PersistedAircraftState>> LoadAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<PersistedAircraftState>>(state is null ? [] : [state]);
-    public Task SaveActiveAsync(AircraftTelemetry aircraft, CancellationToken cancellationToken = default) { state = new("dry-run-aircraft", aircraft.EnsureValid()); return Task.CompletedTask; }
+    public Task SaveActiveAsync(AircraftTelemetry aircraft, AircraftLocationContext? location = null, CancellationToken cancellationToken = default) { state = new PersistedAircraftState("dry-run-aircraft", aircraft.EnsureValid(),location).EnsureValid(); return Task.CompletedTask; }
     public Task ClearAsync(CancellationToken cancellationToken = default) { state = null; return Task.CompletedTask; }
 }

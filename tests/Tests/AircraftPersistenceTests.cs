@@ -1,5 +1,6 @@
 using FrontierAirportBuilder.Core;
 using FrontierAirportBuilder.Workflow;
+using System.Text.Json.Nodes;
 
 namespace FrontierAirportBuilder.Tests;
 
@@ -22,6 +23,29 @@ public sealed class AircraftPersistenceTests : TemporaryDirectoryTest
         await new LocalAircraftStateStore(FilePath).SaveActiveAsync(Sample());
         var loaded=await new LocalAircraftStateStore(FilePath).LoadActiveAsync();
         Assert.NotNull(loaded);Assert.Equal(Sample(),loaded!.Telemetry);Assert.StartsWith("prototype-",loaded.Id);
+    }
+
+    [Fact]
+    public async Task SavesAndLoadsRecognisedAirportAndStandMetadata()
+    {
+        var sample=Sample() with {GroundSpeedKnots=0};
+        var location=new AircraftLocationContext(sample.ObservedUtc,"FPRIDGE","Frontier Ridge",2,"PARKING 02",0,3.6,
+            AircraftParkingState.Parked,"Parked after 5.0 s.");
+        await new LocalAircraftStateStore(FilePath).SaveActiveAsync(sample,location);
+        var loaded=await new LocalAircraftStateStore(FilePath).LoadActiveAsync();
+        Assert.Equal(location,loaded!.Location);Assert.Equal(sample,loaded.Telemetry);
+    }
+
+    [Fact]
+    public async Task LoadsTrackingV3DocumentWithoutLocationMetadata()
+    {
+        var store=new LocalAircraftStateStore(FilePath);await store.SaveActiveAsync(Sample());
+        var document=JsonNode.Parse(await File.ReadAllTextAsync(FilePath))!.AsObject();
+        document["SchemaVersion"]=1;
+        document["Aircraft"]!.AsArray()[0]!.AsObject().Remove("Location");
+        await File.WriteAllTextAsync(FilePath,document.ToJsonString());
+        var loaded=await new LocalAircraftStateStore(FilePath).LoadActiveAsync();
+        Assert.NotNull(loaded);Assert.Null(loaded!.Location);Assert.Equal(Sample(),loaded.Telemetry);
     }
 
     [Fact]
@@ -121,7 +145,55 @@ public sealed class TrackingPersistenceTransitionTests
         Assert.Equal(52,(await store.LoadActiveAsync())!.Telemetry.Latitude);Assert.True(store.SaveCount>=2);
     }
 
+    [Fact]
+    public async Task RecognisedFrontierLocationPersistsAndRestoresAsLastKnown()
+    {
+        var airport=Fixtures.Strip with {Identifier="FPRIDGE",Name="Frontier Ridge",LengthMeters=200,WidthMeters=20,
+            ParkingStands=[new(2,35,0,180,10)]};
+        var position=LocalCoordinates.ToGeographic(new(airport.Latitude,airport.Longitude),new(35,0));
+        var aircraft=TrackingTestData.Aircraft with {ObservedUtc=DateTimeOffset.UtcNow,Latitude=position.Latitude,Longitude=position.Longitude,GroundSpeedKnots=3,IsOnGround=true};
+        var live=TrackingTestData.InAircraft with {Aircraft=aircraft};var store=new TestAircraftStore();
+        using(var vm=new TrackingViewModel(new StreamingSource(live),store,()=>"sdk"))
+        {
+            vm.UpdateAirports([airport]);var run=vm.ConnectAsync();await Until(()=>vm.CurrentLocation is not null);
+            Assert.Equal("Frontier Ridge (FPRIDGE)",vm.FrontierAirport);Assert.Contains("Stand 02",vm.FrontierStand);Assert.Equal("Near Stand",vm.FrontierParkingState);
+            vm.Disconnect();await run;
+        }
+        using var restored=new TrackingViewModel(new StreamingSource(live),store,()=>"sdk");await restored.InitializeAsync();
+        Assert.False(restored.IsLive);Assert.Equal("Frontier Ridge (FPRIDGE)",restored.FrontierAirport);
+        Assert.Contains("Stand 02",restored.FrontierStand);Assert.Equal("Near Stand",restored.FrontierParkingState);
+    }
+
+    [Fact]
+    public async Task AirportCatalogueCanEnrichAnAlreadyPersistedLiveSample()
+    {
+        var airport=Fixtures.Strip with {Identifier="FPRIDGE",Name="Frontier Ridge",LengthMeters=200,WidthMeters=20,
+            ParkingStands=[new(2,35,0,180,10)]};
+        var position=LocalCoordinates.ToGeographic(new(airport.Latitude,airport.Longitude),new(35,0));
+        var aircraft=TrackingTestData.Aircraft with {ObservedUtc=DateTimeOffset.UtcNow,Latitude=position.Latitude,Longitude=position.Longitude,GroundSpeedKnots=3,IsOnGround=true};
+        var live=TrackingTestData.InAircraft with {Aircraft=aircraft};var store=new TestAircraftStore();
+        using var vm=new TrackingViewModel(new StreamingSource(live),store,()=>"sdk");var run=vm.ConnectAsync();
+        await Until(()=>store.SaveCount>=1);Assert.Null((await store.LoadActiveAsync())!.Location);
+        vm.UpdateAirports([airport]);await UntilAsync(async ()=>(await store.LoadActiveAsync())?.Location?.ParkingStandNumber==2);
+        vm.Disconnect();await run;
+    }
+
+    [Fact]
+    public async Task RemovedAirportClearsItsLastKnownAssociationWithoutClearingCoordinates()
+    {
+        var aircraft=TrackingTestData.Aircraft;
+        var location=new AircraftLocationContext(aircraft.ObservedUtc,"FPRIDGE","Frontier Ridge",2,"PARKING 02",0,2,
+            AircraftParkingState.Parked,"Parked after 5.0 s.");
+        var store=new TestAircraftStore(aircraft,location:location);using var vm=new TrackingViewModel(new StreamingSource(TrackingTestData.InAircraft),store,()=>"sdk");
+        await vm.InitializeAsync();vm.UpdateAirports([]);await UntilAsync(async ()=>(await store.LoadActiveAsync())?.Location==null);
+        Assert.Equal(aircraft,vm.Current);Assert.Null(vm.CurrentLocation);Assert.Equal("No saved Frontier airport association",vm.FrontierAirport);
+    }
+
     private static async Task Until(Func<bool> condition) { for(var i=0;i<100&&!condition();i++)await Task.Delay(10);Assert.True(condition()); }
+    private static async Task UntilAsync(Func<Task<bool>> condition)
+    {
+        for(var i=0;i<100;i++){if(await condition())return;await Task.Delay(10);}Assert.True(await condition());
+    }
 }
 
 internal sealed class TestAircraftStore : IAircraftStateStore
@@ -130,14 +202,14 @@ internal sealed class TestAircraftStore : IAircraftStateStore
     private readonly object sync=new();
     private Exception? loadError;
     private int saveCount;
-    public TestAircraftStore(AircraftTelemetry? seed=null,Exception? loadError=null)
-    { this.loadError=loadError;if(seed is not null)records.Add(new("test-aircraft",seed)); }
+    public TestAircraftStore(AircraftTelemetry? seed=null,Exception? loadError=null,AircraftLocationContext? location=null)
+    { this.loadError=loadError;if(seed is not null)records.Add(new("test-aircraft",seed,location)); }
     public string StoragePath=>"test-memory";
     public int SaveCount{get{lock(sync)return saveCount;}}
     public Task<PersistedAircraftState?> LoadActiveAsync(CancellationToken cancellationToken=default)
     { lock(sync){if(loadError is {} error)throw error;return Task.FromResult(records.LastOrDefault());} }
     public Task<IReadOnlyList<PersistedAircraftState>> LoadAllAsync(CancellationToken cancellationToken=default){lock(sync)return Task.FromResult<IReadOnlyList<PersistedAircraftState>>(records.ToArray());}
-    public Task SaveActiveAsync(AircraftTelemetry aircraft,CancellationToken cancellationToken=default)
-    { aircraft=aircraft.EnsureValid();lock(sync){records.RemoveAll(x=>x.Id=="test-aircraft");records.Add(new("test-aircraft",aircraft));saveCount++;}return Task.CompletedTask; }
+    public Task SaveActiveAsync(AircraftTelemetry aircraft,AircraftLocationContext? location=null,CancellationToken cancellationToken=default)
+    { aircraft=aircraft.EnsureValid();lock(sync){records.RemoveAll(x=>x.Id=="test-aircraft");records.Add(new("test-aircraft",aircraft,location));saveCount++;}return Task.CompletedTask; }
     public Task ClearAsync(CancellationToken cancellationToken=default){lock(sync){records.Clear();loadError=null;}return Task.CompletedTask;}
 }
