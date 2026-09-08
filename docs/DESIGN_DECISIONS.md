@@ -55,3 +55,11 @@
 - **Implemented:** associate optional `TerrainFoundation` metadata with an asset. The current hangar uses a 2 m flat margin and 8 m falloff; generation enables polygon flattening and forced elevation and excludes secondary-heightmap roughness.
 - **Prototype datum:** use the guarded airport survey ground elevation for foundations near the airport construction datum. Refuse to imply knowledge of terrain at distant object positions; per-object elevation capture is future work.
 - **Acceptance limit:** compiler success does not prove visual terrain behaviour. Matt must confirm the building sits naturally and the feathered edge is acceptable.
+
+## Tracking V1 — 2026-09-08
+
+- **Implemented:** model aircraft telemetry separately from the avatar survey. Tracking requests `SIMCONNECT_OBJECT_ID_USER_AIRCRAFT` only and has no aircraft/avatar/camera fallback.
+- **Implemented:** poll six numeric SimVars at 4 Hz and fixed-size identity strings every ten seconds. Reject non-finite, out-of-range, malformed or stale observations and expose connection loss as a retryable state.
+- **Implemented:** use Mapsui.Wpf 5.1.0 with OpenStreetMap for a native WPF, key-free prototype map. Centre once at acquisition; marker updates never override later user pan/zoom.
+- **Prototype dependency:** online tiles use the public OpenStreetMap service with visible attribution and a distinct user-agent. Review a production tile provider and cache policy before customer-scale distribution.
+- **Acceptance limit:** automated tests prove state, validation and failure handling. Matt's live simulator test must confirm aircraft identity, units, heading orientation and marker movement.

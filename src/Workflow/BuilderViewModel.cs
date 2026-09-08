@@ -33,6 +33,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public ActionCommand ApplyParkingCommand { get; }
     public ActionCommand AddObjectCommand { get; }
     public ActionCommand ApplyObjectCommand { get; }
+    public TrackingViewModel Tracking { get; }
     public double LayoutRunwayHeading => Survey?.TrueHeadingDegrees ?? 0;
     public double LayoutRunwayLength => double.TryParse(length,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 200;
     public double LayoutRunwayWidth => double.TryParse(width,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 20;
@@ -53,9 +54,10 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         _ => "Review the log before continuing."
     };
     public event PropertyChangedEventHandler? PropertyChanged;
-    public BuilderViewModel(IBuilderServices services, string sdkRoot)
+    public BuilderViewModel(IBuilderServices services, string sdkRoot, IAircraftTelemetrySource? telemetrySource = null)
     {
         this.services = services; this.sdkRoot = sdkRoot;
+        Tracking = new(telemetrySource ?? new FrontierAirportBuilder.MsfsSdk.LiveAircraftTelemetry(), () => this.sdkRoot, !services.IsDryRun);
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading));
         Layout.Edited += (_,_)=>Invalidate();
         AddParkingCommand = new(()=>AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading)),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Stands.Count<8);

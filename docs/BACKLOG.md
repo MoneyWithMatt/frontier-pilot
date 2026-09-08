@@ -1,12 +1,14 @@
 # Backlog
 
 ## Next acceptance test
+- Run Tracking V1 against a loaded MSFS flight: verify real position/heading, taxi and airborne updates, manual viewport control, aircraft identity/units and simulator-disconnect recovery. See tracking-v1.md.
 - Rebuild the accepted `Gen_Hangar56` placement and verify the 46.2 × 94.4 m map outline, foundation elevation, rear terrain contact and 8 m blended edge in MSFS. See object-footprints-and-foundations.md.
 - Run the WPF flow in a real flight: capture a new flat site, close MSFS, compile/install a new identifier, restart and inspect both starts.
 - Exercise replacement of that new app-owned package and verify the prior version backup. Keep FPT1/FPSC untouched.
 - Verify usability at additional Windows scaling settings.
 
 ## Prototype improvements
+- Choose a production-capable tile provider/cache policy before distributing Tracking beyond limited prototype use.
 - Add autosave/draft recovery beyond the implemented explicit saved-airport library; saved airports already restore qualified survey evidence and layouts after restart.
 - Detect runway footprint slope/obstacles before committing to placement.
 - Explore authoritative global airport identifier collision checks.

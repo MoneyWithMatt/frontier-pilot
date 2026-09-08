@@ -1,5 +1,8 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Navigation;
 using FrontierAirportBuilder.Workflow;
 namespace FrontierAirportBuilder.Desktop;
 public partial class MainWindow : Window
@@ -12,8 +15,23 @@ public partial class MainWindow : Window
         if (dryRun) Title += " · DRY RUN";
         model = new(dryRun ? BuilderServices.CreateDesktopDryRun() : new BuilderServices(), Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.User) ?? Environment.GetEnvironmentVariable("MSFS2024_SDK") ?? "");
         DataContext = model;
+        model.Tracking.TelemetryChanged += TrackingTelemetryChanged;
         Closing += OnClosing;
         Loaded += async (_,_)=>await model.RefreshAirportsAsync();
+    }
+    private void MainTabsChanged(object sender,SelectionChangedEventArgs e)
+    {
+        if(!IsInitialized || !ReferenceEquals(e.Source,MainTabs))return;
+        BuilderFooter.Visibility=MainTabs.SelectedIndex==0?Visibility.Visible:Visibility.Collapsed;
+        if(MainTabs.SelectedIndex==1 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
+            _=model.Tracking.ConnectAsync();
+    }
+    private void TrackingTelemetryChanged(FrontierAirportBuilder.Core.AircraftTelemetry? telemetry) =>
+        Dispatcher.InvokeAsync(()=>TrackingMap.ShowAircraft(telemetry));
+    private void CenterAircraft(object sender,RoutedEventArgs e)=>TrackingMap.CenterOnAircraft();
+    private void OpenMapAttribution(object sender,RequestNavigateEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri){UseShellExecute=true});e.Handled=true;
     }
     private void CopyLog(object sender, RoutedEventArgs e)
     {
@@ -58,7 +76,7 @@ public partial class MainWindow : Window
     }
     private void OnClosing(object? sender, CancelEventArgs e)
     {
-        if (!model.IsBusy) {e.Cancel=!MayDiscardEdits();return;}
+        if (!model.IsBusy) {e.Cancel=!MayDiscardEdits();if(!e.Cancel){model.Tracking.Dispose();TrackingMap.Dispose();}return;}
         model.Cancel();
         e.Cancel = true;
     }
