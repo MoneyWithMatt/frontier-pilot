@@ -48,3 +48,10 @@
 - **Implemented:** start with a one-entry catalogue mapping `asobo-generic-hangar-56` to the installed Asobo generic-airport `Gen_Hangar56` library GUID. Keep the saved model keyed by the Frontier ID so later owned assets can use the same placement type.
 - **Implemented:** emit a ground-snapped `SceneryObject`/`LibraryObject` reference at scale 1. Do not copy, modify or redistribute the base model.
 - **Acceptance limit:** automated tests and local package inspection establish generation and likely availability; only Matt's MSFS test can establish visible resolution, terrain contact, apparent scale and the model's intrinsic forward axis.
+
+## True-scale footprints and foundations — 2026-09-08
+- **Implemented:** store model-local minimum/maximum right and forward bounds, not a centred preview size. Transforming the four corners preserves the MSFS placement origin and makes canvas, selection, site validation and terrain generation share one geometry source.
+- **Evidence:** derive `Gen_Hangar56` bounds from transformed accessor data in the installed LOD0 glTF payload. Do not infer size from screenshots. Preserve the source BGL hash and all LOD measurements.
+- **Implemented:** associate optional `TerrainFoundation` metadata with an asset. The current hangar uses a 2 m flat margin and 8 m falloff; generation enables polygon flattening and forced elevation and excludes secondary-heightmap roughness.
+- **Prototype datum:** use the guarded airport survey ground elevation for foundations near the airport construction datum. Refuse to imply knowledge of terrain at distant object positions; per-object elevation capture is future work.
+- **Acceptance limit:** compiler success does not prove visual terrain behaviour. Matt must confirm the building sits naturally and the feathered edge is acceptable.

@@ -11,6 +11,29 @@ namespace FrontierAirportBuilder.Tests;
 public sealed class SceneryObjectTests : TemporaryDirectoryTest
 {
     [Fact]
+    public void InstalledModelBoundsDefineTrueScaleOriginAwareFootprint()
+    {
+        var asset=SceneryAssets.GenericHangar56;var f=asset.Footprint;
+        Assert.Equal(46.18267783437614,f.WidthMeters,10);Assert.Equal(94.40472412109375,f.DepthMeters,10);
+        Assert.Equal(-2.3623965613275537,f.CentreRightMeters,10);Assert.Equal(-2.1556987304687567,f.CentreForwardMeters,10);
+        Assert.Contains("LOD0 glTF accessor bounds",asset.DimensionsProvenance);Assert.Equal(2,asset.Foundation!.MarginMeters);Assert.Equal(8,asset.Foundation.FalloffMeters);
+    }
+
+    [Fact]
+    public void FootprintUsesMetresRotatesAroundPlacementOriginAndPreservesDimensions()
+    {
+        var asset=SceneryAssets.GenericHangar56;
+        var north=new PlacedSceneryObject(1,asset.Id,100,200,0);var a=SceneryObjectGeometry.FootprintCorners(north,asset);
+        Assert.Equal(asset.Footprint.WidthMeters,TaxiwayGeometry.Distance(a[0],a[1]),9);
+        Assert.Equal(asset.Footprint.DepthMeters,TaxiwayGeometry.Distance(a[1],a[2]),9);
+        Assert.Equal(100+asset.Footprint.MinimumRightMeters,a[0].East,9);Assert.Equal(200+asset.Footprint.MinimumForwardMeters,a[0].North,9);
+        var east=north with{TrueHeadingDegrees=90};var b=SceneryObjectGeometry.FootprintCorners(east,asset);
+        Assert.Equal(100+asset.Footprint.MinimumForwardMeters,b[0].East,9);Assert.Equal(200-asset.Footprint.MinimumRightMeters,b[0].North,9);
+        Assert.True(SceneryObjectGeometry.ContainsFootprint(east,asset,SceneryObjectGeometry.TransformModelPoint(east,0,0)));
+        Assert.False(SceneryObjectGeometry.ContainsFootprint(east,asset,new(1000,1000)));
+    }
+
+    [Fact]
     public void PositionAndHeadingUseSharedLocalGeometry()
     {
         var item = new PlacedSceneryObject(1, SceneryAssets.GenericHangar56Id, 750, -320, 725);
@@ -60,6 +83,14 @@ public sealed class SceneryObjectTests : TemporaryDirectoryTest
         Assert.Equal("0",nodes[0].Attribute("alt")!.Value);Assert.Equal("90",nodes[0].Attribute("heading")!.Value);
         Assert.Equal("{FD8AA200-1485-46C7-BA8F-B9B69C31E0F7}",nodes[0].Element("LibraryObject")!.Attribute("name")!.Value);
         Assert.Equal("1",nodes[0].Element("LibraryObject")!.Attribute("scale")!.Value);
+        var foundations=root.Elements("Polygon").ToArray();Assert.Equal(2,foundations.Length);
+        var foundation=foundations[0];Assert.Equal(Fixtures.Strip.AltitudeMeters.ToString("0.###############",CultureInfo.InvariantCulture),foundation.Attribute("altitude")!.Value);
+        Assert.Equal("8",foundation.Elements("Attribute").Single(a=>(string?)a.Attribute("name")=="FlattenFalloff").Attribute("value")!.Value);
+        Assert.Equal("0",foundation.Elements("Attribute").Single(a=>(string?)a.Attribute("name")=="FlattenMode").Attribute("value")!.Value);
+        Assert.Equal("1",foundation.Elements("Attribute").Single(a=>(string?)a.Attribute("name")=="ForceElevation").Attribute("value")!.Value);
+        Assert.Equal("1",foundation.Elements("Attribute").Single(a=>(string?)a.Attribute("name")=="ExcludeSecondaryHeightmap").Attribute("value")!.Value);
+        Assert.Equal(4,foundation.Elements("Vertex").Count());
+        Assert.Equal(new[]{"Airport","Polygon","SceneryObject","Polygon","SceneryObject"},root.Elements().Select(e=>e.Name.LocalName));
     }
 
     [Fact]

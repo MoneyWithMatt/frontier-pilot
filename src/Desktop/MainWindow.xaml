@@ -61,6 +61,7 @@
 <Separator Margin="0,12"/>
 <StackPanel IsEnabled="{Binding Layout.HasObjectSelection}">
 <TextBlock Text="{Binding Layout.SelectedObjectName}" FontWeight="Bold" TextWrapping="Wrap"/>
+<TextBlock Text="{Binding Layout.SelectedObjectDetails}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,6"/>
 <Label Content="East offset (m)"/><TextBox Text="{Binding Layout.ObjectEast,UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,4"/>
 <Label Content="North offset (m)"/><TextBox Text="{Binding Layout.ObjectNorth,UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,4"/>
 <Label Content="True heading (°)"/><TextBox Text="{Binding Layout.ObjectHeading,UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,4"/>
@@ -69,7 +70,7 @@
 </StackPanel>
 </StackPanel></Grid>
 <TextBlock Text="{Binding Layout.Message}" Foreground="#A52222"/><TextBlock Text="{Binding Layout.IsDirty,StringFormat='Unsaved layout changes: {0}'}"/>
-<TextBlock Text="Apply property edits before validating. The yellow H marker is the generic Gen_Hangar56 library object. Parking, taxiways and objects follow local terrain. Taxiway surface follows the runway surface; no apron is created." FontSize="12"/>
+<TextBlock Text="Apply property edits before validating. The yellow shape is the true-scale Gen_Hangar56 footprint; its dot is the MSFS placement origin. Dashed and dotted outlines show the flat foundation and blended terrain edge. Taxiway surface follows the runway surface; no apron is created." FontSize="12"/>
 </StackPanel></Border>
 <Border Style="{StaticResource Card}"><StackPanel><TextBlock Style="{StaticResource Title}" Text="4. Build, install and fly"/><TextBlock Text="Generate and compile creates an isolated project. Install verifies the package and backs up any previous installation owned by this app. FPT1 and FPSC are protected. The full runway footprint still needs a visual terrain check."/><TextBlock Text="{Binding SuccessInstructions}" FontWeight="SemiBold" Margin="0,10"/><Expander Header="Technical log (select text to copy)"><StackPanel><WrapPanel><Button Content="Copy technical log" Click="CopyLog"/><Button Content="Save technical log…" Click="SaveLog"/></WrapPanel><TextBox Text="{Binding TechnicalLog, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="220" VerticalScrollBarVisibility="Auto"/></StackPanel></Expander></StackPanel></Border>
 </StackPanel></ScrollViewer></TabItem>

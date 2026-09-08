@@ -1,7 +1,7 @@
 # Backlog
 
 ## Next acceptance test
-- Place, persist, compile and install `Gen_Hangar56`, then check visible resolution, expected position, terrain contact and heading in MSFS. See generic-scenery-object-proof.md.
+- Rebuild the accepted `Gen_Hangar56` placement and verify the 46.2 × 94.4 m map outline, foundation elevation, rear terrain contact and 8 m blended edge in MSFS. See object-footprints-and-foundations.md.
 - Run the WPF flow in a real flight: capture a new flat site, close MSFS, compile/install a new identifier, restart and inspect both starts.
 - Exercise replacement of that new app-owned package and verify the prior version backup. Keep FPT1/FPSC untouched.
 - Verify usability at additional Windows scaling settings.
@@ -37,5 +37,5 @@ Economy, careers, settlements and multiplayer require separate design decisions 
 
 ## Current acceptance priority — 2026-09-08
 - Runway, parking, multi-point taxiway, persistence and Windows launch are accepted by Matt in MSFS (user report).
-- Next: test the generic hangar proof following generic-scenery-object-proof.md. Record Package Tool result, visible model, location, terrain fit and perceived heading. This feature has automated and UI checks only.
+- The generic hangar's position and orientation are accepted. Next: test its measured footprint and generated local terrain foundation following object-footprints-and-foundations.md.
 - Future taxiway work only after acceptance: vertex dragging, curve/turn-clearance handling, explicit junctions and complete ATC/AI runway graph. Not implemented in this task.

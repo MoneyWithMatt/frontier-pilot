@@ -1,0 +1,11 @@
+{
+  "ExitCode": 0,
+  "TimedOut": false,
+  "Validation": {
+    "Success": true,
+    "Errors": [],
+    "LayoutEntries": 8
+  },
+  "PackageDirectory": "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\generic-object-foundation-proof\\Packages\\frontier-airport-fpobj1",
+  "EvidenceDirectory": "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\generic-object-foundation-proof\\.build"
+}

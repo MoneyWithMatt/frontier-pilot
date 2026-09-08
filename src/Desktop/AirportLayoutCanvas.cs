@@ -39,8 +39,9 @@ public sealed class AirportLayoutCanvas : FrameworkElement
             foreach(var v in t.Points){var p=v.Resolve(model.Layout.Stands);extent=Math.Max(extent,2*(Math.Max(Math.Abs(p.East),Math.Abs(p.North))+t.WidthMeters));}
         foreach(var o in model.Layout.Objects)
         {
-            var a=SceneryAssets.Find(o.AssetId);var radius=a?.FootprintRadiusMeters??20;
-            extent=Math.Max(extent,2*(Math.Max(Math.Abs(o.EastMeters),Math.Abs(o.NorthMeters))+radius));
+            var a=SceneryAssets.Find(o.AssetId);if(a==null)continue;
+            foreach(var corner in SceneryObjectGeometry.FootprintCorners(o,a,a.Foundation?.MarginMeters??0))
+                extent=Math.Max(extent,2*Math.Max(Math.Abs(corner.East),Math.Abs(corner.North)));
         }
         viewport.Fit(extent+60,ActualWidth,ActualHeight);fit=false;InvalidateVisual();
     }
@@ -86,13 +87,23 @@ public sealed class AirportLayoutCanvas : FrameworkElement
         {
             var asset=SceneryAssets.Find(item.AssetId);if(asset==null)continue;
             var pos=draggingObject&&dragging==item.Number&&ghost.HasValue?ghost.Value:new LocalPoint(item.EastMeters,item.NorthMeters);
-            var center=Screen(pos);bool selected=model.Layout.SelectedObject?.Number==item.Number;
-            double width=Math.Max(8,asset.PreviewWidthMeters*viewport.PixelsPerMeter),length=Math.Max(10,asset.PreviewLengthMeters*viewport.PixelsPerMeter);
-            dc.PushTransform(new RotateTransform(item.TrueHeadingDegrees,center.X,center.Y));
-            dc.DrawRectangle(selected?Brushes.Gold:Brushes.Goldenrod,new Pen(selected?Brushes.DarkRed:Brushes.SaddleBrown,selected?2:1),new Rect(center.X-width/2,center.Y-length/2,width,length));
-            dc.DrawLine(new Pen(Brushes.DarkRed,2),center,new(center.X,center.Y-length/2));
-            dc.Pop();
-            Text(dc,$"H{item.Number}",new(center.X+5,center.Y+3),Brushes.DarkRed);
+            var displayed=item with{EastMeters=pos.East,NorthMeters=pos.North};var originPoint=Screen(pos);bool selected=model.Layout.SelectedObject?.Number==item.Number;
+            if(asset.Foundation is {} foundation)
+            {
+                void Outline(double margin,Pen pen)
+                {
+                    var outline=SceneryObjectGeometry.FootprintCorners(displayed,asset,margin).Select(Screen).ToArray();
+                    var shape=new StreamGeometry();using(var context=shape.Open()){context.BeginFigure(outline[0],false,true);context.PolyLineTo(outline.Skip(1).ToArray(),true,true);}shape.Freeze();dc.DrawGeometry(null,pen,shape);
+                }
+                Outline(foundation.MarginMeters+foundation.FalloffMeters,new Pen(Brushes.DarkSeaGreen,1){DashStyle=DashStyles.Dot});
+                Outline(foundation.MarginMeters,new Pen(Brushes.OliveDrab,1){DashStyle=DashStyles.Dash});
+            }
+            var corners=SceneryObjectGeometry.FootprintCorners(displayed,asset).Select(Screen).ToArray();
+            var geometry=new StreamGeometry();using(var context=geometry.Open()){context.BeginFigure(corners[0],true,true);context.PolyLineTo(corners.Skip(1).ToArray(),true,true);}
+            geometry.Freeze();dc.DrawGeometry(selected?Brushes.Gold:Brushes.Goldenrod,new Pen(selected?Brushes.DarkRed:Brushes.SaddleBrown,selected?2:1),geometry);
+            var forward=Screen(SceneryObjectGeometry.TransformModelPoint(displayed,0,Math.Min(25,asset.Footprint.MaximumForwardMeters)));
+            dc.DrawLine(new Pen(Brushes.DarkRed,2),originPoint,forward);dc.DrawEllipse(Brushes.DarkRed,null,originPoint,3,3);
+            Text(dc,$"H{item.Number}",new(originPoint.X+5,originPoint.Y+3),Brushes.DarkRed);
         }
         dc.DrawRectangle(Brushes.White,null,new(8,8,235,45));
         Text(dc,model.Survey==null?"Capture a survey to edit":"Fixed survey anchor • north up",new(15,12),Brushes.DarkGreen);
@@ -131,8 +142,7 @@ public sealed class AirportLayoutCanvas : FrameworkElement
         }
         var objectHit=model.Layout.Objects.Reverse().FirstOrDefault(o=>
         {
-            var asset=SceneryAssets.Find(o.AssetId);var radius=asset?.FootprintRadiusMeters??20;
-            return TaxiwayGeometry.Distance(point,new(o.EastMeters,o.NorthMeters))<=Math.Max(radius,8/viewport.PixelsPerMeter);
+            var asset=SceneryAssets.Find(o.AssetId);return asset!=null&&SceneryObjectGeometry.ContainsFootprint(o,asset,point,8/viewport.PixelsPerMeter);
         });
         if(objectHit!=null)
         {

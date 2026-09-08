@@ -1,0 +1,35 @@
+{
+  "source": "Installed read-only asobo-modellib-airport-generic generic.BGL",
+  "sourceSha256": "0185952D0B0D73C231DBD8C0DE65404F4B86FC32FE58664DC6D91AED93D261D3",
+  "modelName": "Gen_Hangar56",
+  "libraryGuid": "{FD8AA200-1485-46C7-BA8F-B9B69C31E0F7}",
+  "method": "Union of POSITION accessor min/max corners after applying each glTF scene node hierarchy transform",
+  "coordinateConvention": "metres; glTF X=right, Y=up, Z=forward",
+  "lods": [
+    {
+      "lod": 0,
+      "gltfOffset": 660092,
+      "totalLength": 213708,
+      "minimum": [-25.453735478515625, 0.000003852721469726097, -49.35806079101563],
+      "maximum": [20.728942355860518, 10.86696852709961, 45.04666333007812],
+      "dimensions": [46.18267783437614, 10.86696467437814, 94.40472412109375],
+      "centre": [-2.3623965613275537, 5.43348618991054, -2.1556987304687567]
+    },
+    {
+      "lod": 1,
+      "gltfOffset": 873808,
+      "totalLength": 32120,
+      "minimum": [-25.453735478515625, 0.000003852721469726097, -49.35806079101563],
+      "maximum": [20.4232481640625, 10.825308322906544, 45.04666333007812],
+      "dimensions": [45.876983642578125, 10.825304470185074, 94.40472412109375]
+    },
+    {
+      "lod": 2,
+      "gltfOffset": 905936,
+      "totalLength": 4108,
+      "minimum": [-25.45379641171875, 0.00000429153442, -49.35818481757813],
+      "maximum": [20.423171972070314, 10.82530832290649, 44.93875121757812],
+      "dimensions": [45.87696838378906, 10.82530403137207, 94.29693603515625]
+    }
+  ]
+}

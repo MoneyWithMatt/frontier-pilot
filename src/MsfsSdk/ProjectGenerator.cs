@@ -107,6 +107,21 @@ public static class ProjectGenerator
         {
             var asset = SceneryAssets.Find(item.AssetId) ?? throw new ArgumentException($"Unsupported scenery asset '{item.AssetId}'.");
             var placement = SceneryObjectGeometry.Calculate(definition, item);
+            if(asset.Foundation is {} foundation)
+            {
+                var polygon=new XElement("Polygon",new XAttribute("displayName",$"Frontier foundation H{item.Number}"),
+                    new XAttribute("altitude",Number(definition.AltitudeMeters)),
+                    new XElement("Attribute",new XAttribute("name","FlattenFalloff"),new XAttribute("guid","{5548FDB5-2267-4328-8E6F-FD0A45ADEC8F}"),new XAttribute("type","FLOAT32"),new XAttribute("value",Number(foundation.FalloffMeters))),
+                    new XElement("Attribute",new XAttribute("name","FlattenMode"),new XAttribute("guid","{065E9D4D-6984-4D2A-91FD-3C33C4F53B22}"),new XAttribute("type","UINT8"),new XAttribute("value","0")),
+                    new XElement("Attribute",new XAttribute("name","ExcludeSecondaryHeightmap"),new XAttribute("guid","{10AC14E9-4656-4480-AA8C-3563EE6D127F}"),new XAttribute("type","UINT8"),new XAttribute("value",foundation.ExcludeSecondaryHeightmap?"1":"0")),
+                    new XElement("Attribute",new XAttribute("name","ForceElevation"),new XAttribute("guid","{9460843D-964B-4E45-AC49-634856FB6E1C}"),new XAttribute("type","UINT8"),new XAttribute("value","1")));
+                foreach(var corner in SceneryObjectGeometry.FootprintCorners(item,asset,foundation.MarginMeters))
+                {
+                    var vertex=LocalCoordinates.ToGeographic(new(definition.Latitude,definition.Longitude),corner);
+                    polygon.Add(new XElement("Vertex",new XAttribute("lat",Number(vertex.Latitude)),new XAttribute("lon",Number(vertex.Longitude))));
+                }
+                airportXml.Root!.Add(polygon);
+            }
             airportXml.Root!.Add(new XElement("SceneryObject",
                 new XAttribute("lat", Number(placement.Position.Latitude)),
                 new XAttribute("lon", Number(placement.Position.Longitude)),

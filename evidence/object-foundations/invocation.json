@@ -1,0 +1,14 @@
+{
+  "Executable": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK\\Tools\\bin\\fspackagetool.exe",
+  "WorkingDirectory": "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\generic-object-foundation-proof",
+  "Arguments": [
+    "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\generic-object-foundation-proof\\AirportProject.xml",
+    "-nopause"
+  ],
+  "SdkRoot": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK",
+  "SdkVersion": "1.2.4",
+  "ToolSHA256": "34C4D1D8BA46ED9B1F60BC4626649AD9FE582D026C3023BAD884BE0A85A93970",
+  "MSFS2024_SDK": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK\\",
+  "StartedUtc": "2026-09-08T08:42:59.6300951+00:00",
+  "TimeoutSeconds": 180
+}
