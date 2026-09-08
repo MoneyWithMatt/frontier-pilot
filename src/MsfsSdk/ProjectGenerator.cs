@@ -60,10 +60,10 @@ public static class ProjectGenerator
         {
             var placement = ParkingGeometry.Calculate(definition, stand);
             airport.Add(new XElement("TaxiwayParking",
-                new XAttribute("index", stand.Number), new XAttribute("type", "RAMP_GA_SMALL"),
+                new XAttribute("index", stand.Number), new XAttribute("type", stand.Type.ToString()),
                 new XAttribute("lat", Number(placement.Position.Latitude)), new XAttribute("lon", Number(placement.Position.Longitude)),
                 new XAttribute("heading", Number(placement.TrueHeadingDegrees)), new XAttribute("radius", Number(stand.RadiusMeters)),
-                new XAttribute("name", "PARKING"), new XAttribute("number", stand.Number), new XAttribute("suffix", "NONE"),
+                new XAttribute("name", stand.Name.ToString()), new XAttribute("number", stand.Number), new XAttribute("suffix", "NONE"),
                 new XAttribute("numberMarking", "FALSE"), new XAttribute("has3DMesh", "FALSE")));
         }
         var material = LoadXml("PackageSources.materials.frontier-asphalt.material");
@@ -125,4 +125,5 @@ public static class ProjectGenerator
         document.Save(writer);
     }
 }
+
 

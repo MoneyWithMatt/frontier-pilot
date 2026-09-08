@@ -26,6 +26,17 @@ public partial class MainWindow : Window
         try { await DiagnosticLog.SaveNewAsync(dialog.FileName, model.TechnicalLog); }
         catch (Exception error) { model.ReportLogFailure(error); }
     }
+    private void FitLayout(object sender,RoutedEventArgs e)=>LayoutCanvas.Fit();
+    private async void SaveLayout(object sender,RoutedEventArgs e)
+    {
+        var dialog=new Microsoft.Win32.SaveFileDialog {FileName="airport-layout.json",Filter="Layout JSON|*.json"};
+        if(dialog.ShowDialog(this)==true)await model.SaveLayoutAsync(dialog.FileName);
+    }
+    private async void LoadLayout(object sender,RoutedEventArgs e)
+    {
+        var dialog=new Microsoft.Win32.OpenFileDialog {Filter="Layout JSON|*.json"};
+        if(dialog.ShowDialog(this)==true)await model.LoadLayoutAsync(dialog.FileName);
+    }
     private void OnClosing(object? sender, CancelEventArgs e)
     {
         if (!model.IsBusy) return;
@@ -33,3 +44,4 @@ public partial class MainWindow : Window
         e.Cancel = true;
     }
 }
+

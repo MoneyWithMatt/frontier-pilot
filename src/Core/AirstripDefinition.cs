@@ -37,7 +37,7 @@ public sealed record AirstripDefinition
         CheckRange(WidthMeters, 1, 500, nameof(WidthMeters), errors);
         if (WidthMeters >= LengthMeters) errors.Add("WidthMeters must be smaller than LengthMeters.");
         if (!Enum.IsDefined(Surface)) errors.Add("Unsupported runway surface.");
-        errors.AddRange(ParkingGeometry.Validate(ParkingStands, LengthMeters, WidthMeters));
+        errors.AddRange(ParkingGeometry.Validate(ParkingStands, LengthMeters, WidthMeters, TrueHeadingDegrees));
         return errors;
     }
 
@@ -53,4 +53,5 @@ public sealed record AirstripDefinition
             errors.Add($"{name} must be finite and in [{minimum}, {maximum}].");
     }
 }
+
 

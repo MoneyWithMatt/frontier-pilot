@@ -23,34 +23,18 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
     private bool busy, checkedReady, siteConfirmed;
     private string sdkRoot, airportName = "", identifier = "", length = "200", width = "20", status = "Check prerequisites to begin.", error = "", activity = "";
     private RunwaySurface surface = RunwaySurface.Dirt;
-    private readonly ObservableCollection<ParkingStandInput> parking = [];
-    public ReadOnlyObservableCollection<ParkingStandInput> ParkingStands { get; }
-    public ParkingStandInput? SelectedParking { get; set; }
+    public LayoutEditor Layout { get; }
     public ActionCommand AddParkingCommand { get; }
     public ActionCommand RemoveParkingCommand { get; }
-    public double ParkingScale
-    {
-        get
-        {
-            try {
-                var d=Definition();
-                var stands=d.ParkingStands;
-                double extentX=Math.Max(d.WidthMeters/2,stands.Select(s=>Math.Abs(s.RightMeters)+s.RadiusMeters).DefaultIfEmpty(0).Max());
-                double extentY=Math.Max(d.LengthMeters/2,stands.Select(s=>Math.Abs(s.ForwardMeters)+s.RadiusMeters).DefaultIfEmpty(0).Max());
-                return double.IsFinite(extentX+extentY) && extentX>0 && extentY>0 ? Math.Min(100/extentX,100/extentY) : 1;
-            } catch { return 1; }
-        }
-    }
-    public double ParkingRunwayWidth { get { try { var w=Definition().WidthMeters;return double.IsFinite(w)?Math.Clamp(w*ParkingScale,1,200):20; } catch { return 20; } } }
-    public double ParkingRunwayLength { get { try { var l=Definition().LengthMeters;return double.IsFinite(l)?Math.Clamp(l*ParkingScale,1,200):200; } catch { return 200; } } }
-    public IReadOnlyList<ParkingPreviewItem> ParkingPreview
-    {
-        get {
-            try { var d=Definition(); if(d.Validate().Count!=0)return []; return d.ParkingStands.Where(s=>new[]{s.RightMeters,s.ForwardMeters,s.RadiusMeters,s.FacingOffsetDegrees}.All(double.IsFinite) && s.RadiusMeters>0)
-                .Select(s=>new ParkingPreviewItem(s.Number,120+(s.RightMeters-s.RadiusMeters)*ParkingScale,120-(s.ForwardMeters+s.RadiusMeters)*ParkingScale,2*s.RadiusMeters*ParkingScale,Headings.Normalize(s.FacingOffsetDegrees))).ToArray(); }
-            catch { return []; }
-        }
-    }
+    public ActionCommand UndoLayoutCommand { get; }
+    public ActionCommand RedoLayoutCommand { get; }
+    public ActionCommand RotateLeftCommand { get; }
+    public ActionCommand RotateRightCommand { get; }
+    public ActionCommand ApplyParkingCommand { get; }
+    public double LayoutRunwayHeading => Survey?.TrueHeadingDegrees ?? 0;
+    public double LayoutRunwayLength => double.TryParse(length,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 200;
+    public double LayoutRunwayWidth => double.TryParse(width,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 20;
+    public bool CanLayout => !busy && Survey!=null;
     public SurveyPoint? Survey { get; private set; }
     public BuiltAirport? Built { get; private set; }
     public string InstalledPath { get; private set; } = "";
@@ -70,19 +54,26 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
     public BuilderViewModel(IBuilderServices services, string sdkRoot)
     {
         this.services = services; this.sdkRoot = sdkRoot;
-        ParkingStands = new(parking);
-        AddParkingCommand = new(AddParking,()=>!busy && Survey!=null && parking.Count<8);
-        RemoveParkingCommand = new(RemoveParking,()=>!busy && parking.Count>0);
+        Layout = new(()=>CanLayout);
+        Layout.Edited += (_,_)=>Invalidate();
+        AddParkingCommand = new(()=>AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading)),()=>CanLayout&&Layout.Stands.Count<8);
+        RemoveParkingCommand = new(Layout.Delete,()=>CanLayout&&Layout.Selected!=null);
+        UndoLayoutCommand = new(Layout.Undo,()=>Layout.CanUndo);
+        RedoLayoutCommand = new(Layout.Redo,()=>Layout.CanRedo);
+        RotateLeftCommand = new(()=>Layout.Rotate(-15),()=>Layout.HasSelection);
+        RotateRightCommand = new(()=>Layout.Rotate(15),()=>Layout.HasSelection);
+        ApplyParkingCommand = new(Layout.Apply,()=>Layout.HasSelection);
         CheckCommand = new(() => _ = CheckAsync(), () => !IsBusy);
         CaptureCommand = new(() => _ = CaptureAsync(), () => !IsBusy && checkedReady);
         ValidateCommand = new(() => _ = ValidateAsync(), () => !IsBusy && Survey != null && ValidationMessage == "");
-        BuildCommand = new(() => _ = BuildAsync(), () => !IsBusy && EffectiveState == WorkflowState.Validated);
+        BuildCommand = new(() => _ = BuildAsync(), () => !IsBusy && EffectiveState == WorkflowState.Validated && !Layout.HasPendingProperties);
         InstallCommand = new(() => _ = InstallAsync(), () => !IsBusy && EffectiveState == WorkflowState.Built && Built != null);
         CancelCommand = new(Cancel, () => IsBusy);
         OpenProjectCommand = new(() => Open(services.ProjectDirectory), () => !IsBusy && services.ProjectDirectory != "");
         OpenPackageCommand = new(() => Open(Built?.PackageDirectory ?? ""), () => !IsBusy && Built != null);
         OpenLogCommand = new(() => Open(services.LogPath), () => !IsBusy && services.LogPath != "");
         OpenEvidenceCommand = new(() => Open(services.EvidenceDirectory), () => !IsBusy && services.EvidenceDirectory != "");
+        Layout.PropertyChanged += (_,_)=> { Changed(nameof(Layout)); Changed(nameof(ValidationMessage)); BuildCommand.Refresh(); ValidateCommand.Refresh(); foreach(var c in new[]{RemoveParkingCommand,UndoLayoutCommand,RedoLayoutCommand,RotateLeftCommand,RotateRightCommand,ApplyParkingCommand})c.Refresh(); };
         Append(ModeDescription);
     }
     public ActionCommand CheckCommand { get; }
@@ -123,6 +114,7 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
         get
         {
             var errors = new List<string>();
+            if(Layout.HasPendingProperties)errors.Add("Apply or revert the parking property edits before validating or building.");
             if (Survey is null) errors.Add("Capture your runway centre first.");
             else if (SurveyCapture.ValidatePoint(Survey) is { } problem) errors.Add(problem);
             try { var d = Definition(); errors.AddRange(d.Validate().Select(e => e.StartsWith("Name must") ? "Enter an airport name of 1–48 characters without leading or trailing spaces; emoji are not supported." : e)); if (d.Identifier is "FPT1" or "FPSC") errors.Add("FPT1 and FPSC are preserved. Choose a new identifier."); }
@@ -141,24 +133,32 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
             throw new ArgumentException("Enter length and width in metres using numbers (for example 200 and 20).");
         return new() { Name = airportName, Identifier = identifier, Latitude = Survey?.Latitude ?? 0, Longitude = Survey?.Longitude ?? 0,
             AltitudeMeters = Survey?.AltitudeMeters ?? 0, TrueHeadingDegrees = Survey?.TrueHeadingDegrees ?? 0,
-            MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface, ParkingStands = parking.Select(p=>p.ToDefinition()).ToArray() };
+            MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface, ParkingStands = Layout.Stands.ToArray() };
     }
-    private void AddParking()
+    public void AddParkingAt(LocalPoint point) { if(CanLayout)Layout.Add(point,LayoutRunwayHeading); }
+    private void ClearParking() => Layout.Reset();
+    public async Task SaveLayoutAsync(string path)
     {
-        if(busy||Survey==null||parking.Count>=8)return;
-        int number=Enumerable.Range(1,99).First(n=>parking.All(p=>p.Number!=n));
-        double runwayWidth=double.TryParse(width,NumberStyles.Float,CultureInfo.InvariantCulture,out var w)&&double.IsFinite(w)?w:20;
-        var item=new ParkingStandInput(number,()=>!busy,runwayWidth/2+25) { Forward = (parking.Count*30).ToString(CultureInfo.InvariantCulture) };
-        item.PropertyChanged += ParkingChanged; parking.Add(item);SelectedParking=item;Invalidate();
+        if(!CanLayout)return;
+        await Run("Save layout",async token=>{
+            if(Layout.HasPendingProperties)throw new IOException("Apply property edits before saving the layout.");
+            var d=Definition();d.EnsureValid();
+            var snapshot=new LayoutSnapshot(1,Survey!,d.LengthMeters,d.WidthMeters,d.ParkingStands);
+            await LayoutFiles.SaveNewAsync(path,snapshot);
+            Layout.MarkSaved(snapshot.ParkingStands);status="Layout saved. Future edits require validation and a new build.";
+        });
     }
-    private void RemoveParking()
+    public async Task LoadLayoutAsync(string path)
     {
-        if(busy||parking.Count==0)return;
-        var item=SelectedParking ?? parking[^1];
-        item.PropertyChanged -= ParkingChanged;parking.Remove(item);SelectedParking=null;Invalidate();
+        if(!CanLayout)return;
+        LayoutSnapshot? loaded=null;
+        await Run("Load layout",async token=>{
+            var file=await LayoutFiles.ReadAsync(path);
+            LayoutFiles.ValidateForAnchor(file,Survey!,LayoutRunwayLength,LayoutRunwayWidth);
+            loaded=file;
+        });
+        if(loaded!=null) {Layout.Replace(loaded.ParkingStands);Invalidate();Layout.MarkSaved(loaded.ParkingStands);status="Layout loaded for this survey. Validate before building.";Refresh();}
     }
-    private void ParkingChanged(object? sender,PropertyChangedEventArgs e) => Invalidate();
-    private void ClearParking() { foreach(var item in parking)item.PropertyChanged-=ParkingChanged;parking.Clear();SelectedParking=null; }
     private void SetState(WorkflowState value) { State = value; RecoveryState = value; }
     private void Invalidate() { Built = null; InstalledPath = ""; error = ""; SetState(Survey != null ? WorkflowState.SurveyCaptured : checkedReady ? WorkflowState.ReadyToSurvey : WorkflowState.Disconnected); Refresh(); }
     public Task CheckAsync()
@@ -227,9 +227,13 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
     private void Refresh()
     {
-        Changed("");
-        foreach (var c in new[] { AddParkingCommand, RemoveParkingCommand, CheckCommand, CaptureCommand, ValidateCommand, BuildCommand, InstallCommand, CancelCommand, OpenProjectCommand, OpenPackageCommand, OpenLogCommand, OpenEvidenceCommand }) c.Refresh();
+        Changed(""); Layout.Notify();
+        foreach (var c in new[] { AddParkingCommand, RemoveParkingCommand, UndoLayoutCommand, RedoLayoutCommand, RotateLeftCommand, RotateRightCommand, ApplyParkingCommand, CheckCommand, CaptureCommand, ValidateCommand, BuildCommand, InstallCommand, CancelCommand, OpenProjectCommand, OpenPackageCommand, OpenLogCommand, OpenEvidenceCommand }) c.Refresh();
     }
 }
+
+
+
+
 
 
