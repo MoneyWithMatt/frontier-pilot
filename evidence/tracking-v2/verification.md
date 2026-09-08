@@ -9,5 +9,5 @@ Date: 2026-09-08
 - Full Release test suite: 334 passed, 0 failed.
 - Full Release solution build: 0 warnings, 0 errors.
 - Windows x64 self-contained publish completed to an isolated validation directory; a dry-run UI smoke remained healthy until the test process was closed.
-- The stable `dist\FrontierPilot` replacement was deliberately deferred because that published executable was already running; it was not terminated in case it held unsaved user work.
+- After Matt closed the prior application, `scripts\Publish-Development.ps1 -CreateDesktopShortcut` atomically replaced the stable self-contained build at `dist\FrontierPilot\FrontierPilot.exe` and refreshed `Desktop\Frontier Pilot.lnk`. SHA256: `B8DA2D73E2A703FE86A848F4118E95999430568A5FD5A7F4C1736931BF788C3A`. The published dry-run UI remained running during its smoke interval and only that test process was then closed.
 - Live V2 Tracking map integration awaits Matt's manual seated/walk/return acceptance. No new simulator session was required to implement or test the read-only boundaries.
