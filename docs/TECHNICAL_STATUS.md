@@ -50,3 +50,7 @@ Delete Airport uses a two-step preview/confirmation and verifies saved revision,
 ## Development distribution — 2026-09-08
 
 The Desktop project publishes as `dist\FrontierPilot\FrontierPilot.exe`, a Windows x64 self-contained single-file application. The stable path supports a user-level Desktop or Start Menu shortcut and does not alter normal build/debug outputs. The generated runtime is intentionally ignored by Git and recreated through `scripts\Publish-Development.ps1`. See [development-distribution.md](development-distribution.md) and evidence/development-distribution/.
+
+## Taxiway compiler regression — 2026-09-08
+
+The first NTA1 live Package Tool build exposed that generated TaxiwayPath elements lacked compiler-required `weightLimit`. Package Tool returned zero but rejected each segment, so no BGL or layout was created; persistence's managed project path and PackageValidator's layout location were correct. The generator now emits the official-sample value `weightLimit="0"`. A fresh copy of the exact NTA1 definition passed SDK 1.2.4 Package Tool validation with a real BGL and eight-entry layout. Visual simulator acceptance remains with Matt. See evidence/taxiway-build-regression/.

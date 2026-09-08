@@ -52,12 +52,21 @@ public sealed class TaxiwayTests : TemporaryDirectoryTest
         Assert.Equal("1",(string?)paths[2].Attribute("end"));Assert.Equal("PARKING",(string?)paths[2].Attribute("type"));
         Assert.Equal((string?)paths[1].Attribute("end"),(string?)paths[3].Attribute("start"));
         Assert.All(paths,p=>Assert.Equal((string?)xml.Descendants("Runway").Single().Attribute("surface"),(string?)p.Attribute("surface")));
+        Assert.All(paths,p=>Assert.Equal("0",(string?)p.Attribute("weightLimit")));
         Assert.All(points,p=>Assert.Null(p.Attribute("alt")));
         var baseline=XDocument.Parse(Generate(d with{Taxiways=[]},"baseline"));
         Assert.True(XNode.DeepEquals(baseline.Descendants("Runway").Single(),xml.Descendants("Runway").Single()));
         Assert.True(XNode.DeepEquals(baseline.Descendants("TaxiwayParking").Single(),xml.Descendants("TaxiwayParking").Single()));
         var children=xml.Root!.Element("Airport")!.Elements().Select(e=>e.Name.LocalName).ToList();
         Assert.True(children.LastIndexOf("TaxiwayPoint")<children.IndexOf("TaxiwayParking"));Assert.True(children.IndexOf("TaxiwayParking")<children.IndexOf("TaxiName"));Assert.True(children.LastIndexOf("TaxiName")<children.IndexOf("TaxiwayPath"));
+    }
+    [Fact] public void EverySegmentCarriesCompilerRequiredUnlimitedWeightLimit()
+    {
+        var points=Enumerable.Range(0,10).Select(i=>new TaxiwayVertex(i*100,i*25)).ToArray();
+        var definition=Strip with{Taxiways=[new(1,"T1",12,points)]};
+        var project=ProjectGenerator.Generate(definition,Path.Combine(Root,"weight-limit"));
+        var paths=XDocument.Load(Path.Combine(project.Directory,"PackageSources/data/airport.xml")).Descendants("TaxiwayPath").ToArray();
+        Assert.Equal(9,paths.Length);Assert.All(paths,path=>Assert.Equal("0",path.Attribute("weightLimit")?.Value));
     }
     [Theory][InlineData(0)][InlineData(61)][InlineData(double.NaN)]
     public void InvalidWidthRefusedBeforeWrites(double width)=>Reject(Strip with{Taxiways=[Strip.Taxiways[0] with{WidthMeters=width}]});

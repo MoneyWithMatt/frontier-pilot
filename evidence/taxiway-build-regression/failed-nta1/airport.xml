@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FSData version="9.0">
+  <Airport name="Test Airport" ident="NTA1" lat="-22.6517136493759" lon="14.6449620840185" alt="78.7691042087972" magvar="12.5696142050474">
+    <Runway lat="-22.6517136493759" lon="14.6449620840185" alt="78.7691042087972" surface="{DDF9E526-6FCA-7196-7219-D204BAE0DE9E}" heading="82.7657094375376" length="1000" width="20" number="10" designator="NONE" primaryTakeoff="YES" primaryLanding="YES" secondaryTakeoff="YES" secondaryLanding="YES" groundMerging="TRUE">
+      <RunwayStart end="PRIMARY" lat="-22.6522821513794" lon="14.6401362030722" alt="78.7691042087972" heading="82.7675680435908" />
+      <RunwayStart end="SECONDARY" lat="-22.6511450020355" lon="14.6497879252227" alt="78.7691042087972" heading="262.763850890986" />
+    </Runway>
+    <TaxiwayPoint index="100" type="NORMAL" lat="-22.6522785606013" lon="14.640166688347" />
+    <TaxiwayPoint index="101" type="NORMAL" lat="-22.6508027916145" lon="14.6426420251232" />
+    <TaxiwayPoint index="102" type="NORMAL" lat="-22.6504936273586" lon="14.6435164224159" />
+    <TaxiwayPoint index="103" type="NORMAL" lat="-22.6503519288719" lon="14.6449043464408" />
+    <TaxiwayPoint index="104" type="NORMAL" lat="-22.6501586814814" lon="14.6470278650383" />
+    <TaxiwayPoint index="105" type="NORMAL" lat="-22.650171547494" lon="14.6480410473627" />
+    <TaxiwayPoint index="106" type="NORMAL" lat="-22.6501972948905" lon="14.6488321628997" />
+    <TaxiwayPoint index="107" type="NORMAL" lat="-22.650377636112" lon="14.649248544794" />
+    <TaxiwayPoint index="108" type="NORMAL" lat="-22.6505193350146" lon="14.6494706170684" />
+    <TaxiwayPoint index="109" type="NORMAL" lat="-22.6511516881765" lon="14.6497311904998" />
+    <TaxiwayParking index="1" type="RAMP_GA_SMALL" lat="-22.6500827271215" lon="14.6460842107543" heading="82.7657094375376" radius="10" name="PARKING" number="1" suffix="NONE" numberMarking="FALSE" has3DMesh="FALSE" />
+    <TaxiwayParking index="2" type="RAMP_GA_SMALL" lat="-22.6500478473127" lon="14.6464187272338" heading="82.7657094375376" radius="10" name="PARKING" number="2" suffix="NONE" numberMarking="FALSE" has3DMesh="FALSE" />
+    <TaxiName index="1" name="T1" />
+    <TaxiwayPath start="100" end="101" type="TAXI" name="1" width="12" surface="{DDF9E526-6FCA-7196-7219-D204BAE0DE9E}" drawSurface="TRUE" drawDetail="TRUE" centerLine="FALSE" centerLineLighted="FALSE" leftEdge="NONE" rightEdge="NONE" groundMerging="TRUE" excludeVegetationInside="TRUE" excludeVegetationAround="TRUE" />
+    <TaxiwayPath start="101" end="102" type="TAXI" name="1" width="12" surface="{DDF9E526-6FCA-7196-7219-D204BAE0DE9E}" drawSurface="TRUE" drawDetail="TRUE" centerLine="FALSE" centerLineLighted="FALSE" leftEdge="NONE" rightEdge="NONE" groundMerging="TRUE" excludeVegetationInside="TRUE" excludeVegetationAround="TRUE" />
+    <TaxiwayPath start="102" end="103" type="TAXI" name="1" width="12" surface="{DDF9E526-6FCA-7196-7219-D204BAE0DE9E}" drawSurface="TRUE" drawDetail="TRUE" centerLine="FALSE" centerLineLighted="FALSE" leftEdge="NONE" rightEdge="NONE" groundMerging="TRUE" excludeVegetationInside="TRUE" excludeVegetationAround="TRUE" />
+    <TaxiwayPath start="103" end="104" type="TAXI" name="1" width="12" surface="{DDF9E526-6FCA-7196-7219-D204BAE0DE9E}" drawSurface="TRUE" drawDetail="TRUE" centerLine="FALSE" centerLineLighted="FALSE" leftEdge="NONE" rightEdge="NONE" groundMerging="TRUE" excludeVegetationInside="TRUE" excludeVegetationAround="TRUE" />
+    <TaxiwayPath start="104" end="105" type="TAXI" name="1" width="12" surface="{DDF9E526-6FCA-7196-7219-D204BAE0DE9E}" drawSurface="TRUE" drawDetail="TRUE" centerLine="FALSE" centerLineLighted="FALSE" leftEdge="NONE" rightEdge="NONE" groundMerging="TRUE" excludeVegetationInside="TRUE" excludeVegetationAround="TRUE" />
+    <TaxiwayPath start="105" end="106" type="TAXI" name="1" width="12" surface="{DDF9E526-6FCA-7196-7219-D204BAE0DE9E}" drawSurface="TRUE" drawDetail="TRUE" centerLine="FALSE" centerLineLighted="FALSE" leftEdge="NONE" rightEdge="NONE" groundMerging="TRUE" excludeVegetationInside="TRUE" excludeVegetationAround="TRUE" />
+    <TaxiwayPath start="106" end="107" type="TAXI" name="1" width="12" surface="{DDF9E526-6FCA-7196-7219-D204BAE0DE9E}" drawSurface="TRUE" drawDetail="TRUE" centerLine="FALSE" centerLineLighted="FALSE" leftEdge="NONE" rightEdge="NONE" groundMerging="TRUE" excludeVegetationInside="TRUE" excludeVegetationAround="TRUE" />
+    <TaxiwayPath start="107" end="108" type="TAXI" name="1" width="12" surface="{DDF9E526-6FCA-7196-7219-D204BAE0DE9E}" drawSurface="TRUE" drawDetail="TRUE" centerLine="FALSE" centerLineLighted="FALSE" leftEdge="NONE" rightEdge="NONE" groundMerging="TRUE" excludeVegetationInside="TRUE" excludeVegetationAround="TRUE" />
+    <TaxiwayPath start="108" end="109" type="TAXI" name="1" width="12" surface="{DDF9E526-6FCA-7196-7219-D204BAE0DE9E}" drawSurface="TRUE" drawDetail="TRUE" centerLine="FALSE" centerLineLighted="FALSE" leftEdge="NONE" rightEdge="NONE" groundMerging="TRUE" excludeVegetationInside="TRUE" excludeVegetationAround="TRUE" />
+  </Airport>
+</FSData>

@@ -6,7 +6,8 @@ using FrontierAirportBuilder.MsfsSdk;
 var json = new JsonSerializerOptions
 {
     PropertyNameCaseInsensitive = true, WriteIndented = true, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
-    Converters = { new JsonStringEnumConverter<RunwaySurface>(allowIntegerValues: false) }
+    // Airstrip JSON now contains runway, parking and taxiway enum values.
+    Converters = { new JsonStringEnumConverter(allowIntegerValues: false) }
 };
 try
 {

@@ -1,0 +1,44 @@
+{
+  "content": [
+    {
+      "path": "bglindex.bout",
+      "size": 645,
+      "date": 134333258790017058
+    },
+    {
+      "path": "contentinfo/frontier-airport-nta1/contenthistory.json",
+      "size": 145,
+      "date": 134333258790000000
+    },
+    {
+      "path": "contentinfo/frontier-airport-nta1/thumbnail.jpg",
+      "size": 35560,
+      "date": 134333258790000000
+    },
+    {
+      "path": "materiallibs/frontier-airport-nta1/library.xml",
+      "size": 1704,
+      "date": 134333258790000004
+    },
+    {
+      "path": "materiallibs/frontier-airport-nta1/textures/frontierdirt_albedo.png.ktx2",
+      "size": 87968,
+      "date": 134333258790000007
+    },
+    {
+      "path": "materiallibs/frontier-airport-nta1/textures/frontierdirt_albedo.png.ktx2.flags",
+      "size": 39,
+      "date": 134333258790000007
+    },
+    {
+      "path": "materiallibs/frontier-airport-nta1/textures/frontierdirt_albedo.png.ktx2.json",
+      "size": 232,
+      "date": 134333258790000007
+    },
+    {
+      "path": "scenery/frontier/airport.bgl",
+      "size": 1195,
+      "date": 134333258790000006
+    }
+  ]
+}

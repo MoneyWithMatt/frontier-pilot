@@ -1,0 +1,31 @@
+<RPTErrors>
+	<RPTError>
+		<Package Name="frontier-airport-nta1"/>
+		<Locations>
+			<Location Message="PackageBuilder | EndExecuteCommandsForPackage : Failed to build package frontier-airport-nta1" Source=":0"/>
+		</Locations>
+		<AttachedErrors>
+			<RPTError>
+				<Package Name="frontier-airport-nta1"/>
+				<Locations>
+					<Location Message="PackageBuilder | Package 'frontier-airport-nta1' have encountered errors during _EndTreatCommands. See attached" Source=":0"/>
+				</Locations>
+				<AttachedErrors>
+					<RPTError>
+						<Locations>
+							<Location Message="BGLCompiler | CompileMemory failed" Source=":0"/>
+						</Locations>
+					</RPTError>
+					<RPTError>
+						<File Path="c:\users\mattr\appdata\local\frontierairportbuilder\desktop\projects\73c9f4109ba947a6\Packages\frontier-airport-nta1\scenery\frontier\airport.bgl"/>
+						<Package Name="frontier-airport-nta1"/>
+						<Locations>
+							<Location Message="PackageBuilder | Output path does not exist: c:\users\mattr\appdata\local\frontierairportbuilder\desktop\projects\73c9f4109ba947a6\Packages\frontier-airport-nta1\scenery\frontier\airport.bgl" Source=":0"/>
+						</Locations>
+					</RPTError>
+				</AttachedErrors>
+			</RPTError>
+		</AttachedErrors>
+	</RPTError>
+</RPTErrors>
+

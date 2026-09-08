@@ -1,0 +1,14 @@
+{
+  "ExitCode": 0,
+  "TimedOut": false,
+  "Validation": {
+    "Success": false,
+    "Errors": [
+      "The simulator wrote errors to BuilderLogError.txt during this build.",
+      "Package metadata is missing or invalid: Could not find file \u0027C:\\Users\\mattr\\AppData\\Local\\FrontierAirportBuilder\\desktop\\projects\\73c9f4109ba947a6\\Packages\\frontier-airport-nta1\\layout.json\u0027."
+    ],
+    "LayoutEntries": 0
+  },
+  "PackageDirectory": "C:\\Users\\mattr\\AppData\\Local\\FrontierAirportBuilder\\desktop\\projects\\73c9f4109ba947a6\\Packages\\frontier-airport-nta1",
+  "EvidenceDirectory": "C:\\Users\\mattr\\AppData\\Local\\FrontierAirportBuilder\\desktop\\projects\\73c9f4109ba947a6\\.build"
+}

@@ -1,0 +1,10 @@
+  Determining projects to restore...
+  Restored C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Workflow\FrontierAirportBuilder.Workflow.csproj (in 93 ms).
+  Restored C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\MsfsSdk\FrontierAirportBuilder.MsfsSdk.csproj (in 93 ms).
+  Restored C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Core\FrontierAirportBuilder.Core.csproj (in 89 ms).
+  Restored C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Desktop\FrontierAirportBuilder.Desktop.csproj (in 631 ms).
+  FrontierAirportBuilder.Core -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Core\bin\Release\net8.0\FrontierAirportBuilder.Core.dll
+  FrontierAirportBuilder.MsfsSdk -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\MsfsSdk\bin\Release\net8.0\FrontierAirportBuilder.MsfsSdk.dll
+  FrontierAirportBuilder.Workflow -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Workflow\bin\Release\net8.0\FrontierAirportBuilder.Workflow.dll
+  FrontierAirportBuilder.Desktop -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Desktop\bin\Release\net8.0-windows\win-x64\FrontierPilot.dll
+  FrontierAirportBuilder.Desktop -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\dist\.pending-taxiway-fix\

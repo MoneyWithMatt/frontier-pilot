@@ -79,6 +79,9 @@ public static class ProjectGenerator
                 paths.Add(new XElement("TaxiwayPath",new XAttribute("start",Node(a)),new XAttribute("end",Node(b)),
                     new XAttribute("type",a.ParkingNumber!=null||b.ParkingNumber!=null?"PARKING":"TAXI"),
                     new XAttribute("name",taxiway.Number),new XAttribute("width",Number(taxiway.WidthMeters)),
+                    // SDK 1.2.4's BGL compiler requires this even though the 2024 XML reference labels it optional.
+                    // Zero is the documented unlimited-aircraft value used by the installed official airport sample.
+                    new XAttribute("weightLimit","0"),
                     new XAttribute("surface",materialGuid),new XAttribute("drawSurface","TRUE"),new XAttribute("drawDetail","TRUE"),
                     new XAttribute("centerLine",definition.Surface==RunwaySurface.Asphalt?"TRUE":"FALSE"),
                     new XAttribute("centerLineLighted","FALSE"),new XAttribute("leftEdge","NONE"),new XAttribute("rightEdge","NONE"),

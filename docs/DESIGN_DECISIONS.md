@@ -38,3 +38,7 @@
 - **Implemented:** publish Windows x64 self-contained and single-file to a stable repository-local `dist\FrontierPilot` path. This avoids a machine-wide .NET runtime dependency while preserving ordinary source builds.
 - **Implemented:** a user-level shortcut points to the stable path. Republishing stages a complete output before replacing the previous distribution; it does not touch airport data.
 - **Deferred:** signed installer, updater, SDK bootstrap/distribution, uninstall/repair and release channels belong to customer distribution work.
+
+## Taxiway compiler correction — 2026-09-08
+- **Implemented:** emit `weightLimit="0"` on every TaxiwayPath. This matches the installed official sample, permits all aircraft weights and satisfies the stricter SDK 1.2.4 BGL compiler.
+- **Implemented:** keep missing layout/BGL validation strict, while surfacing the first current Package Tool error so a downstream missing-layout message is not mistaken for the root cause.

@@ -11,7 +11,14 @@ public static class PackageValidator
         var errors = new List<string>();
         if (exitCode != 0) errors.Add($"Package Tool exited with code {exitCode}.");
         if (timedOut) errors.Add("Package Tool timed out or was cancelled; check for a remaining simulator process.");
-        if (!string.IsNullOrWhiteSpace(builderErrors)) errors.Add("The simulator wrote errors to BuilderLogError.txt during this build.");
+        if (!string.IsNullOrWhiteSpace(builderErrors))
+        {
+            var diagnostic = builderErrors.Split(['\r','\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .FirstOrDefault(line => line.StartsWith("ERROR:", StringComparison.OrdinalIgnoreCase));
+            errors.Add(diagnostic is null
+                ? "The simulator wrote errors to BuilderLogError.txt during this build."
+                : $"The simulator reported a build error: {diagnostic[6..].Trim()} See the detailed build log.");
+        }
         var entries = 0;
         try
         {

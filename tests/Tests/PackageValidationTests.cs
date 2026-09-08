@@ -19,6 +19,13 @@ public sealed class PackageValidationTests : TemporaryDirectoryTest
     [Fact] public void NonzeroExitFailsEvenWithArtifacts() => Assert.False(Check(1).Success);
     [Fact] public void TimeoutFailsEvenWithArtifacts() => Assert.False(Check(timeout: true).Success);
     [Fact] public void BuilderErrorsFailDespiteExitZero() => Assert.False(Check(errors: "Package Validation failed for 'frontier-airport-fpt1'").Success);
+    [Fact] public void SpecificCompilerErrorIsReportedWhileMissingLayoutStillFailsValidation()
+    {
+        File.Delete(Path.Combine(Root,"layout.json"));
+        var result=Check(errors:"section\n{\nERROR: #C2550 TaxiwayPath requires WEIGHT.\n}");
+        Assert.Contains(result.Errors,error=>error.Contains("TaxiwayPath requires WEIGHT"));
+        Assert.Contains(result.Errors,error=>error.StartsWith("Package metadata is missing or invalid:"));
+    }
     [Fact] public void MissingLayoutFails() { File.Delete(Path.Combine(Root, "layout.json")); Assert.False(Check().Success); }
     [Fact] public void MissingManifestFails() { File.Delete(Path.Combine(Root, "manifest.json")); Assert.False(Check().Success); }
     [Fact] public void MissingReferencedFileFails() { File.Delete(Path.Combine(Root, "airport.bgl")); Assert.False(Check().Success); }

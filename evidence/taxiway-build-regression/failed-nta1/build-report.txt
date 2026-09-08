@@ -1,0 +1,195 @@
+Frontier Airport Builder
+{
+  "ExitCode": 0,
+  "TimedOut": false,
+  "Validation": {
+    "Success": false,
+    "Errors": [
+      "The simulator wrote errors to BuilderLogError.txt during this build.",
+      "Package metadata is missing or invalid: Could not find file \u0027C:\\Users\\mattr\\AppData\\Local\\FrontierAirportBuilder\\desktop\\projects\\73c9f4109ba947a6\\Packages\\frontier-airport-nta1\\layout.json\u0027."
+    ],
+    "LayoutEntries": 0
+  },
+  "PackageDirectory": "C:\\Users\\mattr\\AppData\\Local\\FrontierAirportBuilder\\desktop\\projects\\73c9f4109ba947a6\\Packages\\frontier-airport-nta1",
+  "EvidenceDirectory": "C:\\Users\\mattr\\AppData\\Local\\FrontierAirportBuilder\\desktop\\projects\\73c9f4109ba947a6\\.build"
+}
+
+command.ps1
+Set-Location -LiteralPath 'C:\Users\mattr\AppData\Local\FrontierAirportBuilder\desktop\projects\73c9f4109ba947a6'
+$env:MSFS2024_SDK = 'C:\Users\mattr\Desktop\MSFS 2024 SDK\'
+& 'C:\Users\mattr\Desktop\MSFS 2024 SDK\Tools\bin\fspackagetool.exe' 'C:\Users\mattr\AppData\Local\FrontierAirportBuilder\desktop\projects\73c9f4109ba947a6\AirportProject.xml' '-nopause'
+
+stdout.log
+
+stderr.log
+Attached to EXE - waiting for completion.
+
+builder-errors-this-run.log
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2550 TaxiwayPath keyword MUST have all the following: TYPE, START, END, WIDTH, WEIGHT and NAME.
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2031 Failed element parse <TaxiwayPath>
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: XML Parse Error!  Element tree follows:
+<FSData version = 9.0>
+	<Airport name = Test Airportident = NTA1lat = -22.6517136493759lon = 14.6449620840185alt = 78.7691042087972magvar = 12.5696142050474>
+		<TaxiwayPath start = 100end = 101type = TAXIname = 1width = 12surface = {DDF9E526-6FCA-7196-7219-D204BAE0DE9E}drawSurface = TRUEdrawDetail = TRUEcenterLine = FALSEcenterLineLighted = FALSEleftEdge = NONErightEdge = NONEgroundMerging = TRUEexcludeVegetationInside = TRUEexcludeVegetationAround = TRUE>
+
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2550 TaxiwayPath keyword MUST have all the following: TYPE, START, END, WIDTH, WEIGHT and NAME.
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2031 Failed element parse <TaxiwayPath>
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: XML Parse Error!  Element tree follows:
+<FSData version = 9.0>
+	<Airport name = Test Airportident = NTA1lat = -22.6517136493759lon = 14.6449620840185alt = 78.7691042087972magvar = 12.5696142050474>
+		<TaxiwayPath start = 101end = 102type = TAXIname = 1width = 12surface = {DDF9E526-6FCA-7196-7219-D204BAE0DE9E}drawSurface = TRUEdrawDetail = TRUEcenterLine = FALSEcenterLineLighted = FALSEleftEdge = NONErightEdge = NONEgroundMerging = TRUEexcludeVegetationInside = TRUEexcludeVegetationAround = TRUE>
+
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2550 TaxiwayPath keyword MUST have all the following: TYPE, START, END, WIDTH, WEIGHT and NAME.
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2031 Failed element parse <TaxiwayPath>
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: XML Parse Error!  Element tree follows:
+<FSData version = 9.0>
+	<Airport name = Test Airportident = NTA1lat = -22.6517136493759lon = 14.6449620840185alt = 78.7691042087972magvar = 12.5696142050474>
+		<TaxiwayPath start = 102end = 103type = TAXIname = 1width = 12surface = {DDF9E526-6FCA-7196-7219-D204BAE0DE9E}drawSurface = TRUEdrawDetail = TRUEcenterLine = FALSEcenterLineLighted = FALSEleftEdge = NONErightEdge = NONEgroundMerging = TRUEexcludeVegetationInside = TRUEexcludeVegetationAround = TRUE>
+
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2550 TaxiwayPath keyword MUST have all the following: TYPE, START, END, WIDTH, WEIGHT and NAME.
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2031 Failed element parse <TaxiwayPath>
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: XML Parse Error!  Element tree follows:
+<FSData version = 9.0>
+	<Airport name = Test Airportident = NTA1lat = -22.6517136493759lon = 14.6449620840185alt = 78.7691042087972magvar = 12.5696142050474>
+		<TaxiwayPath start = 103end = 104type = TAXIname = 1width = 12surface = {DDF9E526-6FCA-7196-7219-D204BAE0DE9E}drawSurface = TRUEdrawDetail = TRUEcenterLine = FALSEcenterLineLighted = FALSEleftEdge = NONErightEdge = NONEgroundMerging = TRUEexcludeVegetationInside = TRUEexcludeVegetationAround = TRUE>
+
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2550 TaxiwayPath keyword MUST have all the following: TYPE, START, END, WIDTH, WEIGHT and NAME.
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2031 Failed element parse <TaxiwayPath>
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: XML Parse Error!  Element tree follows:
+<FSData version = 9.0>
+	<Airport name = Test Airportident = NTA1lat = -22.6517136493759lon = 14.6449620840185alt = 78.7691042087972magvar = 12.5696142050474>
+		<TaxiwayPath start = 104end = 105type = TAXIname = 1width = 12surface = {DDF9E526-6FCA-7196-7219-D204BAE0DE9E}drawSurface = TRUEdrawDetail = TRUEcenterLine = FALSEcenterLineLighted = FALSEleftEdge = NONErightEdge = NONEgroundMerging = TRUEexcludeVegetationInside = TRUEexcludeVegetationAround = TRUE>
+
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2550 TaxiwayPath keyword MUST have all the following: TYPE, START, END, WIDTH, WEIGHT and NAME.
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2031 Failed element parse <TaxiwayPath>
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: XML Parse Error!  Element tree follows:
+<FSData version = 9.0>
+	<Airport name = Test Airportident = NTA1lat = -22.6517136493759lon = 14.6449620840185alt = 78.7691042087972magvar = 12.5696142050474>
+		<TaxiwayPath start = 105end = 106type = TAXIname = 1width = 12surface = {DDF9E526-6FCA-7196-7219-D204BAE0DE9E}drawSurface = TRUEdrawDetail = TRUEcenterLine = FALSEcenterLineLighted = FALSEleftEdge = NONErightEdge = NONEgroundMerging = TRUEexcludeVegetationInside = TRUEexcludeVegetationAround = TRUE>
+
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2550 TaxiwayPath keyword MUST have all the following: TYPE, START, END, WIDTH, WEIGHT and NAME.
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2031 Failed element parse <TaxiwayPath>
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: XML Parse Error!  Element tree follows:
+<FSData version = 9.0>
+	<Airport name = Test Airportident = NTA1lat = -22.6517136493759lon = 14.6449620840185alt = 78.7691042087972magvar = 12.5696142050474>
+		<TaxiwayPath start = 106end = 107type = TAXIname = 1width = 12surface = {DDF9E526-6FCA-7196-7219-D204BAE0DE9E}drawSurface = TRUEdrawDetail = TRUEcenterLine = FALSEcenterLineLighted = FALSEleftEdge = NONErightEdge = NONEgroundMerging = TRUEexcludeVegetationInside = TRUEexcludeVegetationAround = TRUE>
+
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2550 TaxiwayPath keyword MUST have all the following: TYPE, START, END, WIDTH, WEIGHT and NAME.
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2031 Failed element parse <TaxiwayPath>
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: XML Parse Error!  Element tree follows:
+<FSData version = 9.0>
+	<Airport name = Test Airportident = NTA1lat = -22.6517136493759lon = 14.6449620840185alt = 78.7691042087972magvar = 12.5696142050474>
+		<TaxiwayPath start = 107end = 108type = TAXIname = 1width = 12surface = {DDF9E526-6FCA-7196-7219-D204BAE0DE9E}drawSurface = TRUEdrawDetail = TRUEcenterLine = FALSEcenterLineLighted = FALSEleftEdge = NONErightEdge = NONEgroundMerging = TRUEexcludeVegetationInside = TRUEexcludeVegetationAround = TRUE>
+
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2550 TaxiwayPath keyword MUST have all the following: TYPE, START, END, WIDTH, WEIGHT and NAME.
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2031 Failed element parse <TaxiwayPath>
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: XML Parse Error!  Element tree follows:
+<FSData version = 9.0>
+	<Airport name = Test Airportident = NTA1lat = -22.6517136493759lon = 14.6449620840185alt = 78.7691042087972magvar = 12.5696142050474>
+		<TaxiwayPath start = 108end = 109type = TAXIname = 1width = 12surface = {DDF9E526-6FCA-7196-7219-D204BAE0DE9E}drawSurface = TRUEdrawDetail = TRUEcenterLine = FALSEcenterLineLighted = FALSEleftEdge = NONErightEdge = NONEgroundMerging = TRUEexcludeVegetationInside = TRUEexcludeVegetationAround = TRUE>
+
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+ERROR: #C2607 Compilation errors detected, compilation failed!
+}
+Builder/PackageBuilder/Project/Build/frontier-airport-nta1/airport/BGLLister/airport.xml
+{
+BGLCompiler | CompileMemory failed
+}
+Builder/PackageBuilder/Project/Build/AssetGroups
+{
+PackageBuilder | Output path does not exist: c:\users\mattr\appdata\local\frontierairportbuilder\desktop\projects\73c9f4109ba947a6\Packages\frontier-airport-nta1\scenery\frontier\airport.bgl
+}
+Builder/PackageBuilder/Project/Build/AssetGroups
+{
+PackageBuilder | Package 'frontier-airport-nta1' have encountered errors during _EndTreatCommands. See attached
+}
+Builder/PackageBuilder/Project/Build/AssetGroups
+{
+PackageBuilder | EndExecuteCommandsForPackage : Failed to build package frontier-airport-nta1
+}
+
+System.IO.IOException: The simulator wrote errors to BuilderLogError.txt during this build.
+Package metadata is missing or invalid: Could not find file 'C:\Users\mattr\AppData\Local\FrontierAirportBuilder\desktop\projects\73c9f4109ba947a6\Packages\frontier-airport-nta1\layout.json'.
+   at FrontierAirportBuilder.Workflow.BuilderServices.<>c__DisplayClass53_0.<<BuildAsync>b__0>d.MoveNext()
