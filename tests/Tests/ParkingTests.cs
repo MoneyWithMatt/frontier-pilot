@@ -21,7 +21,7 @@ public sealed class ParkingTests : TemporaryDirectoryTest
         Assert.True(ParkingGeometry.Calculate(d,new(1,0,-35,0,10)).Position.Latitude<0);
     }
     [Fact] public void ValidStandsPass() => Assert.Empty(Strip.Validate());
-    [Theory][InlineData(0,0,10)][InlineData(0,21,10)][InlineData(0,35,0)][InlineData(0,35,31)][InlineData(0,501,10)]
+    [Theory][InlineData(0,0,10)][InlineData(0,21,10)][InlineData(0,35,0)][InlineData(0,35,31)][InlineData(0,4000,10)]
     [InlineData(double.NaN,35,10)][InlineData(0,double.PositiveInfinity,10)]
     public void InvalidParkingRefusesGenerationBeforeWrites(double forward,double right,double radius)
     {
@@ -77,4 +77,3 @@ public sealed class ParkingWorkflowTests
         await vm.CaptureAsync();Assert.Empty(vm.Layout.Stands);
     }
 }
-

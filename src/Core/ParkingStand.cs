@@ -27,8 +27,8 @@ public static class ParkingGeometry
             if (new[]{s.NorthMeters,s.EastMeters,s.TrueHeadingDegrees,s.RadiusMeters}.Any(v=>!double.IsFinite(v)))
             { errors.Add($"Parking {s.Number}: all values must be finite."); continue; }
             if (s.RadiusMeters is < 5 or > 30) errors.Add($"Parking {s.Number}: radius must be 5–30 metres.");
-            if (Math.Sqrt(s.NorthMeters*s.NorthMeters+s.EastMeters*s.EastMeters)+s.RadiusMeters > 500)
-                errors.Add($"Parking {s.Number}: keep the complete stand within 500 metres of the runway centre.");
+            if (!new AirportSite(length,width,runwayHeading).Contains(new(s.EastMeters,s.NorthMeters),s.RadiusMeters))
+                errors.Add($"Parking {s.Number}: {AirportSite.BoundaryMessage}");
             if(!Enum.IsDefined(s.Type)||!Enum.IsDefined(s.Name)) errors.Add($"Parking {s.Number}: unsupported type or name.");
             var local=LocalCoordinates.ToRunway(new(s.EastMeters,s.NorthMeters),double.IsFinite(runwayHeading)?runwayHeading:0);
             double x = Math.Max(Math.Abs(local.East) - width/2,0), y = Math.Max(Math.Abs(local.North)-length/2,0);
@@ -46,5 +46,3 @@ public static class ParkingGeometry
         return errors;
     }
 }
-
-

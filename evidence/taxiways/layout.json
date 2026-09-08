@@ -1,0 +1,50 @@
+{
+  "Version": 1,
+  "Anchor": {
+    "Latitude": -22.58616679921284,
+    "Longitude": 14.539071285657734,
+    "AltitudeMeters": 13.94779940508306,
+    "TrueHeadingDegrees": 108.63324971143716,
+    "AvatarObjectAltitudeMeters": 13.953887939453125,
+    "ObjectGroundOffsetMeters": 0.006088534370064735,
+    "MagneticVariationDegrees": -12.503734469181675,
+    "Source": "Empirical MSFS 2024 walking-avatar GROUND ALTITUDE; Sedona-calibrated prototype"
+  },
+  "RunwayLengthMeters": 200,
+  "RunwayWidthMeters": 20,
+  "ParkingStands": [
+    {
+      "Number": 1,
+      "EastMeters": 1000,
+      "NorthMeters": 300,
+      "TrueHeadingDegrees": 108.63324971143716,
+      "RadiusMeters": 10,
+      "Type": "RAMP_GA_SMALL",
+      "Name": "PARKING"
+    }
+  ],
+  "Taxiways": [
+    {
+      "Number": 1,
+      "Name": "T1",
+      "WidthMeters": 18,
+      "Points": [
+        {
+          "EastMeters": 0,
+          "NorthMeters": -0,
+          "ParkingNumber": null
+        },
+        {
+          "EastMeters": 100,
+          "NorthMeters": 100,
+          "ParkingNumber": null
+        },
+        {
+          "EastMeters": 0,
+          "NorthMeters": 0,
+          "ParkingNumber": 1
+        }
+      ]
+    }
+  ]
+}

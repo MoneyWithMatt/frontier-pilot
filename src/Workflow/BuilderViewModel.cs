@@ -54,10 +54,10 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
     public BuilderViewModel(IBuilderServices services, string sdkRoot)
     {
         this.services = services; this.sdkRoot = sdkRoot;
-        Layout = new(()=>CanLayout);
+        Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading));
         Layout.Edited += (_,_)=>Invalidate();
-        AddParkingCommand = new(()=>AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading)),()=>CanLayout&&Layout.Stands.Count<8);
-        RemoveParkingCommand = new(Layout.Delete,()=>CanLayout&&Layout.Selected!=null);
+        AddParkingCommand = new(()=>AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading)),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Stands.Count<8);
+        RemoveParkingCommand = new(Layout.Delete,()=>CanLayout&&(Layout.Selected!=null||Layout.SelectedTaxiway!=null));
         UndoLayoutCommand = new(Layout.Undo,()=>Layout.CanUndo);
         RedoLayoutCommand = new(Layout.Redo,()=>Layout.CanRedo);
         RotateLeftCommand = new(()=>Layout.Rotate(-15),()=>Layout.HasSelection);
@@ -67,13 +67,13 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
         CaptureCommand = new(() => _ = CaptureAsync(), () => !IsBusy && checkedReady);
         ValidateCommand = new(() => _ = ValidateAsync(), () => !IsBusy && Survey != null && ValidationMessage == "");
         BuildCommand = new(() => _ = BuildAsync(), () => !IsBusy && EffectiveState == WorkflowState.Validated && !Layout.HasPendingProperties);
-        InstallCommand = new(() => _ = InstallAsync(), () => !IsBusy && EffectiveState == WorkflowState.Built && Built != null);
+        InstallCommand = new(() => _ = InstallAsync(), () => !IsBusy && EffectiveState == WorkflowState.Built && Built != null && !Layout.HasPendingProperties);
         CancelCommand = new(Cancel, () => IsBusy);
         OpenProjectCommand = new(() => Open(services.ProjectDirectory), () => !IsBusy && services.ProjectDirectory != "");
         OpenPackageCommand = new(() => Open(Built?.PackageDirectory ?? ""), () => !IsBusy && Built != null);
         OpenLogCommand = new(() => Open(services.LogPath), () => !IsBusy && services.LogPath != "");
         OpenEvidenceCommand = new(() => Open(services.EvidenceDirectory), () => !IsBusy && services.EvidenceDirectory != "");
-        Layout.PropertyChanged += (_,_)=> { Changed(nameof(Layout)); Changed(nameof(ValidationMessage)); BuildCommand.Refresh(); ValidateCommand.Refresh(); foreach(var c in new[]{RemoveParkingCommand,UndoLayoutCommand,RedoLayoutCommand,RotateLeftCommand,RotateRightCommand,ApplyParkingCommand})c.Refresh(); };
+        Layout.PropertyChanged += (_,_)=> { Changed(nameof(Layout)); Changed(nameof(ValidationMessage)); BuildCommand.Refresh(); InstallCommand.Refresh(); ValidateCommand.Refresh(); foreach(var c in new[]{AddParkingCommand,RemoveParkingCommand,UndoLayoutCommand,RedoLayoutCommand,RotateLeftCommand,RotateRightCommand,ApplyParkingCommand})c.Refresh(); };
         Append(ModeDescription);
     }
     public ActionCommand CheckCommand { get; }
@@ -114,7 +114,7 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
         get
         {
             var errors = new List<string>();
-            if(Layout.HasPendingProperties)errors.Add("Apply or revert the parking property edits before validating or building.");
+            if(Layout.HasPendingProperties)errors.Add("Finish or cancel the taxiway and apply property edits before validating or building.");
             if (Survey is null) errors.Add("Capture your runway centre first.");
             else if (SurveyCapture.ValidatePoint(Survey) is { } problem) errors.Add(problem);
             try { var d = Definition(); errors.AddRange(d.Validate().Select(e => e.StartsWith("Name must") ? "Enter an airport name of 1–48 characters without leading or trailing spaces; emoji are not supported." : e)); if (d.Identifier is "FPT1" or "FPSC") errors.Add("FPT1 and FPSC are preserved. Choose a new identifier."); }
@@ -133,7 +133,7 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
             throw new ArgumentException("Enter length and width in metres using numbers (for example 200 and 20).");
         return new() { Name = airportName, Identifier = identifier, Latitude = Survey?.Latitude ?? 0, Longitude = Survey?.Longitude ?? 0,
             AltitudeMeters = Survey?.AltitudeMeters ?? 0, TrueHeadingDegrees = Survey?.TrueHeadingDegrees ?? 0,
-            MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface, ParkingStands = Layout.Stands.ToArray() };
+            MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface, ParkingStands = Layout.Stands.ToArray(), Taxiways = Layout.Taxiways.ToArray() };
     }
     public void AddParkingAt(LocalPoint point) { if(CanLayout)Layout.Add(point,LayoutRunwayHeading); }
     private void ClearParking() => Layout.Reset();
@@ -143,7 +143,7 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
         await Run("Save layout",async token=>{
             if(Layout.HasPendingProperties)throw new IOException("Apply property edits before saving the layout.");
             var d=Definition();d.EnsureValid();
-            var snapshot=new LayoutSnapshot(1,Survey!,d.LengthMeters,d.WidthMeters,d.ParkingStands);
+            var snapshot=new LayoutSnapshot(1,Survey!,d.LengthMeters,d.WidthMeters,d.ParkingStands) {Taxiways=d.Taxiways};
             await LayoutFiles.SaveNewAsync(path,snapshot);
             Layout.MarkSaved(snapshot.ParkingStands);status="Layout saved. Future edits require validation and a new build.";
         });
@@ -157,7 +157,7 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
             LayoutFiles.ValidateForAnchor(file,Survey!,LayoutRunwayLength,LayoutRunwayWidth);
             loaded=file;
         });
-        if(loaded!=null) {Layout.Replace(loaded.ParkingStands);Invalidate();Layout.MarkSaved(loaded.ParkingStands);status="Layout loaded for this survey. Validate before building.";Refresh();}
+        if(loaded!=null) {Layout.Replace(loaded.ParkingStands,loaded.Taxiways);Invalidate();Layout.MarkSaved(loaded.ParkingStands);status="Layout loaded for this survey. Validate before building.";Refresh();}
     }
     private void SetState(WorkflowState value) { State = value; RecoveryState = value; }
     private void Invalidate() { Built = null; InstalledPath = ""; error = ""; SetState(Survey != null ? WorkflowState.SurveyCaptured : checkedReady ? WorkflowState.ReadyToSurvey : WorkflowState.Disconnected); Refresh(); }
@@ -201,7 +201,7 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
     }
     public Task InstallAsync()
     {
-        if (busy || EffectiveState != WorkflowState.Built || Built is null) return Task.CompletedTask;
+        if (busy || EffectiveState != WorkflowState.Built || Built is null || Layout.HasPendingProperties) return Task.CompletedTask;
         var built = Built;
         return Run("Install airport", async token => {
             InstalledPath = await services.InstallAsync(built, Progress(), token);
@@ -231,9 +231,3 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
         foreach (var c in new[] { AddParkingCommand, RemoveParkingCommand, UndoLayoutCommand, RedoLayoutCommand, RotateLeftCommand, RotateRightCommand, ApplyParkingCommand, CheckCommand, CaptureCommand, ValidateCommand, BuildCommand, InstallCommand, CancelCommand, OpenProjectCommand, OpenPackageCommand, OpenLogCommand, OpenEvidenceCommand }) c.Refresh();
     }
 }
-
-
-
-
-
-

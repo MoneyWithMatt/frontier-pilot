@@ -5,6 +5,7 @@ public readonly record struct GeodesicDestination(GeoPoint Position, double Forw
 
 public static class Geodesy
 {
+    public const double MaximumDistanceMeters = 10000;
     public const double SemiMajorAxisMeters = 6378137;
     public const double Flattening = 1 / 298.257223563;
     private const double Radians = Math.PI / 180;
@@ -16,7 +17,7 @@ public static class Geodesy
         if (!double.IsFinite(origin.Latitude) || Math.Abs(origin.Latitude) >= 90 ||
             !double.IsFinite(origin.Longitude) || Math.Abs(origin.Longitude) > 180)
             throw new ArgumentOutOfRangeException(nameof(origin));
-        if (!double.IsFinite(distanceMeters) || distanceMeters is < 0 or > 10000)
+        if (!double.IsFinite(distanceMeters) || distanceMeters is < 0 or > MaximumDistanceMeters)
             throw new ArgumentOutOfRangeException(nameof(distanceMeters));
         var bearing = Headings.Normalize(bearingDegrees);
         if (distanceMeters == 0)

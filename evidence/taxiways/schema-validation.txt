@@ -1,0 +1,1 @@
+PASS: generated airport XML validates against SDK 1.2.4 bglcomp.xsd (read-only). No Package Tool or simulator invoked.

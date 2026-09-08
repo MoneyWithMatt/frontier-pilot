@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FSData version="9.0">
+  <Airport name="Taxiway test" ident="FPTAXI2" lat="-22.5861667992128" lon="14.5390712856577" alt="13.9477994050831" magvar="12.5037344691817">
+    <Runway lat="-22.5861667992128" lon="14.5390712856577" alt="13.9477994050831" surface="{8D80B986-AF85-794F-8DDF-64A968037D34}" heading="108.633249711437" length="200" width="20" number="12" designator="NONE" primaryTakeoff="YES" primaryLanding="YES" secondaryTakeoff="YES" secondaryLanding="YES" groundMerging="TRUE">
+      <RunwayStart end="PRIMARY" lat="-22.5858782700486" lon="14.5381498045349" alt="13.9477994050831" heading="108.633603624776" />
+      <RunwayStart end="SECONDARY" lat="-22.5864553230811" lon="14.5399927706191" alt="13.9477994050831" heading="288.632895792339" />
+    </Runway>
+    <TaxiwayPoint index="100" type="NORMAL" lat="-22.5861667992128" lon="14.5390712856577" />
+    <TaxiwayPoint index="101" type="NORMAL" lat="-22.5852637660068" lon="14.5400437354449" />
+    <TaxiwayParking index="1" type="RAMP_GA_SMALL" lat="-22.583457413808" lon="14.5487956567421" heading="108.633249711437" radius="10" name="PARKING" number="1" suffix="NONE" numberMarking="FALSE" has3DMesh="FALSE" />
+    <TaxiName index="1" name="T1" />
+    <TaxiwayPath start="100" end="101" type="TAXI" name="1" width="12" surface="{8D80B986-AF85-794F-8DDF-64A968037D34}" drawSurface="TRUE" drawDetail="TRUE" centerLine="FALSE" centerLineLighted="FALSE" leftEdge="NONE" rightEdge="NONE" groundMerging="TRUE" excludeVegetationInside="TRUE" excludeVegetationAround="TRUE" />
+    <TaxiwayPath start="101" end="1" type="PARKING" name="1" width="12" surface="{8D80B986-AF85-794F-8DDF-64A968037D34}" drawSurface="TRUE" drawDetail="TRUE" centerLine="FALSE" centerLineLighted="FALSE" leftEdge="NONE" rightEdge="NONE" groundMerging="TRUE" excludeVegetationInside="TRUE" excludeVegetationAround="TRUE" />
+  </Airport>
+</FSData>

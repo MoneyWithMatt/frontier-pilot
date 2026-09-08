@@ -17,3 +17,11 @@
 - **Implemented:** dry-run destination is app-selected temporary storage, never a caller-selected Community path. Installation remains same-volume stage/hash/backup/rename/verify with rollback on ordinary exceptions.
 - **Limit:** multiple renames are not one atomic transaction. Power-loss recovery is a future improvement; backups are retained and no cleanup deletes content.
 - **Implemented:** copying/saving technical diagnostics includes full exception text. Save uses create-new semantics and never overwrites a prior log.
+
+## Shared site and taxiway decisions — 2026-09-08
+- **Implemented:** one runway-oriented Core.AirportSite envelope replaces all three parking-era 500 m guards. Its 3 km runway-footprint expansion and shared 10 km solver ceiling constrain full infrastructure footprints, independent of screen coordinates. These are prototype safety policies, not SDK limits.
+- **Implemented:** taxiways are ordered local east/north points with width and name. Parking endpoint references follow moved stands. Deleting a stand detaches the endpoint at its current location; undo restores the reference. A common history restores both feature types together.
+- **Implemented:** paths share the selected runway material (Dirt/Asphalt) to reuse the existing material pipeline. No per-path surface library or apron is introduced. Generation emits deterministic SDK-ordered points/parking/names/paths. Existing capture and installation service boundaries remain unchanged.
+- **Prototype limitation:** physical runway overlap only; a full ATC/AI RUNWAY/HOLD_SHORT graph, automatic intersection splitting and curve geometry are not included. Native ground following is expected, not newly empirically proven. Schema validity is not simulator acceptance.
+- **Preserved:** existing same-survey layout export/import now retains taxiways; no new airport catalogue, persistence or survey-resume workflow.
+- **Pending:** Matt's new live test of distant parking, segment visibility, joins and terrain fit. See taxiways-and-airport-site.md.

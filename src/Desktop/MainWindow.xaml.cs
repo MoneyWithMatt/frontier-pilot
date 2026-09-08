@@ -26,6 +26,10 @@ public partial class MainWindow : Window
         try { await DiagnosticLog.SaveNewAsync(dialog.FileName, model.TechnicalLog); }
         catch (Exception error) { model.ReportLogFailure(error); }
     }
+    private void NewTaxiway(object sender,RoutedEventArgs e)=>model.Layout.BeginTaxiway();
+    private void FinishTaxiway(object sender,RoutedEventArgs e)=>model.Layout.FinishTaxiway();
+    private void CancelTaxiway(object sender,RoutedEventArgs e)=>model.Layout.CancelTaxiway();
+    private void ApplyTaxiway(object sender,RoutedEventArgs e)=>model.Layout.ApplyTaxiway();
     private void FitLayout(object sender,RoutedEventArgs e)=>LayoutCanvas.Fit();
     private async void SaveLayout(object sender,RoutedEventArgs e)
     {
@@ -44,4 +48,3 @@ public partial class MainWindow : Window
         e.Cancel = true;
     }
 }
-

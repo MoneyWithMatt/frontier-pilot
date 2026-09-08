@@ -55,7 +55,38 @@ public static class ProjectGenerator
             SetPosition(start, value.Position, definition.AltitudeMeters);
             start.SetAttributeValue("heading", Number(value.InwardTrueHeadingDegrees));
         }
-        // No taxiway points/paths are generated in this placement spike. Reserve each parking index by its unique number.
+        // Indices 1–99 belong to parking. Reuse equal local nodes between paths, in stable order.
+        var nodes=new Dictionary<LocalPoint,int>();
+        var paths=new List<XElement>();
+        var names=new List<XElement>();
+        int Node(TaxiwayVertex v)
+        {
+            if(v.ParkingNumber is {} parkingNumber)return parkingNumber;
+            var local=v.Resolve(definition.ParkingStands);
+            if(nodes.TryGetValue(local,out int existing))return existing;
+            int index=100+nodes.Count;nodes.Add(local,index);
+            var geo=LocalCoordinates.ToGeographic(new(definition.Latitude,definition.Longitude),local);
+            airport.Add(new XElement("TaxiwayPoint",new XAttribute("index",index),new XAttribute("type","NORMAL"),
+                new XAttribute("lat",Number(geo.Latitude)),new XAttribute("lon",Number(geo.Longitude))));
+            return index;
+        }
+        foreach(var taxiway in definition.Taxiways.OrderBy(t=>t.Number))
+        {
+            names.Add(new XElement("TaxiName",new XAttribute("index",taxiway.Number),new XAttribute("name",taxiway.Name)));
+            for(int i=1;i<taxiway.Points.Count;i++)
+            {
+                var a=taxiway.Points[i-1];var b=taxiway.Points[i];
+                paths.Add(new XElement("TaxiwayPath",new XAttribute("start",Node(a)),new XAttribute("end",Node(b)),
+                    new XAttribute("type",a.ParkingNumber!=null||b.ParkingNumber!=null?"PARKING":"TAXI"),
+                    new XAttribute("name",taxiway.Number),new XAttribute("width",Number(taxiway.WidthMeters)),
+                    new XAttribute("surface",materialGuid),new XAttribute("drawSurface","TRUE"),new XAttribute("drawDetail","TRUE"),
+                    new XAttribute("centerLine",definition.Surface==RunwaySurface.Asphalt?"TRUE":"FALSE"),
+                    new XAttribute("centerLineLighted","FALSE"),new XAttribute("leftEdge","NONE"),new XAttribute("rightEdge","NONE"),
+                    new XAttribute("groundMerging",definition.Surface==RunwaySurface.Dirt?"TRUE":"FALSE"),
+                    new XAttribute("excludeVegetationInside","TRUE"),new XAttribute("excludeVegetationAround","TRUE")));
+            }
+        }
+        // SDK order: all points, parking, names, then paths.
         foreach (var stand in definition.ParkingStands.OrderBy(s => s.Number))
         {
             var placement = ParkingGeometry.Calculate(definition, stand);
@@ -66,6 +97,7 @@ public static class ProjectGenerator
                 new XAttribute("name", stand.Name.ToString()), new XAttribute("number", stand.Number), new XAttribute("suffix", "NONE"),
                 new XAttribute("numberMarking", "FALSE"), new XAttribute("has3DMesh", "FALSE")));
         }
+        airport.Add(names);airport.Add(paths);
         var material = LoadXml("PackageSources.materials.frontier-asphalt.material");
         material.Root!.SetAttributeValue("Name", materialName);
         material.Root.SetAttributeValue("Guid", materialGuid);
