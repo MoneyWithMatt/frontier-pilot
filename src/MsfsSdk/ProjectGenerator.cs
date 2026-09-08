@@ -101,6 +101,27 @@ public static class ProjectGenerator
                 new XAttribute("numberMarking", "FALSE"), new XAttribute("has3DMesh", "FALSE")));
         }
         airport.Add(names);airport.Add(paths);
+        // Library scenery objects are siblings of Airport in the scenery document. The airport
+        // elevation must not be reused: these objects follow local terrain at their own positions.
+        foreach (var item in definition.PlacedObjects.OrderBy(o => o.Number))
+        {
+            var asset = SceneryAssets.Find(item.AssetId) ?? throw new ArgumentException($"Unsupported scenery asset '{item.AssetId}'.");
+            var placement = SceneryObjectGeometry.Calculate(definition, item);
+            airportXml.Root!.Add(new XElement("SceneryObject",
+                new XAttribute("lat", Number(placement.Position.Latitude)),
+                new XAttribute("lon", Number(placement.Position.Longitude)),
+                new XAttribute("alt", "0"),
+                new XAttribute("pitch", "0"),
+                new XAttribute("bank", "0"),
+                new XAttribute("heading", Number(placement.TrueHeadingDegrees)),
+                new XAttribute("imageComplexity", "VERY_SPARSE"),
+                new XAttribute("altitudeIsAgl", "TRUE"),
+                new XAttribute("snapToGround", "TRUE"),
+                new XAttribute("snapToNormal", "FALSE"),
+                new XElement("LibraryObject",
+                    new XAttribute("name", asset.LibraryGuid.ToString("B").ToUpperInvariant()),
+                    new XAttribute("scale", "1"))));
+        }
         var material = LoadXml("PackageSources.materials.frontier-asphalt.material");
         material.Root!.SetAttributeValue("Name", materialName);
         material.Root.SetAttributeValue("Guid", materialGuid);

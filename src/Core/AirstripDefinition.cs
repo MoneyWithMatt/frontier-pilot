@@ -19,6 +19,7 @@ public sealed record AirstripDefinition
     public required RunwaySurface Surface { get; init; }
     public IReadOnlyList<Taxiway> Taxiways { get; init; } = [];
     public IReadOnlyList<ParkingStand> ParkingStands { get; init; } = [];
+    public IReadOnlyList<PlacedSceneryObject> PlacedObjects { get; init; } = [];
 
     public IReadOnlyList<string> Validate()
     {
@@ -40,6 +41,7 @@ public sealed record AirstripDefinition
         if (!Enum.IsDefined(Surface)) errors.Add("Unsupported runway surface.");
         errors.AddRange(ParkingGeometry.Validate(ParkingStands, LengthMeters, WidthMeters, TrueHeadingDegrees));
         errors.AddRange(TaxiwayGeometry.Validate(Taxiways, ParkingStands ?? [], new(LengthMeters,WidthMeters,TrueHeadingDegrees)));
+        errors.AddRange(SceneryObjectGeometry.Validate(PlacedObjects, new(LengthMeters,WidthMeters,TrueHeadingDegrees)));
         return errors;
     }
 

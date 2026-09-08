@@ -38,16 +38,17 @@
 <TextBlock Text="North up · centre dot is your survey. Designators use magnetic heading; orientation uses true heading. Width is exaggerated for narrow strips." FontSize="12" Margin="0,10"/>
 </StackPanel></Grid></Border>
 <Border Style="{StaticResource Card}"><StackPanel>
-<TextBlock Style="{StaticResource Title}" Text="Airport layout · parking and taxiways"/>
-<TextBlock Text="Double-click empty ground to add a stand. Click to select, drag to move. Mouse wheel zooms; right or middle drag pans. R / Shift+R rotates; Delete removes; Ctrl+Z / Ctrl+Y undoes/redoes. Home fits the layout."/>
-<WrapPanel><Button Content="Add stand" Command="{Binding AddParkingCommand}"/><Button Content="Delete" Command="{Binding RemoveParkingCommand}"/><Button Content="Undo" Command="{Binding UndoLayoutCommand}"/><Button Content="Redo" Command="{Binding RedoLayoutCommand}"/><Button Content="Fit layout" Click="FitLayout"/><Button Content="Save layout…" Click="SaveLayout" IsEnabled="{Binding CanLayout}"/><Button Content="Load layout…" Click="LoadLayout" IsEnabled="{Binding CanLayout}"/></WrapPanel>
+<TextBlock Style="{StaticResource Title}" Text="Airport layout · parking, taxiways and objects"/>
+<TextBlock Text="Double-click empty ground to add a stand, or use Add test hangar. Click to select, drag to move. Mouse wheel zooms; right or middle drag pans. R / Shift+R rotates; Delete removes; Ctrl+Z / Ctrl+Y undoes/redoes. Home fits the layout."/>
+<WrapPanel><Button Content="Add stand" Command="{Binding AddParkingCommand}"/><Button Content="Add test hangar" Command="{Binding AddObjectCommand}"/><Button Content="Delete selected" Command="{Binding RemoveParkingCommand}"/><Button Content="Undo" Command="{Binding UndoLayoutCommand}"/><Button Content="Redo" Command="{Binding RedoLayoutCommand}"/><Button Content="Fit layout" Click="FitLayout"/><Button Content="Save layout…" Click="SaveLayout" IsEnabled="{Binding CanLayout}"/><Button Content="Load layout…" Click="LoadLayout" IsEnabled="{Binding CanLayout}"/></WrapPanel>
 <WrapPanel><Button Content="New taxiway" Click="NewTaxiway" IsEnabled="{Binding CanLayout}"/><Button Content="Finish taxiway" Click="FinishTaxiway" IsEnabled="{Binding Layout.CanFinishTaxiway}"/><Button Content="Cancel drawing" Click="CancelTaxiway" IsEnabled="{Binding Layout.IsDrawingTaxiway}"/></WrapPanel>
 <TextBlock Text="{Binding Layout.TaxiwayInstructions}"/>
 <TextBlock Text="Site boundary: runway footprint plus 3 km; absolute reach 10 km. Wheel down to zoom out for distant stands." FontSize="12"/>
 <WrapPanel IsEnabled="{Binding Layout.HasTaxiwaySelection}"><Label Content="Selected taxiway name"/><TextBox Width="90" Text="{Binding Layout.TaxiwayName,UpdateSourceTrigger=PropertyChanged}"/><Label Content="Width (3–60 m)"/><TextBox Width="70" Text="{Binding Layout.TaxiwayWidth,UpdateSourceTrigger=PropertyChanged}"/><Button Content="Apply taxiway properties" Click="ApplyTaxiway"/></WrapPanel>
 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="220"/></Grid.ColumnDefinitions>
 <local:AirportLayoutCanvas x:Name="LayoutCanvas" Height="430" MinWidth="300" Margin="0,0,16,0" AutomationProperties.Name="Airport layout canvas"/>
-<StackPanel Grid.Column="1" IsEnabled="{Binding Layout.HasSelection}">
+<StackPanel Grid.Column="1">
+<StackPanel IsEnabled="{Binding Layout.HasSelection}">
 <TextBlock Text="{Binding Layout.SelectedNumber, StringFormat='Selected stand {0}'}" FontWeight="Bold"/>
 <Label Content="East offset (m)"/><TextBox Text="{Binding Layout.East,UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,4"/>
 <Label Content="North offset (m)"/><TextBox Text="{Binding Layout.North,UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,4"/>
@@ -56,9 +57,19 @@
 <TextBlock Text="Parking type" FontSize="12"/><ComboBox ItemsSource="{Binding Layout.Types}" SelectedItem="{Binding Layout.Type}" Margin="0,6"/><TextBlock Text="Parking name" FontSize="12"/><ComboBox ItemsSource="{Binding Layout.Names}" SelectedItem="{Binding Layout.Name}" Margin="0,6"/>
 <Button Content="Apply properties" Command="{Binding ApplyParkingCommand}"/>
 <WrapPanel><Button Content="↶ 15°" Command="{Binding RotateLeftCommand}"/><Button Content="↷ 15°" Command="{Binding RotateRightCommand}"/></WrapPanel>
+</StackPanel>
+<Separator Margin="0,12"/>
+<StackPanel IsEnabled="{Binding Layout.HasObjectSelection}">
+<TextBlock Text="{Binding Layout.SelectedObjectName}" FontWeight="Bold" TextWrapping="Wrap"/>
+<Label Content="East offset (m)"/><TextBox Text="{Binding Layout.ObjectEast,UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,4"/>
+<Label Content="North offset (m)"/><TextBox Text="{Binding Layout.ObjectNorth,UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,4"/>
+<Label Content="True heading (°)"/><TextBox Text="{Binding Layout.ObjectHeading,UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,4"/>
+<Button Content="Apply object properties" Command="{Binding ApplyObjectCommand}"/>
+<WrapPanel><Button Content="↶ 15°" Command="{Binding RotateLeftCommand}"/><Button Content="↷ 15°" Command="{Binding RotateRightCommand}"/></WrapPanel>
+</StackPanel>
 </StackPanel></Grid>
 <TextBlock Text="{Binding Layout.Message}" Foreground="#A52222"/><TextBlock Text="{Binding Layout.IsDirty,StringFormat='Unsaved layout changes: {0}'}"/>
-<TextBlock Text="Apply property edits before validating. Stand names use MSFS parking categories plus their unique number. Parking and taxiways follow existing terrain. Taxiway surface follows the runway surface; no apron is created." FontSize="12"/>
+<TextBlock Text="Apply property edits before validating. The yellow H marker is the generic Gen_Hangar56 library object. Parking, taxiways and objects follow local terrain. Taxiway surface follows the runway surface; no apron is created." FontSize="12"/>
 </StackPanel></Border>
 <Border Style="{StaticResource Card}"><StackPanel><TextBlock Style="{StaticResource Title}" Text="4. Build, install and fly"/><TextBlock Text="Generate and compile creates an isolated project. Install verifies the package and backs up any previous installation owned by this app. FPT1 and FPSC are protected. The full runway footprint still needs a visual terrain check."/><TextBlock Text="{Binding SuccessInstructions}" FontWeight="SemiBold" Margin="0,10"/><Expander Header="Technical log (select text to copy)"><StackPanel><WrapPanel><Button Content="Copy technical log" Click="CopyLog"/><Button Content="Save technical log…" Click="SaveLog"/></WrapPanel><TextBox Text="{Binding TechnicalLog, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="220" VerticalScrollBarVisibility="Auto"/></StackPanel></Expander></StackPanel></Border>
 </StackPanel></ScrollViewer></TabItem>

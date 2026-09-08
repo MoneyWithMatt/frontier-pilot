@@ -1,6 +1,7 @@
 # Backlog
 
 ## Next acceptance test
+- Place, persist, compile and install `Gen_Hangar56`, then check visible resolution, expected position, terrain contact and heading in MSFS. See generic-scenery-object-proof.md.
 - Run the WPF flow in a real flight: capture a new flat site, close MSFS, compile/install a new identifier, restart and inspect both starts.
 - Exercise replacement of that new app-owned package and verify the prior version backup. Keep FPT1/FPSC untouched.
 - Verify usability at additional Windows scaling settings.
@@ -35,6 +36,6 @@ Economy, careers, settlements and multiplayer require separate design decisions 
 - Add a durable deletion journal for recovery after process or machine failure during the short cleanup transaction.
 
 ## Current acceptance priority — 2026-09-08
-- Previous runway/parking/full workflow accepted by Matt in MSFS (user report).
-- Next: test parking at East 1200 m / North 200 m and a three-segment taxiway, following taxiways-and-airport-site.md. Record live Package Tool result, parking selector/spawn, visible segments/surface/width, joins and terrain fit. New features have automated/schema/UI checks only.
+- Runway, parking, multi-point taxiway, persistence and Windows launch are accepted by Matt in MSFS (user report).
+- Next: test the generic hangar proof following generic-scenery-object-proof.md. Record Package Tool result, visible model, location, terrain fit and perceived heading. This feature has automated and UI checks only.
 - Future taxiway work only after acceptance: vertex dragging, curve/turn-clearance handling, explicit junctions and complete ATC/AI runway graph. Not implemented in this task.

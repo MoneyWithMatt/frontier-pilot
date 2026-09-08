@@ -42,3 +42,9 @@
 ## Taxiway compiler correction — 2026-09-08
 - **Implemented:** emit `weightLimit="0"` on every TaxiwayPath. This matches the installed official sample, permits all aircraft weights and satisfies the stricter SDK 1.2.4 BGL compiler.
 - **Implemented:** keep missing layout/BGL validation strict, while surfacing the first current Package Tool error so a downstream missing-layout message is not mistaken for the root cause.
+
+## Generic scenery object proof — 2026-09-08
+- **Implemented:** represent placed models with a Frontier asset ID, instance number, local east/north offsets and true heading. Reuse `AirportSite`, WGS84 conversion, editor history and workflow invalidation rather than adding object-specific geography or build state.
+- **Implemented:** start with a one-entry catalogue mapping `asobo-generic-hangar-56` to the installed Asobo generic-airport `Gen_Hangar56` library GUID. Keep the saved model keyed by the Frontier ID so later owned assets can use the same placement type.
+- **Implemented:** emit a ground-snapped `SceneryObject`/`LibraryObject` reference at scale 1. Do not copy, modify or redistribute the base model.
+- **Acceptance limit:** automated tests and local package inspection establish generation and likely availability; only Matt's MSFS test can establish visible resolution, terrain contact, apparent scale and the model's intrinsic forward axis.

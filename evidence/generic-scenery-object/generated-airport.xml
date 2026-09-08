@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FSData version="9.0">
+  <Airport name="Generic Object Compile Proof" ident="FPOBJ1" lat="-22.5861667992128" lon="14.5390712856577" alt="13.9477994050831" magvar="18">
+    <Runway lat="-22.5861667992128" lon="14.5390712856577" alt="13.9477994050831" surface="{C11AAE85-C106-6734-9E75-0273187C3BCB}" heading="108.633249711437" length="200" width="20" number="13" designator="NONE" primaryTakeoff="YES" primaryLanding="YES" secondaryTakeoff="YES" secondaryLanding="YES" groundMerging="TRUE">
+      <RunwayStart end="PRIMARY" lat="-22.5858782700486" lon="14.5381498045349" alt="13.9477994050831" heading="108.633603624776" />
+      <RunwayStart end="SECONDARY" lat="-22.5864553230811" lon="14.5399927706191" alt="13.9477994050831" heading="288.632895792339" />
+    </Runway>
+  </Airport>
+  <SceneryObject lat="-22.5861667981533" lon="14.5396547593334" alt="0" pitch="0" bank="0" heading="108.633249711437" imageComplexity="VERY_SPARSE" altitudeIsAgl="TRUE" snapToGround="TRUE" snapToNormal="FALSE">
+    <LibraryObject name="{FD8AA200-1485-46C7-BA8F-B9B69C31E0F7}" scale="1" />
+  </SceneryObject>
+</FSData>

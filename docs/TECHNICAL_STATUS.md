@@ -54,3 +54,9 @@ The Desktop project publishes as `dist\FrontierPilot\FrontierPilot.exe`, a Windo
 ## Taxiway compiler regression — 2026-09-08
 
 The first NTA1 live Package Tool build exposed that generated TaxiwayPath elements lacked compiler-required `weightLimit`. Package Tool returned zero but rejected each segment, so no BGL or layout was created; persistence's managed project path and PackageValidator's layout location were correct. The generator now emits the official-sample value `weightLimit="0"`. A fresh copy of the exact NTA1 definition passed SDK 1.2.4 Package Tool validation with a real BGL and eight-entry layout. Visual simulator acceptance remains with Matt. See evidence/taxiway-build-regression/.
+
+## Generic scenery object proof — 2026-09-08
+
+Matt subsequently accepted runways, parking and multi-point taxiways in MSFS 2024. The next unaccepted proof adds `PlacedSceneryObject` to Core, layout history, saved airport/layout JSON and deterministic scenery XML. The one-entry prototype catalogue maps `asobo-generic-hangar-56` to Asobo `Gen_Hangar56`, library GUID `{FD8AA200-1485-46C7-BA8F-B9B69C31E0F7}`. The GUID is present in the current streamed `fs24-asobo-modellib-airport-generic` package; installed content was inspected read-only.
+
+The WPF layout displays a yellow hangar footprint and supports add, selection, drag, exact offset/heading edits, 15-degree rotation, delete and shared undo/redo. Objects use local metres, `AirportSite` and WGS84 conversion. XML emits terrain-snapped `SceneryObject` siblings containing a `LibraryObject` GUID reference; Microsoft assets are not copied. SDK 1.2.4 compiled a disposable object-enabled package successfully with a real BGL and no builder errors. Visual model resolution, dimensions, terrain contact and intrinsic orientation await Matt's live simulator test. See [generic-scenery-object-proof.md](generic-scenery-object-proof.md) and evidence/generic-scenery-object/.

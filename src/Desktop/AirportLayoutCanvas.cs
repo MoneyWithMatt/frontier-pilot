@@ -12,8 +12,9 @@ public sealed class AirportLayoutCanvas : FrameworkElement
     private readonly LayoutViewport viewport=new();
     private BuilderViewModel? model;
     private Point lastMouse;
-    private LocalPoint dragStart,standStart;
+    private LocalPoint dragStart,itemStart;
     private int? dragging;
+    private bool draggingObject;
     private LocalPoint? ghost;
     private bool panning,fit=true;
     public AirportLayoutCanvas()
@@ -36,6 +37,11 @@ public sealed class AirportLayoutCanvas : FrameworkElement
         double extent=Math.Max(model.LayoutRunwayLength,model.Layout.Stands.Select(s=>2*(Math.Max(Math.Abs(s.EastMeters),Math.Abs(s.NorthMeters))+s.RadiusMeters)).DefaultIfEmpty(100).Max());
         foreach(var t in model.Layout.Taxiways)
             foreach(var v in t.Points){var p=v.Resolve(model.Layout.Stands);extent=Math.Max(extent,2*(Math.Max(Math.Abs(p.East),Math.Abs(p.North))+t.WidthMeters));}
+        foreach(var o in model.Layout.Objects)
+        {
+            var a=SceneryAssets.Find(o.AssetId);var radius=a?.FootprintRadiusMeters??20;
+            extent=Math.Max(extent,2*(Math.Max(Math.Abs(o.EastMeters),Math.Abs(o.NorthMeters))+radius));
+        }
         viewport.Fit(extent+60,ActualWidth,ActualHeight);fit=false;InvalidateVisual();
     }
     protected override void OnRender(DrawingContext dc)
@@ -67,7 +73,7 @@ public sealed class AirportLayoutCanvas : FrameworkElement
         DrawPath(dc,model.Layout.DraftPoints.Select(v=>v.Resolve(model.Layout.Stands)).ToArray(),Brushes.DarkOrange,12);
         foreach(var stand in model.Layout.Stands)
         {
-            var pos=dragging==stand.Number&&ghost.HasValue?ghost.Value:new LocalPoint(stand.EastMeters,stand.NorthMeters);
+            var pos=!draggingObject&&dragging==stand.Number&&ghost.HasValue?ghost.Value:new LocalPoint(stand.EastMeters,stand.NorthMeters);
             var center=Screen(pos);double radius=stand.RadiusMeters*viewport.PixelsPerMeter;
             bool selected=model.Layout.SelectedNumber==stand.Number;
             dc.DrawEllipse(selected?Brushes.LightSkyBlue:Brushes.AliceBlue,new Pen(selected?Brushes.DarkBlue:Brushes.SteelBlue,selected?2:1),center,radius,radius);
@@ -75,6 +81,18 @@ public sealed class AirportLayoutCanvas : FrameworkElement
             var nose=new Point(center.X+Math.Sin(h)*radius,center.Y-Math.Cos(h)*radius);
             dc.DrawLine(new Pen(Brushes.DarkBlue,2),center,nose);dc.DrawEllipse(Brushes.DarkBlue,null,nose,2.5,2.5);
             Text(dc,stand.Number.ToString(),new(center.X+5,center.Y+3),Brushes.DarkBlue);
+        }
+        foreach(var item in model.Layout.Objects)
+        {
+            var asset=SceneryAssets.Find(item.AssetId);if(asset==null)continue;
+            var pos=draggingObject&&dragging==item.Number&&ghost.HasValue?ghost.Value:new LocalPoint(item.EastMeters,item.NorthMeters);
+            var center=Screen(pos);bool selected=model.Layout.SelectedObject?.Number==item.Number;
+            double width=Math.Max(8,asset.PreviewWidthMeters*viewport.PixelsPerMeter),length=Math.Max(10,asset.PreviewLengthMeters*viewport.PixelsPerMeter);
+            dc.PushTransform(new RotateTransform(item.TrueHeadingDegrees,center.X,center.Y));
+            dc.DrawRectangle(selected?Brushes.Gold:Brushes.Goldenrod,new Pen(selected?Brushes.DarkRed:Brushes.SaddleBrown,selected?2:1),new Rect(center.X-width/2,center.Y-length/2,width,length));
+            dc.DrawLine(new Pen(Brushes.DarkRed,2),center,new(center.X,center.Y-length/2));
+            dc.Pop();
+            Text(dc,$"H{item.Number}",new(center.X+5,center.Y+3),Brushes.DarkRed);
         }
         dc.DrawRectangle(Brushes.White,null,new(8,8,235,45));
         Text(dc,model.Survey==null?"Capture a survey to edit":"Fixed survey anchor • north up",new(15,12),Brushes.DarkGreen);
@@ -111,10 +129,22 @@ public sealed class AirportLayoutCanvas : FrameworkElement
             // Screen tolerance selects a stand; the committed location is its exact metre-based position.
             model.Layout.AddTaxiwayPoint(hit==null?point:new(hit.EastMeters,hit.NorthMeters));e.Handled=true;return;
         }
-        model.Layout.Select(hit?.Number);
-        if(hit!=null){dragging=hit.Number;dragStart=point;standStart=new(hit.EastMeters,hit.NorthMeters);ghost=standStart;CaptureMouse();}
+        var objectHit=model.Layout.Objects.Reverse().FirstOrDefault(o=>
+        {
+            var asset=SceneryAssets.Find(o.AssetId);var radius=asset?.FootprintRadiusMeters??20;
+            return TaxiwayGeometry.Distance(point,new(o.EastMeters,o.NorthMeters))<=Math.Max(radius,8/viewport.PixelsPerMeter);
+        });
+        if(objectHit!=null)
+        {
+            model.Layout.SelectObject(objectHit.Number);dragging=objectHit.Number;draggingObject=true;dragStart=point;itemStart=new(objectHit.EastMeters,objectHit.NorthMeters);ghost=itemStart;CaptureMouse();
+        }
+        else if(hit!=null)
+        {
+            model.Layout.Select(hit.Number);dragging=hit.Number;draggingObject=false;dragStart=point;itemStart=new(hit.EastMeters,hit.NorthMeters);ghost=itemStart;CaptureMouse();
+        }
         else
         {
+            model.Layout.Select(null);
             var taxi=model.Layout.Taxiways.Reverse().FirstOrDefault(t=>Enumerable.Range(1,t.Points.Count-1).Any(i=>
                 SegmentDistance(point,t.Points[i-1].Resolve(model.Layout.Stands),t.Points[i].Resolve(model.Layout.Stands))<=Math.Max(t.WidthMeters/2,8/viewport.PixelsPerMeter)));
             if(taxi!=null)model.Layout.SelectTaxiway(taxi.Number);
@@ -126,14 +156,17 @@ public sealed class AirportLayoutCanvas : FrameworkElement
     {
         var point=e.GetPosition(this);
         if(panning){viewport.Pan(point.X-lastMouse.X,point.Y-lastMouse.Y);lastMouse=point;InvalidateVisual();}
-        else if(dragging.HasValue){var local=Local(point);ghost=new(standStart.East+local.East-dragStart.East,standStart.North+local.North-dragStart.North);InvalidateVisual();}
+        else if(dragging.HasValue){var local=Local(point);ghost=new(itemStart.East+local.East-dragStart.East,itemStart.North+local.North-dragStart.North);InvalidateVisual();}
     }
     protected override void OnMouseUp(MouseButtonEventArgs e)
     {
-        if(dragging is {} id&&ghost is {} point)model?.Layout.Move(id,point);
-        dragging=null;ghost=null;panning=false;ReleaseMouseCapture();InvalidateVisual();e.Handled=true;
+        if(dragging is {} id&&ghost is {} point)
+        {
+            if(draggingObject)model?.Layout.MoveObject(id,point);else model?.Layout.Move(id,point);
+        }
+        dragging=null;draggingObject=false;ghost=null;panning=false;ReleaseMouseCapture();InvalidateVisual();e.Handled=true;
     }
-    protected override void OnLostMouseCapture(MouseEventArgs e){dragging=null;ghost=null;panning=false;InvalidateVisual();base.OnLostMouseCapture(e);}
+    protected override void OnLostMouseCapture(MouseEventArgs e){dragging=null;draggingObject=false;ghost=null;panning=false;InvalidateVisual();base.OnLostMouseCapture(e);}
     protected override void OnMouseWheel(MouseWheelEventArgs e){var p=e.GetPosition(this);viewport.Zoom(e.Delta>0?1.2:1/1.2,p.X,p.Y,ActualWidth,ActualHeight);InvalidateVisual();e.Handled=true;}
     protected override void OnKeyDown(KeyEventArgs e)
     {

@@ -1,6 +1,6 @@
 # Persistent airport management
 
-Frontier Pilot stores its own versioned airport documents under `%LOCALAPPDATA%\FrontierAirportBuilder\desktop\airports`. Each JSON document contains the airport identity, guarded survey evidence, runway, parking stands, multi-point taxiways, revision and historical build/install status. Generated MSFS files are outputs, never the source of truth.
+Frontier Pilot stores its own versioned airport documents under `%LOCALAPPDATA%\FrontierAirportBuilder\desktop\airports`. Each JSON document contains the airport identity, guarded survey evidence, runway, parking stands, multi-point taxiways, placed scenery objects, revision and historical build/install status. Generated MSFS files are outputs, never the source of truth.
 
 The My Airports tab lists readable documents. Open restores the captured definition into `Survey Captured`; it deliberately clears current build and installation authority. Confirm the site again, validate and rebuild before installation. Save is explicit, and a successful build also saves the exact definition it built. Identifier changes are blocked after the initial save.
 

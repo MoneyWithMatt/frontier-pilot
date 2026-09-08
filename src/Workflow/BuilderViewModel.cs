@@ -31,6 +31,8 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public ActionCommand RotateLeftCommand { get; }
     public ActionCommand RotateRightCommand { get; }
     public ActionCommand ApplyParkingCommand { get; }
+    public ActionCommand AddObjectCommand { get; }
+    public ActionCommand ApplyObjectCommand { get; }
     public double LayoutRunwayHeading => Survey?.TrueHeadingDegrees ?? 0;
     public double LayoutRunwayLength => double.TryParse(length,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 200;
     public double LayoutRunwayWidth => double.TryParse(width,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 20;
@@ -57,12 +59,14 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading));
         Layout.Edited += (_,_)=>Invalidate();
         AddParkingCommand = new(()=>AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading)),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Stands.Count<8);
-        RemoveParkingCommand = new(Layout.Delete,()=>CanLayout&&(Layout.Selected!=null||Layout.SelectedTaxiway!=null));
+        AddObjectCommand = new(()=>Layout.AddObject(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+45,Layout.Objects.Count*40,LayoutRunwayHeading),LayoutRunwayHeading),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Objects.Count<64);
+        RemoveParkingCommand = new(Layout.Delete,()=>CanLayout&&(Layout.Selected!=null||Layout.SelectedTaxiway!=null||Layout.SelectedObject!=null));
         UndoLayoutCommand = new(Layout.Undo,()=>Layout.CanUndo);
         RedoLayoutCommand = new(Layout.Redo,()=>Layout.CanRedo);
-        RotateLeftCommand = new(()=>Layout.Rotate(-15),()=>Layout.HasSelection);
-        RotateRightCommand = new(()=>Layout.Rotate(15),()=>Layout.HasSelection);
+        RotateLeftCommand = new(()=>Layout.Rotate(-15),()=>Layout.HasRotatableSelection);
+        RotateRightCommand = new(()=>Layout.Rotate(15),()=>Layout.HasRotatableSelection);
         ApplyParkingCommand = new(Layout.Apply,()=>Layout.HasSelection);
+        ApplyObjectCommand = new(Layout.ApplyObject,()=>Layout.HasObjectSelection);
         CheckCommand = new(() => _ = CheckAsync(), () => !IsBusy);
         CaptureCommand = new(() => _ = CaptureAsync(), () => !IsBusy && checkedReady);
         ValidateCommand = new(() => _ = ValidateAsync(), () => !IsBusy && Survey != null && ValidationMessage == "");
@@ -73,7 +77,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         OpenPackageCommand = new(() => Open(Built?.PackageDirectory ?? ""), () => !IsBusy && Built != null);
         OpenLogCommand = new(() => Open(services.LogPath), () => !IsBusy && services.LogPath != "");
         OpenEvidenceCommand = new(() => Open(services.EvidenceDirectory), () => !IsBusy && services.EvidenceDirectory != "");
-        Layout.PropertyChanged += (_,_)=> { Changed(nameof(Layout)); Changed(nameof(ValidationMessage)); BuildCommand.Refresh(); InstallCommand.Refresh(); ValidateCommand.Refresh(); RefreshManagement(); foreach(var c in new[]{AddParkingCommand,RemoveParkingCommand,UndoLayoutCommand,RedoLayoutCommand,RotateLeftCommand,RotateRightCommand,ApplyParkingCommand})c.Refresh(); };
+        Layout.PropertyChanged += (_,_)=> { Changed(nameof(Layout)); Changed(nameof(ValidationMessage)); BuildCommand.Refresh(); InstallCommand.Refresh(); ValidateCommand.Refresh(); RefreshManagement(); foreach(var c in new[]{AddParkingCommand,AddObjectCommand,RemoveParkingCommand,UndoLayoutCommand,RedoLayoutCommand,RotateLeftCommand,RotateRightCommand,ApplyParkingCommand,ApplyObjectCommand})c.Refresh(); };
         InitializeManagement();
         Append(ModeDescription);
     }
@@ -134,7 +138,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             throw new ArgumentException("Enter length and width in metres using numbers (for example 200 and 20).");
         return new() { Name = airportName, Identifier = identifier, Latitude = Survey?.Latitude ?? 0, Longitude = Survey?.Longitude ?? 0,
             AltitudeMeters = Survey?.AltitudeMeters ?? 0, TrueHeadingDegrees = Survey?.TrueHeadingDegrees ?? 0,
-            MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface, ParkingStands = Layout.Stands.ToArray(), Taxiways = Layout.Taxiways.ToArray() };
+            MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface, ParkingStands = Layout.Stands.ToArray(), Taxiways = Layout.Taxiways.ToArray(), PlacedObjects = Layout.Objects.ToArray() };
     }
     public void AddParkingAt(LocalPoint point) { if(CanLayout)Layout.Add(point,LayoutRunwayHeading); }
     private void ClearParking() => Layout.Reset();
@@ -144,9 +148,9 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         await Run("Save layout",async token=>{
             if(Layout.HasPendingProperties)throw new IOException("Apply property edits before saving the layout.");
             var d=Definition();d.EnsureValid();
-            var snapshot=new LayoutSnapshot(1,Survey!,d.LengthMeters,d.WidthMeters,d.ParkingStands) {Taxiways=d.Taxiways};
+            var snapshot=new LayoutSnapshot(1,Survey!,d.LengthMeters,d.WidthMeters,d.ParkingStands) {Taxiways=d.Taxiways,PlacedObjects=d.PlacedObjects};
             await LayoutFiles.SaveNewAsync(path,snapshot);
-            Layout.MarkSaved(snapshot.ParkingStands);status="Layout saved. Future edits require validation and a new build.";
+            Layout.MarkSaved(snapshot.ParkingStands,snapshot.PlacedObjects);status="Layout saved. Future edits require validation and a new build.";
         });
     }
     public async Task LoadLayoutAsync(string path)
@@ -158,7 +162,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             LayoutFiles.ValidateForAnchor(file,Survey!,LayoutRunwayLength,LayoutRunwayWidth);
             loaded=file;
         });
-        if(loaded!=null) {Layout.Replace(loaded.ParkingStands,loaded.Taxiways);Invalidate();Layout.MarkSaved(loaded.ParkingStands);status="Layout loaded for this survey. Validate before building.";Refresh();}
+        if(loaded!=null) {Layout.Replace(loaded.ParkingStands,loaded.Taxiways,loaded.PlacedObjects);Invalidate();Layout.MarkSaved(loaded.ParkingStands,loaded.PlacedObjects);status="Layout loaded for this survey. Validate before building.";Refresh();}
     }
     private void SetState(WorkflowState value) { State = value; RecoveryState = value; }
     private void Invalidate() { Built = null; InstalledPath = ""; error = ""; SetState(Survey != null ? WorkflowState.SurveyCaptured : checkedReady ? WorkflowState.ReadyToSurvey : WorkflowState.Disconnected); Refresh(); }

@@ -71,7 +71,7 @@ public sealed partial class BuilderViewModel
         checkedReady=false;Survey=loaded.Survey.Point;airportName=loaded.Name;identifier=loaded.Identifier;
         length=loaded.Definition.LengthMeters.ToString("R",System.Globalization.CultureInfo.InvariantCulture);
         width=loaded.Definition.WidthMeters.ToString("R",System.Globalization.CultureInfo.InvariantCulture);surface=loaded.Definition.Surface;siteConfirmed=false;
-        Layout.Reset();Layout.Replace(loaded.Definition.ParkingStands,loaded.Definition.Taxiways);Layout.MarkSaved(Layout.Stands);
+        Layout.Reset();Layout.Replace(loaded.Definition.ParkingStands,loaded.Definition.Taxiways,loaded.Definition.PlacedObjects);Layout.MarkSaved(Layout.Stands,Layout.Objects);
         savedDefinition=JsonSerializer.Serialize(loaded.Definition);Invalidate();
         status="Saved survey and airport loaded. No live connection or previous build is assumed. Confirm the site, then validate and rebuild.";Refresh();
     }
