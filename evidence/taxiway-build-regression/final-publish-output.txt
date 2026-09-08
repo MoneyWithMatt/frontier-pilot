@@ -1,0 +1,9 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  FrontierAirportBuilder.Core -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Core\bin\Release\net8.0\FrontierAirportBuilder.Core.dll
+  FrontierAirportBuilder.MsfsSdk -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\MsfsSdk\bin\Release\net8.0\FrontierAirportBuilder.MsfsSdk.dll
+  FrontierAirportBuilder.Workflow -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Workflow\bin\Release\net8.0\FrontierAirportBuilder.Workflow.dll
+  FrontierAirportBuilder.Desktop -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Desktop\bin\Release\net8.0-windows\win-x64\FrontierPilot.dll
+  FrontierAirportBuilder.Desktop -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\dist\.publish-f8c4d4f9\
+Shortcut ready: C:\Users\mattr\Desktop\Frontier Pilot.lnk
+Frontier Pilot is ready: C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\dist\FrontierPilot\FrontierPilot.exe

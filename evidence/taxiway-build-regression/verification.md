@@ -21,7 +21,8 @@ Every generated path now emits `weightLimit="0"`. Package validation also shows 
 - All nine NTA1 taxiway segments carry `weightLimit="0"`.
 - Automated suite: 302 passed, zero failed or skipped (`tests.trx`, `test-output.txt`).
 - Release solution build: succeeded with zero warnings and zero errors (`build-output.txt`).
-- Corrected self-contained executable prepared successfully (`pending-publish-output.txt`); SHA-256 `C8A5E7B5AD1B0A1BE19F6026833D6BD745B9CF72F047C06AEA7FC539D2619513`.
+- Corrected self-contained executable was published to the stable distribution after the previous app closed (`final-publish-output.txt`); SHA-256 `49DC7F86AAA46A2C1743348F17EFB87BC8FA09F24E04C8E33FA03A41CB22390`.
+- The existing Desktop shortcut launched that exact executable and created the expected Frontier Airport Builder window (`final-launch-check.txt`).
 - No Community package was installed and the preserved failed project was unchanged.
 
 `successful-nta1` contains the generated XML, invocation, result, empty builder-error delta, real manifest and real layout. The BGL is recorded by size rather than committed as a generated binary.

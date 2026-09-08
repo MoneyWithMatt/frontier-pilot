@@ -1,0 +1,5 @@
+ShortcutLaunch=success
+ProcessPath=C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\dist\FrontierPilot\FrontierPilot.exe
+WindowTitle=Frontier Airport Builder · Prototype 0.1
+Sha256=49DC7F86AAA46A2C1743348F17EFB87BC8FAE09F24E04C8E33FA03A41CB22390
+Close=clean
