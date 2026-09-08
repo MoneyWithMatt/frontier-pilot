@@ -79,14 +79,14 @@ public sealed class TrackingViewModelTests
     [Fact]
     public async Task ConnectsDisplaysAircraftAndDisconnectsCleanly()
     {
-        var source=new StreamingFake(TrackingTestData.InAircraft);using var vm=new TrackingViewModel(source,()=>"sdk-root");
+        var source=new StreamingFake(TrackingTestData.InAircraft);using var vm=new TrackingViewModel(source,new TestAircraftStore(),()=>"sdk-root");
         var run=vm.ConnectAsync();await Until(()=>vm.State==TrackingState.Connected);
         Assert.Equal("sdk-root",source.SdkRoot);Assert.True(vm.HasTelemetry);Assert.False(vm.HasPlayer);
         Assert.Equal("51.12345, -1.12345",vm.Position);Assert.Equal("1,240 ft",vm.Altitude);
         Assert.Equal("273° true",vm.Heading);Assert.Equal("84.0 kt",vm.GroundSpeed);Assert.Equal("On Ground",vm.FlightState);
         Assert.Equal("In Aircraft",vm.PlayerState);
         vm.Disconnect();await run;
-        Assert.Equal(TrackingState.Disconnected,vm.State);Assert.False(vm.HasTelemetry);Assert.Empty(vm.Error);
+        Assert.Equal(TrackingState.Disconnected,vm.State);Assert.True(vm.HasTelemetry);Assert.False(vm.IsLive);Assert.Contains("LAST KNOWN",vm.Freshness);Assert.Empty(vm.Error);
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public sealed class TrackingViewModelTests
     {
         var player = new PlayerTelemetry(DateTimeOffset.UtcNow,32768,51.124,-1.123,1241,42,true);
         var onFoot = new TrackingWorldState(TrackingTestData.Aircraft,524288,32768,32768,PlayerControlMode.OnFoot,player,"agree","SDK test");
-        using var vm=new TrackingViewModel(new SequenceFake(onFoot,TrackingTestData.InAircraft),()=>"sdk");
+        using var vm=new TrackingViewModel(new SequenceFake(onFoot,TrackingTestData.InAircraft),new TestAircraftStore(),()=>"sdk");
         var observed = new List<TrackingWorldState?>(); vm.TelemetryChanged += observed.Add;
         var run=vm.ConnectAsync();await Until(()=>observed.Any(x=>x?.PlayerMode==PlayerControlMode.OnFoot)&&vm.PlayerState=="In Aircraft");
         var walking=observed.First(x=>x?.PlayerMode==PlayerControlMode.OnFoot)!;
@@ -108,7 +108,7 @@ public sealed class TrackingViewModelTests
     public async Task UnknownModeExposesReasonWithoutFabricatingPlayer()
     {
         var unknown=TrackingTestData.InAircraft with {CurrentObjectId=999,PlayerMode=PlayerControlMode.Unknown,PlayerTrackingStatus="identity mismatch"};
-        using var vm=new TrackingViewModel(new StreamingFake(unknown),()=>"sdk");
+        using var vm=new TrackingViewModel(new StreamingFake(unknown),new TestAircraftStore(),()=>"sdk");
         var run=vm.ConnectAsync();await Until(()=>vm.State==TrackingState.Connected);
         Assert.Equal("Unknown · position refused",vm.PlayerState);Assert.False(vm.HasPlayer);Assert.Equal("—",vm.PlayerPosition);
         Assert.Contains("identity mismatch",vm.PlayerTrackingStatus); vm.Disconnect();await run;
@@ -117,7 +117,7 @@ public sealed class TrackingViewModelTests
     [Fact]
     public async Task ConnectionFailureBecomesRecoverableDisconnectedState()
     {
-        using var vm=new TrackingViewModel(new FailingFake(new IOException("MSFS unavailable")),()=>"sdk");
+        using var vm=new TrackingViewModel(new FailingFake(new IOException("MSFS unavailable")),new TestAircraftStore(),()=>"sdk");
         await vm.ConnectAsync();Assert.Equal(TrackingState.Error,vm.State);Assert.Contains("MSFS unavailable",vm.Error);
         Assert.True(vm.ConnectCommand.CanExecute(null));Assert.Null(vm.Current);
     }
@@ -126,7 +126,7 @@ public sealed class TrackingViewModelTests
     public async Task LaterAircraftSamplesReplacePosition()
     {
         var next=TrackingTestData.InAircraft with {Aircraft=TrackingTestData.Aircraft with {Latitude=51.2,Longitude=-1.3,TrueHeadingDegrees=450,GroundSpeedKnots=92}};
-        using var vm=new TrackingViewModel(new SequenceFake(TrackingTestData.InAircraft,next),()=>"sdk");
+        using var vm=new TrackingViewModel(new SequenceFake(TrackingTestData.InAircraft,next),new TestAircraftStore(),()=>"sdk");
         var run=vm.ConnectAsync();await Until(()=>vm.Current?.Latitude==51.2);
         Assert.Equal("51.20000, -1.30000",vm.Position);Assert.Equal("090° true",vm.Heading);vm.Disconnect();await run;
     }
@@ -135,21 +135,21 @@ public sealed class TrackingViewModelTests
     public async Task InvalidTelemetryIsRefusedAndMapStateCleared()
     {
         var invalid=TrackingTestData.InAircraft with {Aircraft=TrackingTestData.Aircraft with {Latitude=double.NaN}};
-        using var vm=new TrackingViewModel(new StreamingFake(invalid),()=>"sdk");await vm.ConnectAsync();
+        using var vm=new TrackingViewModel(new StreamingFake(invalid),new TestAircraftStore(),()=>"sdk");await vm.ConnectAsync();
         Assert.Equal(TrackingState.Error,vm.State);Assert.Contains("latitude",vm.Error,StringComparison.OrdinalIgnoreCase);Assert.Null(vm.World);
     }
 
     [Fact]
     public async Task ConnectionLossClearsAllWorldState()
     {
-        using var vm=new TrackingViewModel(new DropsAfterSample(),()=>"sdk");await vm.ConnectAsync();
+        using var vm=new TrackingViewModel(new DropsAfterSample(),new TestAircraftStore(),()=>"sdk");await vm.ConnectAsync();
         Assert.Equal(TrackingState.Error,vm.State);Assert.Null(vm.World);Assert.Contains("connection lost",vm.Error);
     }
 
     [Fact]
     public async Task DryRunTrackingCannotOpenLiveSource()
     {
-        var source=new StreamingFake(TrackingTestData.InAircraft);using var vm=new TrackingViewModel(source,()=>"sdk",enabled:false);
+        var source=new StreamingFake(TrackingTestData.InAircraft);using var vm=new TrackingViewModel(source,new TestAircraftStore(),()=>"sdk",enabled:false);
         await vm.ConnectAsync();Assert.Null(source.SdkRoot);Assert.False(vm.ConnectCommand.CanExecute(null));Assert.Contains("disabled",vm.Status,StringComparison.OrdinalIgnoreCase);
     }
 

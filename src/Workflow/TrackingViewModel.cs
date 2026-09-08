@@ -10,43 +10,61 @@ public enum TrackingState { Disconnected, Connecting, Connected, Error }
 public sealed class TrackingViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly ITrackingTelemetrySource source;
+    private readonly IAircraftStateStore store;
     private readonly Func<string> sdkRoot;
     private readonly bool enabled;
+    private readonly TimeSpan persistenceInterval;
+    private readonly SemaphoreSlim persistenceGate = new(1, 1);
+    private readonly SynchronizationContext? notificationContext;
     private CancellationTokenSource? cancellation;
     private Task? run;
     private TrackingState state;
     private TrackingWorldState? world;
-    private string error = "";
+    private AircraftTelemetry? lastKnown, latestValid;
+    private DateTimeOffset lastPersistedObservation;
+    private string error = "", persistenceWarning = "";
     private readonly List<string> diagnostic = [];
     private PlayerControlMode lastLoggedMode = (PlayerControlMode)(-1);
     private DateTimeOffset lastSampleLog;
+    private bool initialized, disposed;
 
-    public TrackingViewModel(ITrackingTelemetrySource source, Func<string> sdkRoot, bool enabled = true)
+    public TrackingViewModel(ITrackingTelemetrySource source, IAircraftStateStore store, Func<string> sdkRoot,
+        bool enabled = true, TimeSpan? persistenceInterval = null)
     {
-        this.source = source;
-        this.sdkRoot = sdkRoot;
-        this.enabled = enabled;
+        this.source = source; this.store = store; this.sdkRoot = sdkRoot; this.enabled = enabled; notificationContext = SynchronizationContext.Current;
+        this.persistenceInterval = persistenceInterval ?? TimeSpan.FromSeconds(10);
         ConnectCommand = new(() => _ = ConnectAsync(), () => enabled && state is (TrackingState.Disconnected or TrackingState.Error));
         DisconnectCommand = new(Disconnect, () => state is TrackingState.Connecting or TrackingState.Connected);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<TrackingWorldState?>? TelemetryChanged;
+    public event Action<AircraftTelemetry?, PlayerTelemetry?, bool>? DisplayChanged;
     public ActionCommand ConnectCommand { get; }
     public ActionCommand DisconnectCommand { get; }
     public TrackingState State => state;
     public TrackingWorldState? World => world;
-    public AircraftTelemetry? Current => world?.Aircraft;
-    public bool HasTelemetry => world is not null;
+    public AircraftTelemetry? Current => world?.Aircraft ?? lastKnown;
+    public bool IsLive => world is not null;
+    public bool HasTelemetry => Current is not null;
     public bool HasPlayer => world?.Player is not null;
+    public bool CanClearSavedState => state is not (TrackingState.Connecting or TrackingState.Connected) && (lastKnown is not null || persistenceWarning != "");
+    public string StoragePath => store.StoragePath;
     public string Status => !enabled ? "Disabled in Airport Builder dry-run mode" : state switch
     {
-        TrackingState.Disconnected => "Disconnected",
+        TrackingState.Connected => "LIVE · connected to MSFS",
+        TrackingState.Connecting when lastKnown is not null => "Connecting · displaying LAST KNOWN",
         TrackingState.Connecting => "Connecting to MSFS…",
-        TrackingState.Connected => "Connected · live aircraft and player-state telemetry",
-        _ => "Disconnected · connection error"
+        TrackingState.Error when lastKnown is not null => "LAST KNOWN · MSFS connection unavailable",
+        TrackingState.Error => "Disconnected · connection error · no saved position",
+        _ when lastKnown is not null => "LAST KNOWN · MSFS disconnected",
+        _ => "Disconnected · no saved aircraft position"
     };
+    public string Freshness => world is not null ? "LIVE" : lastKnown is not null
+        ? $"LAST KNOWN — {lastKnown.ObservedUtc.ToLocalTime():d MMM yyyy, HH:mm}"
+        : "NO SAVED POSITION";
     public string Error => error;
+    public string PersistenceWarning => persistenceWarning;
     public string Aircraft => Current?.AircraftTitle ?? "—";
     public string AircraftType => string.IsNullOrWhiteSpace(Current?.AircraftType) ? "—" : Current.AircraftType;
     public string Position => Current is null ? "—" : string.Create(CultureInfo.InvariantCulture, $"{Current.Latitude:F5}, {Current.Longitude:F5}");
@@ -61,15 +79,40 @@ public sealed class TrackingViewModel : INotifyPropertyChanged, IDisposable
     public string PlayerDistance => world?.DistanceFromAircraftMeters is { } d ? d < 1000 ? string.Create(CultureInfo.InvariantCulture, $"{d:N1} m") : string.Create(CultureInfo.InvariantCulture, $"{d / 1000:N2} km") : "—";
     public string PlayerTrackingStatus => world?.PlayerTrackingStatus ?? "—";
     public string IntegrationDetails => world?.IntegrationDetails ?? "—";
-    public string DiagnosticLog => string.Join(Environment.NewLine, diagnostic);
-    public string LastUpdate => Current is null ? "—" : Current.ObservedUtc.ToLocalTime().ToString("T", CultureInfo.CurrentCulture);
+    public string DiagnosticLog { get { lock (diagnostic) return string.Join(Environment.NewLine, diagnostic); } }
+    public string LastUpdate => Current is null ? "—" : Current.ObservedUtc.ToLocalTime().ToString("G", CultureInfo.CurrentCulture);
+
+    public async Task InitializeAsync()
+    {
+        if (initialized || disposed) return;
+        initialized = true;
+        try
+        {
+            var saved = await store.LoadActiveAsync();
+            if (saved is not null && world is null && latestValid is null)
+            {
+                lastKnown = saved.EnsureValid().Telemetry;
+                lastPersistedObservation = lastKnown.ObservedUtc;
+                AppendDiagnostic($"Loaded last-known aircraft from {store.StoragePath}.");
+                NotifyTelemetry(); NotifyDisplay();
+            }
+        }
+        catch (Exception ex)
+        {
+            persistenceWarning = ex.Message;
+            AppendDiagnostic("Could not load saved aircraft state: " + ex.Message);
+            NotifyTelemetry();
+        }
+    }
 
     public async Task ConnectAsync()
     {
         if (!ConnectCommand.CanExecute(null)) return;
+        await InitializeAsync();
         cancellation = new CancellationTokenSource();
         var operation = cancellation;
-        error = ""; world = null; diagnostic.Clear(); lastLoggedMode = (PlayerControlMode)(-1); lastSampleLog = default; AppendDiagnostic("Connecting."); SetState(TrackingState.Connecting); TelemetryChanged?.Invoke(null);
+        error = ""; world = null; lastLoggedMode = (PlayerControlMode)(-1); lastSampleLog = default;
+        AppendDiagnostic("Connecting."); SetState(TrackingState.Connecting); TelemetryChanged?.Invoke(null); NotifyDisplay();
         try
         {
             var context = SynchronizationContext.Current;
@@ -82,8 +125,10 @@ public sealed class TrackingViewModel : INotifyPropertyChanged, IDisposable
                     catch (Exception ex)
                     {
                         error = ex.Message; world = null; AppendDiagnostic("Rejected telemetry: " + ex.Message); SetState(TrackingState.Error);
-                        TelemetryChanged?.Invoke(null); operation.Cancel(); return;
+                        TelemetryChanged?.Invoke(null); NotifyDisplay(); operation.Cancel(); return;
                     }
+                    latestValid = lastKnown = world.Aircraft;
+                    _ = PersistLatestAsync(false);
                     if (state != TrackingState.Connected) SetState(TrackingState.Connected); else NotifyTelemetry();
                     if (world.PlayerMode != lastLoggedMode)
                     {
@@ -96,7 +141,7 @@ public sealed class TrackingViewModel : INotifyPropertyChanged, IDisposable
                         var player = world.Player is { } p ? string.Create(CultureInfo.InvariantCulture, $"{p.Latitude:F7},{p.Longitude:F7},{p.AltitudeFeet:F1}ft,{p.TrueHeadingDegrees:F1}deg") : "refused/none";
                         AppendDiagnostic(string.Create(CultureInfo.InvariantCulture, $"Sample mode={world.PlayerMode}; aircraft={world.Aircraft.Latitude:F7},{world.Aircraft.Longitude:F7},{world.Aircraft.AltitudeFeet:F1}ft,{world.Aircraft.TrueHeadingDegrees:F1}deg; player={player}"));
                     }
-                    TelemetryChanged?.Invoke(world);
+                    TelemetryChanged?.Invoke(world); NotifyDisplay();
                 }
                 if (context is null || ReferenceEquals(context, SynchronizationContext.Current)) Apply();
                 else context.Post(_ => Apply(), null);
@@ -110,15 +155,17 @@ public sealed class TrackingViewModel : INotifyPropertyChanged, IDisposable
         {
             if (cancellation == operation)
             {
-                error = ex.Message; world = null; AppendDiagnostic("Connection ended: " + ex.Message); SetState(TrackingState.Error); TelemetryChanged?.Invoke(null);
+                error = ex.Message; world = null; AppendDiagnostic("Connection ended: " + ex.Message); SetState(TrackingState.Error);
+                TelemetryChanged?.Invoke(null); NotifyDisplay();
             }
         }
         finally
         {
+            await PersistLatestAsync(true);
             if (cancellation == operation)
             {
                 operation.Dispose(); cancellation = null; run = null;
-                if (state != TrackingState.Error) { world = null; SetState(TrackingState.Disconnected); TelemetryChanged?.Invoke(null); }
+                if (state != TrackingState.Error) { world = null; SetState(TrackingState.Disconnected); TelemetryChanged?.Invoke(null); NotifyDisplay(); }
             }
         }
     }
@@ -126,17 +173,63 @@ public sealed class TrackingViewModel : INotifyPropertyChanged, IDisposable
     public void Disconnect()
     {
         if (cancellation is null) return;
-        cancellation.Cancel();
-        world = null; error = ""; AppendDiagnostic("Disconnected."); SetState(TrackingState.Disconnected); TelemetryChanged?.Invoke(null);
+        cancellation.Cancel(); world = null; error = ""; AppendDiagnostic("Disconnected; retaining latest valid aircraft position.");
+        SetState(TrackingState.Disconnected); TelemetryChanged?.Invoke(null); NotifyDisplay(); _ = PersistLatestAsync(true);
     }
 
+    public async Task ClearSavedStateAsync()
+    {
+        if (!CanClearSavedState) throw new InvalidOperationException("Disconnect Tracking before clearing saved aircraft state.");
+        await store.ClearAsync();
+        lastKnown = latestValid = null; lastPersistedObservation = default; persistenceWarning = "";
+        AppendDiagnostic("Cleared saved aircraft state."); NotifyTelemetry(); NotifyDisplay();
+    }
+
+    private async Task PersistLatestAsync(bool force)
+    {
+        var candidate = latestValid;
+        if (candidate is null || candidate.ObservedUtc <= lastPersistedObservation || (!force && candidate.ObservedUtc - lastPersistedObservation < persistenceInterval)) return;
+        await persistenceGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            candidate = latestValid;
+            if (candidate is null || candidate.ObservedUtc <= lastPersistedObservation || (!force && candidate.ObservedUtc - lastPersistedObservation < persistenceInterval)) return;
+            await store.SaveActiveAsync(candidate).ConfigureAwait(false);
+            lastPersistedObservation = candidate.ObservedUtc; persistenceWarning = "";
+        }
+        catch (Exception ex)
+        {
+            persistenceWarning = "Could not save last-known aircraft state: " + ex.Message;
+            AppendDiagnosticThreadSafe(persistenceWarning);
+        }
+        finally { persistenceGate.Release(); NotifyOnContext(); }
+    }
+
+    private void NotifyDisplay() => DisplayChanged?.Invoke(Current, world?.Player, IsLive);
     private void SetState(TrackingState value) { state = value; NotifyTelemetry(); ConnectCommand.Refresh(); DisconnectCommand.Refresh(); }
     private void NotifyTelemetry()
     {
-        foreach (var property in new[] { nameof(State), nameof(World), nameof(Current), nameof(HasTelemetry), nameof(HasPlayer), nameof(Status), nameof(Error), nameof(Aircraft), nameof(AircraftType), nameof(Position), nameof(Altitude), nameof(Heading), nameof(GroundSpeed), nameof(FlightState), nameof(PlayerState), nameof(PlayerPosition), nameof(PlayerAltitude), nameof(PlayerHeading), nameof(PlayerDistance), nameof(PlayerTrackingStatus), nameof(IntegrationDetails), nameof(DiagnosticLog), nameof(LastUpdate) }) Changed(property);
+        foreach (var property in new[] { nameof(State), nameof(World), nameof(Current), nameof(IsLive), nameof(HasTelemetry), nameof(HasPlayer), nameof(CanClearSavedState), nameof(StoragePath), nameof(Status), nameof(Freshness), nameof(Error), nameof(PersistenceWarning), nameof(Aircraft), nameof(AircraftType), nameof(Position), nameof(Altitude), nameof(Heading), nameof(GroundSpeed), nameof(FlightState), nameof(PlayerState), nameof(PlayerPosition), nameof(PlayerAltitude), nameof(PlayerHeading), nameof(PlayerDistance), nameof(PlayerTrackingStatus), nameof(IntegrationDetails), nameof(DiagnosticLog), nameof(LastUpdate) }) Changed(property);
     }
-    private void AppendDiagnostic(string message) { diagnostic.Add($"{DateTimeOffset.Now:O} {message}"); Changed(nameof(DiagnosticLog)); }
+    private void AppendDiagnostic(string message) { lock (diagnostic) diagnostic.Add($"{DateTimeOffset.Now:O} {message}"); Changed(nameof(DiagnosticLog)); }
+    private void AppendDiagnosticThreadSafe(string message)
+    {
+        lock (diagnostic) diagnostic.Add($"{DateTimeOffset.Now:O} {message}");
+        if (notificationContext is not null && !ReferenceEquals(notificationContext,SynchronizationContext.Current)) notificationContext.Post(_=>Changed(nameof(DiagnosticLog)),null);
+        else Changed(nameof(DiagnosticLog));
+    }
+    private void NotifyOnContext()
+    {
+        if (notificationContext is not null && !ReferenceEquals(notificationContext,SynchronizationContext.Current)) notificationContext.Post(_=>NotifyTelemetry(),null);
+        else NotifyTelemetry();
+    }
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
-    public void Dispose() { Disconnect(); }
+    public void Dispose()
+    {
+        if (disposed) return;
+        Disconnect();
+        try { PersistLatestAsync(true).GetAwaiter().GetResult(); } catch { }
+        disposed = true;
+    }
     private sealed class CallbackProgress<T>(Action<T> report) : IProgress<T> { public void Report(T value) => report(value); }
 }

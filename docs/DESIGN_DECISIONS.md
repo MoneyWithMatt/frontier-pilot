@@ -71,3 +71,11 @@
 - **Implemented:** derive distance from independent WGS84 coordinates. Label heading avatar facing because the evidence does not establish universal camera gaze or body semantics.
 - **Preserved:** Airport Builder survey retains its stricter five-second stability/elevation/hash qualification. Tracking does not reuse or weaken elevation capture and does not use disputed avatar-targeted `GROUND ALTITUDE`.
 - **Acceptance limit:** prior evidence proves the underlying proxies on the recorded build. The new continuous dual-marker UI still requires Matt's live seated/walk/return test.
+
+## Tracking V3 — 2026-09-08
+
+- **Implemented:** persist validated aircraft telemetry independently from transient player/avatar state. A saved observation is last known and never implies parked, owned or spawn-authoritative.
+- **Implemented:** use a versioned document with an active ID and aircraft-record collection. Prototype IDs derive from available type/title while acknowledging that they cannot distinguish identical airframes.
+- **Implemented:** update memory at telemetry rate, write at most every ten seconds, and force the latest valid sample on disconnect/shutdown. Use flushed temporary-file replacement; preserve and report corrupt or future documents.
+- **Implemented:** retain the saved marker through startup, connection attempts and loss. LIVE/LAST KNOWN/NO SAVED POSITION are explicit; the first live fix may recenter once and later updates preserve manual viewport control.
+- **Deferred:** parking legitimacy, engine/brake rules, stand association, ownership, stable airframe identity and spawn enforcement.

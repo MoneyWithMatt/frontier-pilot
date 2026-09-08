@@ -78,3 +78,9 @@ Mapsui.Wpf 5.1.0 renders an OpenStreetMap base layer and a heading-oriented airc
 The installed SDK and current official documentation define explicit user-aircraft, user-avatar and current-controlled-object proxies. Preserved Sedona evidence already proves that current switches from aircraft object 524288 to independently moving avatar 32768 in walkaround on simulator 1.8.16.0. Tracking now requests all three proxies in synchronized 4 Hz read-only batches and exposes a player only when the explicit identities and avatar/current values agree and report on ground. Invalid or ambiguous player readings are refused while the aircraft remains tracked.
 
 Core now represents `TrackingWorldState` with independent aircraft and optional player positions. The WPF map retains the orange aircraft and adds a blue avatar marker, independent centre controls, player telemetry/distance and collapsed two-second diagnostics. Full Release tests: 334 passed. The dual-marker integration awaits Matt's live seated/walk/return acceptance. See [tracking-v2-avatar.md](tracking-v2-avatar.md) and evidence/tracking-v2/.
+
+## Tracking V3 — 2026-09-08
+
+Validated aircraft telemetry now persists as versioned multi-record JSON under `%LOCALAPPDATA%\FrontierAirportBuilder\desktop\tracking`. Writes are throttled to ten seconds and disconnect/normal shutdown forces the newest valid state. Atomic replacement preserves the prior complete document; corrupt or unsupported history is reported and preserved until explicitly cleared.
+
+Tracking loads last-known state without MSFS. The map distinguishes LIVE, LAST KNOWN with timestamp, and no saved position. Connection loss retains the aircraft marker and removes only transient V2 player state. Persistence never receives avatar coordinates and does not claim that the aircraft was parked. See [tracking-v3-persistence.md](tracking-v3-persistence.md) and evidence/tracking-v3/.

@@ -54,10 +54,11 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         _ => "Review the log before continuing."
     };
     public event PropertyChangedEventHandler? PropertyChanged;
-    public BuilderViewModel(IBuilderServices services, string sdkRoot, ITrackingTelemetrySource? telemetrySource = null)
+    public BuilderViewModel(IBuilderServices services, string sdkRoot, ITrackingTelemetrySource? telemetrySource = null, IAircraftStateStore? aircraftStateStore = null)
     {
         this.services = services; this.sdkRoot = sdkRoot;
-        Tracking = new(telemetrySource ?? new FrontierAirportBuilder.MsfsSdk.LiveAircraftTelemetry(), () => this.sdkRoot, !services.IsDryRun);
+        aircraftStateStore ??= services.IsDryRun ? new MemoryAircraftStateStore() : new LocalAircraftStateStore();
+        Tracking = new(telemetrySource ?? new FrontierAirportBuilder.MsfsSdk.LiveAircraftTelemetry(), aircraftStateStore, () => this.sdkRoot, !services.IsDryRun);
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading));
         Layout.Edited += (_,_)=>Invalidate();
         AddParkingCommand = new(()=>AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading)),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Stands.Count<8);

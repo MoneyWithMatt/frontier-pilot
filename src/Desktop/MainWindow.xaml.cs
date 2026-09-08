@@ -15,9 +15,9 @@ public partial class MainWindow : Window
         if (dryRun) Title += " · DRY RUN";
         model = new(dryRun ? BuilderServices.CreateDesktopDryRun() : new BuilderServices(), Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.User) ?? Environment.GetEnvironmentVariable("MSFS2024_SDK") ?? "");
         DataContext = model;
-        model.Tracking.TelemetryChanged += TrackingTelemetryChanged;
+        model.Tracking.DisplayChanged += TrackingDisplayChanged;
         Closing += OnClosing;
-        Loaded += async (_,_)=>await model.RefreshAirportsAsync();
+        Loaded += async (_,_)=>await Task.WhenAll(model.RefreshAirportsAsync(),model.Tracking.InitializeAsync());
     }
     private void MainTabsChanged(object sender,SelectionChangedEventArgs e)
     {
@@ -26,14 +26,20 @@ public partial class MainWindow : Window
         if(MainTabs.SelectedIndex==1 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
             _=model.Tracking.ConnectAsync();
     }
-    private void TrackingTelemetryChanged(FrontierAirportBuilder.Core.TrackingWorldState? telemetry) =>
-        Dispatcher.InvokeAsync(()=>TrackingMap.ShowWorld(telemetry));
+    private void TrackingDisplayChanged(FrontierAirportBuilder.Core.AircraftTelemetry? aircraft,FrontierAirportBuilder.Core.PlayerTelemetry? player,bool isLive) =>
+        Dispatcher.InvokeAsync(()=>TrackingMap.Show(aircraft,player,isLive));
     private void CenterAircraft(object sender,RoutedEventArgs e)=>TrackingMap.CenterOnAircraft();
     private void CenterPlayer(object sender,RoutedEventArgs e)=>TrackingMap.CenterOnPlayer();
     private void CopyTrackingLog(object sender,RoutedEventArgs e)
     {
         try { Clipboard.SetText(model.Tracking.DiagnosticLog); }
         catch (Exception error) { MessageBox.Show(this,error.Message,"Could not copy tracking diagnostics",MessageBoxButton.OK,MessageBoxImage.Error); }
+    }
+    private async void ClearTrackingState(object sender,RoutedEventArgs e)
+    {
+        if(MessageBox.Show(this,"Clear Frontier Pilot's saved aircraft position history? This does not affect MSFS or any aircraft.","Clear saved aircraft position",MessageBoxButton.YesNo,MessageBoxImage.Warning,MessageBoxResult.No)!=MessageBoxResult.Yes)return;
+        try { await model.Tracking.ClearSavedStateAsync(); }
+        catch(Exception error) { MessageBox.Show(this,error.Message,"Could not clear saved aircraft position",MessageBoxButton.OK,MessageBoxImage.Error); }
     }
     private void OpenMapAttribution(object sender,RequestNavigateEventArgs e)
     {

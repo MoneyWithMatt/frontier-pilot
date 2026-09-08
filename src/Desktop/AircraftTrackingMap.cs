@@ -18,6 +18,7 @@ public sealed class AircraftTrackingMap : MapControl
     private MPoint? aircraftPosition;
     private MPoint? playerPosition;
     private bool initiallyCentered;
+    private bool lastWasLive;
 
     public AircraftTrackingMap()
     {
@@ -30,18 +31,16 @@ public sealed class AircraftTrackingMap : MapControl
         Map = map;
     }
 
-    public void ShowWorld(TrackingWorldState? world)
+    public void Show(AircraftTelemetry? telemetry, PlayerTelemetry? player, bool isLive)
     {
-        if (world is null)
+        if (telemetry is null)
         {
             aircraftPosition = null; playerPosition = null;
-            initiallyCentered = false;
+            initiallyCentered = false; lastWasLive = false;
             aircraftLayer.Features = []; playerLayer.Features = [];
             Map.RefreshGraphics();
             return;
         }
-
-        var telemetry = world.Aircraft;
 
         // Web Mercator has no finite representation at the poles. Preserve the real latitude
         // in telemetry while placing the marker at the nearest representable map coordinate.
@@ -64,7 +63,7 @@ public sealed class AircraftTrackingMap : MapControl
             Outline = new Pen(new Color(32, 60, 53), 1)
         });
         aircraftLayer.Features = [marker];
-        if (world.Player is { } player)
+        if (player is not null)
         {
             playerPosition = Project(player.Longitude, player.Latitude);
             var playerMarker = new PointFeature(playerPosition);
@@ -91,7 +90,9 @@ public sealed class AircraftTrackingMap : MapControl
             playerLayer.Features = [];
         }
         Map.RefreshGraphics();
-        if (!initiallyCentered)
+        bool shouldCenter = !initiallyCentered || isLive && !lastWasLive;
+        lastWasLive = isLive;
+        if (shouldCenter)
         {
             initiallyCentered = true;
             Map.Navigator.CenterOnAndZoomTo(aircraftPosition, Map.Navigator.Resolutions[15]);
