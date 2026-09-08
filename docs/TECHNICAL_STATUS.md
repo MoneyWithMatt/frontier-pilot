@@ -69,6 +69,12 @@ Each building generates a small terrain polygon from the same bounds: 2 m flat m
 
 ## Tracking V1 — 2026-09-08
 
-The Desktop application now has a Tracking page backed by an independent read-only aircraft telemetry boundary. It explicitly requests the installed SDK's user-aircraft proxy, never the avatar/current-controlled-object or camera. Validated latitude, longitude, altitude, true heading, ground speed, on-ground state, aircraft title and ATC model flow through a testable Workflow view model at 4 Hz.
+The Desktop application now has a Tracking page backed by an independent read-only aircraft telemetry boundary. Tracking V1 was subsequently accepted by Matt in MSFS. Validated latitude, longitude, altitude, true heading, ground speed, on-ground state, aircraft title and ATC model flow through a testable Workflow view model at 4 Hz.
 
-Mapsui.Wpf 5.1.0 renders an OpenStreetMap base layer and a heading-oriented aircraft marker. Initial acquisition centres once; later marker updates preserve manual pan/zoom, and Centre on Aircraft is explicit. SimConnect quit, timeout and malformed data clear the marker and expose retry. Full tests: 324 passed; Release build: zero warnings/errors. Live MSFS telemetry remains awaiting Matt's acceptance. See [tracking-v1.md](tracking-v1.md) and evidence/tracking-v1/.
+Mapsui.Wpf 5.1.0 renders an OpenStreetMap base layer and a heading-oriented aircraft marker. Initial acquisition centres once; later marker updates preserve manual pan/zoom, and Centre on Aircraft is explicit. SimConnect quit, timeout and malformed data clear the marker and expose retry. See [tracking-v1.md](tracking-v1.md) and evidence/tracking-v1/.
+
+## Tracking V2 — 2026-09-08
+
+The installed SDK and current official documentation define explicit user-aircraft, user-avatar and current-controlled-object proxies. Preserved Sedona evidence already proves that current switches from aircraft object 524288 to independently moving avatar 32768 in walkaround on simulator 1.8.16.0. Tracking now requests all three proxies in synchronized 4 Hz read-only batches and exposes a player only when the explicit identities and avatar/current values agree and report on ground. Invalid or ambiguous player readings are refused while the aircraft remains tracked.
+
+Core now represents `TrackingWorldState` with independent aircraft and optional player positions. The WPF map retains the orange aircraft and adds a blue avatar marker, independent centre controls, player telemetry/distance and collapsed two-second diagnostics. Full Release tests: 334 passed. The dual-marker integration awaits Matt's live seated/walk/return acceptance. See [tracking-v2-avatar.md](tracking-v2-avatar.md) and evidence/tracking-v2/.

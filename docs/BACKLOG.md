@@ -1,7 +1,7 @@
 # Backlog
 
 ## Next acceptance test
-- Run Tracking V1 against a loaded MSFS flight: verify real position/heading, taxi and airborne updates, manual viewport control, aircraft identity/units and simulator-disconnect recovery. See tracking-v1.md.
+- Run Tracking V2 against a loaded MSFS flight: verify In Aircraft → On Foot identity transition, stationary aircraft plus independently moving avatar, distance/facing, return to aircraft, manual viewport control and disconnect recovery. See tracking-v2-avatar.md. Tracking V1 aircraft movement was accepted by Matt.
 - Rebuild the accepted `Gen_Hangar56` placement and verify the 46.2 × 94.4 m map outline, foundation elevation, rear terrain contact and 8 m blended edge in MSFS. See object-footprints-and-foundations.md.
 - Run the WPF flow in a real flight: capture a new flat site, close MSFS, compile/install a new identifier, restart and inspect both starts.
 - Exercise replacement of that new app-owned package and verify the prior version backup. Keep FPT1/FPSC untouched.

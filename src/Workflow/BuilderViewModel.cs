@@ -54,7 +54,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         _ => "Review the log before continuing."
     };
     public event PropertyChangedEventHandler? PropertyChanged;
-    public BuilderViewModel(IBuilderServices services, string sdkRoot, IAircraftTelemetrySource? telemetrySource = null)
+    public BuilderViewModel(IBuilderServices services, string sdkRoot, ITrackingTelemetrySource? telemetrySource = null)
     {
         this.services = services; this.sdkRoot = sdkRoot;
         Tracking = new(telemetrySource ?? new FrontierAirportBuilder.MsfsSdk.LiveAircraftTelemetry(), () => this.sdkRoot, !services.IsDryRun);

@@ -4,7 +4,7 @@
 
 Tracking V1 is a read-only proof from MSFS 2024 SimConnect to a moving marker in Frontier Pilot. `AircraftTelemetry` explicitly describes the user aircraft. It is not a generic player-position type and is not reused for the walking avatar or camera.
 
-`LiveAircraftTelemetry` loads the configured SDK's `SimConnect.dll`, opens a read-only connection and requests data for `SIMCONNECT_OBJECT_ID_USER_AIRCRAFT` (`0`). The installed SDK 1.2.4 header separately defines user-aircraft, user-avatar and current-controlled-object proxies; Tracking uses only the aircraft proxy.
+`LiveAircraftTelemetry` originally loaded the configured SDK's `SimConnect.dll`, opened a read-only connection and requested data for `SIMCONNECT_OBJECT_ID_USER_AIRCRAFT` (`0`). Tracking V2 subsequently extended that same boundary with explicit avatar/current proxies while preserving this aircraft stream; see tracking-v2-avatar.md.
 
 Numeric observations are requested every 250 ms:
 
@@ -31,7 +31,7 @@ Maps need an internet connection for uncached OpenStreetMap tiles. Public OSM ti
 
 ## Architecture
 
-- Core: `AircraftTelemetry` validation and `IAircraftTelemetrySource` boundary.
+- Core: `AircraftTelemetry`, independent `TrackingWorldState` validation and `ITrackingTelemetrySource` boundary.
 - MsfsSdk: native read-only `LiveAircraftTelemetry` implementation.
 - Workflow: `TrackingViewModel`, state, formatting, cancellation and recovery.
 - Desktop: Mapsui projection/rendering in `AircraftTrackingMap` and Tracking tab composition.
@@ -51,7 +51,7 @@ The Airport Builder continues to use its existing `LiveSurveyCapture`; its quali
 9. Close MSFS or select **Disconnect**. Confirm Frontier Pilot clears the live marker and shows a disconnected/error state without closing.
 10. Reopen the Airport Builder and confirm its existing saved airports and workflow still operate normally.
 
-This implementation has automated and local launch coverage but has not yet received live telemetry from MSFS during this task. Matt's manual test is the acceptance authority for the SimConnect values and moving map.
+Matt subsequently accepted the V1 aircraft telemetry and moving map in MSFS. Tracking V2 dual-position behaviour has its own manual acceptance procedure.
 
 ## References
 

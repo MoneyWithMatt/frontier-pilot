@@ -26,9 +26,15 @@ public partial class MainWindow : Window
         if(MainTabs.SelectedIndex==1 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
             _=model.Tracking.ConnectAsync();
     }
-    private void TrackingTelemetryChanged(FrontierAirportBuilder.Core.AircraftTelemetry? telemetry) =>
-        Dispatcher.InvokeAsync(()=>TrackingMap.ShowAircraft(telemetry));
+    private void TrackingTelemetryChanged(FrontierAirportBuilder.Core.TrackingWorldState? telemetry) =>
+        Dispatcher.InvokeAsync(()=>TrackingMap.ShowWorld(telemetry));
     private void CenterAircraft(object sender,RoutedEventArgs e)=>TrackingMap.CenterOnAircraft();
+    private void CenterPlayer(object sender,RoutedEventArgs e)=>TrackingMap.CenterOnPlayer();
+    private void CopyTrackingLog(object sender,RoutedEventArgs e)
+    {
+        try { Clipboard.SetText(model.Tracking.DiagnosticLog); }
+        catch (Exception error) { MessageBox.Show(this,error.Message,"Could not copy tracking diagnostics",MessageBoxButton.OK,MessageBoxImage.Error); }
+    }
     private void OpenMapAttribution(object sender,RequestNavigateEventArgs e)
     {
         Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri){UseShellExecute=true});e.Handled=true;

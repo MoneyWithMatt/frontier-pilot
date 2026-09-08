@@ -63,3 +63,11 @@
 - **Implemented:** use Mapsui.Wpf 5.1.0 with OpenStreetMap for a native WPF, key-free prototype map. Centre once at acquisition; marker updates never override later user pan/zoom.
 - **Prototype dependency:** online tiles use the public OpenStreetMap service with visible attribution and a distinct user-agent. Review a production tile provider and cache policy before customer-scale distribution.
 - **Acceptance limit:** automated tests prove state, validation and failure handling. Matt's live simulator test must confirm aircraft identity, units, heading orientation and marker movement.
+
+## Tracking V2 — 2026-09-08
+
+- **Confirmed mechanism:** use the SDK's explicit `USER_AIRCRAFT`, `USER_AVATAR` and `USER_CURRENT` proxies. Microsoft documents the object types, the installed header defines the proxies, and preserved Sedona evidence demonstrates the current-object switch and independent avatar movement.
+- **Implemented:** keep aircraft and optional player positions separate in Core. Populate player only when current identity equals a distinct avatar and their synchronized values agree; otherwise retain aircraft and refuse player state.
+- **Implemented:** derive distance from independent WGS84 coordinates. Label heading avatar facing because the evidence does not establish universal camera gaze or body semantics.
+- **Preserved:** Airport Builder survey retains its stricter five-second stability/elevation/hash qualification. Tracking does not reuse or weaken elevation capture and does not use disputed avatar-targeted `GROUND ALTITUDE`.
+- **Acceptance limit:** prior evidence proves the underlying proxies on the recorded build. The new continuous dual-marker UI still requires Matt's live seated/walk/return test.
