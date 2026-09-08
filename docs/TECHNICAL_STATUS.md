@@ -84,3 +84,7 @@ Core now represents `TrackingWorldState` with independent aircraft and optional 
 Validated aircraft telemetry now persists as versioned multi-record JSON under `%LOCALAPPDATA%\FrontierAirportBuilder\desktop\tracking`. Writes are throttled to ten seconds and disconnect/normal shutdown forces the newest valid state. Atomic replacement preserves the prior complete document; corrupt or unsupported history is reported and preserved until explicitly cleared.
 
 Tracking loads last-known state without MSFS. The map distinguishes LIVE, LAST KNOWN with timestamp, and no saved position. Connection loss retains the aircraft marker and removes only transient V2 player state. Persistence never receives avatar coordinates and does not claim that the aircraft was parked. See [tracking-v3-persistence.md](tracking-v3-persistence.md) and evidence/tracking-v3/.
+
+## Desktop startup correction — 2026-09-08
+
+The first Tracking V3 distribution crashed while WPF created the Tracking diagnostics text box: its read-only view-model property was bound with TextBox's default two-way mode. The binding is now explicitly one-way and a source-level regression test protects that contract. All 344 tests and the Release build pass; the republished self-contained executable launched responsively through the Desktop shortcut. Airport and tracking persistence were not involved and were left unchanged. See evidence/startup-binding-regression/.

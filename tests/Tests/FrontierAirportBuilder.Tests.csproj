@@ -26,4 +26,8 @@
     <ProjectReference Include="..\..\src\Workflow\FrontierAirportBuilder.Workflow.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\src\Desktop\MainWindow.xaml" Link="Desktop\MainWindow.xaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
