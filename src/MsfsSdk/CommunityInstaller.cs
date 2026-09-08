@@ -21,6 +21,34 @@ public sealed class CommunityInstaller(string packagesRoot, string stateRoot, Ac
         return "frontier-airport-" + identifier.ToLowerInvariant();
     }
     private string Ledger(string id) => System.IO.Path.Combine(stateRoot, "ownership", PackageName(id) + ".json");
+    public string OwnershipFile(string id) {var path=Ledger(id);SafePath(path);return path;}
+    public InstallationReceipt InspectOwnedRemoval(string id)
+    {
+        assertSimulatorClosed();ValidateDestination();
+        string name=PackageName(id),target=System.IO.Path.Combine(Community,name);
+        Within(target,Community);SafePath(Ledger(id));
+        var receipt=JsonSerializer.Deserialize<InstallationReceipt>(File.ReadAllText(Ledger(id)))??throw new IOException("Unreadable ownership receipt.");
+        if(receipt.Identifier!=id||receipt.PackageName!=name||!SamePath(receipt.InstallPath,target))throw new IOException("Ownership receipt does not match the removal destination.");
+        if(File.Exists(target))throw new IOException("Installed package path is a file.");
+        if(Directory.Exists(target))
+        {
+            Compare(receipt.Files,Inventory(target));
+            using var manifest=JsonDocument.Parse(File.ReadAllText(System.IO.Path.Combine(target,"manifest.json")));
+            bool synthetic=manifest.RootElement.TryGetProperty("frontier_test_only",out var flag)&&flag.ValueKind==JsonValueKind.True;
+            if(manifest.RootElement.GetProperty("creator").GetString()!="Frontier Pilot"||synthetic!=allowTestPackages)
+                throw new IOException("Installed package ownership/mode is not appropriate for this removal.");
+        }
+        return receipt;
+    }
+    // Uses the same cross-process gate as Install, including older running Frontier versions.
+    public static IDisposable LockForRemoval()
+    {
+        var gate=new Semaphore(1,1,"Local\\FrontierAirportBuilder-CommunityInstall");
+        if(!gate.WaitOne(0)){gate.Dispose();throw new IOException("Another Frontier installation/removal is running.");}
+        return new RemovalGate(gate);
+    }
+    private sealed class RemovalGate(Semaphore gate):IDisposable {public void Dispose(){gate.Release();gate.Dispose();}}
+    public static void VerifyInventory(IReadOnlyList<PackageFile> expected,IReadOnlyList<PackageFile> actual)=>Compare(expected,actual);
     public string CheckIdentifier(string id)
     {
         string name = PackageName(id);

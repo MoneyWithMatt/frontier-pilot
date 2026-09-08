@@ -7,8 +7,10 @@
 <TextBlock Text="{Binding Error}" Foreground="#A52222"/><TextBlock Text="{Binding RecoveryAction}" FontWeight="SemiBold"/>
 <WrapPanel><Button Content="Validate" Command="{Binding ValidateCommand}"/><Button Content="Generate and compile" Command="{Binding BuildCommand}"/><Button Content="Install airport" Command="{Binding InstallCommand}"/><Button Content="Cancel" Command="{Binding CancelCommand}"/><Button Content="Project" Command="{Binding OpenProjectCommand}"/><Button Content="Package" Command="{Binding OpenPackageCommand}"/><Button Content="Build log" Command="{Binding OpenLogCommand}"/><Button Content="Evidence" Command="{Binding OpenEvidenceCommand}"/></WrapPanel>
 </StackPanel></Border>
-<ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="24,20"><TextBlock Text="{Binding ModeDescription}" FontWeight="Bold" Margin="0,0,0,14"/>
+<TabControl x:Name="MainTabs"><TabItem Header="Airport Builder"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="24,20"><TextBlock Text="{Binding ModeDescription}" FontWeight="Bold" Margin="0,0,0,14"/>
 <Border Style="{StaticResource Card}"><StackPanel>
+<WrapPanel><Button Content="New airport" Click="NewAirport" IsEnabled="{Binding CanManageAirports}"/><Button Content="Save airport" Command="{Binding SaveAirportCommand}"/></WrapPanel>
+<TextBlock Text="{Binding SaveStatus}" FontWeight="SemiBold" Margin="0,0,0,10"/>
 <TextBlock Style="{StaticResource Title}" Text="1. Connect to your flight"/>
 <TextBlock Text="{Binding CheckInstructions}"/>
 <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><Label Content="_SDK folder" Target="{Binding ElementName=Sdk}"/><TextBox x:Name="Sdk" Text="{Binding SdkRoot, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanEditSdk}"/></StackPanel><Button Grid.Column="1" Content="Check and connect" VerticalAlignment="Bottom" Margin="0,0,0,10" Command="{Binding CheckCommand}"/></Grid>
@@ -24,7 +26,7 @@
 <StackPanel IsEnabled="{Binding CanEdit}">
 <TextBlock Style="{StaticResource Title}" Text="3. Define your airstrip"/>
 <Label Content="Airport _name" Target="{Binding ElementName=NameField}"/><TextBox x:Name="NameField" Text="{Binding AirportName, UpdateSourceTrigger=PropertyChanged}"/>
-<Label Content="_Identifier · 3–8 letters or digits, starting with a letter" Target="{Binding ElementName=IdField}"/><TextBox x:Name="IdField" Text="{Binding Identifier, UpdateSourceTrigger=PropertyChanged}"/>
+<Label Content="_Identifier · 3–8 letters or digits, starting with a letter" Target="{Binding ElementName=IdField}"/><TextBox x:Name="IdField" IsEnabled="{Binding CanEditIdentifier}" Text="{Binding Identifier, UpdateSourceTrigger=PropertyChanged}"/>
 <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><StackPanel><Label Content="_Length (metres)" Target="{Binding ElementName=LengthField}"/><TextBox x:Name="LengthField" Text="{Binding Length, UpdateSourceTrigger=PropertyChanged}"/></StackPanel><StackPanel Grid.Column="1"><Label Content="_Width (metres)" Target="{Binding ElementName=WidthField}"/><TextBox x:Name="WidthField" Text="{Binding Width, UpdateSourceTrigger=PropertyChanged}"/></StackPanel></Grid>
 <Label Content="_Surface" Target="{Binding ElementName=SurfaceField}"/><ComboBox x:Name="SurfaceField" ItemsSource="{Binding Surfaces}" SelectedItem="{Binding Surface}" Padding="8" Margin="0,0,12,12"/>
 <CheckBox IsChecked="{Binding SiteConfirmed}" Margin="0,0,12,10"><TextBlock Text="{Binding SiteCheckText}"/></CheckBox>
@@ -59,5 +61,13 @@
 <TextBlock Text="Apply property edits before validating. Stand names use MSFS parking categories plus their unique number. Parking and taxiways follow existing terrain. Taxiway surface follows the runway surface; no apron is created." FontSize="12"/>
 </StackPanel></Border>
 <Border Style="{StaticResource Card}"><StackPanel><TextBlock Style="{StaticResource Title}" Text="4. Build, install and fly"/><TextBlock Text="Generate and compile creates an isolated project. Install verifies the package and backs up any previous installation owned by this app. FPT1 and FPSC are protected. The full runway footprint still needs a visual terrain check."/><TextBlock Text="{Binding SuccessInstructions}" FontWeight="SemiBold" Margin="0,10"/><Expander Header="Technical log (select text to copy)"><StackPanel><WrapPanel><Button Content="Copy technical log" Click="CopyLog"/><Button Content="Save technical log…" Click="SaveLog"/></WrapPanel><TextBox Text="{Binding TechnicalLog, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="220" VerticalScrollBarVisibility="Auto"/></StackPanel></Expander></StackPanel></Border>
-</StackPanel></ScrollViewer>
+</StackPanel></ScrollViewer></TabItem>
+<TabItem Header="My Airports"><Grid Margin="20"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+<StackPanel><TextBlock Text="My Airports" FontSize="23" FontWeight="SemiBold"/><TextBlock Text="Your saved Frontier definitions. Opening one restores its survey and layout; validate and rebuild before installing again."/><TextBlock Text="{Binding LibraryPath}" FontSize="11" Margin="0,6"/></StackPanel>
+<WrapPanel Grid.Row="1"><Button Content="Refresh list" Command="{Binding RefreshAirportsCommand}"/><Button Content="Open airport" Click="OpenAirport" IsEnabled="{Binding CanOpenAirport}"/><Button Content="Delete Airport…" Click="DeleteAirport" IsEnabled="{Binding CanOpenAirport}"/></WrapPanel>
+<DataGrid Grid.Row="2" ItemsSource="{Binding Airports}" SelectedItem="{Binding SelectedAirport}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single" Margin="0,10"><DataGrid.Columns>
+<DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*"/><DataGridTextColumn Header="Identifier" Binding="{Binding Identifier}" Width="90"/><DataGridTextColumn Header="Location" Binding="{Binding Location}" Width="160"/><DataGridTextColumn Header="Last recorded status" Binding="{Binding Status}" Width="3*"/>
+</DataGrid.Columns></DataGrid>
+<StackPanel Grid.Row="3"><TextBlock Text="{Binding LibraryWarnings}" Foreground="#A52222"/><TextBlock Text="Build/install entries are history, not a fresh verification of files. Deletion checks ownership and asks for confirmation. Close MSFS before deleting a live airport."/></StackPanel>
+</Grid></TabItem></TabControl>
 </DockPanel></Window>

@@ -23,7 +23,7 @@ public interface IBuilderServices
     void OpenPath(string path);
 }
 
-public sealed class BuilderServices : IBuilderServices
+public sealed partial class BuilderServices : IBuilderServices, IAirportManagement
 {
     private readonly string root;
     private readonly IWorkflowBackend backend;
@@ -31,6 +31,7 @@ public sealed class BuilderServices : IBuilderServices
     private BuiltAirport? issuedBuild;
     private SurveyPoint? capturedSurvey;
     private string captureEvidence = "";
+    private SurveyArchive? surveyArchive;
     public bool IsDryRun => backend.IsDryRun;
     public string? SandboxDirectory => sandbox;
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, Converters = { new JsonStringEnumConverter() } };
@@ -51,7 +52,7 @@ public sealed class BuilderServices : IBuilderServices
         new(Path.Combine(Path.GetTempPath(), "FrontierAirportBuilder-DryRuns", Guid.NewGuid().ToString("N")), recordedFramesJson, failCompilation);
     public Task<string> CheckAsync(string sdkRoot, CancellationToken token) => Task.Run(() =>
     {
-        capturedSurvey = null; issuedBuild = null; CommunityInstaller.SafePath(root);
+        capturedSurvey = null; surveyArchive=null; activeAirport=null; issuedBuild = null; CommunityInstaller.SafePath(root);
         if (sandbox != null)
         {
             CommunityInstaller.SafePath(sandbox);
@@ -65,17 +66,24 @@ public sealed class BuilderServices : IBuilderServices
     }, token);
     public Task<SurveyPoint> CaptureAsync(string sdkRoot, CancellationToken token) => Task.Run(() =>
     {
-        capturedSurvey = null; issuedBuild = null;
+        capturedSurvey = null; surveyArchive=null; activeAirport=null; issuedBuild = null;
         EvidenceDirectory = Fresh("surveys"); ProjectDirectory = ""; LogPath = Path.Combine(EvidenceDirectory, "result.json");
         var point = backend.Capture(sdkRoot, EvidenceDirectory, token);
         token.ThrowIfCancellationRequested();
         if (SurveyCapture.ValidatePoint(point) is { } problem) throw new IOException(problem);
         captureEvidence = EvidenceDirectory;
+        surveyArchive=SurveyArchive.ReadCapture(captureEvidence,point,IsDryRun);
         return capturedSurvey = point;
     }, token);
-    public Task<string> ValidateIdentifierAsync(string identifier, CancellationToken token) => Task.Run(() => Installer().CheckIdentifier(identifier), token);
+    public Task<string> ValidateIdentifierAsync(string identifier, CancellationToken token) => Task.Run(() =>
+    {
+        if(Library.List().Airports.Any(a=>a.Identifier==identifier&&a.Id!=ActiveAirportId))
+            throw new IOException("That identifier is already saved. Load its airport from My Airports.");
+        return Installer().CheckIdentifier(identifier);
+    }, token);
     public Task<BuiltAirport> BuildAsync(string sdkRoot, AirstripDefinition definition, IProgress<string> progress, CancellationToken token) => Task.Run(async () =>
     {
+        using var operation=Library.Lock();
         // Validate and check read-only prerequisites before allocating any project workspace.
         definition.EnsureValid();
         if (capturedSurvey == null || definition.Latitude != capturedSurvey.Latitude || definition.Longitude != capturedSurvey.Longitude ||
@@ -83,15 +91,20 @@ public sealed class BuilderServices : IBuilderServices
             definition.MagneticVariationDegreesEast != capturedSurvey.MagneticVariationDegrees)
             throw new IOException("Definition must use this session's validated survey point without substituted coordinates or elevation.");
         issuedBuild = null; Installer().CheckIdentifier(definition.Identifier); if (!IsDryRun) AssertSimulatorClosed();
-        if (!IsDryRun) SdkInspector.Inspect(sdkRoot); token.ThrowIfCancellationRequested();
+        if (!IsDryRun) SdkInspector.Inspect(sdkRoot); surveyArchive?.VerifyInstalledQualification(sdkRoot); token.ThrowIfCancellationRequested();
         progress.Report("Generating isolated airport project");
-        string dir = Fresh("projects");
-        var generated = ProjectGenerator.Generate(definition, dir);
+        SaveAirportCore(definition);
+        string workspaceKey=Guid.NewGuid().ToString("N")[..16];
+        string dir = Library.ProjectPath(workspaceKey);
+        if(Directory.Exists(dir)||File.Exists(dir))throw new IOException("Workspace collision; retry build.");
+        UpdateAirport(a=>a with {Artifacts=[..a.Artifacts,new(workspaceKey,"building",[])],LastBuild="building"});
         ProjectDirectory = dir; EvidenceDirectory = Path.Combine(dir, ".build"); LogPath = Path.Combine(dir, "build-report.txt");
-        File.WriteAllText(Path.Combine(dir, "survey-reference.json"), JsonSerializer.Serialize(new { point = capturedSurvey, evidenceDirectory = captureEvidence, dryRun = IsDryRun }, Json));
-        File.WriteAllText(Path.Combine(dir, "airstrip.json"), JsonSerializer.Serialize(definition, Json));
         try
         {
+            var generated = ProjectGenerator.Generate(definition, dir);
+            Library.MarkProject(dir,activeAirport!.Id,workspaceKey);
+            File.WriteAllText(Path.Combine(dir, "survey-reference.json"), JsonSerializer.Serialize(new { point = capturedSurvey, evidenceDirectory = captureEvidence, dryRun = IsDryRun }, Json));
+            File.WriteAllText(Path.Combine(dir, "airstrip.json"), JsonSerializer.Serialize(definition, Json));
             var result = await backend.Compile(generated, sdkRoot, progress, token);
             File.WriteAllText(LogPath, "Frontier Airport Builder\n" + JsonSerializer.Serialize(result, Json) + "\n\n" +
                 string.Join("\n", new[] { "command.ps1", "stdout.log", "stderr.log", "builder-errors-this-run.log" }.Select(f =>
@@ -102,15 +115,28 @@ public sealed class BuilderServices : IBuilderServices
         }
         catch (Exception e)
         {
-            File.AppendAllText(LogPath, "\n" + e); throw;
+            if(Directory.Exists(dir))File.AppendAllText(LogPath, "\n" + e); throw;
+        }
+        finally
+        {
+            if(Directory.Exists(dir))
+            {
+                Library.MarkProject(dir,activeAirport!.Id,workspaceKey);
+                UpdateAirport(a=>a with {Artifacts=a.Artifacts.Select(x=>x.Key==workspaceKey?new AirportArtifact(workspaceKey,issuedBuild==null?"failed or cancelled":"built",CommunityInstaller.Inventory(dir)):x).ToArray(),LastBuild=issuedBuild==null?"failed or cancelled":"built revision "+a.Revision});
+            }
         }
     }, token);
     public Task<string> InstallAsync(BuiltAirport airport, IProgress<string> progress, CancellationToken token) => Task.Run(() =>
     {
+        using var operation=Library.Lock();
+        EnsureActiveRevision();
         if (!ReferenceEquals(airport, issuedBuild)) throw new IOException("Only the verified build produced by this service session may be installed.");
+        if(JsonSerializer.Serialize(airport.Definition,Json)!=JsonSerializer.Serialize(activeAirport!.Definition,Json))
+            throw new IOException("Saved definition changed after this build. Validate and rebuild before installing.");
         CommunityInstaller.Within(airport.ProjectDirectory, root);
         CommunityInstaller.Within(airport.PackageDirectory, airport.ProjectDirectory);
         var receipt = Installer().Install(airport.Definition.Identifier, airport.PackageDirectory, airport.Files, token, progress);
+        UpdateAirport(a=>a with {LastInstall="installed "+receipt.InstalledUtc.ToString("u")});
         return receipt.InstallPath;
     }, token);
     public void OpenPath(string path)

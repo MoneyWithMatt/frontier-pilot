@@ -6,7 +6,7 @@
 - Verify usability at additional Windows scaling settings.
 
 ## Prototype improvements
-- Persist and explicitly resume drafts/surveys after app restart, with qualification checks and provenance.
+- Add autosave/draft recovery beyond the implemented explicit saved-airport library; saved airports already restore qualified survey evidence and layouts after restart.
 - Detect runway footprint slope/obstacles before committing to placement.
 - Explore authoritative global airport identifier collision checks.
 - Support Community storage on other drives through tested on-volume staging.
@@ -32,6 +32,7 @@ Economy, careers, settlements and multiplayer require separate design decisions 
 - Reduce conservative path restrictions only with corresponding safety tests.
 - Optional offline session browser/cleanup with explicit ownership and user-data protection.
 - Perform the updated live WPF acceptance when the user is present; this task deliberately did not launch/control MSFS.
+- Add a durable deletion journal for recovery after process or machine failure during the short cleanup transaction.
 
 ## Current acceptance priority — 2026-09-08
 - Previous runway/parking/full workflow accepted by Matt in MSFS (user report).

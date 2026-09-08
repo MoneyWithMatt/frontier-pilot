@@ -16,7 +16,7 @@ public sealed class ActionCommand(Action execute, Func<bool>? canExecute = null)
     public void Refresh() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 }
 
-public sealed class BuilderViewModel : INotifyPropertyChanged
+public sealed partial class BuilderViewModel : INotifyPropertyChanged
 {
     private readonly IBuilderServices services;
     private CancellationTokenSource? cancellation;
@@ -73,7 +73,8 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
         OpenPackageCommand = new(() => Open(Built?.PackageDirectory ?? ""), () => !IsBusy && Built != null);
         OpenLogCommand = new(() => Open(services.LogPath), () => !IsBusy && services.LogPath != "");
         OpenEvidenceCommand = new(() => Open(services.EvidenceDirectory), () => !IsBusy && services.EvidenceDirectory != "");
-        Layout.PropertyChanged += (_,_)=> { Changed(nameof(Layout)); Changed(nameof(ValidationMessage)); BuildCommand.Refresh(); InstallCommand.Refresh(); ValidateCommand.Refresh(); foreach(var c in new[]{AddParkingCommand,RemoveParkingCommand,UndoLayoutCommand,RedoLayoutCommand,RotateLeftCommand,RotateRightCommand,ApplyParkingCommand})c.Refresh(); };
+        Layout.PropertyChanged += (_,_)=> { Changed(nameof(Layout)); Changed(nameof(ValidationMessage)); BuildCommand.Refresh(); InstallCommand.Refresh(); ValidateCommand.Refresh(); RefreshManagement(); foreach(var c in new[]{AddParkingCommand,RemoveParkingCommand,UndoLayoutCommand,RedoLayoutCommand,RotateLeftCommand,RotateRightCommand,ApplyParkingCommand})c.Refresh(); };
+        InitializeManagement();
         Append(ModeDescription);
     }
     public ActionCommand CheckCommand { get; }
@@ -102,7 +103,7 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
     public string TechnicalLog => $"{ModeDescription}\nState: {State}; recovery: {RecoveryState}\nSDK: {sdkRoot}\nProject: {services.ProjectDirectory}\nEvidence: {services.EvidenceDirectory}\nBuild log: {services.LogPath}\n\n{activity}";
     public string SdkRoot { get => sdkRoot; set { if (busy || value == sdkRoot) return; sdkRoot = value; checkedReady = false; Survey = null; ClearParking(); Invalidate(); } }
     public string AirportName { get => airportName; set { if (!busy && value != airportName) { airportName = value; Invalidate(); } } }
-    public string Identifier { get => identifier; set { if (!busy && value.ToUpperInvariant() != identifier) { identifier = value.ToUpperInvariant(); Invalidate(); } } }
+    public string Identifier { get => identifier; set { if (CanEditIdentifier && value.ToUpperInvariant() != identifier) { identifier = value.ToUpperInvariant(); Invalidate(); } } }
     public string Length { get => length; set { if (!busy && value != length) { length = value; Invalidate(); } } }
     public string Width { get => width; set { if (!busy && value != width) { width = value; Invalidate(); } } }
     public RunwaySurface Surface { get => surface; set { if (!busy && value != surface) { surface = value; Invalidate(); } } }
@@ -196,7 +197,7 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
         return Run("Generate and compile", async token => {
             Append(await services.ValidateIdentifierAsync(definition.Identifier, token));
             var built = await services.BuildAsync(sdkRoot, definition, Progress(), token); token.ThrowIfCancellationRequested();
-            Built = built; SetState(WorkflowState.Built); status = IsDryRun ? "Test artifact verified. Install into the sandbox." : "Build verified. Install this airport when MSFS is closed.";
+            Built = built; await SynchronizeSavedAsync(token); SetState(WorkflowState.Built); status = IsDryRun ? "Test artifact verified. Install into the sandbox." : "Build verified. Install this airport when MSFS is closed.";
         });
     }
     public Task InstallAsync()
@@ -206,7 +207,7 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
         return Run("Install airport", async token => {
             InstalledPath = await services.InstallAsync(built, Progress(), token);
             // Installation may have committed after its last cancellable boundary.
-            SetState(WorkflowState.Installed); status = IsDryRun ? "Dry run installed and verified in the sandbox." : "Airport installed and verified. Restart MSFS to load it.";
+            await SynchronizeSavedAsync(CancellationToken.None); SetState(WorkflowState.Installed); status = IsDryRun ? "Dry run installed and verified in the sandbox." : "Airport installed and verified. Restart MSFS to load it.";
         });
     }
     public void Cancel() { if (!busy) return; cancellation?.Cancel(); status = "Cancelling — waiting for a safe stopping point"; Refresh(); }
@@ -227,7 +228,7 @@ public sealed class BuilderViewModel : INotifyPropertyChanged
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
     private void Refresh()
     {
-        Changed(""); Layout.Notify();
+        Changed(""); Layout.Notify(); RefreshManagement();
         foreach (var c in new[] { AddParkingCommand, RemoveParkingCommand, UndoLayoutCommand, RedoLayoutCommand, RotateLeftCommand, RotateRightCommand, ApplyParkingCommand, CheckCommand, CaptureCommand, ValidateCommand, BuildCommand, InstallCommand, CancelCommand, OpenProjectCommand, OpenPackageCommand, OpenLogCommand, OpenEvidenceCommand }) c.Refresh();
     }
 }

@@ -25,3 +25,11 @@
 - **Prototype limitation:** physical runway overlap only; a full ATC/AI RUNWAY/HOLD_SHORT graph, automatic intersection splitting and curve geometry are not included. Native ground following is expected, not newly empirically proven. Schema validity is not simulator acceptance.
 - **Preserved:** existing same-survey layout export/import now retains taxiways; no new airport catalogue, persistence or survey-resume workflow.
 - **Pending:** Matt's new live test of distant parking, segment visibility, joins and terrain fit. See taxiways-and-airport-site.md.
+
+## Airport management decisions — 2026-09-08
+- **Implemented:** Frontier's versioned local JSON definition is the editable source of truth. Generated projects and Community packages are derived outputs.
+- **Implemented:** saved survey evidence remains subject to the same dry-run/live boundary and exact live SDK/simulator qualification. Loading never invents aircraft or camera fallback data.
+- **Implemented:** optimistic revisions protect saves from another application instance. Unknown schema fields, future versions and corrupt documents are preserved and reported rather than rewritten.
+- **Implemented:** historical build/install labels are informational. Opening an airport restores Survey Captured and requires a fresh validation/build before install.
+- **Implemented:** permanent administrative deletion is a narrowly scoped operation over registered, verified artifacts. It does not model future selling, closing or abandonment gameplay.
+- **Limit:** project cleanup is exact-inventory conservative; user-added files cause refusal. Recovery handles ordinary failures, while durable crash journaling remains future work.

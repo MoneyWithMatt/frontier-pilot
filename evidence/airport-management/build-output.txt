@@ -1,0 +1,12 @@
+  FrontierAirportBuilder.Core -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Core\bin\Release\net8.0\FrontierAirportBuilder.Core.dll
+  FrontierAirportBuilder.MsfsSdk -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\MsfsSdk\bin\Release\net8.0\FrontierAirportBuilder.MsfsSdk.dll
+  FrontierAirportBuilder.Workflow -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Workflow\bin\Release\net8.0\FrontierAirportBuilder.Workflow.dll
+  FrontierAirportBuilder.Tests -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\tests\Tests\bin\Release\net8.0\FrontierAirportBuilder.Tests.dll
+  FrontierAirportBuilder.Desktop -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\Desktop\bin\Release\net8.0-windows\FrontierAirportBuilder.Desktop.dll
+  FrontierAirportBuilder.App -> C:\Users\mattr\.codex\.chatgpt-projects\g-p-6a904cf3f8fc81919657c40eb26e3f77\frontier-airport-builder\src\App\bin\Release\net8.0\FrontierAirportBuilder.App.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.54

@@ -1,0 +1,986 @@
+{
+  "SchemaVersion": 1,
+  "Id": "d90252ca-1fc1-47b0-894c-7fd6ffd34b98",
+  "Revision": 8,
+  "SavedUtc": "2026-09-08T06:52:19.1251321+00:00",
+  "Definition": {
+    "Name": "Persistent test",
+    "Identifier": "FPMAN01",
+    "Latitude": -22.58616679921284,
+    "Longitude": 14.539071285657734,
+    "AltitudeMeters": 13.94779940508306,
+    "TrueHeadingDegrees": 108.63324971143716,
+    "MagneticVariationDegreesEast": -12.503734469181675,
+    "LengthMeters": 200,
+    "WidthMeters": 20,
+    "Surface": "Dirt",
+    "Taxiways": [
+      {
+        "Number": 1,
+        "Name": "T1",
+        "WidthMeters": 12,
+        "Points": [
+          {
+            "EastMeters": 0,
+            "NorthMeters": -0,
+            "ParkingNumber": null
+          },
+          {
+            "EastMeters": 100,
+            "NorthMeters": 100,
+            "ParkingNumber": null
+          },
+          {
+            "EastMeters": 0,
+            "NorthMeters": 0,
+            "ParkingNumber": 1
+          }
+        ]
+      }
+    ],
+    "ParkingStands": [
+      {
+        "Number": 1,
+        "EastMeters": 1200,
+        "NorthMeters": 200,
+        "TrueHeadingDegrees": 108.63324971143716,
+        "RadiusMeters": 10,
+        "Type": "RAMP_GA_SMALL",
+        "Name": "PARKING"
+      }
+    ]
+  },
+  "Survey": {
+    "Point": {
+      "Latitude": -22.58616679921284,
+      "Longitude": 14.539071285657734,
+      "AltitudeMeters": 13.94779940508306,
+      "TrueHeadingDegrees": 108.63324971143716,
+      "AvatarObjectAltitudeMeters": 13.953887939453125,
+      "ObjectGroundOffsetMeters": 0.006088534370064735,
+      "MagneticVariationDegrees": -12.503734469181675,
+      "Source": "Empirical MSFS 2024 walking-avatar GROUND ALTITUDE; Sedona-calibrated prototype"
+    },
+    "Frames": [
+      {
+        "Seconds": 0.0458839,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.58599006701499,
+          "Longitude": 14.538839610760215,
+          "AltitudeMeters": 15.054295445817736,
+          "TrueHeadingDegrees": 331.6690752639897,
+          "GroundAltitudeMeters": 13.906785229220985,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1475102165967517,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324971143716,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324971143716,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 0.3385259,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.585990061827392,
+          "Longitude": 14.538839612531842,
+          "AltitudeMeters": 15.054730944305954,
+          "TrueHeadingDegrees": 331.6687686473706,
+          "GroundAltitudeMeters": 13.906788934022188,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1479420102837654,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324400439231,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324400439231,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 0.6210023,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.58599005247599,
+          "Longitude": 14.538839631480403,
+          "AltitudeMeters": 15.054731956803456,
+          "TrueHeadingDegrees": 331.6720146946205,
+          "GroundAltitudeMeters": 13.906813227571545,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1479187292319106,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324996273386,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324996273386,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 0.901131,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.585990069191144,
+          "Longitude": 14.538839595966584,
+          "AltitudeMeters": 15.054810049522283,
+          "TrueHeadingDegrees": 331.6651937279026,
+          "GroundAltitudeMeters": 13.906774934381245,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1480351151410373,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63325037458584,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63325037458584,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 1.1784934,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.585990086734768,
+          "Longitude": 14.53883955968491,
+          "AltitudeMeters": 15.054651951809122,
+          "TrueHeadingDegrees": 331.6583650477173,
+          "GroundAltitudeMeters": 13.906733799725771,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1479181520833523,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.6332496305454,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.6332496305454,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 1.4582249,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.585990073835006,
+          "Longitude": 14.538839589528541,
+          "AltitudeMeters": 15.054598533327349,
+          "TrueHeadingDegrees": 331.663884369288,
+          "GroundAltitudeMeters": 13.90676177665591,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.147836756671438,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63325004232244,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63325004232244,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 1.7535561,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.58599004858727,
+          "Longitude": 14.538839650364867,
+          "AltitudeMeters": 15.054345831561278,
+          "TrueHeadingDegrees": 331.67562264547473,
+          "GroundAltitudeMeters": 13.906825642101465,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1475201894598128,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324994464509,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324994464509,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 2.0332379,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.58599004579903,
+          "Longitude": 14.538839654587003,
+          "AltitudeMeters": 15.054481570693634,
+          "TrueHeadingDegrees": 331.67617772919056,
+          "GroundAltitudeMeters": 13.906833314336836,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.147648256356798,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63325035632901,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63325035632901,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 2.3122164,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.58599007056769,
+          "Longitude": 14.538839596025078,
+          "AltitudeMeters": 15.054617476475913,
+          "TrueHeadingDegrees": 331.664747371354,
+          "GroundAltitudeMeters": 13.90677399560809,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1478434808678233,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324961234973,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324961234973,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 2.5892388,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.585990085877107,
+          "Longitude": 14.538839557172233,
+          "AltitudeMeters": 15.054834209546092,
+          "TrueHeadingDegrees": 331.6570531491102,
+          "GroundAltitudeMeters": 13.90673256665468,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.148101642891412,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324799601989,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324799601989,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 2.8697077,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.585990075594342,
+          "Longitude": 14.538839587268614,
+          "AltitudeMeters": 15.054582639433848,
+          "TrueHeadingDegrees": 331.66276791376947,
+          "GroundAltitudeMeters": 13.906759160570799,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1478234788630493,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324840785674,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324840785674,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 3.1504394,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.585990051684742,
+          "Longitude": 14.538839645983533,
+          "AltitudeMeters": 15.054267814337733,
+          "TrueHeadingDegrees": 331.67432931127894,
+          "GroundAltitudeMeters": 13.906818632036446,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1474491823012856,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324794734392,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324794734392,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 3.4291803,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.585990049150634,
+          "Longitude": 14.538839656059167,
+          "AltitudeMeters": 15.054114865426149,
+          "TrueHeadingDegrees": 331.67623845282156,
+          "GroundAltitudeMeters": 13.906830063089727,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1472848023364215,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324993451401,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324993451401,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 3.7266886,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.585990071262838,
+          "Longitude": 14.538839596552213,
+          "AltitudeMeters": 15.054474742589179,
+          "TrueHeadingDegrees": 331.66431656759994,
+          "GroundAltitudeMeters": 13.906772716902196,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1477020256869825,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324341783711,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324341783711,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 4.0091678,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.5859900864752,
+          "Longitude": 14.53883955616857,
+          "AltitudeMeters": 15.054791629873966,
+          "TrueHeadingDegrees": 331.656229943518,
+          "GroundAltitudeMeters": 13.906732442788778,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1480591870851884,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63325053204993,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63325053204993,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 4.2920465,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.585990072734717,
+          "Longitude": 14.538839589255684,
+          "AltitudeMeters": 15.054782055333154,
+          "TrueHeadingDegrees": 331.6622773550273,
+          "GroundAltitudeMeters": 13.906763017177582,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.148019038155574,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63325007156199,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63325007156199,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 4.5872552,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.585990050225178,
+          "Longitude": 14.538839651540632,
+          "AltitudeMeters": 15.054249551011624,
+          "TrueHeadingDegrees": 331.67462360848407,
+          "GroundAltitudeMeters": 13.906824253499506,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1474252975121184,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324997387318,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324997387318,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 4.8657922,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.585990049521566,
+          "Longitude": 14.53883965338954,
+          "AltitudeMeters": 15.054227207390296,
+          "TrueHeadingDegrees": 331.67486510898374,
+          "GroundAltitudeMeters": 13.906827931292355,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1473992760979412,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324864101457,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324864101457,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      },
+      {
+        "Seconds": 5.1463685,
+        "Aircraft": {
+          "ObjectId": 524288,
+          "Latitude": -22.585990072470317,
+          "Longitude": 14.538839593531428,
+          "AltitudeMeters": 15.054502231568582,
+          "TrueHeadingDegrees": 331.66298045062985,
+          "GroundAltitudeMeters": 13.906770273111759,
+          "OnGround": 1,
+          "AboveGroundMeters": 1.1477319584568224,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503567129547008
+        },
+        "Avatar": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324905286669,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        },
+        "Current": {
+          "ObjectId": 32768,
+          "Latitude": -22.58616679921284,
+          "Longitude": 14.539071285657734,
+          "AltitudeMeters": 13.953887939453125,
+          "TrueHeadingDegrees": 108.63324905286669,
+          "GroundAltitudeMeters": 13.94779940508306,
+          "OnGround": 1,
+          "AboveGroundMeters": 0.006088534370064815,
+          "Crouched": 0,
+          "MagneticVariationDegrees": -12.503734469181675
+        }
+      }
+    ],
+    "MetadataJson": "{\r\n  \u0022mode\u0022: \u0022DRY RUN\u0022,\r\n  \u0022source\u0022: \u0022evidence/live-survey/namibia-centre-01/observations.jsonl; frame rows only\u0022,\r\n  \u0022recordedUtc\u0022: \u00222026-09-07T06:17Z\u0022,\r\n  \u0022qualification\u0022: \u0022Historical SDK 1.2.4 and MSFS 1.8.16.0; no live qualification or simulator connection\u0022,\r\n  \u0022limitation\u0022: \u0022Microsoft documents aircraft-local GROUND ALTITUDE; empirical avatar behaviour and 66 cm return-to-A caveat retained.\u0022\r\n}",
+    "DryRun": true
+  },
+  "Artifacts": [
+    {
+      "Key": "352f19ee24dd4d4e",
+      "State": "built",
+      "Files": [
+        {
+          "Path": ".build\\result.json",
+          "Bytes": 510,
+          "Sha256": "CA8E8ED2493DECD6FB96E1E50DBA85F143D46620F4C92142603FA5C6DE748712"
+        },
+        {
+          "Path": ".build\\stdout.log",
+          "Bytes": 83,
+          "Sha256": "5CFD66CA82472CC092F6A7781EF2545097DF2E1D32CC9CB759D2D0123BAE75B0"
+        },
+        {
+          "Path": "AirportProject.xml",
+          "Bytes": 365,
+          "Sha256": "1AE2ADF7E85B1A012DD1FE41CEC714F7A352236D7DC7E3D477DAF9A0061F6406"
+        },
+        {
+          "Path": "airstrip.json",
+          "Bytes": 1062,
+          "Sha256": "A6EA9234AF005E6C098EABA5C198D49E4BB354471E0C0EF63C7334699B80E8A3"
+        },
+        {
+          "Path": "build-report.txt",
+          "Bytes": 718,
+          "Sha256": "4D8846B04427E52F8C69C03C7A82DCCBA2A05381C85E251359B4DE3651D1E5F9"
+        },
+        {
+          "Path": "frontier-workspace.json",
+          "Bytes": 89,
+          "Sha256": "27D9FEBA4CD525FE784C0FE7FF3EA1F44D037243FF5CA402D675554EA349BCEF"
+        },
+        {
+          "Path": "PackageDefinitions\\frontier-airport-fpman01.xml",
+          "Bytes": 1299,
+          "Sha256": "AC025F85CED7FB9A45B13D017D042D6D1ECCD82216E0851A090379FD77091AB0"
+        },
+        {
+          "Path": "PackageDefinitions\\frontier-airport-fpman01\\ContentInfo\\Thumbnail.jpg",
+          "Bytes": 35560,
+          "Sha256": "DF41F155704CC57A0F7023898988A5306A96B0CC07647458DC716984DE56A6B0"
+        },
+        {
+          "Path": "PackageSources\\data\\airport.xml",
+          "Bytes": 1923,
+          "Sha256": "95D2A9688DE8E6E37B1EDEB18E4C5A2C16A45B1D2AC0F0837F7455A3113035BC"
+        },
+        {
+          "Path": "PackageSources\\materials\\frontier-dirt.material",
+          "Bytes": 920,
+          "Sha256": "73B2B1C0C15C6B7813BF6FB07C069549344BB779A44DC3064C41FFE2B886E416"
+        },
+        {
+          "Path": "PackageSources\\materials\\Textures\\FrontierDirt_Albedo.png",
+          "Bytes": 62188,
+          "Sha256": "D8B09E632D23E1204C1ED03F04FA656B388A554472714D5F001574569E977DC1"
+        },
+        {
+          "Path": "PackageSources\\materials\\Textures\\FrontierDirt_Albedo.png.FLAGS",
+          "Bytes": 39,
+          "Sha256": "9B6062D74E3665CFB05349BB1A57AF03771AC04F143ED861A7FE2E785BDF4340"
+        },
+        {
+          "Path": "Packages\\frontier-airport-fpman01\\airport.bgl",
+          "Bytes": 1971,
+          "Sha256": "3429A39C600529FBC0ECB3E9F414AF3B7101E06F175951E49F7EF18D79631F34"
+        },
+        {
+          "Path": "Packages\\frontier-airport-fpman01\\layout.json",
+          "Bytes": 89,
+          "Sha256": "5D190BAEE882764A78BBCAC87FEC37F89217713B2DE882329EE19BA864BB26DA"
+        },
+        {
+          "Path": "Packages\\frontier-airport-fpman01\\manifest.json",
+          "Bytes": 92,
+          "Sha256": "362CE428C88F2E1CCC18ACBD3CA2994E00622EC5FDEF82CC38C2C24AC7FDD144"
+        },
+        {
+          "Path": "survey-reference.json",
+          "Bytes": 641,
+          "Sha256": "5147F6509C4601131CA08389A6AC1F0596FFAD6D3AC476ED5A7A5E2BF7096D53"
+        }
+      ]
+    },
+    {
+      "Key": "2cb20f63695a4f5c",
+      "State": "built",
+      "Files": [
+        {
+          "Path": ".build\\result.json",
+          "Bytes": 510,
+          "Sha256": "F96956FB13597CC9C82306B651C638566FCC9F49C85D3B6DFC20623332AF29A4"
+        },
+        {
+          "Path": ".build\\stdout.log",
+          "Bytes": 83,
+          "Sha256": "5CFD66CA82472CC092F6A7781EF2545097DF2E1D32CC9CB759D2D0123BAE75B0"
+        },
+        {
+          "Path": "AirportProject.xml",
+          "Bytes": 365,
+          "Sha256": "1AE2ADF7E85B1A012DD1FE41CEC714F7A352236D7DC7E3D477DAF9A0061F6406"
+        },
+        {
+          "Path": "airstrip.json",
+          "Bytes": 1062,
+          "Sha256": "A6EA9234AF005E6C098EABA5C198D49E4BB354471E0C0EF63C7334699B80E8A3"
+        },
+        {
+          "Path": "build-report.txt",
+          "Bytes": 718,
+          "Sha256": "6E43AD1985B4BF3F3431945D76329A7A3C4C331AC6CC5FA38A417D9B239B7B7C"
+        },
+        {
+          "Path": "frontier-workspace.json",
+          "Bytes": 89,
+          "Sha256": "D8EC2E6A59BAAF53BA142F37104513D4DF5A26EC3B6E29BF4F560C7E7FA5170B"
+        },
+        {
+          "Path": "PackageDefinitions\\frontier-airport-fpman01.xml",
+          "Bytes": 1299,
+          "Sha256": "AC025F85CED7FB9A45B13D017D042D6D1ECCD82216E0851A090379FD77091AB0"
+        },
+        {
+          "Path": "PackageDefinitions\\frontier-airport-fpman01\\ContentInfo\\Thumbnail.jpg",
+          "Bytes": 35560,
+          "Sha256": "DF41F155704CC57A0F7023898988A5306A96B0CC07647458DC716984DE56A6B0"
+        },
+        {
+          "Path": "PackageSources\\data\\airport.xml",
+          "Bytes": 1923,
+          "Sha256": "95D2A9688DE8E6E37B1EDEB18E4C5A2C16A45B1D2AC0F0837F7455A3113035BC"
+        },
+        {
+          "Path": "PackageSources\\materials\\frontier-dirt.material",
+          "Bytes": 920,
+          "Sha256": "73B2B1C0C15C6B7813BF6FB07C069549344BB779A44DC3064C41FFE2B886E416"
+        },
+        {
+          "Path": "PackageSources\\materials\\Textures\\FrontierDirt_Albedo.png",
+          "Bytes": 62188,
+          "Sha256": "D8B09E632D23E1204C1ED03F04FA656B388A554472714D5F001574569E977DC1"
+        },
+        {
+          "Path": "PackageSources\\materials\\Textures\\FrontierDirt_Albedo.png.FLAGS",
+          "Bytes": 39,
+          "Sha256": "9B6062D74E3665CFB05349BB1A57AF03771AC04F143ED861A7FE2E785BDF4340"
+        },
+        {
+          "Path": "Packages\\frontier-airport-fpman01\\airport.bgl",
+          "Bytes": 1971,
+          "Sha256": "3429A39C600529FBC0ECB3E9F414AF3B7101E06F175951E49F7EF18D79631F34"
+        },
+        {
+          "Path": "Packages\\frontier-airport-fpman01\\layout.json",
+          "Bytes": 89,
+          "Sha256": "5D190BAEE882764A78BBCAC87FEC37F89217713B2DE882329EE19BA864BB26DA"
+        },
+        {
+          "Path": "Packages\\frontier-airport-fpman01\\manifest.json",
+          "Bytes": 92,
+          "Sha256": "362CE428C88F2E1CCC18ACBD3CA2994E00622EC5FDEF82CC38C2C24AC7FDD144"
+        },
+        {
+          "Path": "survey-reference.json",
+          "Bytes": 655,
+          "Sha256": "C1649D0E7BC49CC157BAEF5F9759E1F976877D174985EEA4E59C3A4C0E3D27ED"
+        }
+      ]
+    }
+  ],
+  "LastBuild": "built revision 7",
+  "LastInstall": "installed 2026-09-08 06:52:19Z"
+}
