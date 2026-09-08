@@ -11,6 +11,8 @@
 - A Windows x64 self-contained single-file candidate was staged at `dist\.v4-ready-2122104a\FrontierPilot.exe` while the prior Desktop build remained open.
 - Candidate size: 212,870,264 bytes; SHA-256: `2F4FF2989C58CEFCE7E7D214854443E4C74AE99568732A31A95159975FBA9A58`.
 - The staged candidate opened a responsive `Frontier Pilot · Prototype 0.1 · DRY RUN` window and that test instance was then closed.
-- The stable Desktop shortcut target has not yet been replaced because the running prior Frontier Pilot window may contain user work.
+- After Matt closed Frontier Pilot, `scripts\Publish-Development.ps1 -CreateDesktopShortcut` atomically replaced the stable build at `dist\FrontierPilot\FrontierPilot.exe` and refreshed the Desktop shortcut.
+- Final stable executable size: 212,870,264 bytes; SHA-256: `406F7A68DFAE201BCF89C3AA6909CC6BCB1BE703BF8CFE447D44DCF38A84E527`.
+- The actual Desktop shortcut resolved to that path and opened a responsive `Frontier Pilot · Prototype 0.1` window. Only the smoke-test instance was then closed.
 
 No MSFS process was launched or controlled, Package Tool was not invoked, and Community content was not changed. Airport/stand recognition remains pending Matt's live simulator acceptance.
