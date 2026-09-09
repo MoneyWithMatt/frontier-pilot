@@ -94,3 +94,11 @@ The first Tracking V3 distribution crashed while WPF created the Tracking diagno
 Tracking now recognises aircraft against every valid definition loaded from My Airports. Core uses WGS84 inverse geometry and the actual runway, taxiway and parking footprints; a separate 250 m operational margin avoids misusing the 3 km authoring envelope. An on-ground aircraft inside stand radius + 5 m is Near Stand, and becomes Parked after five continuous seconds at no more than 1 kt with no long sample gap.
 
 The Tracking panel shows airport, stand, distance, state and the tuning reason. Aircraft persistence schema 2 records the optional derived Frontier context alongside authoritative coordinates and remains compatible with schema 1. Avatar state is unchanged. Full automated and simulator acceptance details: [tracking-v4-airport-recognition.md](tracking-v4-airport-recognition.md) and evidence/tracking-v4/.
+
+## Economy Core V0 — 2026-09-09
+
+Core now models data-driven locations (gateway, mine, community and lodge), system/player businesses, resources, inventory, customer needs, funded transport requirements, employed players, jobs, shipments and an authoritative financial ledger. Acceptance reserves source cargo once. Externally verified delivery moves the shipment, updates customer inventory and records one payment as a single validated world revision. Replay is idempotent across restarts; cached player money must equal the ledger.
+
+Workflow adds strict schema-1 JSON persistence at `%LOCALAPPDATA%\FrontierAirportBuilder\desktop\economy\economy-state.json`, using the repository's same-directory flushed temporary write and atomic replacement convention plus cross-process serialization. Existing corrupt, unsupported or inconsistent state is reported and preserved, including during initialization. Deterministic prototype data is explicitly temporary, supports mines/communities/lodges through records and is not automatically created or connected to the application.
+
+There is no Jobs UI, Namibia activation, SimConnect flight lifecycle, weather logic, flight-validity policy, economic clock or permanent balance data. `VerifiedDeliveryEvidence` is the boundary for a later component. See [economy-core-v0.md](economy-core-v0.md).

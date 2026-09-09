@@ -80,6 +80,15 @@
 - **Implemented:** retain the saved marker through startup, connection attempts and loss. LIVE/LAST KNOWN/NO SAVED POSITION are explicit; the first live fix may recenter once and later updates preserve manual viewport control.
 - **Deferred:** parking legitimacy, engine/brake rules, stand association, ownership, stable airframe identity and spawn enforcement.
 
+## Economy Core V0 — 2026-09-09
+
+- **Implemented:** represent locations, customers and resources as data. Gateway, mine, community and lodge share the same inventory, need, requirement, job and shipment machinery; there is no mining-specific kernel.
+- **Implemented:** treat the financial transaction ledger as the authority for player money. A cached player balance is permitted only in the same atomic aggregate and loading rejects any disagreement with the ledger.
+- **Implemented:** accept reserves source inventory once. Delivery evidence commits shipment state, customer inventory, requirement/job completion, one payment and the recalculated balance as one revision. Replays are idempotent.
+- **Implemented:** store one versioned world aggregate through a dedicated managed local file with flushed same-directory temporary output, atomic replacement and cross-process serialization. Existing corrupt, unsupported or inconsistent state is preserved and blocks initialization/mutation.
+- **Boundary:** `VerifiedDeliveryEvidence` is supplied by a future flight/location component. Economy V0 validates references and route consistency but contains no flight-validity, airport, SimConnect or weather rule.
+- **Prototype only:** deterministic seed IDs, quantities, `TPC` currency and payments are labelled test fixtures. They do not activate Namibia locations or establish balance rules.
+
 ## Tracking V4 — 2026-09-08
 
 - **Implemented:** derive Frontier location only from saved Frontier airport definitions and authoritative aircraft coordinates. Do not query or label stock MSFS airports.

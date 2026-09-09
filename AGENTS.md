@@ -2,7 +2,7 @@
 
 Read docs/TECHNICAL_STATUS.md, docs/DESIGN_DECISIONS.md and docs/BACKLOG.md before changing the pipeline. Inspect Git status and preserve pending work. This repository is nested in a ChatGPT project mirror; sources/ outside this repository is read-only. Installed SDK samples are also read-only.
 
-Use the existing .NET 8 Core, MsfsSdk, Workflow, Desktop and CLI App projects. Do not recreate capture, geometry, XML generation or build logic in the view. No economy, careers, multiplayer or settlements in this milestone.
+Use the existing .NET 8 Core, MsfsSdk, Workflow, Desktop and CLI App projects. Do not recreate capture, geometry, XML generation or build logic in the view.
 
 Never weaken avatar capture safeguards or substitute aircraft/camera data. Qualification is empirical and tied to exact SDK/simulator hashes. Preserve Microsoft's documented contradiction and the return-to-A caveat.
 
@@ -25,3 +25,5 @@ Tracking: read docs/tracking-v1.md and docs/tracking-v2-avatar.md. V1 aircraft t
 Tracking persistence: read docs/tracking-v3-persistence.md. Only validated aircraft telemetry is durable; avatar/current-object data stays transient. Saved positions are LAST KNOWN, never confirmed parked or spawn-authoritative. Preserve corrupt/future documents and use the explicit clear action; do not infer ownership or stable identity from the prototype type/title key.
 
 Tracking location recognition: read docs/tracking-v4-airport-recognition.md. Match only saved Frontier definitions, using Core WGS84/infrastructure geometry. The 250 m airport margin and stand radius + 5 m are operational recognition policy, separate from the 3 km authoring envelope. Parked is a five-second low-speed prototype observation, not ownership, confirmed parking authority or spawn permission.
+
+Economy Core V0: read docs/economy-core-v0.md. The ledger is authoritative for money; cargo reservation, customer inventory, delivery and payment commit as one economy revision. Preserve corrupt/future state and never initialize over it. `VerifiedDeliveryEvidence` is an external boundary, not permission to invent flight proof. Prototype seed values are temporary and are not Namibia activation. Do not add Jobs UI, SimConnect flight lifecycle, weather, multiplayer, settlements or industry production without a later task.
