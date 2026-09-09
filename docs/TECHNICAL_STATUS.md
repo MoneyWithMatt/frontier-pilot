@@ -102,3 +102,11 @@ Core now models data-driven locations (gateway, mine, community and lodge), syst
 Workflow adds strict schema-1 JSON persistence at `%LOCALAPPDATA%\FrontierAirportBuilder\desktop\economy\economy-state.json`, using the repository's same-directory flushed temporary write and atomic replacement convention plus cross-process serialization. Existing corrupt, unsupported or inconsistent state is reported and preserved, including during initialization. Deterministic prototype data is explicitly temporary, supports mines/communities/lodges through records and is not automatically created or connected to the application.
 
 There is no Jobs UI, Namibia activation, SimConnect flight lifecycle, weather logic, flight-validity policy, economic clock or permanent balance data. `VerifiedDeliveryEvidence` is the boundary for a later component. See [economy-core-v0.md](economy-core-v0.md).
+
+## Namibia Location Catalogue V0 — 2026-09-09
+
+Core embeds a strict schema-1/catalogue-0.1.0 authored data set derived from section 20 of the Google Drive design reference. It contains locked gateway Eros/FYWE and all 30 mining, community and safari candidates with deterministic `namibia.*` IDs, identifier confidence, route-time scale, roles, proposed work, notes, sources, lifecycle status and recommendation flag. The catalogue is separate from `economy-state.json`; projected economy locations retain the catalogue stable ID.
+
+All destinations are research candidates and none is active. The recommended subset is Eros, Uis, Arandis, Aminuis, Leonardville, Mount Etjo and Okonjima. Eight identifiers explicitly labelled reported remain `ReportedUnverified`; other destination identifiers are `PublishedUnverified`. Section 20 supplies no numeric coordinates, so all coordinate fields are explicitly null.
+
+Pure status transitions require verification before activation. The ordinary live-job guard requires both `MsfsVerified` and `ActiveCustomer`. Tests use a conspicuous TEST ONLY candidate and do not assign invented data to a real location. See [namibia-location-catalogue-v0.md](namibia-location-catalogue-v0.md).

@@ -27,7 +27,7 @@
 Economy Core V0 now proves persistent, atomic shipment/inventory/payment integrity. Next economy work requires a separate task for verified Namibia location data and a small employed-pilot Jobs UI, followed by a flight/location component that can issue `VerifiedDeliveryEvidence`. Do not fold settlement production, player companies, multiplayer or worldwide economics into that slice.
 
 ## Economy V0 follow-up decisions
-- Verify Eros and choose one first customer from the Namibia research shortlist before activating live jobs.
+- Verify Eros and choose one first customer from the embedded Namibia research catalogue before activating live jobs. Record confirmed identifier, coordinates, runway and surrounding MSFS scenery; recommendation alone is insufficient.
 - Choose temporary cargo mass/quantity, company aircraft and completion payment; compensation design remains open.
 - Define loading, cancellation, expiry and reservation release.
 - Define flight/location evidence and arrival conditions without adding a weather or safety verdict.

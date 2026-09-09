@@ -89,6 +89,14 @@
 - **Boundary:** `VerifiedDeliveryEvidence` is supplied by a future flight/location component. Economy V0 validates references and route consistency but contains no flight-validity, airport, SimConnect or weather rule.
 - **Prototype only:** deterministic seed IDs, quantities, `TPC` currency and payments are labelled test fixtures. They do not activate Namibia locations or establish balance rules.
 
+## Namibia Location Catalogue V0 — 2026-09-09
+
+- **Implemented:** keep versioned authored Namibia data embedded and read-only, separate from mutable economy persistence. Economy locations reuse stable catalogue IDs.
+- **Implemented:** model identifier confidence, MSFS verification, customer activation and first-playable recommendation separately. Recommendation never implies verification or activation.
+- **Implemented:** preserve Eros/FYWE as the sole locked gateway and all thirty section 20 candidates. All destinations remain research candidates; none generates work.
+- **Implemented:** require both `MsfsVerified` and `ActiveCustomer` at the mandatory future live-job-generation guard. Verification requires supplied coordinates and a confirmed identifier; activation is a separate transition.
+- **Source limitation:** section 20 names a coordinate source but contains no coordinate values. Store null rather than importing or inferring data in this task. Only Eros is labelled `ConfirmedIcao`; identifiers not explicitly called reported remain `PublishedUnverified` pending confirmation.
+
 ## Tracking V4 — 2026-09-08
 
 - **Implemented:** derive Frontier location only from saved Frontier airport definitions and authoritative aircraft coordinates. Do not query or label stock MSFS airports.

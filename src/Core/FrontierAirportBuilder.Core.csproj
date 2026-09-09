@@ -6,4 +6,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup><EmbeddedResource Include="Catalogues/namibia-locations-v0.json" /></ItemGroup>
+
 </Project>
