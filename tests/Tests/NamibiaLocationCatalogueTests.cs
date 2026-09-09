@@ -27,7 +27,7 @@ public sealed class NamibiaLocationCatalogueTests
     public void LoadsLockedGatewayAndAllSection20Candidates()
     {
         var catalogue = NamibiaLocationCatalogue.Load();
-        Assert.Equal(1, catalogue.SchemaVersion); Assert.Equal("0.1.0", catalogue.CatalogueVersion); Assert.Equal(31, catalogue.Locations.Count);
+        Assert.Equal(2, catalogue.SchemaVersion); Assert.Equal("0.2.0", catalogue.CatalogueVersion); Assert.Equal(31, catalogue.Locations.Count);
         Assert.Equal("17I6WG4KdUoUWDQVb7txi3O1zUipG0B4raJQVAHdgbHU", catalogue.SourceDocumentId);
         Assert.Single(catalogue.Locations.Where(x => x.Category == NamibiaLocationCategory.Gateway));
         Assert.Equal(10, catalogue.Locations.Count(x => x.Category == NamibiaLocationCategory.Mining));
@@ -37,7 +37,8 @@ public sealed class NamibiaLocationCatalogueTests
         var eros = catalogue.Get("namibia.windhoek-eros");
         Assert.True(eros.IsLockedGateway); Assert.Equal("FYWE", eros.AirportIdentifier.Value);
         Assert.Equal(AirportIdentifierConfidence.ConfirmedIcao, eros.AirportIdentifier.Confidence);
-        Assert.Equal(LocationVerificationState.ResearchCandidate, eros.VerificationState);
+        Assert.Equal(LocationVerificationState.MsfsVerified, eros.VerificationState);
+        Assert.Equal("ManualInSimulatorInspection", eros.VerificationEvidence?.Method);
         Assert.Equal(CustomerActivationState.NotApplicable, eros.ActivationState);
     }
 
@@ -55,11 +56,11 @@ public sealed class NamibiaLocationCatalogueTests
     public void RecommendationDoesNotImplyVerificationOrActivation()
     {
         var catalogue = NamibiaLocationCatalogue.Load();
-        Assert.All(catalogue.Locations, location => Assert.Equal(LocationVerificationState.ResearchCandidate, location.VerificationState));
-        Assert.DoesNotContain(catalogue.Locations, location => location.ActivationState == CustomerActivationState.ActiveCustomer);
-        Assert.All(catalogue.Locations, location => Assert.Null(location.ApproximateCoordinates));
-        Assert.All(catalogue.Locations.Where(x => x.RecommendedFirstPlayable && !x.IsLockedGateway), location => Assert.Equal(CustomerActivationState.Inactive, location.ActivationState));
-        Assert.Contains(catalogue.SourceNotes, note => note.Contains("coordinates remain explicitly null", StringComparison.Ordinal));
+        Assert.Equal(3, catalogue.Locations.Count(location => location.VerificationState == LocationVerificationState.MsfsVerified));
+        Assert.Equal(["namibia.arandis", "namibia.uis-mine"], catalogue.Locations.Where(location => location.ActivationState == CustomerActivationState.ActiveCustomer).Select(x => x.StableId).Order().ToArray());
+        Assert.Equal(28, catalogue.Locations.Count(location => location.ApproximateCoordinates is null));
+        Assert.All(catalogue.Locations.Where(x => x.RecommendedFirstPlayable && x.StableId is not ("namibia.windhoek-eros" or "namibia.uis-mine" or "namibia.arandis")), location => Assert.Equal(CustomerActivationState.Inactive, location.ActivationState));
+        Assert.Contains(catalogue.SourceNotes, note => note.Contains("not simulator-derived", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -72,6 +73,29 @@ public sealed class NamibiaLocationCatalogueTests
         Assert.All(catalogue.Locations.Where(x => ExplicitlyReportedIdentifiers.Contains(x.AirportIdentifier.Value)),
             location => Assert.Equal(AirportIdentifierConfidence.ReportedUnverified, location.AirportIdentifier.Confidence));
         Assert.Equal(AirportIdentifierConfidence.ConfirmedIcao, catalogue.Get("namibia.windhoek-eros").AirportIdentifier.Confidence);
+    }
+
+    [Fact]
+    public void VerifiedAirportsKeepPublishedCoordinatesSeparateFromSimulatorEvidence()
+    {
+        var catalogue = NamibiaLocationCatalogue.Load();
+        var expected = new Dictionary<string, (double Latitude, double Longitude)>
+        {
+            ["namibia.windhoek-eros"] = (-22.604920, 17.079002),
+            ["namibia.uis-mine"] = (-21.230032, 14.866888),
+            ["namibia.arandis"] = (-22.461875, 14.979322)
+        };
+        foreach (var pair in expected)
+        {
+            var location = catalogue.Get(pair.Key);
+            Assert.Equal(pair.Value.Latitude, location.ApproximateCoordinates!.Latitude, 6);
+            Assert.Equal(pair.Value.Longitude, location.ApproximateCoordinates.Longitude, 6);
+            Assert.Equal(CoordinateSourceKind.PublishedCatalogue, location.CoordinateSource!.Kind);
+            Assert.Equal("OurAirports", location.CoordinateSource.Publisher);
+            Assert.Contains("ourairports.com", location.CoordinateSource.Reference);
+            Assert.Equal("ManualInSimulatorInspection", location.VerificationEvidence!.Method);
+            Assert.Equal(new DateOnly(2026, 9, 9), location.VerificationEvidence.VerifiedOn);
+        }
     }
 
     [Fact]
@@ -89,7 +113,7 @@ public sealed class NamibiaLocationCatalogueTests
     {
         var candidate = TestCandidate();
         Assert.Throws<InvalidOperationException>(() => NamibiaLocationLifecycle.ActivateCustomer(candidate));
-        var verified = NamibiaLocationLifecycle.MarkMsfsVerified(candidate, "TST1", new(-1.0, 1.0));
+        var verified = NamibiaLocationLifecycle.MarkMsfsVerified(candidate, "TST1", new(-1.0, 1.0), CoordinateSource(), Verification());
         Assert.Equal(LocationVerificationState.MsfsVerified, verified.VerificationState);
         Assert.Equal(CustomerActivationState.Inactive, verified.ActivationState);
         Assert.Equal(AirportIdentifierConfidence.ConfirmedIcao, verified.AirportIdentifier.Confidence);
@@ -101,9 +125,9 @@ public sealed class NamibiaLocationCatalogueTests
     public void OrdinaryLiveJobGuardRequiresBothVerifiedAndActive()
     {
         var catalogue = NamibiaLocationCatalogue.Load(); var source = catalogue.Get("namibia.uis-mine");
-        Assert.Throws<InvalidOperationException>(() => NamibiaJobGenerationGuard.RequireEligibleDestination(catalogue, source.StableId));
+        Assert.Equal(EconomicLocationStatus.ActiveCustomer, NamibiaJobGenerationGuard.RequireEligibleDestination(catalogue, source.StableId).Status);
         var test = TestCandidate() with { StableId = source.StableId };
-        var verified = NamibiaLocationLifecycle.MarkMsfsVerified(test, "TST1", new(-1.0, 1.0));
+        var verified = NamibiaLocationLifecycle.MarkMsfsVerified(test, "TST1", new(-1.0, 1.0), CoordinateSource(), Verification());
         var verifiedOnly = catalogue with { Locations = catalogue.Locations.Select(x => x.StableId == source.StableId ? verified : x).ToArray() };
         Assert.Throws<InvalidOperationException>(() => NamibiaJobGenerationGuard.RequireEligibleDestination(verifiedOnly, source.StableId));
         var active = NamibiaLocationLifecycle.ActivateCustomer(verified);
@@ -126,7 +150,10 @@ public sealed class NamibiaLocationCatalogueTests
     }
     private static MemoryStream Stream(string text) => new(Encoding.UTF8.GetBytes(text));
     private static NamibiaLocation TestCandidate() => new("namibia.test-only-candidate", "TEST ONLY Candidate", NamibiaLocationCategory.SmallCommunity, false,
-        new("TST1", AirportIdentifierConfidence.ReportedUnverified), null, 10, "TEST ONLY economic role.", ["TEST ONLY cargo"],
+        new("TST1", AirportIdentifierConfidence.ReportedUnverified), null, null, 10, "TEST ONLY economic role.", ["TEST ONLY cargo"],
         "TEST ONLY status-transition fixture; not a real location.", ["Automated test fixture"], LocationVerificationState.ResearchCandidate,
-        CustomerActivationState.Inactive, false);
+        null, CustomerActivationState.Inactive, false);
+    private static LocationCoordinateSource CoordinateSource() => new(CoordinateSourceKind.PublishedCatalogue, "TEST ONLY publisher",
+        "https://example.invalid/test-only", new(2026, 9, 9), "TEST ONLY published coordinate fixture.");
+    private static MsfsVerificationEvidence Verification() => new("AutomatedTestFixture", new(2026, 9, 9), "TEST ONLY verification evidence.");
 }

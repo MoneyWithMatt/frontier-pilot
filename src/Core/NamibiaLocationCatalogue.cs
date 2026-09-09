@@ -9,15 +9,19 @@ public enum NamibiaLocationCategory { Gateway, Mining, SmallCommunity, Safari }
 public enum AirportIdentifierConfidence { ConfirmedIcao, PublishedUnverified, ReportedUnverified, Unknown }
 public enum LocationVerificationState { ResearchCandidate, MsfsVerified }
 public enum CustomerActivationState { NotApplicable, Inactive, ActiveCustomer, DormantCandidate }
+public enum CoordinateSourceKind { PublishedCatalogue, SimulatorDerived }
 
 public sealed record AuthoredAirportIdentifier(string? Value, AirportIdentifierConfidence Confidence);
 public sealed record ApproximateCoordinates(double Latitude, double Longitude);
+public sealed record LocationCoordinateSource(CoordinateSourceKind Kind, string Publisher, string Reference,
+    DateOnly RetrievedOn, string Notes);
+public sealed record MsfsVerificationEvidence(string Method, DateOnly VerifiedOn, string Notes);
 
 public sealed record NamibiaLocation(string StableId, string Name, NamibiaLocationCategory Category, bool IsLockedGateway,
-    AuthoredAirportIdentifier AirportIdentifier, ApproximateCoordinates? ApproximateCoordinates,
+    AuthoredAirportIdentifier AirportIdentifier, ApproximateCoordinates? ApproximateCoordinates, LocationCoordinateSource? CoordinateSource,
     int? ApproximateFlightMinutesFromErosAt120Knots, string EconomicRole, IReadOnlyList<string> ProposedJobs,
     string ResearchNotes, IReadOnlyList<string> ResearchSources, LocationVerificationState VerificationState,
-    CustomerActivationState ActivationState, bool RecommendedFirstPlayable)
+    MsfsVerificationEvidence? VerificationEvidence, CustomerActivationState ActivationState, bool RecommendedFirstPlayable)
 {
     public bool CanGenerateOrdinaryLiveJobs => !IsLockedGateway && VerificationState == LocationVerificationState.MsfsVerified && ActivationState == CustomerActivationState.ActiveCustomer;
     public EconomicLocation ToEconomicLocation() => new(StableId, Name, Category switch
@@ -38,7 +42,7 @@ public sealed record NamibiaLocationCatalogueDocument(int SchemaVersion, string 
 {
     public NamibiaLocationCatalogueDocument EnsureValid()
     {
-        if (SchemaVersion != 1 || CatalogueId != "namibia-starting-customer-network" || string.IsNullOrWhiteSpace(CatalogueVersion))
+        if (SchemaVersion != 2 || CatalogueId != "namibia-starting-customer-network" || string.IsNullOrWhiteSpace(CatalogueVersion))
             throw new InvalidDataException("Namibia catalogue identity or version is invalid.");
         Text(SourceDocument, nameof(SourceDocument), 160); Text(SourceDocumentId, nameof(SourceDocumentId), 96);
         Text(SourceRevision, nameof(SourceRevision), 512); Text(SourceSection, nameof(SourceSection), 160); TextList(SourceNotes, nameof(SourceNotes));
@@ -63,6 +67,14 @@ public sealed record NamibiaLocationCatalogueDocument(int SchemaVersion, string 
         if (location.ApproximateCoordinates is { } coordinates &&
             (!double.IsFinite(coordinates.Latitude) || coordinates.Latitude is < -90 or > 90 || !double.IsFinite(coordinates.Longitude) || coordinates.Longitude is < -180 or > 180))
             throw new InvalidDataException("Namibia approximate coordinates are invalid.");
+        if ((location.ApproximateCoordinates is null) != (location.CoordinateSource is null))
+            throw new InvalidDataException("Namibia coordinates and their source must be supplied together.");
+        if (location.CoordinateSource is { } coordinateSource)
+        {
+            Text(coordinateSource.Publisher, "coordinate publisher", 96); Text(coordinateSource.Reference, "coordinate reference", 512);
+            Text(coordinateSource.Notes, "coordinate notes", 512);
+            if (coordinateSource.RetrievedOn == default) throw new InvalidDataException("Coordinate retrieval date is missing.");
+        }
         if (location.ApproximateFlightMinutesFromErosAt120Knots is <= 0 or > 600) throw new InvalidDataException("Namibia approximate flight time is invalid.");
         if ((location.IsLockedGateway && location.ApproximateFlightMinutesFromErosAt120Knots is not null) ||
             (!location.IsLockedGateway && location.ApproximateFlightMinutesFromErosAt120Knots is null))
@@ -72,8 +84,15 @@ public sealed record NamibiaLocationCatalogueDocument(int SchemaVersion, string 
         if (!location.IsLockedGateway && location.Category == NamibiaLocationCategory.Gateway) throw new InvalidDataException("An unlocked destination cannot use gateway category.");
         if (!location.IsLockedGateway && location.ActivationState == CustomerActivationState.NotApplicable) throw new InvalidDataException("Customer activation status is missing.");
         if (location.VerificationState == LocationVerificationState.MsfsVerified &&
-            (location.ApproximateCoordinates is null || location.AirportIdentifier.Confidence != AirportIdentifierConfidence.ConfirmedIcao))
-            throw new InvalidDataException("MSFS-verified locations require confirmed identifier and coordinates.");
+            (location.ApproximateCoordinates is null || location.AirportIdentifier.Confidence != AirportIdentifierConfidence.ConfirmedIcao || location.VerificationEvidence is null))
+            throw new InvalidDataException("MSFS-verified locations require confirmed identifier, sourced coordinates and verification evidence.");
+        if (location.VerificationState == LocationVerificationState.ResearchCandidate && location.VerificationEvidence is not null)
+            throw new InvalidDataException("A research candidate cannot contain MSFS verification evidence.");
+        if (location.VerificationEvidence is { } verification)
+        {
+            Text(verification.Method, "verification method", 96); Text(verification.Notes, "verification notes", 512);
+            if (verification.VerifiedOn == default) throw new InvalidDataException("MSFS verification date is missing.");
+        }
         if (location.ActivationState == CustomerActivationState.ActiveCustomer && location.VerificationState != LocationVerificationState.MsfsVerified)
             throw new InvalidDataException("An active customer must first be MSFS verified.");
     }
@@ -113,10 +132,12 @@ public static class NamibiaLocationCatalogue
 
 public static class NamibiaLocationLifecycle
 {
-    public static NamibiaLocation MarkMsfsVerified(NamibiaLocation source, string confirmedIcaoIdentifier, ApproximateCoordinates verifiedCoordinates)
+    public static NamibiaLocation MarkMsfsVerified(NamibiaLocation source, string confirmedIcaoIdentifier,
+        ApproximateCoordinates coordinates, LocationCoordinateSource coordinateSource, MsfsVerificationEvidence verificationEvidence)
     {
         var updated = source with { AirportIdentifier = new(confirmedIcaoIdentifier, AirportIdentifierConfidence.ConfirmedIcao),
-            ApproximateCoordinates = verifiedCoordinates, VerificationState = LocationVerificationState.MsfsVerified,
+            ApproximateCoordinates = coordinates, CoordinateSource = coordinateSource, VerificationState = LocationVerificationState.MsfsVerified,
+            VerificationEvidence = verificationEvidence,
             ActivationState = source.IsLockedGateway ? CustomerActivationState.NotApplicable : CustomerActivationState.Inactive };
         NamibiaLocationCatalogueDocument.ValidateLocation(updated); return updated;
     }

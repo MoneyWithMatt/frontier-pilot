@@ -101,12 +101,18 @@ Core now models data-driven locations (gateway, mine, community and lodge), syst
 
 Workflow adds strict schema-1 JSON persistence at `%LOCALAPPDATA%\FrontierAirportBuilder\desktop\economy\economy-state.json`, using the repository's same-directory flushed temporary write and atomic replacement convention plus cross-process serialization. Existing corrupt, unsupported or inconsistent state is reported and preserved, including during initialization. Deterministic prototype data is explicitly temporary, supports mines/communities/lodges through records and is not automatically created or connected to the application.
 
-There is no Jobs UI, Namibia activation, SimConnect flight lifecycle, weather logic, flight-validity policy, economic clock or permanent balance data. `VerifiedDeliveryEvidence` is the boundary for a later component. See [economy-core-v0.md](economy-core-v0.md).
+Economy Core itself contains no UI, SimConnect flight lifecycle, weather logic, flight-validity policy, economic clock or permanent balance data. The later accept-only Jobs slice composes this kernel without weakening `VerifiedDeliveryEvidence`. See [economy-core-v0.md](economy-core-v0.md).
 
 ## Namibia Location Catalogue V0 — 2026-09-09
 
-Core embeds a strict schema-1/catalogue-0.1.0 authored data set derived from section 20 of the Google Drive design reference. It contains locked gateway Eros/FYWE and all 30 mining, community and safari candidates with deterministic `namibia.*` IDs, identifier confidence, route-time scale, roles, proposed work, notes, sources, lifecycle status and recommendation flag. The catalogue is separate from `economy-state.json`; projected economy locations retain the catalogue stable ID.
+Core embeds a strict schema-2/catalogue-0.2.0 authored data set derived from section 20 of the Google Drive design reference. It contains locked gateway Eros/FYWE and all 30 mining, community and safari candidates with deterministic `namibia.*` IDs, identifier confidence, route-time scale, roles, proposed work, notes, sources, lifecycle status and recommendation flag. The catalogue is separate from `economy-state.json`; projected economy locations retain the catalogue stable ID.
 
-All destinations are research candidates and none is active. The recommended subset is Eros, Uis, Arandis, Aminuis, Leonardville, Mount Etjo and Okonjima. Eight identifiers explicitly labelled reported remain `ReportedUnverified`; other destination identifiers are `PublishedUnverified`. Section 20 supplies no numeric coordinates, so all coordinate fields are explicitly null.
+Eros, Uis and Arandis store explicit 2026-09-09 manual MSFS inspection evidence. Published OurAirports coordinates have separate provenance and are never described as simulator-derived. Uis and Arandis are the only active customers; the remaining 28 destination records retain research status and null coordinates. The recommended subset remains Eros, Uis, Arandis, Aminuis, Leonardville, Mount Etjo and Okonjima.
 
 Pure status transitions require verification before activation. The ordinary live-job guard requires both `MsfsVerified` and `ActiveCustomer`. Tests use a conspicuous TEST ONLY candidate and do not assign invented data to a real location. See [namibia-location-catalogue-v0.md](namibia-location-catalogue-v0.md).
+
+## Employed Cargo Jobs V0 — 2026-09-09
+
+Catalogue 0.2.0 records Matt's manual MSFS inspection of Eros/FYWE, Uis/FYUS and Arandis/FYAR separately from published OurAirports coordinates. Eros remains the locked gateway; Uis and Arandis are the only active customers.
+
+The WPF Jobs page exposes two temporary deterministic General Supplies offers from the Eros system employer. Acceptance uses the existing atomic Economy Core transaction, persists one reserved shipment and prevents another active acceptance. Restart restores the accepted job. The UI boundary has no delivery or payment operation; destination inventory and the authoritative ledger remain unchanged until future verified delivery evidence exists. See [employed-cargo-jobs-v0.md](employed-cargo-jobs-v0.md).

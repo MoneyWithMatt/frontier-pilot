@@ -230,6 +230,8 @@ public static class EconomyKernel
         if (acceptedUtc == default) throw new ArgumentOutOfRangeException(nameof(acceptedUtc));
         var job = world.Jobs.SingleOrDefault(x => x.Id == jobId) ?? throw new InvalidOperationException("Job does not exist.");
         if (job.State is EconomyJobState.Accepted or EconomyJobState.Completed) return new(world, false);
+        if (world.Jobs.Any(x => x.PlayerId == job.PlayerId && x.State == EconomyJobState.Accepted))
+            throw new InvalidOperationException("The employed player already has an active shipment.");
         var requirement = world.Requirements.Single(x => x.Id == job.RequirementId);
         if (requirement.State != TransportRequirementState.Open) throw new InvalidOperationException("Transport requirement is no longer open.");
         var inventoryIndex = world.Inventories.ToList().FindIndex(x => x.LocationId == requirement.OriginLocationId && x.ResourceId == requirement.ResourceId);

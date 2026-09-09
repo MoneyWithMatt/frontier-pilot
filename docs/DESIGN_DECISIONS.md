@@ -93,9 +93,17 @@
 
 - **Implemented:** keep versioned authored Namibia data embedded and read-only, separate from mutable economy persistence. Economy locations reuse stable catalogue IDs.
 - **Implemented:** model identifier confidence, MSFS verification, customer activation and first-playable recommendation separately. Recommendation never implies verification or activation.
-- **Implemented:** preserve Eros/FYWE as the sole locked gateway and all thirty section 20 candidates. All destinations remain research candidates; none generates work.
+- **Implemented:** preserve Eros/FYWE as the sole locked gateway and all thirty section 20 candidates. Manual inspection now verifies Eros, Uis and Arandis; only Uis and Arandis are activated for the first employed-cargo slice.
 - **Implemented:** require both `MsfsVerified` and `ActiveCustomer` at the mandatory future live-job-generation guard. Verification requires supplied coordinates and a confirmed identifier; activation is a separate transition.
-- **Source limitation:** section 20 names a coordinate source but contains no coordinate values. Store null rather than importing or inferring data in this task. Only Eros is labelled `ConfirmedIcao`; identifiers not explicitly called reported remain `PublishedUnverified` pending confirmation.
+- **Source handling:** section 20 contains no numeric values. The three activated-slice coordinates were separately researched from OurAirports and carry explicit published-source provenance; they remain distinct from manual MSFS inspection evidence and any future simulator-derived coordinates.
+
+## Employed Cargo Jobs V0 — 2026-09-09
+
+- **Implemented:** record manual MSFS inspection evidence independently from published coordinate provenance. A simulator verification flag does not claim that published coordinates were measured in MSFS.
+- **Implemented:** activate only Uis and Arandis; Eros stays the locked system gateway. Eligibility remains a catalogue lifecycle decision and contains no aircraft or weather judgment.
+- **Prototype only:** seed one configurable General Supplies offer per active destination with temporary kilogram and TPC values. No recurring need or mineral output exists.
+- **Implemented:** keep the employee UI behind a load/accept-only boundary. Acceptance uses Economy Core's atomic reservation and one-active-shipment guard. Delivery, customer inventory and ledger payment remain unreachable without later verified evidence.
+- **Deferred:** flight-attempt lifecycle, in-transit transition, cancellation/release rules, expiry and permanent economy balance.
 
 ## Tracking V4 — 2026-09-08
 

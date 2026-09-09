@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "catalogueId": "namibia-starting-customer-network",
-  "catalogueVersion": "0.1.0",
+  "catalogueVersion": "0.2.0",
   "sourceDocument": "Frontier Pilot — Jobs & Career System Design Notes",
   "sourceDocumentId": "17I6WG4KdUoUWDQVb7txi3O1zUipG0B4raJQVAHdgbHU",
   "sourceRevision": "ANLCKQkAaBjNmNs6maxwsAkEGTN39756f2x0IS7fIW3QZCqpzKxk78Vu4MlSfPWuhOCCDuV0zFdm1pQrJilOgddHA3pUTQIPj1jRk3nSDpA",
@@ -9,36 +9,46 @@
   "sourceNotes": [
     "The source calls this a research shortlist, not a scenery-verified activation list.",
     "Approximate flight times assume 120 knots direct from Eros and do not indicate safety or aircraft suitability.",
-    "The source names OurAirports Namibia data for airport identities and coordinates but does not include coordinate values in section 20, so coordinates remain explicitly null.",
+    "Section 20 contains no numeric coordinates. Published OurAirports coordinates are added only for the three manually inspected airports and retain explicit source metadata; they are not simulator-derived validation coordinates.",
+    "Eros/FYWE, Uis/FYUS and Arandis/FYAR were manually inspected in MSFS 2024 on 2026-09-09. This verifies their simulator identifiers and scenery presence independently from the published coordinate source.",
     "Bulk ore and routine high-volume mining supplies should normally move by road or rail; aviation carries people, samples, high-value freight and urgent or specialist requirements.",
     "Shortlisted communities are not wholly dependent on aircraft; their jobs represent valuable or time-sensitive air transport alongside existing roads."
   ],
   "locations": [
     {
       "stableId": "namibia.windhoek-eros", "name": "Windhoek Eros Airport", "category": "Gateway", "isLockedGateway": true,
-      "airportIdentifier": { "value": "FYWE", "confidence": "ConfirmedIcao" }, "approximateCoordinates": null, "approximateFlightMinutesFromErosAt120Knots": null,
+      "airportIdentifier": { "value": "FYWE", "confidence": "ConfirmedIcao" },
+      "approximateCoordinates": { "latitude": -22.604920, "longitude": 17.079002 },
+      "coordinateSource": { "kind": "PublishedCatalogue", "publisher": "OurAirports", "reference": "https://ourairports.com/airports/FYWE/", "retrievedOn": "2026-09-09", "notes": "Published catalogue coordinates; not simulator-derived validation coordinates." },
+      "approximateFlightMinutesFromErosAt120Knots": null,
       "economicRole": "Locked starting gateway for the Windhoek employed-pilot career and the regional customer network.",
       "proposedJobs": ["Gateway origin for starting cargo, community and safari employment."],
-      "researchNotes": "Locked as the starting gateway in section 20. Gateway selection does not itself constitute MSFS scenery verification.",
+      "researchNotes": "Locked as the starting gateway in section 20. Identifier and scenery presence were subsequently verified by manual in-simulator inspection.",
       "researchSources": ["Namibia Airports Company", "OurAirports Namibia data named by the design reference"],
-      "verificationState": "ResearchCandidate", "activationState": "NotApplicable", "recommendedFirstPlayable": true
+      "verificationState": "MsfsVerified", "verificationEvidence": { "method": "ManualInSimulatorInspection", "verifiedOn": "2026-09-09", "notes": "Matt confirmed FYWE exists in MSFS 2024 and inspected its scenery for the intended gateway role." }, "activationState": "NotApplicable", "recommendedFirstPlayable": true
     },
 
     {
       "stableId": "namibia.arandis", "name": "Arandis", "category": "Mining", "isLockedGateway": false,
-      "airportIdentifier": { "value": "FYAR", "confidence": "PublishedUnverified" }, "approximateCoordinates": null, "approximateFlightMinutesFromErosAt120Knots": 60,
+      "airportIdentifier": { "value": "FYAR", "confidence": "ConfirmedIcao" },
+      "approximateCoordinates": { "latitude": -22.461875, "longitude": 14.979322 },
+      "coordinateSource": { "kind": "PublishedCatalogue", "publisher": "OurAirports", "reference": "https://ourairports.com/airports/FYAR/", "retrievedOn": "2026-09-09", "notes": "Published catalogue coordinates; not simulator-derived validation coordinates." },
+      "approximateFlightMinutesFromErosAt120Knots": 60,
       "economicRole": "Aviation access for Arandis and the Rössing uranium mine.",
       "proposedJobs": ["Technicians", "Crew movements", "Urgent components", "Samples", "Specialist supplies"],
-      "researchNotes": "Direct real-world connection to Arandis and the Rössing uranium mine.", "researchSources": ["SKYbrary Arandis Airport", "OurAirports Namibia data named by the design reference"],
-      "verificationState": "ResearchCandidate", "activationState": "Inactive", "recommendedFirstPlayable": true
+      "researchNotes": "Direct real-world connection to Arandis and the Rössing uranium mine. Identifier and scenery presence were subsequently verified by manual in-simulator inspection.", "researchSources": ["SKYbrary Arandis Airport", "OurAirports Namibia data named by the design reference"],
+      "verificationState": "MsfsVerified", "verificationEvidence": { "method": "ManualInSimulatorInspection", "verifiedOn": "2026-09-09", "notes": "Matt confirmed FYAR exists in MSFS 2024 and inspected its scenery for the intended customer role." }, "activationState": "ActiveCustomer", "recommendedFirstPlayable": true
     },
     {
       "stableId": "namibia.uis-mine", "name": "Uis Mine", "category": "Mining", "isLockedGateway": false,
-      "airportIdentifier": { "value": "FYUS", "confidence": "PublishedUnverified" }, "approximateCoordinates": null, "approximateFlightMinutesFromErosAt120Knots": 75,
+      "airportIdentifier": { "value": "FYUS", "confidence": "ConfirmedIcao" },
+      "approximateCoordinates": { "latitude": -21.230032, "longitude": 14.866888 },
+      "coordinateSource": { "kind": "PublishedCatalogue", "publisher": "OurAirports", "reference": "https://ourairports.com/airports/FYUS/", "retrievedOn": "2026-09-09", "notes": "Published catalogue coordinates; not simulator-derived validation coordinates." },
+      "approximateFlightMinutesFromErosAt120Knots": 75,
       "economicRole": "Mining-town customer associated with the Uis tin operation and its lithium and tantalum resources.",
       "proposedJobs": ["Drill parts", "Personnel", "Samples", "Urgent equipment"],
-      "researchNotes": "Associated in the design reference with Andrada's Uis operation.", "researchSources": ["Andrada Mining assets", "OurAirports Namibia data named by the design reference"],
-      "verificationState": "ResearchCandidate", "activationState": "Inactive", "recommendedFirstPlayable": true
+      "researchNotes": "Associated in the design reference with Andrada's Uis operation. Identifier and scenery presence were subsequently verified by manual in-simulator inspection.", "researchSources": ["Andrada Mining assets", "OurAirports Namibia data named by the design reference"],
+      "verificationState": "MsfsVerified", "verificationEvidence": { "method": "ManualInSimulatorInspection", "verifiedOn": "2026-09-09", "notes": "Matt confirmed FYUS exists in MSFS 2024 and inspected its scenery for the intended customer role." }, "activationState": "ActiveCustomer", "recommendedFirstPlayable": true
     },
     {
       "stableId": "namibia.otjikoto-mine", "name": "B2Gold Otjikoto Mine", "category": "Mining", "isLockedGateway": false,
