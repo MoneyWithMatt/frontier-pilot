@@ -123,7 +123,7 @@ The system employer now maintains one funded offer for each active prototype cus
 
 ## Flight Attempt Observability V0 — 2026-09-10
 
-Jobs now exposes separated live observations, persisted evidence and derived qualification diagnostics plus a significant-event timeline. Flight-attempt persistence is schema 2 with an atomic schema-1 migration; timeline events are append-only diagnostics and cannot participate in delivery qualification. Redacted JSON support bundles and plain-text summaries omit local paths and usernames. Automated behavior is verified, while the complete Flight Attempt V0 lifecycle still awaits Matt's live MSFS test. See [flight-attempt-observability-v0.md](flight-attempt-observability-v0.md).
+Jobs now exposes separated live observations, persisted evidence and derived qualification diagnostics plus a significant-event timeline. Flight-attempt persistence is schema 2 with an atomic schema-1 migration; timeline events are append-only diagnostics and cannot participate in delivery qualification. Redacted JSON support bundles and plain-text summaries omit local paths and usernames. Matt completed and paid the Eros-to-Arandis lifecycle in MSFS on 2026-09-10. A follow-up fix makes `DeliveredAndPaid` a hard qualification/event boundary while still refreshing live observations; it corrects the post-delivery `OriginQualificationInterrupted` misclassification seen in that test. Uis and live recovery paths remain to be accepted. See [flight-attempt-observability-v0.md](flight-attempt-observability-v0.md).
 
 ## Flight Attempt V0 — 2026-09-10
 

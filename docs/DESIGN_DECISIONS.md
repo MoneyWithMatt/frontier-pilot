@@ -144,4 +144,5 @@
 - Stable lifecycle keys deduplicate milestones across telemetry replay and restart; observation timestamps distinguish real connection and qualification cycles.
 - Timeline retention is bounded per shipment by coalescing older connection/interruption entries before any lifecycle milestone or error.
 - The support bundle selects only the relevant economy records and omits all local paths, usernames and unrelated files.
+- `DeliveredAndPaid` is a terminal tracker boundary. Aircraft samples may refresh live diagnostics, but no origin/arrival qualification dispatch or flight-progression event is permitted after the persisted attempt or its economy job is terminal.
 - Flight Attempt V0 thresholds, state transitions, identity policy and transaction entry points remain fixed pending live MSFS verification.

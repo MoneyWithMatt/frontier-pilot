@@ -151,6 +151,12 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             if (!wasConnected) await RecordAsync(FlightDiagnosticEventType.SimConnectConnected, sample.ObservedUtc, "connect-" + sample.ObservedUtc.UtcTicks,
                 cancellationToken, ("aircraftTitle", sample.AircraftTitle), ("aircraftType", sample.AircraftType)).ConfigureAwait(false);
             if (world is null) { UpdateStatus(); return; }
+            if (IsTerminalAttempt())
+            {
+                stationarySince = null;
+                observationReason = "Live aircraft telemetry received; completed delivery remains unchanged.";
+                UpdateStatus(); return;
+            }
             var active = ActiveJob(world);
             if (active is null || attempt is null)
             {
@@ -310,6 +316,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 { attempt = attempt with { State = FlightAttemptState.Delivered, DeliveredUtc = proof.ReadyUtc }; await store.SaveAsync(attempt, cancellationToken).ConfigureAwait(false); }
                 await RecordAsync(FlightDiagnosticEventType.DeliveryCommitted, proof.ReadyUtc, "delivery-committed", cancellationToken,
                     ("economyChanged", transition.Changed.ToString()), ("evidenceId", proof.EvidenceId)).ConfigureAwait(false);
+                stationarySince = null;
                 observationReason = transition.Changed ? "Cargo delivered, customer inventory updated and payment recorded." : "Delivery was already recorded; no cargo or payment was duplicated.";
                 UpdateStatus();
             }
@@ -511,6 +518,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
 
     private async Task InterruptQualificationAsync(string reason, DateTimeOffset occurredUtc, CancellationToken cancellationToken)
     {
+        if (IsTerminalAttempt()) { stationarySince = null; return; }
         if (stationarySince is not { } started) return;
         var type = attempt is null ? FlightDiagnosticEventType.OriginQualificationInterrupted :
             attempt.FirstAirborneUtc is not null && attempt.MovementObservedUtc is not null &&
@@ -526,6 +534,14 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         CancellationToken cancellationToken, params (string Key, string Value)[] details)
     {
         if (world is null) return;
+        if (IsTerminalAttempt() && type is FlightDiagnosticEventType.OriginQualificationStarted or
+            FlightDiagnosticEventType.OriginQualificationInterrupted or FlightDiagnosticEventType.ReadyToLoad or
+            FlightDiagnosticEventType.CargoLoaded or FlightDiagnosticEventType.ShipmentEnteredInTransit or
+            FlightDiagnosticEventType.AirborneEvidenceRecorded or FlightDiagnosticEventType.PostDepartureMovementRecorded or
+            FlightDiagnosticEventType.RequiredMaximumDistanceReached or FlightDiagnosticEventType.ArrivalQualificationStarted or
+            FlightDiagnosticEventType.ArrivalQualificationInterrupted or FlightDiagnosticEventType.ReadyToUnload or
+            FlightDiagnosticEventType.AircraftIdentityMismatchObserved)
+            return;
         var job = ActiveJob(world) ?? (attempt is null ? null : world.Jobs.SingleOrDefault(x => x.Id == attempt.JobId)) ??
             world.Jobs.Where(x => x.State == EconomyJobState.Completed).OrderByDescending(x => x.CompletedUtc).FirstOrDefault();
         if (job is null) return;
@@ -584,6 +600,12 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             $"{attempt?.MaximumDistanceFromOriginNauticalMiles ?? 0:F2} NM", attempt?.FirstAirborneUtc is not null,
             attempt?.MovementObservedUtc is not null, qualification, $"{options.RequiredStationaryDuration.TotalSeconds:F0} seconds",
             unavailableReason, events);
+    }
+
+    private bool IsTerminalAttempt()
+    {
+        if (attempt?.State == FlightAttemptState.Delivered) return true;
+        return world is not null && attempt is not null && world.Jobs.Any(x => x.Id == attempt.JobId && x.State == EconomyJobState.Completed);
     }
 
     private void SetStatus(FlightAttemptStatus status)

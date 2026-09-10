@@ -32,7 +32,7 @@ Namibia catalogue and employed cargo: read docs/namibia-location-catalogue-v0.md
 
 Flight Attempt V0: read docs/flight-attempt-v0.md. Only `FlightAttemptTracker` may construct delivery evidence. Loading is simulated and never changes MSFS payload. Persist attempt facts before cross-file economy transitions, reconcile only explicitly proven state, and reset stationary timers across invalid telemetry/disconnection/gaps. Do not add cancellation, expiry, teleport enforcement, weather or recurring demand without a later task.
 
-Flight observability: read docs/flight-attempt-observability-v0.md. Schema-2 diagnostic timeline entries are never delivery evidence and must not affect qualification. Preserve deterministic milestone IDs, bounded retention, redacted exports and the fixed Flight Attempt V0 rules.
+Flight observability: read docs/flight-attempt-observability-v0.md. Schema-2 diagnostic timeline entries are never delivery evidence and must not affect qualification. Preserve deterministic milestone IDs, bounded retention, redacted exports and the fixed Flight Attempt V0 rules. `DeliveredAndPaid` is a hard qualification/event boundary: continued telemetry may refresh live observations but cannot emit flight-progression events. The Eros-to-Arandis delivery was accepted live on 2026-09-10; Uis and recovery paths remain pending.
 
 Repeatable employed cargo: read docs/employed-cargo-job-cycle-v0.md. Board refresh is one idempotent Economy Core maintenance transaction over persisted generic demand definitions. Keep gateway inventory audit separate from the authoritative financial ledger, preserve deterministic cycle IDs and completed history, and do not infer consumption or time progression.
 

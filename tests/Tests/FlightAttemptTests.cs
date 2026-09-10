@@ -259,6 +259,56 @@ public sealed class FlightAttemptTrackerTests
     }
 
     [Fact]
+    public async Task TelemetryAfterDeliveryUpdatesLiveValuesWithoutAppendingProgressionEvents()
+    {
+        var h = await Loaded(); await CompleteFlightEvidence(h); await h.Tracker.UnloadCargoAsync();
+        var worldBefore = await h.Economy.LoadAsync(); var eventsBefore = await h.Attempts.LoadDiagnosticTimelineAsync();
+        var progressionBefore = eventsBefore.Count(x => IsProgressionEvent(x.Type));
+        var live = At(h.DestinationId, Start.AddMinutes(2), speed: 3.2, title: "Post-delivery observed aircraft");
+        await h.Tracker.ObserveAsync(live);
+        for (var second = 1; second <= 20; second++) await h.Tracker.ObserveAsync(live with { ObservedUtc = live.ObservedUtc.AddSeconds(second), GroundSpeedKnots = 3.2 + second / 10d });
+
+        var eventsAfter = await h.Attempts.LoadDiagnosticTimelineAsync();
+        Assert.Equal(progressionBefore, eventsAfter.Count(x => IsProgressionEvent(x.Type)));
+        var priorIds = eventsBefore.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        Assert.DoesNotContain(eventsAfter.Where(x => !priorIds.Contains(x.Id)), x => x.Type is FlightDiagnosticEventType.OriginQualificationStarted or FlightDiagnosticEventType.OriginQualificationInterrupted or FlightDiagnosticEventType.ArrivalQualificationStarted or FlightDiagnosticEventType.ArrivalQualificationInterrupted);
+        Assert.Equal("Delivered and paid", h.Tracker.Current.Stage);
+        Assert.Equal(live.ObservedUtc.AddSeconds(20), h.Tracker.Current.Diagnostic.LastValidSampleUtc);
+        Assert.Equal("5.2 kt", h.Tracker.Current.Diagnostic.GroundSpeed);
+        Assert.Contains("Post-delivery observed aircraft", h.Tracker.Current.Diagnostic.CurrentAircraftIdentity);
+        Assert.Equal(worldBefore, await h.Economy.LoadAsync());
+    }
+
+    [Fact]
+    public async Task RestartThenTelemetryForCompletedAttemptCannotResumeQualificationOrDuplicatePayment()
+    {
+        using var temp = new TestDirectory();
+        var economyPath = Path.Combine(temp.Root, "economy", "economy-state.json"); var attemptPath = Path.Combine(temp.Root, "economy", "flight-attempts.json");
+        var jobs = new EmployedCargoJobsService(new LocalEconomyStateStore(economyPath), utcNow: () => Start);
+        await jobs.LoadAsync(); await jobs.AcceptAsync("job-uis-supplies-v0");
+        var first = new FlightAttemptTracker(new LocalEconomyStateStore(economyPath), new LocalFlightAttemptStore(attemptPath), utcNow: () => Start);
+        await first.InitializeAsync(); await ObserveSeconds(first, At(EmployedCargoPrototype.ErosId, Start), 10); await first.LoadCargoAsync();
+        var harness = new Harness(new LocalEconomyStateStore(economyPath), new LocalFlightAttemptStore(attemptPath), first, EmployedCargoPrototype.UisId);
+        await CompleteFlightEvidence(harness); await first.UnloadCargoAsync();
+
+        var reopenedStore = new LocalFlightAttemptStore(attemptPath);
+        var reopened = new FlightAttemptTracker(new LocalEconomyStateStore(economyPath), reopenedStore, utcNow: () => Start.AddMinutes(3));
+        await reopened.InitializeAsync(); var before = await reopenedStore.LoadDiagnosticTimelineAsync();
+        var live = At(EmployedCargoPrototype.UisId, Start.AddMinutes(4), speed: 1.5, title: "Restart live aircraft");
+        await ObserveSeconds(reopened, live, 15); await reopened.UnloadCargoAsync();
+
+        var after = await reopenedStore.LoadDiagnosticTimelineAsync();
+        Assert.Equal(before.Count(IsProgression), after.Count(IsProgression));
+        var priorIds = before.Select(x => x.Id).ToHashSet(StringComparer.Ordinal);
+        Assert.DoesNotContain(after.Where(x => !priorIds.Contains(x.Id)), IsProgression);
+        Assert.Equal(live.ObservedUtc.AddSeconds(15), reopened.Current.Diagnostic.LastValidSampleUtc);
+        Assert.Equal("Delivered and paid", reopened.Current.Stage);
+        var world = await new LocalEconomyStateStore(economyPath).LoadAsync();
+        Assert.Single(world!.FinancialLedger); Assert.Equal(240, world.Players.Single().CachedBalance);
+        Assert.Equal(120, world.Inventories.Single(x => x.LocationId == EmployedCargoPrototype.UisId).AvailableQuantity);
+    }
+
+    [Fact]
     public void ObservabilityDoesNotChangeFlightAttemptThresholds()
     {
         var options = new FlightAttemptTrackerOptions();
@@ -288,6 +338,14 @@ public sealed class FlightAttemptTrackerTests
     }
     private static async Task CompleteFlightEvidence(Harness h)
     { await RecordDeparture(h); await ObserveSeconds(h.Tracker, At(h.DestinationId, Start.AddMinutes(1)), 10); }
+    private static bool IsProgression(FlightDiagnosticEvent value) => IsProgressionEvent(value.Type);
+    private static bool IsProgressionEvent(FlightDiagnosticEventType type) => type is
+        FlightDiagnosticEventType.FlightAttemptCreated or FlightDiagnosticEventType.OriginQualificationStarted or
+        FlightDiagnosticEventType.OriginQualificationInterrupted or FlightDiagnosticEventType.ReadyToLoad or
+        FlightDiagnosticEventType.CargoLoaded or FlightDiagnosticEventType.ShipmentEnteredInTransit or
+        FlightDiagnosticEventType.AirborneEvidenceRecorded or FlightDiagnosticEventType.PostDepartureMovementRecorded or
+        FlightDiagnosticEventType.RequiredMaximumDistanceReached or FlightDiagnosticEventType.ArrivalQualificationStarted or
+        FlightDiagnosticEventType.ArrivalQualificationInterrupted or FlightDiagnosticEventType.ReadyToUnload;
     private static async Task ObserveSeconds(FlightAttemptTracker tracker, AircraftTelemetry first, int throughSecond)
     { for (int second = 0; second <= throughSecond; second++) await tracker.ObserveAsync(first with { ObservedUtc = first.ObservedUtc.AddSeconds(second) }); }
     private static AircraftTelemetry At(string locationId, DateTimeOffset time, bool onGround = true, double speed = 0, string title = "Cessna 208B Grand Caravan")

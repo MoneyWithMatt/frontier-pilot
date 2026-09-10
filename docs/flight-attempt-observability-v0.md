@@ -24,16 +24,20 @@ Event IDs are a deterministic SHA-256 derivation of job, shipment, event type an
 
 Recorded types cover attempt creation, connection changes, origin/arrival qualification starts and interruptions, ready states, simulated cargo loading, InTransit transition, airborne/movement/maximum-distance evidence, unload request, delivery commit/refusal, recovery and aircraft identity mismatch. Timeline write failure is displayed as a diagnostic warning and does not change qualification state.
 
+`DeliveredAndPaid` is a hard lifecycle boundary. Valid telemetry may continue refreshing the clearly labelled live-observation values while a completed attempt remains on screen, but the tracker no longer dispatches origin or arrival qualification and cannot append flight-progression events. The terminal check uses the persisted attempt state and its completed economy job, rather than filtering a particular diagnostic message. This also covers recovery when one persisted view has reached completion before the other is reconciled.
+
 ## Support output
 
 **Copy diagnostic summary** creates a concise plain-text snapshot. **Export support bundle** writes redacted JSON containing application version, economy/flight schema versions, configured V0 thresholds, current non-sensitive telemetry, derived status, the relevant job/requirement/shipment/payment records, active attempt, persisted evidence flags and its timeline.
 
 The bundle omits persistence paths, working directories, Windows usernames, unrelated economy records, unrelated local files and credentials. Both actions are read-only.
 
-## Live MSFS verification still required
+## Live MSFS verification
 
-Flight Attempt V0 remains unverified in MSFS. During the test, expand diagnostics before loading and confirm connection/sample data, the ten-second origin timer, the loaded identity and each evidence milestone. After landing, confirm the arrival timer reaches ten seconds, **Ready to unload** appears, and one explicit Unload produces **Delivery committed**. If anything differs, export the support bundle before resetting or changing state.
+Matt completed the Eros-to-Arandis path in MSFS on 2026-09-10. The captured diagnostics showed matching loaded/current Piper PA28-236 identity, airborne and movement evidence, 126.29 NM maximum distance from Eros, arrival 0.01 NM from Arandis, explicit unload, `DeliveryCommitted`, and the **Delivered and paid** stage. The destination inventory/payment result and replacement-offer status were visible in the application.
+
+That test also exposed one observability defect: the first telemetry sample after delivery cleared a leftover arrival timer through the generic no-active-job path and labelled it `OriginQualificationInterrupted`. The terminal lifecycle boundary above corrects that classification without changing flight evidence or economic state. Uis, disconnect/reconnect during a flight, and a completed-attempt application restart still need live acceptance.
 
 ## Automated verification
 
-On 2026-09-10, 23 focused Flight Attempt tests passed. The complete Release suite passed 439 tests. The Release solution build completed with zero warnings and zero errors, after which the self-contained Windows x64 application was republished. These results prove deterministic software behavior only; SimConnect timing and the full live flight remain pending simulator verification.
+On 2026-09-10, the terminal-lifecycle regression suite added immediate, repeated and post-restart telemetry cases. These assert that live observations continue changing, no qualification/progression event follows terminal delivery, and inventory/payment remain exactly once. The final focused/full-suite counts and published executable hash are recorded in `evidence/flight-attempt-v0/verification.md`.
