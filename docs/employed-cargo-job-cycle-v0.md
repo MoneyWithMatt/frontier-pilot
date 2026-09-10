@@ -20,7 +20,7 @@ Eros gateway stock is separate from Uis and Arandis customer inventories. `Econo
 
 Acceptance records a negative `ShipmentReserved` inventory transaction and verified delivery records a positive `DeliveryReceived` transaction. This inventory audit ledger is separate from the financial ledger. It cannot alter player money. The financial ledger remains the sole balance authority and the cached balance continues to be checked against it.
 
-Persistence is schema 2. Its explicit schema-1 migration adds a clearly labelled `LegacyOpeningBalance` audit checkpoint for each positive inventory position without changing quantities or historical records. The first Jobs load then attaches recurring definitions to a pre-cycle employed-cargo aggregate in one economy revision. Both writes use the existing flushed temporary-file and atomic-replacement path; migration failure leaves the schema-1 document intact. Corrupt, inconsistent and unsupported documents are still preserved and reported.
+This feature introduced economy schema 2. The current schema 3 preserves it through an explicit schema-1/2 migration. Missing legacy audit amounts receive clearly labelled `LegacyOpeningBalance` checkpoints without changing quantities or historical records. The first Jobs load attaches recurring definitions to a pre-cycle employed-cargo aggregate in one economy revision. Writes use the existing flushed temporary-file and atomic-replacement path; migration failure leaves the earlier document intact. Corrupt, inconsistent and unsupported documents are still preserved and reported.
 
 ## Transaction and concurrency behavior
 

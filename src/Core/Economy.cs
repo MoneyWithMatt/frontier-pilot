@@ -5,13 +5,13 @@ using System.Text;
 namespace FrontierAirportBuilder.Core;
 
 public enum EconomicOwnerKind { System, Player }
-public enum EconomicLocationKind { Gateway, Mine, Community, Lodge }
-public enum EconomicLocationStatus { PrototypeOnly, ResearchCandidate, MsfsVerified, ActiveCustomer, DormantCandidate }
+public enum EconomicLocationKind { Gateway, Mine, Community, Lodge, OperationSite }
+public enum EconomicLocationStatus { PrototypeOnly, ResearchCandidate, MsfsVerified, ActiveCustomer, DormantCandidate, ActiveOperation }
 public enum TransportRequirementState { Open, Reserved, Fulfilled }
 public enum EconomyJobState { Offered, Accepted, Completed }
 public enum ShipmentState { Available, Reserved, InTransit, Delivered, Consumed, Sold }
-public enum FinancialTransactionKind { JobPayment }
-public enum InventoryTransactionKind { LegacyOpeningBalance, SystemGatewaySupply, ShipmentReserved, DeliveryReceived }
+public enum FinancialTransactionKind { JobPayment, SiteFounding }
+public enum InventoryTransactionKind { LegacyOpeningBalance, SystemGatewaySupply, ShipmentReserved, DeliveryReceived, OperationInitialStock, OperationConsumption, OperationProduction }
 
 public sealed record EconomicLocation(string Id, string Name, EconomicLocationKind Kind, EconomicOwnerKind Owner,
     EconomicLocationStatus Status);
@@ -21,17 +21,22 @@ public sealed record InventoryBalance(string LocationId, string ResourceId, deci
 public sealed record CustomerNeed(string Id, string DestinationLocationId, string ResourceId, decimal TargetQuantity);
 public sealed record TransportRequirement(string Id, string NeedId, string OriginLocationId, string DestinationLocationId,
     string ResourceId, decimal Quantity, decimal PaymentAmount, string CurrencyCode, string FundingBusinessId,
-    TransportRequirementState State);
+    TransportRequirementState State)
+{
+    public string? Purpose { get; init; }
+}
 public sealed record EconomyJob(string Id, string RequirementId, string EmployerBusinessId, string PlayerId,
     string ShipmentId, EconomyJobState State, DateTimeOffset? AcceptedUtc = null, DateTimeOffset? CompletedUtc = null);
 public sealed record Shipment(string Id, string JobId, string ResourceId, decimal Quantity, string OriginLocationId,
     string DestinationLocationId, ShipmentState State, string? CurrentLocationId, string? DeliveryEvidenceId = null,
     DateTimeOffset? DeliveredUtc = null);
 public sealed record PlayerAccount(string Id, string EmployerBusinessId, string CurrencyCode, decimal CachedBalance);
-public sealed record FinancialTransaction(string Id, FinancialTransactionKind Kind, string JobId, string EvidenceId,
-    string FromEntityId, string ToEntityId, decimal Amount, string CurrencyCode, DateTimeOffset OccurredUtc);
+public sealed record FinancialTransaction(string Id, FinancialTransactionKind Kind, string? JobId, string EvidenceId,
+    string FromEntityId, string ToEntityId, decimal Amount, string CurrencyCode, DateTimeOffset OccurredUtc,
+    string? SiteId = null);
 public sealed record InventoryTransaction(string Id, InventoryTransactionKind Kind, string LocationId, string ResourceId,
-    decimal QuantityDelta, string? JobId, DateTimeOffset OccurredUtc, string Details);
+    decimal QuantityDelta, string? JobId, DateTimeOffset OccurredUtc, string Details,
+    string? OperationId = null, string? CommandId = null);
 public sealed record RecurringDemandDefinition(string Id, string NeedId, string IdStem, string OriginLocationId,
     string DestinationLocationId, string ResourceId, decimal PreferredShipmentQuantity, decimal PaymentAmount,
     string CurrencyCode, int DesiredAvailableOffers, string FundingBusinessId, string EmployerBusinessId,
@@ -64,6 +69,9 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
 {
     public IReadOnlyList<InventoryTransaction> InventoryLedger { get; init; } = [];
     public IReadOnlyList<RecurringDemandDefinition> RecurringDemand { get; init; } = [];
+    public IReadOnlyList<EconomicSite> Sites { get; init; } = [];
+    public IReadOnlyList<EconomicOperation> Operations { get; init; } = [];
+    public IReadOnlyList<OperationTickRecord> OperationTicks { get; init; } = [];
 
     public EconomyWorld EnsureValid()
     {
@@ -75,6 +83,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         EconomyValidation.Collection(Players, nameof(Players)); EconomyValidation.Collection(Jobs, nameof(Jobs));
         EconomyValidation.Collection(Shipments, nameof(Shipments)); EconomyValidation.Collection(FinancialLedger, nameof(FinancialLedger));
         EconomyValidation.Collection(InventoryLedger, nameof(InventoryLedger)); EconomyValidation.Collection(RecurringDemand, nameof(RecurringDemand));
+        EconomyValidation.Collection(Sites, nameof(Sites)); EconomyValidation.Collection(Operations, nameof(Operations)); EconomyValidation.Collection(OperationTicks, nameof(OperationTicks));
 
         EconomyValidation.Unique(Locations.Select(x => x.Id), "location");
         EconomyValidation.Unique(Businesses.Select(x => x.Id), "business");
@@ -89,6 +98,13 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         EconomyValidation.Unique(InventoryLedger.Select(x => x.Id), "inventory transaction");
         EconomyValidation.Unique(RecurringDemand.Select(x => x.Id), "recurring demand");
         EconomyValidation.Unique(RecurringDemand.Select(x => x.NeedId), "recurring demand need");
+        EconomyValidation.Unique(Sites.Select(x => x.Id), "economic site");
+        EconomyValidation.Unique(Sites.Select(x => x.AirportDefinitionId), "economic site airport definition");
+        EconomyValidation.Unique(Sites.Select(x => x.LocationId), "economic site location");
+        EconomyValidation.Unique(Operations.Select(x => x.Id), "economic operation");
+        EconomyValidation.Unique(Operations.Select(x => x.SiteId), "economic operation site");
+        EconomyValidation.Unique(OperationTicks.Select(x => x.Id), "operation tick");
+        EconomyValidation.Unique(OperationTicks.Select(x => x.CommandId), "operation tick command");
         EconomyValidation.Unique(Inventories.Select(x => x.LocationId + "\n" + x.ResourceId), "inventory position");
 
         var locations = Locations.ToDictionary(x => x.Id, StringComparer.Ordinal);
@@ -123,6 +139,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
             EconomyValidation.Reference(locations, x.OriginLocationId, "requirement origin"); EconomyValidation.Reference(locations, x.DestinationLocationId, "requirement destination");
             EconomyValidation.Reference(resources, x.ResourceId, "requirement resource"); EconomyValidation.Reference(businesses, x.FundingBusinessId, "requirement funder");
             EconomyValidation.Positive(x.Quantity, "requirement quantity"); EconomyValidation.NonNegative(x.PaymentAmount, "requirement payment"); EconomyValidation.Currency(x.CurrencyCode);
+            if (x.Purpose is not null) EconomyValidation.Text(x.Purpose, "requirement purpose", 256);
             var need = needs[x.NeedId];
             if (need.DestinationLocationId != x.DestinationLocationId || need.ResourceId != x.ResourceId)
                 throw new InvalidDataException("Transport requirement does not match its customer need.");
@@ -173,14 +190,25 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         }
         foreach (var x in FinancialLedger)
         {
-            EconomyValidation.Id(x.Id, "transaction ID"); EconomyValidation.Reference(jobs, x.JobId, "transaction job");
+            EconomyValidation.Id(x.Id, "transaction ID");
             EconomyValidation.Id(x.EvidenceId, "transaction evidence ID"); EconomyValidation.Id(x.FromEntityId, "transaction source"); EconomyValidation.Id(x.ToEntityId, "transaction destination");
             EconomyValidation.Positive(x.Amount, "transaction amount"); EconomyValidation.Currency(x.CurrencyCode);
             if (x.OccurredUtc == default) throw new InvalidDataException("Financial transaction timestamp is missing.");
-            var paidJob = jobs[x.JobId];
-            if (paidJob.State != EconomyJobState.Completed || !shipments.TryGetValue(paidJob.ShipmentId, out var paidShipment) ||
-                paidShipment.State != ShipmentState.Delivered || paidShipment.DeliveryEvidenceId != x.EvidenceId)
-                throw new InvalidDataException("Financial transaction exists without its completed delivery.");
+            if (x.Kind == FinancialTransactionKind.JobPayment)
+            {
+                EconomyValidation.Reference(jobs, x.JobId!, "transaction job");
+                var paidJob = jobs[x.JobId!];
+                if (x.SiteId is not null || paidJob.State != EconomyJobState.Completed || !shipments.TryGetValue(paidJob.ShipmentId, out var paidShipment) ||
+                    paidShipment.State != ShipmentState.Delivered || paidShipment.DeliveryEvidenceId != x.EvidenceId)
+                    throw new InvalidDataException("Financial transaction exists without its completed delivery.");
+            }
+            else if (x.Kind == FinancialTransactionKind.SiteFounding)
+            {
+                if (!string.IsNullOrEmpty(x.JobId)) throw new InvalidDataException("A site-founding debit cannot reference a job.");
+                EconomyValidation.Id(x.SiteId, "founding transaction site");
+                if (!Sites.Any(site => site.Id == x.SiteId) || !Players.Any(player => player.Id == x.FromEntityId) || !Businesses.Any(business => business.Id == x.ToEntityId))
+                    throw new InvalidDataException("A site-founding debit refers to an unknown site, player or system funding entity.");
+            }
         }
         foreach (var x in InventoryLedger)
         {
@@ -190,9 +218,15 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
             if (x.JobId is not null) EconomyValidation.Reference(jobs, x.JobId, "inventory transaction job");
             if (x.OccurredUtc == default) throw new InvalidDataException("Inventory transaction timestamp is missing.");
             EconomyValidation.Text(x.Details, "inventory transaction details", 256);
-            if (x.Kind is InventoryTransactionKind.LegacyOpeningBalance or InventoryTransactionKind.SystemGatewaySupply && (x.QuantityDelta < 0 || x.JobId is not null) ||
+            if (x.OperationId is not null && !Operations.Any(operation => operation.Id == x.OperationId))
+                throw new InvalidDataException("Inventory transaction refers to an unknown operation.");
+            if (x.CommandId is not null) EconomyValidation.Id(x.CommandId, "inventory transaction command");
+            if (x.Kind is InventoryTransactionKind.LegacyOpeningBalance or InventoryTransactionKind.SystemGatewaySupply or InventoryTransactionKind.OperationInitialStock && (x.QuantityDelta < 0 || x.JobId is not null) ||
                 x.Kind == InventoryTransactionKind.ShipmentReserved && (x.QuantityDelta > 0 || x.JobId is null) ||
-                x.Kind == InventoryTransactionKind.DeliveryReceived && (x.QuantityDelta < 0 || x.JobId is null))
+                x.Kind == InventoryTransactionKind.DeliveryReceived && (x.QuantityDelta < 0 || x.JobId is null) ||
+                x.Kind == InventoryTransactionKind.OperationInitialStock && (x.OperationId is null || x.CommandId is null) ||
+                x.Kind == InventoryTransactionKind.OperationConsumption && (x.QuantityDelta > 0 || x.OperationId is null || x.CommandId is null) ||
+                x.Kind == InventoryTransactionKind.OperationProduction && (x.QuantityDelta < 0 || x.OperationId is null || x.CommandId is null))
                 throw new InvalidDataException("Inventory transaction kind, quantity and job reference disagree.");
         }
         foreach (var x in RecurringDemand)
@@ -226,6 +260,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
                 payments[0].CurrencyCode != requirement.CurrencyCode || payments[0].OccurredUtc != job.CompletedUtc || shipment.DeliveredUtc != job.CompletedUtc)
                 throw new InvalidDataException("Completed job cargo and payment records are inconsistent.");
         }
+        ProspectingCampValidation.EnsureValid(this);
         return this;
     }
 }
@@ -329,7 +364,7 @@ public static class EconomyKernel
             throw new InvalidOperationException("Delivery evidence names the wrong route.");
         var player = world.Players.Single(x => x.Id == job.PlayerId);
         if (player.CurrencyCode != requirement.CurrencyCode) throw new InvalidDataException("Job payment currency does not match the player account.");
-        var transactionId = "payment-" + job.Id;
+        var transactionId = EconomyIds.Derive("payment-", job.Id);
         if (world.FinancialLedger.Any(x => x.Id == transactionId || x.JobId == job.Id))
             throw new InvalidDataException("A payment already exists for this job.");
 

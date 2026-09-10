@@ -1,5 +1,12 @@
 # Backlog
 
+## After Prospecting Camp V0 live acceptance
+
+- Live-test founding from the guarded avatar at a saved Base Lodge site, then accept both camp-origin and camp-destination Flight Attempt routes.
+- Decide how a permanent game clock, operation ownership/accounting, mineral valuation, wages and transport costs replace the explicit-day and combined-payment fixtures.
+- Design explicit abandonment, relocation and demolition before allowing deletion of linked airports.
+- Decide whether airport edits that move/remove required construction capabilities should be blocked or create an operation-attention state.
+
 ## Next acceptance test
 - Run Tracking V4 at a saved Frontier airport: taxi across the operational area, pass and stop at two stands, verify Near Stand/Parked timing and distances, then restart offline and check the LAST KNOWN association. Tune only from observed results; see tracking-v4-airport-recognition.md.
 - Run Tracking V2 against a loaded MSFS flight: verify In Aircraft → On Foot identity transition, stationary aircraft plus independently moving avatar, distance/facing, return to aircraft, manual viewport control and disconnect recovery. See tracking-v2-avatar.md. Tracking V1 aircraft movement was accepted by Matt.

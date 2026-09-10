@@ -40,6 +40,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public ActionCommand ApplyObjectCommand { get; }
     public TrackingViewModel Tracking { get; }
     public EmployedCargoJobsViewModel Jobs { get; }
+    public ProspectingOperationsViewModel Operations { get; }
     public double LayoutRunwayHeading => Survey?.TrueHeadingDegrees ?? 0;
     public double LayoutRunwayLength => double.TryParse(length,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 200;
     public double LayoutRunwayWidth => double.TryParse(width,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 20;
@@ -62,7 +63,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     public BuilderViewModel(IBuilderServices services, string sdkRoot, ITrackingTelemetrySource? telemetrySource = null,
         IAircraftStateStore? aircraftStateStore = null, IEmployedCargoJobs? employedCargoJobs = null,
-        IFlightAttemptTracker? flightAttemptTracker = null)
+        IFlightAttemptTracker? flightAttemptTracker = null, IProspectingOperations? prospectingOperations = null)
     {
         this.services = services; this.sdkRoot = sdkRoot;
         aircraftStateStore ??= services.IsDryRun ? new MemoryAircraftStateStore() : new LocalAircraftStateStore();
@@ -72,6 +73,11 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         IFlightAttemptStore attemptStore = services.IsDryRun ? new MemoryFlightAttemptStore() : new LocalFlightAttemptStore();
         flightAttemptTracker ??= new FlightAttemptTracker(economyStore, attemptStore);
         Jobs = new(employedCargoJobs, flightAttemptTracker);
+        if (services is BuilderServices concrete) concrete.SetEconomyDependencyStore(economyStore);
+        prospectingOperations ??= services is IAirportManagement management
+            ? new ProspectingOperationsService(economyStore, management, new GuardedAvatarSitePresence(() => Tracking.World))
+            : new UnavailableProspectingOperations();
+        Operations = new(prospectingOperations);
         Tracking.TelemetryChanged += sample => _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft);
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading));
         Layout.Edited += (_,_)=>Invalidate();

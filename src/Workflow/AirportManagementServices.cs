@@ -8,9 +8,18 @@ public sealed partial class BuilderServices
 {
     private SavedAirport? activeAirport;
     private AirportDeletionPlan? issuedDeletion;
+    private IEconomyStateStore? economyDependencyStore;
     private AirportLibrary Library=>new(root,IsDryRun);
     public Guid? ActiveAirportId=>activeAirport?.Id;
     public string LibraryDirectory=>Library.DirectoryPath;
+    internal void SetEconomyDependencyStore(IEconomyStateStore store)=>economyDependencyStore=store;
+    private async Task EnsureNoEconomicSiteAsync(Guid airportId,CancellationToken token)
+    {
+        if(economyDependencyStore is null)return;
+        var world=await economyDependencyStore.LoadAsync(token).ConfigureAwait(false);
+        var site=world?.Sites.SingleOrDefault(x=>x.AirportDefinitionId==airportId.ToString("N"));
+        if(site is not null)throw new InvalidOperationException($"Cannot delete this airport because economic operation site '{site.Name}' depends on it. Abandonment, relocation and demolition are not implemented.");
+    }
     public static BuilderServices CreateDesktopDryRun()
     {
         string profile=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"FrontierAirportBuilder","dry-run-profile.txt");
@@ -84,14 +93,21 @@ public sealed partial class BuilderServices
         var fingerprint=Fingerprint(Library.DocumentPath(id)).Sha256+(installed!=null?Fingerprint(Installer().OwnershipFile(saved.Identifier)).Sha256:"");
         return new(id,saved.Revision,saved.Name,saved.Identifier,projects,package,fingerprint,summary);
     }
-    public Task<AirportDeletionPlan> PrepareDeleteAsync(Guid id,CancellationToken token)=>Task.Run(()=>
+    public async Task<AirportDeletionPlan> PrepareDeleteAsync(Guid id,CancellationToken token)
     {
-        using var operation=Library.Lock();using var community=CommunityInstaller.LockForRemoval();
-        token.ThrowIfCancellationRequested();return issuedDeletion=InspectDeletion(id);
-    },token);
-    public Task<string> DeleteAirportAsync(AirportDeletionPlan plan,bool confirmed,CancellationToken token)=>Task.Run(()=>
+        await EnsureNoEconomicSiteAsync(id,token).ConfigureAwait(false);
+        return await Task.Run(()=>
+        {
+            using var operation=Library.Lock();using var community=CommunityInstaller.LockForRemoval();
+            token.ThrowIfCancellationRequested();return issuedDeletion=InspectDeletion(id);
+        },token).ConfigureAwait(false);
+    }
+    public async Task<string> DeleteAirportAsync(AirportDeletionPlan plan,bool confirmed,CancellationToken token)
     {
         if(!confirmed)return "Deletion cancelled. No files changed.";
+        await EnsureNoEconomicSiteAsync(plan.AirportId,token).ConfigureAwait(false);
+        return await Task.Run(()=>
+        {
         if(!ReferenceEquals(plan,issuedDeletion))throw new IOException("Request a fresh deletion preview and confirmation.");
         using var operation=Library.Lock();using var community=CommunityInstaller.LockForRemoval();
         var fresh=InspectDeletion(plan.AirportId);
@@ -156,7 +172,8 @@ public sealed partial class BuilderServices
         File.WriteAllText(Path.Combine(recovery,"removal-report.json"),JsonSerializer.Serialize(new{saved.Id,saved.Identifier,removedUtc=DateTimeOffset.UtcNow,failures},AirportLibrary.Json));
         return failures.Count==0?$"Deleted {saved.Name} ({saved.Identifier}) and its verified active files. Previous-install backups and original survey evidence were kept.":
             $"Airport removed from My Airports and Community, but some cleanup files were preserved in {recovery}: "+string.Join("; ",failures);
-    },token);
+        },token).ConfigureAwait(false);
+    }
     private static PackageFile Fingerprint(string path){using var stream=File.OpenRead(path);return new(Path.GetFileName(path),stream.Length,Convert.ToHexString(SHA256.HashData(stream)));}
     private static void PurgeVerified(string path,IReadOnlyList<PackageFile> files,string recovery)
     {

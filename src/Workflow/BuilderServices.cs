@@ -41,11 +41,12 @@ public sealed partial class BuilderServices : IBuilderServices, IAirportManageme
     public BuilderServices(string? stateRoot = null)
     {
         root = stateRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FrontierAirportBuilder", "desktop");
-        backend = new LiveWorkflowBackend();
+        backend = new LiveWorkflowBackend(); economyDependencyStore = new LocalEconomyStateStore(Path.Combine(root,"economy","economy-state.json"));
     }
     private BuilderServices(string directory, string? recordedFramesJson, bool failCompilation)
     {
         sandbox = directory; root = Path.Combine(directory, "state"); backend = new ReplayWorkflowBackend(recordedFramesJson, failCompilation);
+        economyDependencyStore = new LocalEconomyStateStore(Path.Combine(root,"economy","economy-state.json"));
     }
     // No caller-selected destination: every replay session has a fresh, app-owned temporary sandbox.
     public static BuilderServices CreateDryRun(string? recordedFramesJson = null, bool failCompilation = false) =>

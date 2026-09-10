@@ -18,7 +18,7 @@ public interface IEconomyStateStore
 /// inventory and ledger changes cannot become independently visible.</summary>
 public sealed class LocalEconomyStateStore : IEconomyStateStore
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
     private sealed record Document(int SchemaVersion, EconomyWorld World);
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -102,25 +102,24 @@ public sealed class LocalEconomyStateStore : IEconomyStateStore
             document = await JsonSerializer.DeserializeAsync<Document>(stream, Json, cancellationToken).ConfigureAwait(false) ?? throw new IOException("Saved economy document is empty. File preserved.");
         }
         catch (JsonException error) { throw new IOException("Saved economy document is corrupt or unsupported. File preserved.", error); }
-        if (document.SchemaVersion is not (1 or CurrentSchemaVersion) || document.World is null)
+        if (document.SchemaVersion is < 1 or > CurrentSchemaVersion || document.World is null)
             throw new IOException("Saved economy document uses an unsupported schema. File preserved.");
         try
         {
             var world = document.World.EnsureValid();
-            if (document.SchemaVersion == 1)
+            if (document.SchemaVersion < CurrentSchemaVersion)
             {
                 var ledger = world.InventoryLedger.ToList();
-                if (ledger.Count == 0)
+                var positions = world.Inventories.OrderBy(x => x.LocationId, StringComparer.Ordinal).ThenBy(x => x.ResourceId, StringComparer.Ordinal).ToArray();
+                for (var index = 0; index < positions.Length; index++)
                 {
-                    var positions = world.Inventories.Where(x => x.AvailableQuantity > 0)
-                        .OrderBy(x => x.LocationId, StringComparer.Ordinal).ThenBy(x => x.ResourceId, StringComparer.Ordinal).ToArray();
-                    for (var index = 0; index < positions.Length; index++)
-                    {
-                        var balance = positions[index];
-                        ledger.Add(new($"inventory-schema1-opening-{index + 1:D4}", InventoryTransactionKind.LegacyOpeningBalance,
-                            balance.LocationId, balance.ResourceId, balance.AvailableQuantity, null,
-                            new DateTimeOffset(info.LastWriteTimeUtc), "Opening balance preserved by the schema-1 to schema-2 migration."));
-                    }
+                    var balance = positions[index]; var audited = ledger.Where(x => x.LocationId == balance.LocationId && x.ResourceId == balance.ResourceId).Sum(x => x.QuantityDelta);
+                    var difference = balance.AvailableQuantity - audited;
+                    if (difference < 0) throw new InvalidDataException("Legacy inventory audit exceeds its cached balance.");
+                    if (difference == 0) continue;
+                    ledger.Add(new($"inventory-schema-migration-opening-{index + 1:D4}", InventoryTransactionKind.LegacyOpeningBalance,
+                        balance.LocationId, balance.ResourceId, difference, null,
+                        new DateTimeOffset(info.LastWriteTimeUtc), $"Opening balance preserved by the schema-{document.SchemaVersion} to schema-3 migration."));
                 }
                 world = (world with { InventoryLedger = ledger }).EnsureValid();
                 await WriteUnlockedAsync(world, cancellationToken).ConfigureAwait(false);
@@ -178,6 +177,12 @@ public sealed class EconomyService(IEconomyStateStore store)
         store.ApplyAsync(world => EconomyKernel.CompleteDelivery(world, evidence), cancellationToken);
     public Task<EconomyTransition> MaintainJobBoardAsync(DateTimeOffset occurredUtc, CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => EconomyJobBoard.Maintain(world, occurredUtc), cancellationToken);
+    public Task<EconomyTransition> FoundProspectingCampAsync(AirportSiteCandidate candidate, VerifiedSitePresenceEvidence evidence,
+        string commandId, DateTimeOffset occurredUtc, CancellationToken cancellationToken = default) =>
+        store.ApplyAsync(world => ProspectingCampKernel.Found(world, candidate, evidence, commandId, occurredUtc), cancellationToken);
+    public Task<EconomyTransition> AdvanceOperationDayAsync(string operationId, string commandId, DateTimeOffset occurredUtc,
+        CancellationToken cancellationToken = default) =>
+        store.ApplyAsync(world => ProspectingCampKernel.AdvanceDay(world, operationId, commandId, occurredUtc), cancellationToken);
     public Task<EconomyTransition> UpgradeRepeatableJobsAsync(EmployedCargoPrototypeOptions options, DateTimeOffset occurredUtc,
         CancellationToken cancellationToken = default) => store.ApplyAsync(world => EmployedCargoPrototype.UpgradeForRepeatableJobs(world, options, occurredUtc), cancellationToken);
 }

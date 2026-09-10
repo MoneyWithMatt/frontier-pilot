@@ -17,13 +17,18 @@ public partial class MainWindow : Window
         DataContext = model;
         model.Tracking.DisplayChanged += TrackingDisplayChanged;
         Closing += OnClosing;
-        Loaded += async (_,_)=>await Task.WhenAll(model.RefreshAirportsAsync(),model.Tracking.InitializeAsync(),model.Jobs.InitializeAsync());
+        Loaded += async (_,_)=>
+        {
+            await Task.WhenAll(model.RefreshAirportsAsync(),model.Tracking.InitializeAsync());
+            await model.Jobs.InitializeAsync();
+            await model.Operations.RefreshAsync();
+        };
     }
     private void MainTabsChanged(object sender,SelectionChangedEventArgs e)
     {
         if(!IsInitialized || !ReferenceEquals(e.Source,MainTabs))return;
         BuilderFooter.Visibility=MainTabs.SelectedIndex==0?Visibility.Visible:Visibility.Collapsed;
-        if(MainTabs.SelectedIndex is 1 or 2 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
+        if(MainTabs.SelectedIndex is 1 or 2 or 3 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
             _=model.Tracking.ConnectAsync();
     }
     private void TrackingDisplayChanged(FrontierAirportBuilder.Core.AircraftTelemetry? aircraft,FrontierAirportBuilder.Core.PlayerTelemetry? player,bool isLive) =>

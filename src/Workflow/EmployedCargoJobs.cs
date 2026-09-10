@@ -91,29 +91,44 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
         CargoJobDisplay Display(EconomyJob job)
         {
             var requirement = world.Requirements.Single(x => x.Id == job.RequirementId);
-            var origin = catalogue.Get(requirement.OriginLocationId); var destination = catalogue.Get(requirement.DestinationLocationId);
+            var origin = Place(requirement.OriginLocationId); var destination = Place(requirement.DestinationLocationId);
             var employer = world.Businesses.Single(x => x.Id == job.EmployerBusinessId);
             var resource = world.Resources.Single(x => x.Id == requirement.ResourceId);
-            var identifier = destination.AirportIdentifier.Value ?? "identifier unconfirmed";
-            var coordinates = destination.ApproximateCoordinates is { } point
-                ? $"published position {point.Latitude.ToString("F6", CultureInfo.InvariantCulture)}, {point.Longitude.ToString("F6", CultureInfo.InvariantCulture)}"
-                : "published position unavailable";
-            var timing = destination.ApproximateFlightMinutesFromErosAt120Knots is { } minutes ? $" · about {minutes} min direct at 120 kt" : "";
-            var known = $"{identifier} · {coordinates}{timing} · {destination.VerificationEvidence?.Method ?? "MSFS verification unavailable"}";
             var shipment = world.Shipments.SingleOrDefault(x => x.JobId == job.Id);
-            return new(job.Id, employer.Name, $"{origin.Name} ({origin.AirportIdentifier.Value})",
-                $"{destination.Name} ({identifier})", destination.EconomicRole, resource.Name, requirement.Quantity,
-                requirement.PaymentAmount, requirement.CurrencyCode, known, shipment?.Id, shipment?.State);
+            return new(job.Id, employer.Name, origin.Display, destination.Display,
+                requirement.Purpose ?? destination.Purpose, resource.Name, requirement.Quantity,
+                requirement.PaymentAmount, requirement.CurrencyCode, destination.Known, shipment?.Id, shipment?.State);
         }
 
+        var operationNeedIds = world.Operations.SelectMany(x => new[] { ProspectingCampKernel.InboundNeed(x.Id), ProspectingCampKernel.OutboundNeed(x.Id) }).ToHashSet(StringComparer.Ordinal);
         var offers = world.Jobs.Where(x => x.State == EconomyJobState.Offered)
-            .Where(x => catalogue.Get(world.Requirements.Single(r => r.Id == x.RequirementId).DestinationLocationId).CanGenerateOrdinaryLiveJobs)
+            .Where(x => { var requirement = world.Requirements.Single(r => r.Id == x.RequirementId);
+                if (operationNeedIds.Contains(requirement.NeedId)) return true;
+                return catalogue.Locations.SingleOrDefault(c => c.StableId == requirement.DestinationLocationId)?.CanGenerateOrdinaryLiveJobs == true; })
             .OrderBy(x => x.Id, StringComparer.Ordinal).Select(Display).ToArray();
         var currentJob = world.Jobs.SingleOrDefault(x => x.State == EconomyJobState.Accepted);
         var completed = world.Jobs.Where(x => x.State == EconomyJobState.Completed).OrderByDescending(x => x.CompletedUtc)
             .ThenBy(x => x.Id, StringComparer.Ordinal).Take(12).Select(Display).ToArray();
         var player = world.Players.Single(x => x.Id == EmployedCargoPrototype.PlayerId);
         return new(offers, currentJob is null ? null : Display(currentJob), completed, StoragePath, world.Revision, player.CachedBalance, player.CurrencyCode);
+
+        (string Display, string Purpose, string Known) Place(string id)
+        {
+            var authored = catalogue.Locations.SingleOrDefault(x => x.StableId == id);
+            if (authored is not null)
+            {
+                var identifier = authored.AirportIdentifier.Value ?? "identifier unconfirmed";
+                var coordinates = authored.ApproximateCoordinates is { } point
+                    ? $"published position {point.Latitude.ToString("F6", CultureInfo.InvariantCulture)}, {point.Longitude.ToString("F6", CultureInfo.InvariantCulture)}"
+                    : "published position unavailable";
+                var timing = authored.ApproximateFlightMinutesFromErosAt120Knots is { } minutes ? $" · about {minutes} min direct at 120 kt" : "";
+                return ($"{authored.Name} ({identifier})", authored.EconomicRole,
+                    $"{identifier} · {coordinates}{timing} · {authored.VerificationEvidence?.Method ?? "MSFS verification unavailable"}");
+            }
+            var site = world.Sites.SingleOrDefault(x => x.LocationId == id) ?? throw new InvalidDataException("Job refers to an unknown authored or player-created location.");
+            return ($"{site.Name} ({site.AirportIdentifier})", "Player-owned economic operation",
+                string.Create(CultureInfo.InvariantCulture, $"{site.AirportIdentifier} · player-created airport anchor {site.Latitude:F6}, {site.Longitude:F6}"));
+        }
     }
 }
 
@@ -181,7 +196,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     public string ActiveShipment => ActiveJob?.Shipment ?? "—";
     public string FlightStage => flight.Current.Stage;
     public string FlightReason => flight.Current.Reason;
-    public string OriginDistance => flight.Current.OriginDistanceNauticalMiles is { } value ? $"Eros distance: {value:F2} NM" : "Eros distance: —";
+    public string OriginDistance => flight.Current.OriginDistanceNauticalMiles is { } value ? $"Origin distance: {value:F2} NM" : "Origin distance: —";
     public string DestinationDistance => flight.Current.DestinationDistanceNauticalMiles is { } value ? $"Destination distance: {value:F2} NM" : "Destination distance: —";
     public string Balance => $"Balance: {playerBalance:0.##} {balanceCurrency}";
     public string FlightStoragePath => flight.StoragePath;
@@ -210,7 +225,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     public async Task AcceptSelectedAsync(CancellationToken cancellationToken = default)
     {
         var selected = SelectedOffer; if (selected is null || HasActiveJob) return;
-        await RunAsync(() => jobs.AcceptAsync(selected.JobId, cancellationToken), "Shipment reserved. Travel to Eros for simulated loading.");
+        await RunAsync(() => jobs.AcceptAsync(selected.JobId, cancellationToken), $"Shipment reserved. Travel to {selected.Origin} for simulated loading.");
         if (Error == "") try { await flight.RefreshEconomyAsync(cancellationToken); } catch (Exception error) { ReportFlightError(error); }
     }
     public async Task ObserveTelemetryAsync(AircraftTelemetry? telemetry, CancellationToken cancellationToken = default)

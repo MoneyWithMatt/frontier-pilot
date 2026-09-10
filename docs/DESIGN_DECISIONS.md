@@ -145,4 +145,14 @@
 - Timeline retention is bounded per shipment by coalescing older connection/interruption entries before any lifecycle milestone or error.
 - The support bundle selects only the relevant economy records and omits all local paths, usernames and unrelated files.
 - `DeliveredAndPaid` is a terminal tracker boundary. Aircraft samples may refresh live diagnostics, but no origin/arrival qualification dispatch or flight-progression event is permitted after the persisted attempt or its economy job is terminal.
+
+## Prospecting Camp vertical slice — 2026-09-11
+
+- Aviation businesses, physical sites and economic operations are separate records. A site links to a stable airport-definition GUID and does not copy the editable airport document.
+- Prospecting is the first data-authored operation archetype. The shared kernel consumes configured input, creates configured output, applies capacity and maintains configured logistics without mining-specific branches.
+- Only a fresh, nearby, on-ground position from the explicit controlled avatar proxy may create `VerifiedSitePresenceEvidence`. The evidence is persisted; aircraft, camera and last-known positions are excluded.
+- Founding, its 150 TPC ledger debit, initial audited stock and the operation record are one idempotent economy revision. Day ticks use persisted command receipts and never follow wall-clock time.
+- Inbound support payment and outbound combined mineral-sale proceeds are temporary abstractions. They do not establish permanent wages, operation accounts, prices or ownership rules.
+- Flight Attempt V0 thresholds remain fixed. Dynamic economic-site coordinates extend its route resolver without changing how a flight qualifies.
+- A linked airport cannot be administratively deleted until a future explicit abandonment/demolition design exists. Missing airport definitions never erase their economic site.
 - Flight Attempt V0 thresholds, state transitions, identity policy and transaction entry points remain fixed pending live MSFS verification.

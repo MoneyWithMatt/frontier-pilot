@@ -186,7 +186,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             if (attempt.DeliveryProof is not null)
             { observationReason = "Verified arrival is persisted. Unload cargo when ready."; UpdateStatus(); return; }
 
-            var origin = catalogue.Get(attempt.OriginLocationId).ApproximateCoordinates!;
+            var origin = Coordinates(attempt.OriginLocationId);
             double originDistance = DistanceNm(sample, origin); var updated = attempt;
             bool persist = false, recordedAirborne = false, recordedMovement = false, recordedMaximum = false, recordedReadyToUnload = false;
             if (!sample.IsOnGround && updated.FirstAirborneUtc is null)
@@ -212,7 +212,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
 
             bool evidenceComplete = attempt.FirstAirborneUtc is not null && attempt.MovementObservedUtc is not null &&
                 attempt.MaximumDistanceFromOriginNauticalMiles >= options.RequiredMaximumDistanceNauticalMiles;
-            var destination = catalogue.Get(attempt.DestinationLocationId).ApproximateCoordinates!;
+            var destination = Coordinates(attempt.DestinationLocationId);
             double destinationDistance = DistanceNm(sample, destination);
             if (attempt.DeliveryProof is null && evidenceComplete && destinationDistance > options.AirportRadiusNauticalMiles)
             {
@@ -239,7 +239,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 }
                 if (sample.ObservedUtc - stationarySince >= options.RequiredStationaryDuration)
                 {
-                    var proof = new FlightDeliveryProof("delivery-" + attempt.ShipmentId, sample.ObservedUtc, FlightPosition.From(sample),
+                    var proof = new FlightDeliveryProof(BoundId("delivery-", attempt.ShipmentId), sample.ObservedUtc, FlightPosition.From(sample),
                         attempt.FirstAirborneUtc!.Value, attempt.MovementObservedUtc!.Value, attempt.MaximumDistanceFromOriginNauticalMiles).EnsureValid();
                     attempt = attempt with { State = FlightAttemptState.ReadyToUnload, DeliveryProof = proof }; persist = true;
                     observationReason = "Verified arrival is persisted. Unload cargo when ready.";
@@ -281,7 +281,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             if (shipment.State == ShipmentState.InTransit && attempt is not null) { UpdateStatus(); return; }
             if (shipment.State != ShipmentState.Reserved) throw new InvalidOperationException("The accepted shipment is not reserved for loading.");
             var identity = FlightAircraftIdentity.From(latest);
-            attempt ??= new FlightAttempt("flight-" + shipment.Id, job.Id, shipment.Id, requirement.OriginLocationId,
+            attempt ??= new FlightAttempt(BoundId("flight-", shipment.Id), job.Id, shipment.Id, requirement.OriginLocationId,
                 requirement.DestinationLocationId, FlightAttemptState.CargoLoaded, latest.ObservedUtc, identity, FlightPosition.From(latest)).EnsureValid();
             await store.SaveAsync(attempt, cancellationToken).ConfigureAwait(false);
             await RecordAsync(FlightDiagnosticEventType.FlightAttemptCreated, latest.ObservedUtc, "created", cancellationToken,
@@ -443,16 +443,17 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         var shipment = world.Shipments.Single(x => x.Id == active.ShipmentId);
         if (shipment.State != ShipmentState.Reserved) { stationarySince = null; observationReason = "Accepted shipment is not in its reserved state."; return; }
         var requirement = world.Requirements.Single(x => x.Id == active.RequirementId);
-        var origin = catalogue.Get(requirement.OriginLocationId).ApproximateCoordinates!;
+        var origin = Coordinates(requirement.OriginLocationId);
+        var originName = PlaceName(requirement.OriginLocationId);
         double distance = DistanceNm(latest, origin);
-        if (!latest.IsOnGround) { stationarySince = null; observationReason = "Aircraft is airborne; loading requires the aircraft on the ground at Eros."; return; }
-        if (distance > options.AirportRadiusNauticalMiles) { stationarySince = null; observationReason = $"Aircraft is {distance:F2} NM from Eros; loading requires {options.AirportRadiusNauticalMiles:F1} NM or less."; return; }
+        if (!latest.IsOnGround) { stationarySince = null; observationReason = $"Aircraft is airborne; loading requires the aircraft on the ground at {originName}."; return; }
+        if (distance > options.AirportRadiusNauticalMiles) { stationarySince = null; observationReason = $"Aircraft is {distance:F2} NM from {originName}; loading requires {options.AirportRadiusNauticalMiles:F1} NM or less."; return; }
         if (latest.GroundSpeedKnots > options.MaximumGroundSpeedKnots) { stationarySince = null; observationReason = $"Aircraft ground speed is {latest.GroundSpeedKnots:F1} kt; loading requires {options.MaximumGroundSpeedKnots:F0} kt or less."; return; }
         if (!TryIdentity(latest, out _, out var identityError)) { stationarySince = null; observationReason = identityError; return; }
         stationarySince ??= latest.ObservedUtc;
         var elapsed = latest.ObservedUtc - stationarySince.Value;
-        observationReason = elapsed >= options.RequiredStationaryDuration ? "Aircraft is ready for simulated cargo loading at Eros." :
-            $"Stationary at Eros for {elapsed.TotalSeconds:F1} of {options.RequiredStationaryDuration.TotalSeconds:F0} seconds.";
+        observationReason = elapsed >= options.RequiredStationaryDuration ? $"Aircraft is ready for simulated cargo loading at {originName}." :
+            $"Stationary at {originName} for {elapsed.TotalSeconds:F1} of {options.RequiredStationaryDuration.TotalSeconds:F0} seconds.";
     }
 
     private void UpdateStatus()
@@ -463,15 +464,15 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         decimal balance = player?.CachedBalance ?? 0; string currency = player?.CurrencyCode ?? EmployedCargoPrototype.Currency;
         if (job is null && completed is null) { SetStatus(FlightAttemptStatus.Empty()); return; }
         var currentJob = job ?? completed!; var requirement = world.Requirements.Single(x => x.Id == currentJob.RequirementId);
-        double? originDistance = latest is null ? null : DistanceNm(latest, catalogue.Get(requirement.OriginLocationId).ApproximateCoordinates!);
-        double? destinationDistance = latest is null ? null : DistanceNm(latest, catalogue.Get(requirement.DestinationLocationId).ApproximateCoordinates!);
+        double? originDistance = latest is null ? null : DistanceNm(latest, Coordinates(requirement.OriginLocationId));
+        double? destinationDistance = latest is null ? null : DistanceNm(latest, Coordinates(requirement.DestinationLocationId));
         if (currentJob.State == EconomyJobState.Completed)
         { SetStatus(new("Delivered and paid", observationReason, connected, false, false, originDistance, destinationDistance, attempt, balance, currency)); return; }
         if (attempt is null)
         {
             bool ready = connected && latest is not null && stationarySince is { } since && latest.ObservedUtc - since >= options.RequiredStationaryDuration &&
                 latest.IsOnGround && latest.GroundSpeedKnots <= options.MaximumGroundSpeedKnots && originDistance <= options.AirportRadiusNauticalMiles;
-            SetStatus(new(ready ? "Ready to load" : "Reserved — travel to Eros", connected ? observationReason : "SimConnect is disconnected.", connected,
+            SetStatus(new(ready ? "Ready to load" : $"Reserved — travel to {PlaceName(requirement.OriginLocationId)}", connected ? observationReason : "SimConnect is disconnected.", connected,
                 ready, false, originDistance, destinationDistance, null, balance, currency)); return;
         }
         if (attempt.State == FlightAttemptState.Delivered)
@@ -484,7 +485,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         string reason = connected ? observationReason : "SimConnect is disconnected; persisted flight evidence is retained and timers are paused.";
         if (connected && !evidence && attempt.FirstAirborneUtc is not null)
             reason = attempt.MovementObservedUtc is null ? $"Meaningful movement of {options.MeaningfulMovementNauticalMiles:F1} NM after takeoff has not yet been recorded." :
-                $"Maximum recorded distance from Eros is {attempt.MaximumDistanceFromOriginNauticalMiles:F2} NM; {options.RequiredMaximumDistanceNauticalMiles:F0} NM is required.";
+                $"Maximum recorded distance from {PlaceName(requirement.OriginLocationId)} is {attempt.MaximumDistanceFromOriginNauticalMiles:F2} NM; {options.RequiredMaximumDistanceNauticalMiles:F0} NM is required.";
         SetStatus(new(stage, reason, connected, false, false, originDistance, destinationDistance, attempt, balance, currency));
     }
 
@@ -506,6 +507,13 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         try { identity = FlightAircraftIdentity.From(sample); error = ""; return true; }
         catch (InvalidDataException exception) { identity = null; error = "Aircraft identity is not stable enough for flight evidence: " + exception.Message; return false; }
     }
+    private static string BoundId(string prefix, string source)
+    {
+        var candidate = prefix + source;
+        if (candidate.Length <= 64) return candidate;
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source))).ToLowerInvariant();
+        return prefix + hash[..(64 - prefix.Length)];
+    }
     private static double DistanceNm(AircraftTelemetry sample, ApproximateCoordinates target) =>
         WorldTracking.DistanceMeters(sample.Latitude, sample.Longitude, target.Latitude, target.Longitude) / MetersPerNauticalMile;
     private void Pause(string reason) { connected = false; latest = null; stationarySince = null; lastSampleUtc = null; observationReason = reason; }
@@ -513,7 +521,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
     {
         if (world is null || latest is null || ActiveJob(world) is not { } job) return double.NaN;
         var requirement = world.Requirements.Single(x => x.Id == job.RequirementId);
-        return DistanceNm(latest, catalogue.Get(requirement.OriginLocationId).ApproximateCoordinates!);
+        return DistanceNm(latest, Coordinates(requirement.OriginLocationId));
     }
 
     private async Task InterruptQualificationAsync(string reason, DateTimeOffset occurredUtc, CancellationToken cancellationToken)
@@ -572,7 +580,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         string Place(string? id)
         {
             if (id is null) return "—";
-            var place = catalogue.Get(id); return place.Name + (place.AirportIdentifier.Value is { } code ? " (" + code + ")" : "");
+            return PlaceName(id);
         }
         string observedIdentity = "—";
         if (latest is not null) observedIdentity = string.IsNullOrWhiteSpace(latest.AircraftType)
@@ -606,6 +614,25 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
     {
         if (attempt?.State == FlightAttemptState.Delivered) return true;
         return world is not null && attempt is not null && world.Jobs.Any(x => x.Id == attempt.JobId && x.State == EconomyJobState.Completed);
+    }
+
+    private ApproximateCoordinates Coordinates(string locationId)
+    {
+        var authored = catalogue.Locations.SingleOrDefault(x => x.StableId == locationId);
+        if (authored?.ApproximateCoordinates is { } coordinates) return coordinates;
+        var site = world?.Sites.SingleOrDefault(x => x.LocationId == locationId) ??
+            throw new InvalidDataException("Flight route location has no trustworthy configured coordinates.");
+        return new(site.Latitude, site.Longitude);
+    }
+
+    private string PlaceName(string locationId)
+    {
+        if (locationId == EmployedCargoPrototype.ErosId) return "Eros (FYWE)";
+        var authored = catalogue.Locations.SingleOrDefault(x => x.StableId == locationId);
+        if (authored is not null) return authored.Name + (authored.AirportIdentifier.Value is { } code ? " (" + code + ")" : "");
+        var site = world?.Sites.SingleOrDefault(x => x.LocationId == locationId) ??
+            throw new InvalidDataException("Flight route location is unknown.");
+        return site.Name + " (" + site.AirportIdentifier + ")";
     }
 
     private void SetStatus(FlightAttemptStatus status)

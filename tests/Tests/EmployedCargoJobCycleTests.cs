@@ -86,7 +86,7 @@ public sealed class EmployedCargoJobCycleTests : TemporaryDirectoryTest
         var migrated = await new LocalEconomyStateStore(FilePath).LoadAsync();
         Assert.Equal(220, migrated!.Inventories.Single(x => x.LocationId == EmployedCargoPrototype.ErosId).AvailableQuantity);
         Assert.Single(migrated.InventoryLedger, x => x.Kind == InventoryTransactionKind.LegacyOpeningBalance);
-        Assert.Equal(2, JsonNode.Parse(await File.ReadAllTextAsync(FilePath))!["SchemaVersion"]!.GetValue<int>());
+        Assert.Equal(3, JsonNode.Parse(await File.ReadAllTextAsync(FilePath))!["SchemaVersion"]!.GetValue<int>());
     }
 
     [Theory]

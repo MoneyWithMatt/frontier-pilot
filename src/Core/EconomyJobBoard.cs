@@ -7,8 +7,6 @@ public static class EconomyJobBoard
     {
         var world = source.EnsureValid();
         if (occurredUtc == default) throw new ArgumentOutOfRangeException(nameof(occurredUtc));
-        if (world.RecurringDemand.Count == 0) return new(world, false);
-
         var requirements = world.Requirements.ToList();
         var jobs = world.Jobs.ToList();
         var inventories = world.Inventories.ToList();
@@ -56,9 +54,12 @@ public static class EconomyJobBoard
             }
         }
 
-        if (!changed) return new(world, false);
-        var next = world with { Revision = incrementRevision ? world.Revision + 1 : world.Revision, Requirements = requirements,
-            Jobs = jobs, Inventories = inventories, InventoryLedger = inventoryLedger };
+        var recurring = changed ? world with { Requirements = requirements,
+            Jobs = jobs, Inventories = inventories, InventoryLedger = inventoryLedger }
+            : world;
+        var operations = OperationJobBoard.Maintain(recurring, occurredUtc, false);
+        if (!changed && !operations.Changed) return new(world, false);
+        var next = operations.World with { Revision = incrementRevision ? world.Revision + 1 : world.Revision };
         return new(next.EnsureValid(), true);
     }
 }

@@ -6,10 +6,12 @@ public enum ConstructionObjectCategory
 }
 
 public enum ConstructionObjectAvailability { PrototypePlaceholder, Unavailable }
+public enum ConstructionCapability { BaseLodge }
 
 public sealed record ConstructionObjectDefinition(string Id, ConstructionObjectCategory Category,
     string DisplayName, ConstructionObjectAvailability Availability, string? SceneryAssetId, string Notes)
 {
+    public IReadOnlyList<ConstructionCapability> Capabilities { get; init; } = [];
     public bool CanPlace => Availability == ConstructionObjectAvailability.PrototypePlaceholder;
     public ConstructionObjectDefinition EnsureValid()
     {
@@ -21,6 +23,8 @@ public sealed record ConstructionObjectDefinition(string Id, ConstructionObjectC
             throw new InvalidDataException($"Placeable construction object '{Id}' does not resolve to its prototype scenery asset.");
         if (!CanPlace && SceneryAssetId is not null)
             throw new InvalidDataException($"Unavailable construction object '{Id}' cannot reference a scenery asset.");
+        if (Capabilities is null || Capabilities.Distinct().Count() != Capabilities.Count)
+            throw new InvalidDataException($"Construction object '{Id}' has invalid capabilities.");
         return this;
     }
 }
@@ -38,9 +42,9 @@ public static class ConstructionObjectCatalogue
 
     public static IReadOnlyList<ConstructionObjectDefinition> All { get; } =
     [
-        new(BaseLodgeId, ConstructionObjectCategory.BaseLodge, "Prototype Base Lodge placeholder",
+        new ConstructionObjectDefinition(BaseLodgeId, ConstructionObjectCategory.BaseLodge, "Prototype Base Lodge placeholder",
             ConstructionObjectAvailability.PrototypePlaceholder, SceneryAssets.PrototypeBaseLodgeId,
-            "Uses stock Gen_Hangar56 only as a technical placeholder; no lodge gameplay or final artwork."),
+            "Uses stock Gen_Hangar56 only as a technical placeholder; no lodge gameplay or final artwork.") { Capabilities = [ConstructionCapability.BaseLodge] },
         Unavailable(StorageShedId, ConstructionObjectCategory.StorageShed, "Storage Shed"),
         Unavailable(StaffAccommodationId, ConstructionObjectCategory.StaffAccommodation, "Staff Accommodation"),
         Unavailable(WarehouseId, ConstructionObjectCategory.Warehouse, "Warehouse"),
@@ -59,6 +63,8 @@ public static class ConstructionObjectCatalogue
     }
 
     public static ConstructionObjectDefinition Get(string id) => All.Single(x => x.Id == id);
+    public static bool AssetProvides(string assetId, ConstructionCapability capability) =>
+        All.Any(x => x.SceneryAssetId == assetId && x.Capabilities.Contains(capability));
     private static ConstructionObjectDefinition Unavailable(string id, ConstructionObjectCategory category, string name) =>
         new(id, category, name, ConstructionObjectAvailability.Unavailable, null,
             "No reliable SDK-native reference or Frontier-owned production asset is established in V0.");
