@@ -173,6 +173,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     public string DestinationDistance => flight.Current.DestinationDistanceNauticalMiles is { } value ? $"Destination distance: {value:F2} NM" : "Destination distance: —";
     public string Balance => $"Balance: {playerBalance:0.##} {balanceCurrency}";
     public string FlightStoragePath => flight.StoragePath;
+    public bool CanResetIncompleteFlight => flight.Current.Attempt is { State: not FlightAttemptState.Delivered } && HasActiveJob;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -191,6 +192,15 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     { await RunFlightAsync(() => flight.LoadCargoAsync(cancellationToken), cancellationToken); }
     public async Task UnloadCargoAsync(CancellationToken cancellationToken = default)
     { await RunFlightAsync(() => flight.UnloadCargoAsync(cancellationToken), cancellationToken); }
+    public Task<string> ExportFlightDiagnosticAsync(CancellationToken cancellationToken = default) => flight.ExportDeveloperDiagnosticAsync(cancellationToken);
+    public async Task ResetIncompleteFlightAsync(CancellationToken cancellationToken = default)
+    {
+        if (IsBusy || !CanResetIncompleteFlight) return;
+        IsBusy = true; Error = "";
+        try { await flight.ResetIncompletePrototypeProgressAsync(cancellationToken); Status = "Incomplete flight observations reset. Cargo remains loaded and InTransit."; }
+        catch (Exception error) { ReportFlightError(error); }
+        finally { IsBusy = false; Changed(nameof(CanResetIncompleteFlight)); }
+    }
     private async Task RunFlightAsync(Func<Task> action, CancellationToken cancellationToken)
     {
         if (IsBusy) return; IsBusy = true; Error = "";
@@ -223,7 +233,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     }
     private void FlightChanged(FlightAttemptStatus value)
     {
-        void Notify() { Changed(nameof(FlightStage)); Changed(nameof(FlightReason)); Changed(nameof(OriginDistance)); Changed(nameof(DestinationDistance)); RefreshCommands(); }
+        void Notify() { Changed(nameof(FlightStage)); Changed(nameof(FlightReason)); Changed(nameof(OriginDistance)); Changed(nameof(DestinationDistance)); Changed(nameof(CanResetIncompleteFlight)); RefreshCommands(); }
         if (context is not null && !ReferenceEquals(context, SynchronizationContext.Current)) context.Post(_ => Notify(), null); else Notify();
     }
     private void ReportFlightError(Exception error)

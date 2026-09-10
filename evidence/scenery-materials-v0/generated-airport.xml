@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FSData version="9.0">
+  <Airport name="Scenery Materials V0 Compile Proof" ident="FPMATV0" lat="-22.5861667992128" lon="14.5390712856577" alt="13.9477994050831" magvar="18">
+    <Runway lat="-22.5861667992128" lon="14.5390712856577" alt="13.9477994050831" surface="GRAVEL" heading="108.633249711437" length="200" width="20" number="13" designator="NONE" primaryTakeoff="YES" primaryLanding="YES" secondaryTakeoff="YES" secondaryLanding="YES" groundMerging="TRUE">
+      <RunwayStart end="PRIMARY" lat="-22.5858782700486" lon="14.5381498045349" alt="13.9477994050831" heading="108.633603624776" />
+      <RunwayStart end="SECONDARY" lat="-22.5864553230811" lon="14.5399927706191" alt="13.9477994050831" heading="288.632895792339" />
+    </Runway>
+  </Airport>
+  <Polygon displayName="Frontier foundation H1" altitude="13.9477994050831">
+    <Attribute name="FlattenFalloff" guid="{5548FDB5-2267-4328-8E6F-FD0A45ADEC8F}" type="FLOAT32" value="8" />
+    <Attribute name="FlattenMode" guid="{065E9D4D-6984-4D2A-91FD-3C33C4F53B22}" type="UINT8" value="0" />
+    <Attribute name="ExcludeSecondaryHeightmap" guid="{10AC14E9-4656-4480-AA8C-3563EE6D127F}" type="UINT8" value="1" />
+    <Attribute name="ForceElevation" guid="{9460843D-964B-4E45-AC49-634856FB6E1C}" type="UINT8" value="1" />
+    <Vertex lat="-22.5857836968856" lon="14.539266804127" />
+    <Vertex lat="-22.5862131082838" lon="14.5391108827156" />
+    <Vertex lat="-22.5864970292168" lon="14.5400176678038" />
+    <Vertex lat="-22.5860676169537" lon="14.540173586724" />
+  </Polygon>
+  <SceneryObject lat="-22.5861667981533" lon="14.5396547593334" alt="0" pitch="0" bank="0" heading="108.633249711437" imageComplexity="VERY_SPARSE" altitudeIsAgl="TRUE" snapToGround="TRUE" snapToNormal="FALSE">
+    <LibraryObject name="{FD8AA200-1485-46C7-BA8F-B9B69C31E0F7}" scale="1" />
+  </SceneryObject>
+</FSData>

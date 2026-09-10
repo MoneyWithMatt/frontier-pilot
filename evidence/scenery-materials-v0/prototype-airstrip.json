@@ -1,0 +1,24 @@
+{
+  "Name": "Scenery Materials V0 Compile Proof",
+  "Identifier": "FPMATV0",
+  "Latitude": -22.58616679921284,
+  "Longitude": 14.539071285657734,
+  "AltitudeMeters": 13.94779940508306,
+  "TrueHeadingDegrees": 108.63324971143716,
+  "MagneticVariationDegreesEast": -18,
+  "LengthMeters": 200,
+  "WidthMeters": 20,
+  "Surface": "Dirt",
+  "SurfacePresetId": "gravel",
+  "Taxiways": [],
+  "ParkingStands": [],
+  "PlacedObjects": [
+    {
+      "Number": 1,
+      "AssetId": "prototype-base-lodge-v0",
+      "EastMeters": 60,
+      "NorthMeters": 0,
+      "TrueHeadingDegrees": 108.63324971143716
+    }
+  ]
+}

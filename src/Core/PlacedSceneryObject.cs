@@ -33,6 +33,9 @@ public sealed record TerrainFoundation(double MarginMeters,double FalloffMeters,
 public sealed record SceneryAsset(string Id,string DisplayName,Guid LibraryGuid,SceneryFootprint Footprint,
     TerrainFoundation? Foundation,string DimensionsProvenance)
 {
+    public ConstructionObjectCategory? ConstructionCategory { get; init; }
+    public bool IsPrototypePlaceholder { get; init; }
+    public string Dependency { get; init; } = "";
     public double SiteRadiusMeters=>Footprint.FurthestCornerMeters+(Foundation?.MarginMeters??0)+(Foundation?.FalloffMeters??0);
 }
 
@@ -47,9 +50,24 @@ public static class SceneryAssets
         // effectively zero; only the horizontal X/Z bounds are needed for placement.
         new(-25.453735478515625,20.728942355860518,-49.35806079101563,45.04666333007812),
         new(2,8),
-        "Installed generic.BGL Gen_Hangar56 LOD0 glTF accessor bounds and node transforms; SHA-256 0185952D0B0D73C231DBD8C0DE65404F4B86FC32FE58664DC6D91AED93D261D3");
+        "Installed generic.BGL Gen_Hangar56 LOD0 glTF accessor bounds and node transforms; SHA-256 0185952D0B0D73C231DBD8C0DE65404F4B86FC32FE58664DC6D91AED93D261D3")
+        { Dependency = "MSFS package fs24-asobo-modellib-airport-generic" };
 
-    public static IReadOnlyList<SceneryAsset> All { get; } = [GenericHangar56];
+    public const string PrototypeBaseLodgeId = "prototype-base-lodge-v0";
+    public static readonly SceneryAsset PrototypeBaseLodge = new(
+        PrototypeBaseLodgeId,
+        "Prototype Base Lodge placeholder (Gen_Hangar56)",
+        GenericHangar56.LibraryGuid,
+        GenericHangar56.Footprint,
+        GenericHangar56.Foundation,
+        GenericHangar56.DimensionsProvenance)
+        {
+            ConstructionCategory = ConstructionObjectCategory.BaseLodge,
+            IsPrototypePlaceholder = true,
+            Dependency = "MSFS package fs24-asobo-modellib-airport-generic; placeholder appearance is a hangar, not lodge artwork"
+        };
+
+    public static IReadOnlyList<SceneryAsset> All { get; } = [GenericHangar56, PrototypeBaseLodge];
     public static SceneryAsset? Find(string? id) => All.FirstOrDefault(a => string.Equals(a.Id, id, StringComparison.Ordinal));
 }
 

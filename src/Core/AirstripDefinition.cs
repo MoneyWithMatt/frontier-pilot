@@ -17,6 +17,8 @@ public sealed record AirstripDefinition
     public required double LengthMeters { get; init; }
     public required double WidthMeters { get; init; }
     public required RunwaySurface Surface { get; init; }
+    /// <summary>Stable authored appearance ID. Null preserves the original Dirt/Asphalt generator exactly.</summary>
+    public string? SurfacePresetId { get; init; }
     public IReadOnlyList<Taxiway> Taxiways { get; init; } = [];
     public IReadOnlyList<ParkingStand> ParkingStands { get; init; } = [];
     public IReadOnlyList<PlacedSceneryObject> PlacedObjects { get; init; } = [];
@@ -39,6 +41,13 @@ public sealed record AirstripDefinition
         CheckRange(WidthMeters, 1, 500, nameof(WidthMeters), errors);
         if (WidthMeters >= LengthMeters) errors.Add("WidthMeters must be smaller than LengthMeters.");
         if (!Enum.IsDefined(Surface)) errors.Add("Unsupported runway surface.");
+        if (SurfacePresetId is not null)
+        {
+            var preset = RunwaySurfacePresets.Find(SurfacePresetId);
+            if (preset is null) errors.Add($"Unsupported runway surface preset '{SurfacePresetId}'.");
+            else if (!preset.CanGenerate) errors.Add($"Runway surface preset '{preset.DisplayName}' is unavailable.");
+            else if (preset.PhysicalSurface != Surface) errors.Add("Runway surface preset does not agree with its physical surface type.");
+        }
         errors.AddRange(ParkingGeometry.Validate(ParkingStands, LengthMeters, WidthMeters, TrueHeadingDegrees));
         errors.AddRange(TaxiwayGeometry.Validate(Taxiways, ParkingStands ?? [], new(LengthMeters,WidthMeters,TrueHeadingDegrees)));
         errors.AddRange(SceneryObjectGeometry.Validate(PlacedObjects, new(LengthMeters,WidthMeters,TrueHeadingDegrees)));

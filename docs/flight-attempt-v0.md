@@ -50,3 +50,9 @@ These checks validate lifecycle behavior, not runway, route, aircraft or weather
 ## Deferred
 
 V0 has no cancellation, expiry, reservation release, payload manipulation, anti-teleport system, weather evaluation, recurring demand, offline economic time, player business or additional destination activation.
+
+## Guarded developer diagnostic
+
+The Jobs page can export a read-only JSON snapshot of the current tracker status, flight attempt and economy aggregate. Its reset action requires an explicit Windows confirmation and applies only to an incomplete attempt whose accepted shipment is already `InTransit`. Reset clears airborne, movement, maximum-distance and arrival-proof observations and returns the attempt to `CargoLoaded`; the original load facts and aircraft identity remain.
+
+This does not release, cancel or reload cargo. It writes only `flight-attempts.json` and leaves the economy aggregate byte-for-byte unchanged. A delivered attempt is refused, so completed inventory, requirement/job state, ledger payment and balance cannot be changed through the diagnostic.

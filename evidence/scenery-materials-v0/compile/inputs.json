@@ -1,0 +1,22 @@
+[
+  {
+    "Path": "AirportProject.xml",
+    "Bytes": 365,
+    "SHA256": "C71D2B1DCD58ABF424A48C7C3513FBF057AA3F4FF5142F97A65E55153EB54042"
+  },
+  {
+    "Path": "PackageDefinitions\\frontier-airport-fpmatv0.xml",
+    "Bytes": 1025,
+    "SHA256": "035C0A5E058BABBA7F919F45657D27DE852EB2DF70ADC76F464D121735067B1D"
+  },
+  {
+    "Path": "PackageDefinitions\\frontier-airport-fpmatv0\\ContentInfo\\Thumbnail.jpg",
+    "Bytes": 35560,
+    "SHA256": "DF41F155704CC57A0F7023898988A5306A96B0CC07647458DC716984DE56A6B0"
+  },
+  {
+    "Path": "PackageSources\\data\\airport.xml",
+    "Bytes": 1898,
+    "SHA256": "1A80A3780B08E07F16171C78B69765EDCFD80116DC06790833AD64BEA7F2B0AD"
+  }
+]

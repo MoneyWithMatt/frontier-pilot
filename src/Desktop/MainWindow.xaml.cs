@@ -41,6 +41,19 @@ public partial class MainWindow : Window
         try { await model.Tracking.ClearSavedStateAsync(); }
         catch(Exception error) { MessageBox.Show(this,error.Message,"Could not clear saved aircraft position",MessageBoxButton.OK,MessageBoxImage.Error); }
     }
+    private async void ExportFlightDiagnostic(object sender,RoutedEventArgs e)
+    {
+        var dialog=new Microsoft.Win32.SaveFileDialog {FileName="Frontier-flight-diagnostic-"+DateTime.Now.ToString("yyyyMMdd-HHmmss")+".json",Filter="JSON|*.json"};
+        if(dialog.ShowDialog(this)!=true)return;
+        try { await DiagnosticLog.SaveNewAsync(dialog.FileName,await model.Jobs.ExportFlightDiagnosticAsync()); }
+        catch(Exception error) { MessageBox.Show(this,error.Message,"Could not export flight diagnostic",MessageBoxButton.OK,MessageBoxImage.Error); }
+    }
+    private async void ResetIncompleteFlight(object sender,RoutedEventArgs e)
+    {
+        const string warning="Reset only the persisted airborne, movement and arrival observations for this incomplete prototype flight? Cargo will remain loaded and InTransit. Completed deliveries, inventory, ledger payments and balance cannot be changed.";
+        if(MessageBox.Show(this,warning,"Reset incomplete prototype observations",MessageBoxButton.YesNo,MessageBoxImage.Warning,MessageBoxResult.No)!=MessageBoxResult.Yes)return;
+        await model.Jobs.ResetIncompleteFlightAsync();
+    }
     private void OpenMapAttribution(object sender,RequestNavigateEventArgs e)
     {
         Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri){UseShellExecute=true});e.Handled=true;

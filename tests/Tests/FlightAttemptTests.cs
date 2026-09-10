@@ -142,6 +142,36 @@ public sealed class FlightAttemptTrackerTests
     }
 
     [Fact]
+    public async Task DeveloperDiagnosticExportsStateAndResetClearsOnlyIncompleteFlightObservations()
+    {
+        var h = await Loaded(); await RecordDeparture(h);
+        var before = await h.Economy.LoadAsync();
+        var report = await h.Tracker.ExportDeveloperDiagnosticAsync();
+        Assert.Contains("job-uis-supplies-v0", report); Assert.Contains("flight-shipment-uis-supplies-v0", report);
+        await h.Tracker.ResetIncompletePrototypeProgressAsync();
+        var reset = h.Tracker.Current.Attempt!;
+        Assert.Equal(FlightAttemptState.CargoLoaded, reset.State); Assert.Null(reset.FirstAirborneUtc);
+        Assert.Null(reset.MovementObservedUtc); Assert.Equal(0, reset.MaximumDistanceFromOriginNauticalMiles);
+        Assert.Null(reset.DeliveryProof); Assert.False(h.Tracker.Current.IsConnected);
+        var after = await h.Economy.LoadAsync();
+        Assert.Equal(before, after); Assert.Equal(ShipmentState.InTransit, after!.Shipments.Single().State);
+        Assert.Empty(after.FinancialLedger);
+    }
+
+    [Fact]
+    public async Task DeveloperResetRefusesCompletedDeliveryAndProtectsInventoryLedgerAndBalance()
+    {
+        var h = await Loaded(); await CompleteFlightEvidence(h); await h.Tracker.UnloadCargoAsync();
+        var before = await h.Economy.LoadAsync();
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => h.Tracker.ResetIncompletePrototypeProgressAsync());
+        Assert.Contains("completed", error.Message, StringComparison.OrdinalIgnoreCase);
+        var after = await h.Economy.LoadAsync();
+        Assert.Equal(before, after); Assert.Equal(4, after!.Revision); Assert.Single(after.FinancialLedger);
+        Assert.Equal(240, after.Players.Single().CachedBalance);
+        Assert.Equal(FlightAttemptState.Delivered, Assert.Single(await h.Attempts.LoadAsync()).State);
+    }
+
+    [Fact]
     public void UiBoundaryCannotSubmitOrManufactureVerifiedDeliveryEvidence()
     {
         Assert.DoesNotContain(typeof(IFlightAttemptTracker).GetMethods(), method =>

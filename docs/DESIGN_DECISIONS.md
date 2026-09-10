@@ -115,6 +115,14 @@
 - **Prototype policy:** 1.5 NM endpoint radius, 5 kt, ten seconds, 2 NM meaningful movement and 10 NM maximum departure distance are configurable test rules, not balance or safety judgments.
 - **Deferred:** cancellation, reservation release, expiry, payload stations, weather, anti-teleport enforcement and recurring demand.
 
+## Scenery Materials & Prototype Buildings V0 — 2026-09-10
+
+- **Implemented:** save a stable optional runway preset ID while retaining the old `RunwaySurface` value as physical/backward-compatible data. A null preset deliberately selects the old package-local Dirt or Asphalt generator so loading and saving old airports does not silently alter their appearance.
+- **Implemented:** use compiler-proven SDK-native surface names where available. Factual compiler acceptance and visual acceptance are separate. Dry Grass and Weathered Asphalt remain explicit fallbacks because no reliably identified native appearance variant was established.
+- **Implemented:** keep colour adjustment, ground merging, tiling, falloff and additional material-layer metadata in the preset model. V0 emits only established values and never invents texture art or unknown GUIDs.
+- **Implemented:** catalogue construction categories independently from placed instances and economy. Only the Base Lodge category resolves to a placeable V0 placeholder, using the already-proven stock `Gen_Hangar56` dependency under a new stable asset ID.
+- **Developer recovery:** resetting an incomplete flight means clearing flight-observation progress only. Cargo remains loaded/InTransit; this is not cancellation or inventory rollback. Completed delivery and all economic records are immutable through this tool.
+
 ## Tracking V4 — 2026-09-08
 
 - **Implemented:** derive Frontier location only from saved Frontier airport definitions and authoritative aircraft coordinates. Do not query or label stock MSFS airports.

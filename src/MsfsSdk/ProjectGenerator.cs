@@ -23,6 +23,7 @@ public static class ProjectGenerator
         // Never mix generated files with existing work, SDK samples, or previous build output.
         if (Directory.Exists(root) || File.Exists(root)) throw new IOException("Output directory must not already exist.");
         var packageName = "frontier-airport-" + definition.Identifier.ToLowerInvariant();
+        var preset = definition.SurfacePresetId is null ? null : RunwaySurfacePresets.Get(definition.SurfacePresetId).EnsureValid();
         var materialName = "frontier-" + definition.Surface.ToString().ToLowerInvariant();
         var materialGuid = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes("FrontierPilot/" + definition.Surface + "/" + definition.Identifier)).AsSpan(0, 16))
             .ToString("B").ToUpperInvariant();
@@ -35,6 +36,8 @@ public static class ProjectGenerator
         groups.Single(g => g.Element("Type")!.Value == "Copy").Element("AssetDir")!.Value = $"PackageDefinitions\\{packageName}\\ContentInfo\\";
         groups.Single(g => g.Element("Type")!.Value == "Copy").Element("OutputDir")!.Value = $"ContentInfo\\{packageName}\\";
         groups.Single(g => g.Element("Type")!.Value == "MaterialLib").Element("OutputDir")!.Value = $"MaterialLibs\\{packageName}\\";
+        if (preset is not null)
+            groups.Single(g => g.Element("Type")!.Value == "MaterialLib").Remove();
         var airportXml = LoadXml("PackageSources.data.airport.xml");
         var airport = airportXml.Root!.Element("Airport")!;
         airport.SetAttributeValue("name", definition.Name);
@@ -47,13 +50,25 @@ public static class ProjectGenerator
         runway.SetAttributeValue("heading", Number(geometry.TrueHeadingDegrees));
         runway.SetAttributeValue("length", Number(definition.LengthMeters));
         runway.SetAttributeValue("width", Number(definition.WidthMeters));
-        runway.SetAttributeValue("surface", materialGuid);
+        runway.SetAttributeValue("surface", preset?.SdkSurfaceReference ?? materialGuid);
+        runway.SetAttributeValue("groundMerging", preset?.GroundMerging == true || preset is null && definition.Surface == RunwaySurface.Dirt ? "TRUE" : null);
         runway.SetAttributeValue("number", geometry.Primary.Number.ToString("00", CultureInfo.InvariantCulture));
         foreach (var (end, value) in new[] { ("PRIMARY", geometry.Primary), ("SECONDARY", geometry.Secondary) })
         {
             var start = runway.Elements("RunwayStart").Single(e => (string?)e.Attribute("end") == end);
             SetPosition(start, value.Position, definition.AltitudeMeters);
             start.SetAttributeValue("heading", Number(value.InwardTrueHeadingDegrees));
+        }
+        if (preset is not null)
+        {
+            foreach (var layer in preset.Layers)
+            {
+                runway.Add(new XElement("Material", new XAttribute("guid", new Guid(layer.MaterialReference).ToString("B").ToUpperInvariant()),
+                    new XAttribute("type", layer.BlendType), new XAttribute("tilingU", Number(layer.TilingU)),
+                    new XAttribute("tilingV", Number(layer.TilingV)),
+                    layer.FalloffMeters is { } falloff ? new XAttribute("falloff", Number(falloff)) : null,
+                    new XAttribute("opacity", layer.Opacity)));
+            }
         }
         // Indices 1–99 belong to parking. Reuse equal local nodes between paths, in stable order.
         var nodes=new Dictionary<LocalPoint,int>();
@@ -82,10 +97,10 @@ public static class ProjectGenerator
                     // SDK 1.2.4's BGL compiler requires this even though the 2024 XML reference labels it optional.
                     // Zero is the documented unlimited-aircraft value used by the installed official airport sample.
                     new XAttribute("weightLimit","0"),
-                    new XAttribute("surface",materialGuid),new XAttribute("drawSurface","TRUE"),new XAttribute("drawDetail","TRUE"),
-                    new XAttribute("centerLine",definition.Surface==RunwaySurface.Asphalt?"TRUE":"FALSE"),
+                    new XAttribute("surface",preset?.SdkSurfaceReference??materialGuid),new XAttribute("drawSurface","TRUE"),new XAttribute("drawDetail","TRUE"),
+                    new XAttribute("centerLine",preset?.DrawCentreLine??definition.Surface==RunwaySurface.Asphalt?"TRUE":"FALSE"),
                     new XAttribute("centerLineLighted","FALSE"),new XAttribute("leftEdge","NONE"),new XAttribute("rightEdge","NONE"),
-                    new XAttribute("groundMerging",definition.Surface==RunwaySurface.Dirt?"TRUE":"FALSE"),
+                    new XAttribute("groundMerging",preset?.GroundMerging??definition.Surface==RunwaySurface.Dirt?"TRUE":"FALSE"),
                     new XAttribute("excludeVegetationInside","TRUE"),new XAttribute("excludeVegetationAround","TRUE")));
             }
         }
@@ -137,17 +152,20 @@ public static class ProjectGenerator
                     new XAttribute("name", asset.LibraryGuid.ToString("B").ToUpperInvariant()),
                     new XAttribute("scale", "1"))));
         }
-        var material = LoadXml("PackageSources.materials.frontier-asphalt.material");
-        material.Root!.SetAttributeValue("Name", materialName);
-        material.Root.SetAttributeValue("Guid", materialGuid);
-        if (definition.Surface == RunwaySurface.Dirt)
+        XDocument? material = null;
+        if (preset is null)
         {
-            material.Root.SetAttributeValue("SurfaceType", "DIRT");
-            material.Root.Element("TextureList")!.RemoveNodes();
-            material.Root.Element("TextureList")!.Add(new XElement("Texture", new XAttribute("FileName", "FrontierDirt_Albedo.png"), new XAttribute("Binding", "MTL_BITMAP_DECAL0")));
-            var diffuse = material.Root.Element("Attributes")!.Element("Diffuse")!;
-            diffuse.SetAttributeValue("Red", "1"); diffuse.SetAttributeValue("Green", "1"); diffuse.SetAttributeValue("Blue", "1");
-            runway.SetAttributeValue("groundMerging", "TRUE");
+            material = LoadXml("PackageSources.materials.frontier-asphalt.material");
+            material.Root!.SetAttributeValue("Name", materialName);
+            material.Root.SetAttributeValue("Guid", materialGuid);
+            if (definition.Surface == RunwaySurface.Dirt)
+            {
+                material.Root.SetAttributeValue("SurfaceType", "DIRT");
+                material.Root.Element("TextureList")!.RemoveNodes();
+                material.Root.Element("TextureList")!.Add(new XElement("Texture", new XAttribute("FileName", "FrontierDirt_Albedo.png"), new XAttribute("Binding", "MTL_BITMAP_DECAL0")));
+                var diffuse = material.Root.Element("Attributes")!.Element("Diffuse")!;
+                diffuse.SetAttributeValue("Red", "1"); diffuse.SetAttributeValue("Green", "1"); diffuse.SetAttributeValue("Blue", "1");
+            }
         }
 
         // All XML is built before creating output; there are no culture-dependent text substitutions.
@@ -155,12 +173,12 @@ public static class ProjectGenerator
         Save(project, Path.Combine(root, "AirportProject.xml"));
         Save(package, Path.Combine(root, "PackageDefinitions", packageName + ".xml"));
         Save(airportXml, Path.Combine(root, "PackageSources", "data", "airport.xml"));
-        Save(material, Path.Combine(root, "PackageSources", "materials", materialName + ".material"));
+        if (material is not null) Save(material, Path.Combine(root, "PackageSources", "materials", materialName + ".material"));
         // MSBuild normalizes hyphens in resource directory segments (but not file names).
         CopyResource($"PackageDefinitions.{TemplatePackage.Replace('-', '_')}.ContentInfo.Thumbnail.jpg", Path.Combine(root, "PackageDefinitions", packageName, "ContentInfo", "Thumbnail.jpg"));
-        foreach (var file in definition.Surface == RunwaySurface.Asphalt ? new[] { "Asphalt01_Albedo.png", "Asphalt01_Albedo.png.FLAGS", "Asphalt01_COMP.png", "Asphalt01_COMP.png.FLAGS" } : Array.Empty<string>())
+        foreach (var file in preset is null && definition.Surface == RunwaySurface.Asphalt ? new[] { "Asphalt01_Albedo.png", "Asphalt01_Albedo.png.FLAGS", "Asphalt01_COMP.png", "Asphalt01_COMP.png.FLAGS" } : Array.Empty<string>())
             CopyResource("PackageSources.materials.Textures." + file, Path.Combine(root, "PackageSources", "materials", "Textures", file));
-        if (definition.Surface == RunwaySurface.Dirt)
+        if (preset is null && definition.Surface == RunwaySurface.Dirt)
         {
             CopyResource("Dirt.Textures.FrontierDirt_Albedo.png", Path.Combine(root, "PackageSources/materials/Textures/FrontierDirt_Albedo.png"));
             CopyResource("PackageSources.materials.Textures.Asphalt01_Albedo.png.FLAGS", Path.Combine(root, "PackageSources/materials/Textures/FrontierDirt_Albedo.png.FLAGS"));

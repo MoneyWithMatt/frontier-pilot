@@ -4,7 +4,8 @@
 - Run Tracking V4 at a saved Frontier airport: taxi across the operational area, pass and stop at two stands, verify Near Stand/Parked timing and distances, then restart offline and check the LAST KNOWN association. Tune only from observed results; see tracking-v4-airport-recognition.md.
 - Run Tracking V2 against a loaded MSFS flight: verify In Aircraft → On Foot identity transition, stationary aircraft plus independently moving avatar, distance/facing, return to aircraft, manual viewport control and disconnect recovery. See tracking-v2-avatar.md. Tracking V1 aircraft movement was accepted by Matt.
 - Run Tracking V3 persistence acceptance: move the aircraft, disconnect, verify LAST KNOWN, restart Frontier Pilot without MSFS, then reconnect and verify LIVE. See tracking-v3-persistence.md.
-- Rebuild the accepted `Gen_Hangar56` placement and verify the 46.2 × 94.4 m map outline, foundation elevation, rear terrain contact and 8 m blended edge in MSFS. See object-footprints-and-foundations.md.
+- Build disposable airports for the seven surface presets and visually compare texture/colour, grass behavior, merging and edges. Dry Grass and Weathered Asphalt currently use labelled fallbacks. See scenery-materials-and-prototype-buildings-v0.md.
+- Place the Prototype Base Lodge placeholder and verify its 46.2 × 94.4 m map outline, stock model resolution, foundation elevation, rear terrain contact and 8 m blended edge in MSFS. See object-footprints-and-foundations.md.
 - Run the WPF flow in a real flight: capture a new flat site, close MSFS, compile/install a new identifier, restart and inspect both starts.
 - Exercise replacement of that new app-owned package and verify the prior version backup. Keep FPT1/FPSC untouched.
 - Verify usability at additional Windows scaling settings.
@@ -21,7 +22,7 @@
 ## Research
 - Requalify avatar elevation after simulator/SDK changes.
 - Track an officially supported ground query API; retain empirical source limitations.
-- Expand surfaces only after compile and simulator visual proof.
+- Replace the Dry Grass and Weathered Asphalt fallbacks only after a reliable licensed material source and simulator visual proof exist.
 
 ## Later product work
 Economy Core, employed-cargo selection and Flight Attempt V0 now implement the first Eros-to-Uis/Arandis delivery lifecycle. Manual MSFS acceptance is next. Do not fold settlement production, player companies, multiplayer or worldwide economics into follow-up tuning.

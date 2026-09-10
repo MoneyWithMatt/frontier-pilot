@@ -11,6 +11,7 @@ public interface IFlightAttemptStore
     string StoragePath { get; }
     Task<IReadOnlyList<FlightAttempt>> LoadAsync(CancellationToken cancellationToken = default);
     Task SaveAsync(FlightAttempt attempt, CancellationToken cancellationToken = default);
+    Task<FlightAttempt> ResetIncompleteProgressAsync(string attemptId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Strict whole-document persistence using flushed same-directory replacement. Invalid files are preserved.</summary>
@@ -53,6 +54,25 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
             var index = attempts.FindIndex(x => x.Id == attempt.Id);
             if (index < 0) attempts.Add(attempt); else { ValidateForward(attempts[index], attempt); attempts[index] = attempt; }
             await WriteUnlockedAsync(attempts.OrderBy(x => x.Id, StringComparer.Ordinal).ToArray(), cancellationToken).ConfigureAwait(false);
+        }
+        finally { instanceGate.Release(); }
+    }
+
+    public async Task<FlightAttempt> ResetIncompleteProgressAsync(string attemptId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(attemptId)) throw new ArgumentException("Flight-attempt ID is required.");
+        await instanceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            using var lease = Lock(); var attempts = (await ReadUnlockedAsync(cancellationToken).ConfigureAwait(false)).ToList();
+            var index = attempts.FindIndex(x => x.Id == attemptId);
+            if (index < 0) throw new InvalidOperationException("Flight attempt was not found.");
+            var existing = attempts[index];
+            if (existing.State == FlightAttemptState.Delivered || existing.DeliveredUtc is not null)
+                throw new InvalidOperationException("Completed delivery evidence cannot be reset.");
+            var reset = ResetProgress(existing).EnsureValid(); attempts[index] = reset;
+            await WriteUnlockedAsync(attempts.OrderBy(x => x.Id, StringComparer.Ordinal).ToArray(), cancellationToken).ConfigureAwait(false);
+            return reset;
         }
         finally { instanceGate.Release(); }
     }
@@ -103,6 +123,17 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
             throw new InvalidDataException("Flight-attempt progress cannot be rewritten or moved backwards.");
     }
 
+    internal static FlightAttempt ResetProgress(FlightAttempt attempt) => attempt with
+    {
+        State = FlightAttemptState.CargoLoaded,
+        FirstAirborneUtc = null,
+        MovementObservedUtc = null,
+        MaximumDistanceFromOriginNauticalMiles = 0,
+        MaximumDistanceObservedUtc = null,
+        DeliveryProof = null,
+        DeliveredUtc = null
+    };
+
     private IDisposable Lock()
     {
         var name = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(StoragePath.ToUpperInvariant())))[..24];
@@ -126,4 +157,12 @@ public sealed class MemoryFlightAttemptStore : IFlightAttemptStore
     { cancellationToken.ThrowIfCancellationRequested(); return Task.FromResult<IReadOnlyList<FlightAttempt>>(attempts.Values.OrderBy(x => x.Id).ToArray()); }
     public Task SaveAsync(FlightAttempt attempt, CancellationToken cancellationToken = default)
     { cancellationToken.ThrowIfCancellationRequested(); attempt = attempt.EnsureValid(); attempts[attempt.Id] = attempt; return Task.CompletedTask; }
+    public Task<FlightAttempt> ResetIncompleteProgressAsync(string attemptId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!attempts.TryGetValue(attemptId, out var existing)) throw new InvalidOperationException("Flight attempt was not found.");
+        if (existing.State == FlightAttemptState.Delivered || existing.DeliveredUtc is not null)
+            throw new InvalidOperationException("Completed delivery evidence cannot be reset.");
+        var reset = LocalFlightAttemptStore.ResetProgress(existing).EnsureValid(); attempts[attemptId] = reset; return Task.FromResult(reset);
+    }
 }

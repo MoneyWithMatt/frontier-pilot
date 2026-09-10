@@ -1,0 +1,16 @@
+{
+  "sdkRoot": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK",
+  "sdkVersion": "1.2.4",
+  "packageTool": "C:\\Users\\mattr\\Desktop\\MSFS 2024 SDK\\Tools\\bin\\fspackagetool.exe",
+  "workingRoot": "workspaces\\surface-native-probe-20260910",
+  "method": "Generated the existing FPOBJ1 disposable project, copied it once per token, replaced only Runway/@surface, then invoked Package Tool from each project root with <absolute AirportProject.xml> -nopause.",
+  "results": [
+    { "surface": "DIRT", "exitCode": 0, "layoutJsonProduced": true },
+    { "surface": "SAND", "exitCode": 0, "layoutJsonProduced": true },
+    { "surface": "GRAVEL", "exitCode": 0, "layoutJsonProduced": true },
+    { "surface": "GRASS", "exitCode": 0, "layoutJsonProduced": true },
+    { "surface": "SHORT_GRASS", "exitCode": 0, "layoutJsonProduced": true },
+    { "surface": "ASPHALT", "exitCode": 0, "layoutJsonProduced": true }
+  ],
+  "limitations": "Compiler acceptance only; no preset was visually inspected in MSFS during this task. The retained local MaterialLib was unused by the probed Runway surface reference."
+}

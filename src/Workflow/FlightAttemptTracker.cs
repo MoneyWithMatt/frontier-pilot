@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using FrontierAirportBuilder.Core;
 
 namespace FrontierAirportBuilder.Workflow;
@@ -40,6 +42,8 @@ public interface IFlightAttemptTracker
     Task ObserveAsync(AircraftTelemetry? telemetry, CancellationToken cancellationToken = default);
     Task LoadCargoAsync(CancellationToken cancellationToken = default);
     Task UnloadCargoAsync(CancellationToken cancellationToken = default);
+    Task<string> ExportDeveloperDiagnosticAsync(CancellationToken cancellationToken = default);
+    Task ResetIncompletePrototypeProgressAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed class FlightAttemptTracker : IFlightAttemptTracker
@@ -196,6 +200,44 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             if (attempt.State != FlightAttemptState.Delivered)
             { attempt = attempt with { State = FlightAttemptState.Delivered, DeliveredUtc = proof.ReadyUtc }; await store.SaveAsync(attempt, cancellationToken).ConfigureAwait(false); }
             observationReason = transition.Changed ? "Cargo delivered, customer inventory updated and payment recorded." : "Delivery was already recorded; no cargo or payment was duplicated.";
+            UpdateStatus();
+        }
+        finally { gate.Release(); }
+    }
+
+    public async Task<string> ExportDeveloperDiagnosticAsync(CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var options = new JsonSerializerOptions { WriteIndented = true, Converters = { new JsonStringEnumConverter() } };
+            return JsonSerializer.Serialize(new
+            {
+                SchemaVersion = 1,
+                ExportedUtc = DateTimeOffset.UtcNow,
+                Notice = "Read-only Frontier Pilot prototype diagnostic. Coordinates and economy records are included.",
+                Status = Current,
+                Attempt = attempt,
+                Economy = world
+            }, options);
+        }
+        finally { gate.Release(); }
+    }
+
+    public async Task ResetIncompletePrototypeProgressAsync(CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (world is null || attempt is null) throw new InvalidOperationException("No loaded prototype flight attempt is available to reset.");
+            var job = world.Jobs.SingleOrDefault(x => x.Id == attempt.JobId);
+            var shipment = world.Shipments.SingleOrDefault(x => x.Id == attempt.ShipmentId);
+            if (job?.State != EconomyJobState.Accepted || shipment?.State != ShipmentState.InTransit ||
+                attempt.State == FlightAttemptState.Delivered || attempt.DeliveredUtc is not null)
+                throw new InvalidOperationException("Only observation progress for an incomplete, loaded shipment can be reset. Completed economy state is protected.");
+            attempt = await store.ResetIncompleteProgressAsync(attempt.Id, cancellationToken).ConfigureAwait(false);
+            stationarySince = null; lastSampleUtc = null; latest = null; connected = false;
+            observationReason = "Developer reset cleared incomplete flight observations. Shipment remains loaded and InTransit; no inventory or money changed.";
             UpdateStatus();
         }
         finally { gate.Release(); }

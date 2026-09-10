@@ -1,0 +1,11 @@
+{
+  "ExitCode": 0,
+  "TimedOut": false,
+  "Validation": {
+    "Success": true,
+    "Errors": [],
+    "LayoutEntries": 4
+  },
+  "PackageDirectory": "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\scenery-materials-v0-build\\Packages\\frontier-airport-fpmatv0",
+  "EvidenceDirectory": "C:\\Users\\mattr\\.codex\\.chatgpt-projects\\g-p-6a904cf3f8fc81919657c40eb26e3f77\\frontier-airport-builder\\workspaces\\scenery-materials-v0-build\\.build"
+}

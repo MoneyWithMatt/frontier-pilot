@@ -112,7 +112,8 @@ public sealed class LayoutEditor : INotifyPropertyChanged
     public string ObjectHeading {get=>objectHeading;set{objectHeading=value;Notify();}}
     public string SelectedObjectName=>SelectedObject is {} o ? SceneryAssets.Find(o.AssetId)?.DisplayName??o.AssetId : "No object selected";
     public string SelectedObjectDetails=>SelectedObject is {} o&&SceneryAssets.Find(o.AssetId) is {} asset
-        ? $"{asset.Footprint.WidthMeters:0.0} × {asset.Footprint.DepthMeters:0.0} m model footprint\n{asset.Foundation?.MarginMeters:0.#} m foundation margin · {asset.Foundation?.FalloffMeters:0.#} m terrain blend"
+        ? $"{asset.Footprint.WidthMeters:0.0} × {asset.Footprint.DepthMeters:0.0} m model footprint\n{asset.Foundation?.MarginMeters:0.#} m foundation margin · {asset.Foundation?.FalloffMeters:0.#} m terrain blend" +
+          (asset.IsPrototypePlaceholder ? "\nPrototype placeholder: stock hangar appearance, not final lodge artwork." : "")
         : "Select a scenery object to edit it.";
     public void Select(int? number) { selectedTaxiway=null;selectedObject=null;selected=number;message="";ReadProperties();Notify(); }
     public void SelectObject(int? number) {selected=null;selectedTaxiway=null;selectedObject=number;message="";ReadObjectProperties();Notify();}

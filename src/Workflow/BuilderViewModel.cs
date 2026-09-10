@@ -8,6 +8,10 @@ using FrontierAirportBuilder.Core;
 namespace FrontierAirportBuilder.Workflow;
 
 public enum WorkflowState { Disconnected, ReadyToSurvey, SurveyCaptured, Validated, Built, Installed, Error, Cancelled }
+public sealed record RunwaySurfaceChoice(string? PresetId, RunwaySurface PhysicalSurface, string DisplayName, string Detail)
+{
+    public override string ToString() => DisplayName;
+}
 public sealed class ActionCommand(Action execute, Func<bool>? canExecute = null) : ICommand
 {
     public event EventHandler? CanExecuteChanged;
@@ -23,6 +27,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     private bool busy, checkedReady, siteConfirmed;
     private string sdkRoot, airportName = "", identifier = "", length = "200", width = "20", status = "Check prerequisites to begin.", error = "", activity = "";
     private RunwaySurface surface = RunwaySurface.Dirt;
+    private string? surfacePresetId = RunwaySurfacePresets.CompactedDirtId;
     public LayoutEditor Layout { get; }
     public ActionCommand AddParkingCommand { get; }
     public ActionCommand RemoveParkingCommand { get; }
@@ -71,7 +76,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading));
         Layout.Edited += (_,_)=>Invalidate();
         AddParkingCommand = new(()=>AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading)),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Stands.Count<8);
-        AddObjectCommand = new(()=>Layout.AddObject(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+45,Layout.Objects.Count*40,LayoutRunwayHeading),LayoutRunwayHeading),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Objects.Count<64);
+        AddObjectCommand = new(()=>Layout.AddObject(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+45,Layout.Objects.Count*40,LayoutRunwayHeading),LayoutRunwayHeading,SceneryAssets.PrototypeBaseLodgeId),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Objects.Count<64);
         RemoveParkingCommand = new(Layout.Delete,()=>CanLayout&&(Layout.Selected!=null||Layout.SelectedTaxiway!=null||Layout.SelectedObject!=null));
         UndoLayoutCommand = new(Layout.Undo,()=>Layout.CanUndo);
         RedoLayoutCommand = new(Layout.Redo,()=>Layout.CanRedo);
@@ -110,7 +115,13 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public string SiteCheckText => IsDryRun ? "I confirm this is a simulated site check using recorded data." : "I checked the world map: this identifier is unused and the site is flat, empty and away from existing airports.";
     public string CaptureInstructions => IsDryRun ? "Capture survey replays the recorded Namibia frames through the same Core safeguards. No simulator is needed." : "Exit the aircraft. Stand upright at the runway centre, face along the runway and remain still for five seconds. Leave the aircraft parked.";
     public string AfterCaptureInstructions => IsDryRun ? "Continue with Validate, Generate and compile, then Install airport. All output stays in the test sandbox." : "After capture, close MSFS before compiling or installing. Your survey stays in this window.";
-    public IReadOnlyList<RunwaySurface> Surfaces { get; } = [RunwaySurface.Dirt, RunwaySurface.Asphalt];
+    public IReadOnlyList<RunwaySurfaceChoice> SurfacePresets { get; } =
+    [
+        new(null, RunwaySurface.Dirt, "Legacy Dirt · existing airports", "Preserves the original Frontier procedural dirt appearance."),
+        new(null, RunwaySurface.Asphalt, "Legacy Asphalt · existing airports", "Preserves the original SDK-sample-derived asphalt appearance."),
+        .. RunwaySurfacePresets.All.Select(x => new RunwaySurfaceChoice(x.Id, x.PhysicalSurface, x.ToString(),
+            x.FallbackNote ?? $"SDK reference: {x.SdkSurfaceReference}. Visual MSFS verification pending."))
+    ];
     public bool IsBusy => busy;
     public bool CanEdit => !busy;
     public string Status => status;
@@ -122,7 +133,18 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public string Identifier { get => identifier; set { if (CanEditIdentifier && value.ToUpperInvariant() != identifier) { identifier = value.ToUpperInvariant(); Invalidate(); } } }
     public string Length { get => length; set { if (!busy && value != length) { length = value; Invalidate(); } } }
     public string Width { get => width; set { if (!busy && value != width) { width = value; Invalidate(); } } }
-    public RunwaySurface Surface { get => surface; set { if (!busy && value != surface) { surface = value; Invalidate(); } } }
+    public RunwaySurface Surface { get => surface; set { if (!busy && (value != surface || surfacePresetId is not null)) { surface = value; surfacePresetId = null; Changed(nameof(SelectedSurfacePreset)); Changed(nameof(SurfacePresetDetail)); Invalidate(); } } }
+    public RunwaySurfaceChoice SelectedSurfacePreset
+    {
+        get => SurfacePresets.First(x => x.PresetId == surfacePresetId && (x.PresetId is not null || x.PhysicalSurface == surface));
+        set
+        {
+            if (busy || value is null || value.PresetId == surfacePresetId && value.PhysicalSurface == surface) return;
+            surface = value.PhysicalSurface; surfacePresetId = value.PresetId;
+            Changed(); Changed(nameof(Surface)); Changed(nameof(SurfacePresetDetail)); Invalidate();
+        }
+    }
+    public string SurfacePresetDetail => SelectedSurfacePreset.Detail;
     public bool SiteConfirmed { get => siteConfirmed; set { if (!busy && value != siteConfirmed) { siteConfirmed = value; Invalidate(); } } }
     public string SurveyText => Survey is null ? "No survey captured yet" : string.Create(CultureInfo.InvariantCulture,
         $"{Survey.Latitude:F7}° latitude    {Survey.Longitude:F7}° longitude\n{Survey.AltitudeMeters:F3} m ground elevation    {Survey.TrueHeadingDegrees:F2}° true facing");
@@ -150,7 +172,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             throw new ArgumentException("Enter length and width in metres using numbers (for example 200 and 20).");
         return new() { Name = airportName, Identifier = identifier, Latitude = Survey?.Latitude ?? 0, Longitude = Survey?.Longitude ?? 0,
             AltitudeMeters = Survey?.AltitudeMeters ?? 0, TrueHeadingDegrees = Survey?.TrueHeadingDegrees ?? 0,
-            MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface, ParkingStands = Layout.Stands.ToArray(), Taxiways = Layout.Taxiways.ToArray(), PlacedObjects = Layout.Objects.ToArray() };
+            MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface, SurfacePresetId = surfacePresetId, ParkingStands = Layout.Stands.ToArray(), Taxiways = Layout.Taxiways.ToArray(), PlacedObjects = Layout.Objects.ToArray() };
     }
     public void AddParkingAt(LocalPoint point) { if(CanLayout)Layout.Add(point,LayoutRunwayHeading); }
     private void ClearParking() => Layout.Reset();
