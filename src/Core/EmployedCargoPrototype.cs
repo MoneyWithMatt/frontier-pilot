@@ -2,19 +2,18 @@ namespace FrontierAirportBuilder.Core;
 
 /// <summary>Temporary, configurable values for the first employed-cargo play test. These are not final balance.</summary>
 public sealed record EmployedCargoPrototypeOptions(
-    decimal ErosSourceInventoryKilograms = 500m,
     decimal UisCargoKilograms = 120m,
     decimal UisPaymentTpc = 240m,
     decimal ArandisCargoKilograms = 100m,
-    decimal ArandisPaymentTpc = 200m)
+    decimal ArandisPaymentTpc = 200m,
+    int DesiredOffersPerCustomer = 1)
 {
     public EmployedCargoPrototypeOptions EnsureValid()
     {
-        if (ErosSourceInventoryKilograms <= 0 || UisCargoKilograms <= 0 || ArandisCargoKilograms <= 0 ||
+        if (UisCargoKilograms <= 0 || ArandisCargoKilograms <= 0 ||
             UisPaymentTpc <= 0 || ArandisPaymentTpc <= 0)
             throw new InvalidDataException("Temporary employed-cargo values are invalid.");
-        if (ErosSourceInventoryKilograms < UisCargoKilograms + ArandisCargoKilograms)
-            throw new InvalidDataException("Eros prototype inventory cannot fund all configured offers.");
+        if (DesiredOffersPerCustomer is < 1 or > 5) throw new InvalidDataException("Temporary offer count is invalid.");
         return this;
     }
 }
@@ -50,17 +49,47 @@ public static class EmployedCargoPrototype
         var locations = catalogue.Locations.Where(x => x.StableId == ErosId || destinationIds.Contains(x.StableId))
             .Select(x => x.ToEconomicLocation()).ToArray();
         var needs = eligible.Select(x => new CustomerNeed($"need-{x.Suffix}-supplies-v0", x.DestinationId, ResourceId, x.Quantity)).ToArray();
-        var requirements = eligible.Select(x => new TransportRequirement($"requirement-{x.Suffix}-supplies-v0", $"need-{x.Suffix}-supplies-v0",
-            ErosId, x.DestinationId, ResourceId, x.Quantity, x.Payment, Currency, $"customer-funder-{x.Suffix}", TransportRequirementState.Open)).ToArray();
-        var jobs = eligible.Select(x => new EconomyJob($"job-{x.Suffix}-supplies-v0", $"requirement-{x.Suffix}-supplies-v0", EmployerId,
-            PlayerId, $"shipment-{x.Suffix}-supplies-v0", EconomyJobState.Offered)).ToArray();
+        var recurring = eligible.Select(x => new RecurringDemandDefinition($"demand-{x.Suffix}-supplies-v0", $"need-{x.Suffix}-supplies-v0",
+            $"{x.Suffix}-supplies-v0", ErosId, x.DestinationId, ResourceId, x.Quantity, x.Payment, Currency,
+            options.DesiredOffersPerCustomer, $"customer-funder-{x.Suffix}", EmployerId, PlayerId, true)).ToArray();
 
-        return new EconomyWorld(WorldId, 1, locations,
+        var world = new EconomyWorld(WorldId, 1, locations,
             [new(EmployerId, "Frontier Regional Cargo (system prototype)", EconomicOwnerKind.System),
              new("customer-funder-uis", "Uis customer funding (prototype)", EconomicOwnerKind.System),
              new("customer-funder-arandis", "Arandis customer funding (prototype)", EconomicOwnerKind.System)],
             [new(ResourceId, "General Supplies", "general-supplies", "kg")],
-            [new(ErosId, ResourceId, options.ErosSourceInventoryKilograms), new(UisId, ResourceId, 0), new(ArandisId, ResourceId, 0)],
-            needs, requirements, [new(PlayerId, EmployerId, Currency, 0)], jobs, [], []).EnsureValid();
+            [new(ErosId, ResourceId, 0), new(UisId, ResourceId, 0), new(ArandisId, ResourceId, 0)],
+            needs, [], [new(PlayerId, EmployerId, Currency, 0)], [], [], []) { RecurringDemand = recurring };
+        return EconomyJobBoard.Maintain(world, DateTimeOffset.Parse("2026-09-09T00:00:00Z"), incrementRevision: false).World.EnsureValid();
     }
+
+    public static IReadOnlyList<RecurringDemandDefinition> Definitions(EmployedCargoPrototypeOptions? configured = null)
+    {
+        var options = (configured ?? new()).EnsureValid();
+        return
+        [
+            new("demand-uis-supplies-v0", "need-uis-supplies-v0", "uis-supplies-v0", ErosId, UisId, ResourceId,
+                options.UisCargoKilograms, options.UisPaymentTpc, Currency, options.DesiredOffersPerCustomer, "customer-funder-uis", EmployerId, PlayerId, true),
+            new("demand-arandis-supplies-v0", "need-arandis-supplies-v0", "arandis-supplies-v0", ErosId, ArandisId, ResourceId,
+                options.ArandisCargoKilograms, options.ArandisPaymentTpc, Currency, options.DesiredOffersPerCustomer, "customer-funder-arandis", EmployerId, PlayerId, true)
+        ];
+    }
+
+    public static EconomyTransition UpgradeForRepeatableJobs(EconomyWorld source, EmployedCargoPrototypeOptions? configured,
+        DateTimeOffset occurredUtc)
+    {
+        var world = source.EnsureValid();
+        if (world.Id != WorldId || world.RecurringDemand.Count > 0) return new(world, false);
+        var definitions = Definitions(configured).Where(x => world.Needs.Any(n => n.Id == x.NeedId)).ToArray();
+        var ledger = world.InventoryLedger.ToList();
+        if (!ledger.Any(x => x.Kind == InventoryTransactionKind.LegacyOpeningBalance))
+            foreach (var balance in world.Inventories.Where(x => x.AvailableQuantity > 0))
+                ledger.Add(new($"inventory-opening-{Sanitize(balance.LocationId)}-{Sanitize(balance.ResourceId)}",
+                    InventoryTransactionKind.LegacyOpeningBalance, balance.LocationId, balance.ResourceId, balance.AvailableQuantity,
+                    null, occurredUtc, "Opening balance imported from the pre-inventory-ledger prototype document."));
+        var upgraded = world with { Revision = world.Revision + 1, RecurringDemand = definitions, InventoryLedger = ledger };
+        return new(upgraded.EnsureValid(), true);
+    }
+
+    private static string Sanitize(string value) => new(value.Select(x => char.IsAsciiLetterOrDigit(x) ? char.ToLowerInvariant(x) : '-').ToArray());
 }

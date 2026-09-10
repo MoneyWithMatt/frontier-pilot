@@ -130,3 +130,11 @@
 - **Implemented:** recognise a stand on ground within its radius plus 5 m; require five continuous seconds at no more than 1 kt for Parked. Centralise these values in `AirportRecognitionOptions` for live-test tuning.
 - **Implemented:** keep coordinates authoritative and persist optional airport/stand context as schema 2 while reading schema 1. Clear associations whose saved airport or stand is removed.
 - **Deferred:** heading/nose-wheel alignment, brakes, engines, confirmed parking authority, ownership and spawn enforcement.
+## Repeatable system employment — 2026-09-10
+
+- Continuing prototype demand is a new system-funded requirement after fulfilment. It does not claim inventory consumption or offline economic activity.
+- Recurring demand is generic persisted configuration keyed by stable location/resource IDs; customer category does not select special kernel logic.
+- One outstanding requirement per configured Uis/Arandis board slot prevents an accepted job from spawning its replacement before delivery.
+- Gateway stock enters only as the exact unfunded shortfall for a missing offer and receives a separate inventory audit record. It never touches the player financial ledger.
+- Historical jobs, requirements, shipments and ledger payments are immutable. Deterministic cycle suffixes derive from retained history.
+- Flight Attempt V0 remains the exclusive producer of delivery evidence and its qualification policy remains unchanged pending simulator testing.

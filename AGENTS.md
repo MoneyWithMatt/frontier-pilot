@@ -32,4 +32,6 @@ Namibia catalogue and employed cargo: read docs/namibia-location-catalogue-v0.md
 
 Flight Attempt V0: read docs/flight-attempt-v0.md. Only `FlightAttemptTracker` may construct delivery evidence. Loading is simulated and never changes MSFS payload. Persist attempt facts before cross-file economy transitions, reconcile only explicitly proven state, and reset stationary timers across invalid telemetry/disconnection/gaps. Do not add cancellation, expiry, teleport enforcement, weather or recurring demand without a later task.
 
+Repeatable employed cargo: read docs/employed-cargo-job-cycle-v0.md. Board refresh is one idempotent Economy Core maintenance transaction over persisted generic demand definitions. Keep gateway inventory audit separate from the authoritative financial ledger, preserve deterministic cycle IDs and completed history, and do not infer consumption or time progression.
+
 The developer flight reset clears only incomplete persisted observation progress and leaves the accepted shipment loaded/InTransit. It must refuse completed attempts and must never alter inventory, jobs, requirements, ledger entries or balances. It is diagnostic recovery, not cargo cancellation.

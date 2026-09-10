@@ -16,6 +16,7 @@ public sealed record CargoJobDisplay(string JobId, string Employer, string Origi
 }
 
 public sealed record EmployedCargoJobsSnapshot(IReadOnlyList<CargoJobDisplay> Offers, CargoJobDisplay? ActiveJob,
+    IReadOnlyList<CargoJobDisplay> RecentCompletedJobs,
     string StoragePath, int EconomyRevision, decimal PlayerBalance, string CurrencyCode);
 
 /// <summary>The employee-facing boundary deliberately exposes selection and acceptance only. Delivery requires a later evidence provider.</summary>
@@ -52,6 +53,13 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
             await economy.InitializeAsync(EmployedCargoPrototype.Create(catalogue, options), cancellationToken).ConfigureAwait(false);
             world = await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ?? throw new IOException("Economy initialization produced no state.");
         }
+        if (world.RecurringDemand.Count == 0)
+        {
+            _ = await economy.UpgradeRepeatableJobsAsync(options, utcNow(), cancellationToken).ConfigureAwait(false);
+            world = await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ?? throw new IOException("Economy upgrade produced no state.");
+        }
+        _ = await economy.MaintainJobBoardAsync(utcNow(), cancellationToken).ConfigureAwait(false);
+        world = await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ?? throw new IOException("Economy board maintenance produced no state.");
         return Present(RequirePrototype(world));
     }
 
@@ -100,10 +108,11 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
         var offers = world.Jobs.Where(x => x.State == EconomyJobState.Offered)
             .Where(x => catalogue.Get(world.Requirements.Single(r => r.Id == x.RequirementId).DestinationLocationId).CanGenerateOrdinaryLiveJobs)
             .OrderBy(x => x.Id, StringComparer.Ordinal).Select(Display).ToArray();
-        var currentJob = world.Jobs.SingleOrDefault(x => x.State == EconomyJobState.Accepted) ??
-            world.Jobs.Where(x => x.State == EconomyJobState.Completed).OrderByDescending(x => x.CompletedUtc).FirstOrDefault();
+        var currentJob = world.Jobs.SingleOrDefault(x => x.State == EconomyJobState.Accepted);
+        var completed = world.Jobs.Where(x => x.State == EconomyJobState.Completed).OrderByDescending(x => x.CompletedUtc)
+            .ThenBy(x => x.Id, StringComparer.Ordinal).Take(12).Select(Display).ToArray();
         var player = world.Players.Single(x => x.Id == EmployedCargoPrototype.PlayerId);
-        return new(offers, currentJob is null ? null : Display(currentJob), StoragePath, world.Revision, player.CachedBalance, player.CurrencyCode);
+        return new(offers, currentJob is null ? null : Display(currentJob), completed, StoragePath, world.Revision, player.CachedBalance, player.CurrencyCode);
     }
 }
 
@@ -137,6 +146,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     private bool busy;
     private string status = "Loading employed cargo jobs…", error = "";
     private IReadOnlyList<CargoJobDisplay> offers = [];
+    private IReadOnlyList<CargoJobDisplay> completedJobs = [];
     private CargoJobDisplay? selectedOffer, activeJob;
     private decimal playerBalance;
     private string balanceCurrency = EmployedCargoPrototype.Currency;
@@ -155,6 +165,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
         UnloadCargoCommand = new(() => _ = UnloadCargoAsync(), () => !busy && flight.Current.CanUnloadCargo);
     }
     public IReadOnlyList<CargoJobDisplay> Offers { get => offers; private set { offers = value; Changed(); } }
+    public IReadOnlyList<CargoJobDisplay> CompletedJobs { get => completedJobs; private set { completedJobs = value; Changed(); } }
     public CargoJobDisplay? SelectedOffer { get => selectedOffer; set { selectedOffer = value; Changed(); Changed(nameof(SelectedPurpose)); Changed(nameof(SelectedDestinationInformation)); AcceptCommand.Refresh(); } }
     public CargoJobDisplay? ActiveJob { get => activeJob; private set { activeJob = value; Changed(); Changed(nameof(ActiveRoute)); Changed(nameof(ActiveCargo)); Changed(nameof(ActiveShipment)); AcceptCommand.Refresh(); } }
     public bool HasActiveJob => ActiveJob?.ShipmentState is ShipmentState.Reserved or ShipmentState.InTransit;
@@ -207,7 +218,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
         try
         {
             await action(); await ApplySnapshotAsync(await jobs.LoadAsync(cancellationToken));
-            Status = ActiveJob?.ShipmentState == ShipmentState.Delivered ? "Delivery completed and payment recorded." :
+            Status = flight.Current.Stage == "Delivered and paid" ? "Delivery completed and payment recorded. A replacement offer is available." :
                 HasActiveJob ? "One employed shipment is active. Further acceptance is locked." : "Choose one employed cargo offer.";
         }
         catch (Exception error) { ReportFlightError(error); }
@@ -227,7 +238,8 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     }
     private Task ApplySnapshotAsync(EmployedCargoJobsSnapshot snapshot)
     {
-        Offers = snapshot.Offers; ActiveJob = snapshot.ActiveJob; playerBalance = snapshot.PlayerBalance; balanceCurrency = snapshot.CurrencyCode; Changed(nameof(Balance));
+        Offers = snapshot.Offers; ActiveJob = snapshot.ActiveJob; CompletedJobs = snapshot.RecentCompletedJobs;
+        playerBalance = snapshot.PlayerBalance; balanceCurrency = snapshot.CurrencyCode; Changed(nameof(Balance));
         if (SelectedOffer is not null) SelectedOffer = Offers.SingleOrDefault(x => x.JobId == SelectedOffer.JobId);
         return Task.CompletedTask;
     }

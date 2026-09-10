@@ -18,6 +18,7 @@ public interface IEconomyStateStore
 /// inventory and ledger changes cannot become independently visible.</summary>
 public sealed class LocalEconomyStateStore : IEconomyStateStore
 {
+    private const int CurrentSchemaVersion = 2;
     private sealed record Document(int SchemaVersion, EconomyWorld World);
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -94,13 +95,38 @@ public sealed class LocalEconomyStateStore : IEconomyStateStore
         if (!File.Exists(StoragePath)) return null;
         var info = new FileInfo(StoragePath);
         if (info.Length is <= 0 or > 16_000_000) throw new IOException("Saved economy document has an invalid size. File preserved.");
-        await using var stream = new FileStream(StoragePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
         Document document;
-        try { document = await JsonSerializer.DeserializeAsync<Document>(stream, Json, cancellationToken).ConfigureAwait(false) ?? throw new IOException("Saved economy document is empty. File preserved."); }
+        try
+        {
+            await using var stream = new FileStream(StoragePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
+            document = await JsonSerializer.DeserializeAsync<Document>(stream, Json, cancellationToken).ConfigureAwait(false) ?? throw new IOException("Saved economy document is empty. File preserved.");
+        }
         catch (JsonException error) { throw new IOException("Saved economy document is corrupt or unsupported. File preserved.", error); }
-        if (document.SchemaVersion != 1 || document.World is null)
+        if (document.SchemaVersion is not (1 or CurrentSchemaVersion) || document.World is null)
             throw new IOException("Saved economy document uses an unsupported schema. File preserved.");
-        try { return document.World.EnsureValid(); }
+        try
+        {
+            var world = document.World.EnsureValid();
+            if (document.SchemaVersion == 1)
+            {
+                var ledger = world.InventoryLedger.ToList();
+                if (ledger.Count == 0)
+                {
+                    var positions = world.Inventories.Where(x => x.AvailableQuantity > 0)
+                        .OrderBy(x => x.LocationId, StringComparer.Ordinal).ThenBy(x => x.ResourceId, StringComparer.Ordinal).ToArray();
+                    for (var index = 0; index < positions.Length; index++)
+                    {
+                        var balance = positions[index];
+                        ledger.Add(new($"inventory-schema1-opening-{index + 1:D4}", InventoryTransactionKind.LegacyOpeningBalance,
+                            balance.LocationId, balance.ResourceId, balance.AvailableQuantity, null,
+                            new DateTimeOffset(info.LastWriteTimeUtc), "Opening balance preserved by the schema-1 to schema-2 migration."));
+                    }
+                }
+                world = (world with { InventoryLedger = ledger }).EnsureValid();
+                await WriteUnlockedAsync(world, cancellationToken).ConfigureAwait(false);
+            }
+            return world;
+        }
         catch (Exception error) when (error is InvalidDataException or ArgumentException)
         { throw new IOException("Saved economy document is inconsistent. File preserved.", error); }
     }
@@ -114,7 +140,7 @@ public sealed class LocalEconomyStateStore : IEconomyStateStore
         {
             await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous))
             {
-                await JsonSerializer.SerializeAsync(stream, new Document(1, world), Json, cancellationToken).ConfigureAwait(false);
+                await JsonSerializer.SerializeAsync(stream, new Document(CurrentSchemaVersion, world), Json, cancellationToken).ConfigureAwait(false);
                 await stream.FlushAsync(cancellationToken).ConfigureAwait(false); stream.Flush(true);
             }
             if (beforeReplace is not null) await beforeReplace(cancellationToken).ConfigureAwait(false);
@@ -128,7 +154,7 @@ public sealed class LocalEconomyStateStore : IEconomyStateStore
     {
         var name = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(StoragePath).ToUpperInvariant())))[..24];
         var gate = new Semaphore(1, 1, "Local\\Frontier-Economy-" + name);
-        if (!gate.WaitOne(0)) { gate.Dispose(); throw new IOException("Another Frontier economy operation is running. Retry when it finishes."); }
+        if (!gate.WaitOne(TimeSpan.FromSeconds(10))) { gate.Dispose(); throw new IOException("Another Frontier economy operation is running. Retry when it finishes."); }
         return new Lease(gate);
     }
     private sealed class Lease(Semaphore gate) : IDisposable { public void Dispose() { gate.Release(); gate.Dispose(); } }
@@ -150,4 +176,8 @@ public sealed class EconomyService(IEconomyStateStore store)
         store.ApplyAsync(world => EconomyKernel.MarkShipmentInTransit(world, jobId), cancellationToken);
     public Task<EconomyTransition> CompleteDeliveryAsync(VerifiedDeliveryEvidence evidence, CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => EconomyKernel.CompleteDelivery(world, evidence), cancellationToken);
+    public Task<EconomyTransition> MaintainJobBoardAsync(DateTimeOffset occurredUtc, CancellationToken cancellationToken = default) =>
+        store.ApplyAsync(world => EconomyJobBoard.Maintain(world, occurredUtc), cancellationToken);
+    public Task<EconomyTransition> UpgradeRepeatableJobsAsync(EmployedCargoPrototypeOptions options, DateTimeOffset occurredUtc,
+        CancellationToken cancellationToken = default) => store.ApplyAsync(world => EmployedCargoPrototype.UpgradeForRepeatableJobs(world, options, occurredUtc), cancellationToken);
 }

@@ -4,7 +4,7 @@
 
 The WPF application now has a Jobs tab. It displays the two deterministic system-employment offers originating at Eros: General Supplies for Uis and Arandis. A selected row shows the authored customer purpose, published position, reported direct-flight-time scale and manual MSFS verification method. The screen makes no flight-safety or aircraft-suitability claim.
 
-The prototype values are configurable through `EmployedCargoPrototypeOptions`: 120 kg / 240 TPC for Uis, 100 kg / 200 TPC for Arandis and 500 kg starting source inventory at Eros. `TPC` means Temporary Prototype Credits. These figures are test inputs, not permanent game balance.
+The prototype values are configurable through `EmployedCargoPrototypeOptions`: 120 kg / 240 TPC for Uis and 100 kg / 200 TPC for Arandis. `TPC` means Temporary Prototype Credits. These figures are test inputs, not permanent game balance. The later repeatable-cycle milestone replaced the original 500 kg opening fixture with audited just-in-time gateway funding.
 
 ## Economy and transaction path
 

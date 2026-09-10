@@ -18,7 +18,8 @@ public sealed class EmployedCargoPrototypeTests
         Assert.Equal(EmployedCargoPrototype.UisId, uis.DestinationLocationId); Assert.Equal(120, uis.Quantity); Assert.Equal(240, uis.PaymentAmount);
         var arandis = Requirement(world, "job-arandis-supplies-v0");
         Assert.Equal(EmployedCargoPrototype.ArandisId, arandis.DestinationLocationId); Assert.Equal(100, arandis.Quantity); Assert.Equal(200, arandis.PaymentAmount);
-        Assert.Equal(500, world.Inventories.Single(x => x.LocationId == EmployedCargoPrototype.ErosId).AvailableQuantity);
+        Assert.Equal(220, world.Inventories.Single(x => x.LocationId == EmployedCargoPrototype.ErosId).AvailableQuantity);
+        Assert.Equal(2, world.InventoryLedger.Count(x => x.Kind == InventoryTransactionKind.SystemGatewaySupply));
         Assert.Empty(world.FinancialLedger);
     }
 
@@ -40,10 +41,10 @@ public sealed class EmployedCargoPrototypeTests
         var initial = EmployedCargoPrototype.Create(NamibiaLocationCatalogue.Load());
         var accepted = EconomyKernel.AcceptJob(initial, "job-uis-supplies-v0", Accepted);
         Assert.True(accepted.Changed); Assert.Single(accepted.World.Shipments);
-        Assert.Equal(380, accepted.World.Inventories.Single(x => x.LocationId == EmployedCargoPrototype.ErosId).AvailableQuantity);
+        Assert.Equal(100, accepted.World.Inventories.Single(x => x.LocationId == EmployedCargoPrototype.ErosId).AvailableQuantity);
         var replay = EconomyKernel.AcceptJob(accepted.World, "job-uis-supplies-v0", Accepted.AddMinutes(1));
         Assert.False(replay.Changed); Assert.Single(replay.World.Shipments);
-        Assert.Equal(380, replay.World.Inventories.Single(x => x.LocationId == EmployedCargoPrototype.ErosId).AvailableQuantity);
+        Assert.Equal(100, replay.World.Inventories.Single(x => x.LocationId == EmployedCargoPrototype.ErosId).AvailableQuantity);
         Assert.Throws<InvalidOperationException>(() => EconomyKernel.AcceptJob(replay.World, "job-arandis-supplies-v0", Accepted.AddMinutes(2)));
     }
 
@@ -67,7 +68,7 @@ public sealed class EmployedCargoJobsPersistenceTests : TemporaryDirectoryTest
         Assert.Equal("job-uis-supplies-v0", restored.ActiveJob!.JobId); Assert.Single(restored.Offers);
         await reopened.AcceptAsync("job-uis-supplies-v0");
         var world = await new LocalEconomyStateStore(FilePath).LoadAsync();
-        Assert.Single(world!.Shipments); Assert.Equal(380, world.Inventories.Single(x => x.LocationId == EmployedCargoPrototype.ErosId).AvailableQuantity);
+        Assert.Single(world!.Shipments); Assert.Equal(100, world.Inventories.Single(x => x.LocationId == EmployedCargoPrototype.ErosId).AvailableQuantity);
         Assert.Empty(world.FinancialLedger); Assert.Equal(0, world.Players.Single().CachedBalance);
     }
 
@@ -108,6 +109,7 @@ public sealed class EmployedCargoDesktopTests
         var buttons = document.Descendants(presentation + "Button").Select(x => x.Attribute("Content")?.Value ?? "").ToArray();
         Assert.Contains("Accept selected job", buttons);
         Assert.Contains("Load cargo", buttons); Assert.Contains("Unload cargo", buttons);
+        Assert.Contains(document.Descendants(presentation + "TextBlock"), x => x.Attribute("Text")?.Value == "Recently completed");
         Assert.DoesNotContain(buttons, text => text.Contains("deliver", StringComparison.OrdinalIgnoreCase) || text.Contains("payment", StringComparison.OrdinalIgnoreCase));
     }
 }

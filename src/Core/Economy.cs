@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace FrontierAirportBuilder.Core;
 
@@ -9,6 +11,7 @@ public enum TransportRequirementState { Open, Reserved, Fulfilled }
 public enum EconomyJobState { Offered, Accepted, Completed }
 public enum ShipmentState { Available, Reserved, InTransit, Delivered, Consumed, Sold }
 public enum FinancialTransactionKind { JobPayment }
+public enum InventoryTransactionKind { LegacyOpeningBalance, SystemGatewaySupply, ShipmentReserved, DeliveryReceived }
 
 public sealed record EconomicLocation(string Id, string Name, EconomicLocationKind Kind, EconomicOwnerKind Owner,
     EconomicLocationStatus Status);
@@ -27,6 +30,12 @@ public sealed record Shipment(string Id, string JobId, string ResourceId, decima
 public sealed record PlayerAccount(string Id, string EmployerBusinessId, string CurrencyCode, decimal CachedBalance);
 public sealed record FinancialTransaction(string Id, FinancialTransactionKind Kind, string JobId, string EvidenceId,
     string FromEntityId, string ToEntityId, decimal Amount, string CurrencyCode, DateTimeOffset OccurredUtc);
+public sealed record InventoryTransaction(string Id, InventoryTransactionKind Kind, string LocationId, string ResourceId,
+    decimal QuantityDelta, string? JobId, DateTimeOffset OccurredUtc, string Details);
+public sealed record RecurringDemandDefinition(string Id, string NeedId, string IdStem, string OriginLocationId,
+    string DestinationLocationId, string ResourceId, decimal PreferredShipmentQuantity, decimal PaymentAmount,
+    string CurrencyCode, int DesiredAvailableOffers, string FundingBusinessId, string EmployerBusinessId,
+    string PlayerId, bool IsEnabled);
 public sealed record AircraftDispatchProfile(string Id, decimal CargoCapacity);
 public sealed record DispatchRecommendation(bool FleetCompatible, string Explanation);
 
@@ -53,6 +62,9 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
     IReadOnlyList<EconomyJob> Jobs, IReadOnlyList<Shipment> Shipments,
     IReadOnlyList<FinancialTransaction> FinancialLedger)
 {
+    public IReadOnlyList<InventoryTransaction> InventoryLedger { get; init; } = [];
+    public IReadOnlyList<RecurringDemandDefinition> RecurringDemand { get; init; } = [];
+
     public EconomyWorld EnsureValid()
     {
         EconomyValidation.Id(Id, nameof(Id));
@@ -62,6 +74,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         EconomyValidation.Collection(Needs, nameof(Needs)); EconomyValidation.Collection(Requirements, nameof(Requirements));
         EconomyValidation.Collection(Players, nameof(Players)); EconomyValidation.Collection(Jobs, nameof(Jobs));
         EconomyValidation.Collection(Shipments, nameof(Shipments)); EconomyValidation.Collection(FinancialLedger, nameof(FinancialLedger));
+        EconomyValidation.Collection(InventoryLedger, nameof(InventoryLedger)); EconomyValidation.Collection(RecurringDemand, nameof(RecurringDemand));
 
         EconomyValidation.Unique(Locations.Select(x => x.Id), "location");
         EconomyValidation.Unique(Businesses.Select(x => x.Id), "business");
@@ -73,6 +86,9 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         EconomyValidation.Unique(Jobs.Select(x => x.RequirementId), "job requirement");
         EconomyValidation.Unique(Shipments.Select(x => x.Id), "shipment");
         EconomyValidation.Unique(FinancialLedger.Select(x => x.Id), "financial transaction");
+        EconomyValidation.Unique(InventoryLedger.Select(x => x.Id), "inventory transaction");
+        EconomyValidation.Unique(RecurringDemand.Select(x => x.Id), "recurring demand");
+        EconomyValidation.Unique(RecurringDemand.Select(x => x.NeedId), "recurring demand need");
         EconomyValidation.Unique(Inventories.Select(x => x.LocationId + "\n" + x.ResourceId), "inventory position");
 
         var locations = Locations.ToDictionary(x => x.Id, StringComparer.Ordinal);
@@ -166,6 +182,32 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
                 paidShipment.State != ShipmentState.Delivered || paidShipment.DeliveryEvidenceId != x.EvidenceId)
                 throw new InvalidDataException("Financial transaction exists without its completed delivery.");
         }
+        foreach (var x in InventoryLedger)
+        {
+            EconomyValidation.Id(x.Id, "inventory transaction ID"); EconomyValidation.Reference(locations, x.LocationId, "inventory transaction location");
+            EconomyValidation.Reference(resources, x.ResourceId, "inventory transaction resource");
+            if (x.QuantityDelta == 0) throw new InvalidDataException("Inventory transaction quantity cannot be zero.");
+            if (x.JobId is not null) EconomyValidation.Reference(jobs, x.JobId, "inventory transaction job");
+            if (x.OccurredUtc == default) throw new InvalidDataException("Inventory transaction timestamp is missing.");
+            EconomyValidation.Text(x.Details, "inventory transaction details", 256);
+            if (x.Kind is InventoryTransactionKind.LegacyOpeningBalance or InventoryTransactionKind.SystemGatewaySupply && (x.QuantityDelta < 0 || x.JobId is not null) ||
+                x.Kind == InventoryTransactionKind.ShipmentReserved && (x.QuantityDelta > 0 || x.JobId is null) ||
+                x.Kind == InventoryTransactionKind.DeliveryReceived && (x.QuantityDelta < 0 || x.JobId is null))
+                throw new InvalidDataException("Inventory transaction kind, quantity and job reference disagree.");
+        }
+        foreach (var x in RecurringDemand)
+        {
+            EconomyValidation.Id(x.Id, "recurring demand ID"); EconomyValidation.Reference(needs, x.NeedId, "recurring demand need");
+            EconomyValidation.Id(x.IdStem, "recurring demand ID stem"); EconomyValidation.Reference(locations, x.OriginLocationId, "recurring demand origin");
+            EconomyValidation.Reference(locations, x.DestinationLocationId, "recurring demand destination"); EconomyValidation.Reference(resources, x.ResourceId, "recurring demand resource");
+            EconomyValidation.Reference(businesses, x.FundingBusinessId, "recurring demand funder"); EconomyValidation.Reference(businesses, x.EmployerBusinessId, "recurring demand employer");
+            EconomyValidation.Reference(players, x.PlayerId, "recurring demand player"); EconomyValidation.Positive(x.PreferredShipmentQuantity, "recurring shipment quantity");
+            EconomyValidation.NonNegative(x.PaymentAmount, "recurring demand payment"); EconomyValidation.Currency(x.CurrencyCode);
+            if (x.DesiredAvailableOffers < 0 || x.DesiredAvailableOffers > 20) throw new InvalidDataException("Recurring demand offer count is invalid.");
+            var need = needs[x.NeedId];
+            if (need.DestinationLocationId != x.DestinationLocationId || need.ResourceId != x.ResourceId)
+                throw new InvalidDataException("Recurring demand does not match its customer need.");
+        }
 
         foreach (var player in Players)
         {
@@ -245,7 +287,10 @@ public static class EconomyKernel
         var jobs = world.Jobs.Select(x => x.Id == job.Id ? x with { State = EconomyJobState.Accepted, AcceptedUtc = acceptedUtc } : x).ToArray();
         var shipment = new Shipment(job.ShipmentId, job.Id, requirement.ResourceId, requirement.Quantity,
             requirement.OriginLocationId, requirement.DestinationLocationId, ShipmentState.Reserved, requirement.OriginLocationId);
-        var next = world with { Revision = world.Revision + 1, Inventories = inventories, Requirements = requirements, Jobs = jobs, Shipments = [.. world.Shipments, shipment] };
+        var inventoryTransaction = new InventoryTransaction(EconomyIds.Derive("inventory-reserve-", shipment.Id), InventoryTransactionKind.ShipmentReserved,
+            requirement.OriginLocationId, requirement.ResourceId, -requirement.Quantity, job.Id, acceptedUtc, "Cargo reserved for accepted employed shipment.");
+        var next = world with { Revision = world.Revision + 1, Inventories = inventories, Requirements = requirements, Jobs = jobs,
+            Shipments = [.. world.Shipments, shipment], InventoryLedger = [.. world.InventoryLedger, inventoryTransaction] };
         return new(next.EnsureValid(), true);
     }
 
@@ -301,9 +346,24 @@ public static class EconomyKernel
         { State = ShipmentState.Delivered, CurrentLocationId = shipment.DestinationLocationId, DeliveryEvidenceId = evidence.Id, DeliveredUtc = evidence.VerifiedUtc } : x).ToArray();
         var interim = world with { FinancialLedger = ledger };
         var players = world.Players.Select(x => x.Id == job.PlayerId ? x with { CachedBalance = EconomyLedger.Balance(interim, x.Id, x.CurrencyCode) } : x).ToArray();
-        var next = world with { Revision = world.Revision + 1, Inventories = inventories, Requirements = requirements, Jobs = jobs,
-            Shipments = shipments, FinancialLedger = ledger, Players = players };
+        var inventoryTransaction = new InventoryTransaction(EconomyIds.Derive("inventory-delivery-", shipment.Id), InventoryTransactionKind.DeliveryReceived,
+            shipment.DestinationLocationId, shipment.ResourceId, shipment.Quantity, job.Id, evidence.VerifiedUtc, "Verified shipment received into customer inventory.");
+        var deliveredWorld = world with { Inventories = inventories, Requirements = requirements, Jobs = jobs,
+            Shipments = shipments, FinancialLedger = ledger, Players = players, InventoryLedger = [.. world.InventoryLedger, inventoryTransaction] };
+        var maintained = EconomyJobBoard.Maintain(deliveredWorld, evidence.VerifiedUtc, incrementRevision: false);
+        var next = maintained.World with { Revision = world.Revision + 1 };
         return new(next.EnsureValid(), true);
+    }
+}
+
+internal static class EconomyIds
+{
+    public static string Derive(string prefix, string source)
+    {
+        var candidate = prefix + source;
+        if (candidate.Length <= 64) return candidate;
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source))).ToLowerInvariant();
+        return prefix + hash[..(64 - prefix.Length)];
     }
 }
 

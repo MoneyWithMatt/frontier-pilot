@@ -117,6 +117,10 @@ Catalogue 0.2.0 records Matt's manual MSFS inspection of Eros/FYWE, Uis/FYUS and
 
 The WPF Jobs page exposes two temporary deterministic General Supplies offers from the Eros system employer. Acceptance uses the existing atomic Economy Core transaction, persists one reserved shipment and prevents another active acceptance. Restart restores the accepted job. At this milestone the UI had no delivery or payment operation; Flight Attempt V0 below now adds tracker-qualified, player-triggered unloading without letting the UI construct evidence. See [employed-cargo-jobs-v0.md](employed-cargo-jobs-v0.md).
 
+## Employed Cargo Job Cycle V0 — 2026-09-10
+
+The system employer now maintains one funded offer for each active prototype customer through generic persisted `RecurringDemandDefinition` data. Board maintenance is deterministic and idempotent at initialization, Jobs load/refresh, restart and verified delivery. Sequence IDs preserve completed history, while the UI separates available, active and recent completed work. Eros stock shortfalls are introduced only through audited `SystemGatewaySupply` inventory transactions; inventory audit remains separate from the authoritative player financial ledger. Economy persistence is schema 2 with an explicit atomic schema-1 migration and a separate one-time aggregate upgrade for the recurring definitions. See [employed-cargo-job-cycle-v0.md](employed-cargo-job-cycle-v0.md).
+
 ## Flight Attempt V0 — 2026-09-10
 
 The Jobs page now receives validated live aircraft observations from the existing Tracking boundary. A persistent `FlightAttemptTracker` qualifies simulated loading at Eros, airborne/movement/10-NM evidence and a ten-second stopped arrival at the selected Uis or Arandis coordinate. Last-known tracking state is never flight evidence; invalid samples, disconnects and gaps reset stationary timers.
