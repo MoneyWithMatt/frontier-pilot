@@ -4,7 +4,7 @@
 
 Core now contains a data-driven economic aggregate for locations, businesses, resources, inventory, customer needs, funded transport requirements, employed players, jobs, shipments and financial transactions. `EconomicLocationKind` distinguishes gateway, mine, community and lodge data; the kernel contains no industry-specific production logic.
 
-This milestone has no WPF page, SimConnect input, real Namibia activation, weather model or flight-validity rule. `VerifiedDeliveryEvidence` is the explicit boundary a later flight/location component must satisfy. V0 validates evidence identity, route, job and shipment consistency; it does not claim that a flight occurred or decide how evidence is earned.
+Economy Core itself contains no WPF page, SimConnect input, weather model or flight-validity rule. `VerifiedDeliveryEvidence` is its explicit external boundary. Flight Attempt V0 now supplies that evidence from a separate application service; Core continues to validate identity, route, job and shipment consistency without deciding how a flight becomes verified.
 
 `EconomyPrototypeSeed` exists for tests and later isolated development only. Every location is `PrototypeOnly`, names say temporary test data, IDs are deterministic, and the `TPC` currency means Temporary Prototype Credits. Quantities and payments are fixtures, not balancing decisions. The seed is never automatically written by the current application.
 
@@ -56,5 +56,5 @@ No simulator or UI acceptance applies to this milestone.
 - Decide the temporary cargo mass/quantity and payment shown in the first playable job.
 - Decide whether employed compensation is per-delivery pay, salary plus bonus, or another model. V0 only supports a funded payment amount.
 - Define job loading, cancellation, expiry and reservation-release rules.
-- Define the later component that produces `VerifiedDeliveryEvidence`; V0 must not be weakened to manufacture it.
+- Preserve `FlightAttemptTracker` as the sole application producer of `VerifiedDeliveryEvidence`; Economy Core must not manufacture flight proof.
 - Decide when economic time advances. V0 has timestamps but no economic clock or offline progression.

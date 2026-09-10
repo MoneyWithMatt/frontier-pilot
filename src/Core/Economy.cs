@@ -249,6 +249,20 @@ public static class EconomyKernel
         return new(next.EnsureValid(), true);
     }
 
+    public static EconomyTransition MarkShipmentInTransit(EconomyWorld source, string jobId)
+    {
+        var world = source.EnsureValid(); EconomyValidation.Id(jobId, nameof(jobId));
+        var job = world.Jobs.SingleOrDefault(x => x.Id == jobId) ?? throw new InvalidOperationException("Job does not exist.");
+        if (job.State != EconomyJobState.Accepted) throw new InvalidOperationException("Job must be accepted before cargo can be loaded.");
+        var shipment = world.Shipments.Single(x => x.Id == job.ShipmentId);
+        if (shipment.State == ShipmentState.InTransit) return new(world, false);
+        if (shipment.State != ShipmentState.Reserved) throw new InvalidOperationException("Shipment is not reserved for loading.");
+        var shipments = world.Shipments.Select(x => x.Id == shipment.Id
+            ? x with { State = ShipmentState.InTransit, CurrentLocationId = null }
+            : x).ToArray();
+        return new((world with { Revision = world.Revision + 1, Shipments = shipments }).EnsureValid(), true);
+    }
+
     public static EconomyTransition CompleteDelivery(EconomyWorld source, VerifiedDeliveryEvidence supplied)
     {
         var world = source.EnsureValid(); var evidence = supplied.EnsureValid();

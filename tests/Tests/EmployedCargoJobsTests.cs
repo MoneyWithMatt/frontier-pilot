@@ -83,9 +83,9 @@ public sealed class EmployedCargoJobsPersistenceTests : TemporaryDirectoryTest
     [Fact]
     public async Task ViewModelRestoresActiveShipmentAndOffersNoDeliveryOrPaymentOperation()
     {
-        var first = new EmployedCargoJobsViewModel(Service()); await first.InitializeAsync();
+        var first = new EmployedCargoJobsViewModel(Service(), Tracker()); await first.InitializeAsync();
         first.SelectedOffer = first.Offers.Single(x => x.JobId == "job-arandis-supplies-v0"); await first.AcceptSelectedAsync();
-        var reopened = new EmployedCargoJobsViewModel(Service()); await reopened.InitializeAsync();
+        var reopened = new EmployedCargoJobsViewModel(Service(), Tracker()); await reopened.InitializeAsync();
         Assert.Equal("job-arandis-supplies-v0", reopened.ActiveJob!.JobId); Assert.False(reopened.AcceptCommand.CanExecute(null));
         Assert.DoesNotContain(typeof(IEmployedCargoJobs).GetMethods(), method => method.Name.Contains("Deliver", StringComparison.OrdinalIgnoreCase) || method.Name.Contains("Complete", StringComparison.OrdinalIgnoreCase) || method.Name.Contains("Pay", StringComparison.OrdinalIgnoreCase));
         var world = await new LocalEconomyStateStore(FilePath).LoadAsync();
@@ -93,18 +93,21 @@ public sealed class EmployedCargoJobsPersistenceTests : TemporaryDirectoryTest
     }
 
     private EmployedCargoJobsService Service() => new(new LocalEconomyStateStore(FilePath), NamibiaLocationCatalogue.Load(), utcNow: () => Accepted);
+    private FlightAttemptTracker Tracker() => new(new LocalEconomyStateStore(FilePath),
+        new LocalFlightAttemptStore(Path.Combine(Root, "economy", "flight-attempts.json")));
 }
 
 public sealed class EmployedCargoDesktopTests
 {
     [Fact]
-    public void JobsPageHasSelectionAndAcceptanceButNoDeliveryAction()
+    public void JobsPageHasExplicitLoadAndUnloadWithoutDirectDeliveryOrPaymentAction()
     {
         var document = XDocument.Load(Path.Combine(AppContext.BaseDirectory, "Desktop", "MainWindow.xaml"));
         XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
         Assert.Contains(document.Descendants(presentation + "TabItem"), x => x.Attribute("Header")?.Value == "Jobs");
         var buttons = document.Descendants(presentation + "Button").Select(x => x.Attribute("Content")?.Value ?? "").ToArray();
         Assert.Contains("Accept selected job", buttons);
+        Assert.Contains("Load cargo", buttons); Assert.Contains("Unload cargo", buttons);
         Assert.DoesNotContain(buttons, text => text.Contains("deliver", StringComparison.OrdinalIgnoreCase) || text.Contains("payment", StringComparison.OrdinalIgnoreCase));
     }
 }

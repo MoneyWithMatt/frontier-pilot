@@ -1,0 +1,129 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using FrontierAirportBuilder.Core;
+
+namespace FrontierAirportBuilder.Workflow;
+
+public interface IFlightAttemptStore
+{
+    string StoragePath { get; }
+    Task<IReadOnlyList<FlightAttempt>> LoadAsync(CancellationToken cancellationToken = default);
+    Task SaveAsync(FlightAttempt attempt, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Strict whole-document persistence using flushed same-directory replacement. Invalid files are preserved.</summary>
+public sealed class LocalFlightAttemptStore : IFlightAttemptStore
+{
+    private sealed record Document(int SchemaVersion, IReadOnlyList<FlightAttempt> Attempts);
+    private static readonly JsonSerializerOptions Json = new()
+    {
+        WriteIndented = true, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+        Converters = { new JsonStringEnumConverter() }
+    };
+    private readonly SemaphoreSlim instanceGate = new(1, 1);
+    private readonly string directory;
+    public string StoragePath { get; }
+
+    public LocalFlightAttemptStore(string? storagePath = null)
+    {
+        StoragePath = Path.GetFullPath(storagePath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FrontierAirportBuilder", "desktop", "economy", "flight-attempts.json"));
+        if (!string.Equals(Path.GetFileName(StoragePath), "flight-attempts.json", StringComparison.OrdinalIgnoreCase))
+            throw new IOException("Flight-attempt storage must use its dedicated managed filename.");
+        directory = Path.GetDirectoryName(StoragePath) ?? throw new IOException("Flight-attempt storage path has no directory.");
+        EnsureOwnedPath(StoragePath);
+    }
+
+    public async Task<IReadOnlyList<FlightAttempt>> LoadAsync(CancellationToken cancellationToken = default)
+    {
+        await instanceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try { using var lease = Lock(); return await ReadUnlockedAsync(cancellationToken).ConfigureAwait(false); }
+        finally { instanceGate.Release(); }
+    }
+
+    public async Task SaveAsync(FlightAttempt attempt, CancellationToken cancellationToken = default)
+    {
+        attempt = attempt.EnsureValid();
+        await instanceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            using var lease = Lock(); var attempts = (await ReadUnlockedAsync(cancellationToken).ConfigureAwait(false)).ToList();
+            var index = attempts.FindIndex(x => x.Id == attempt.Id);
+            if (index < 0) attempts.Add(attempt); else { ValidateForward(attempts[index], attempt); attempts[index] = attempt; }
+            await WriteUnlockedAsync(attempts.OrderBy(x => x.Id, StringComparer.Ordinal).ToArray(), cancellationToken).ConfigureAwait(false);
+        }
+        finally { instanceGate.Release(); }
+    }
+
+    private async Task<IReadOnlyList<FlightAttempt>> ReadUnlockedAsync(CancellationToken cancellationToken)
+    {
+        if (!File.Exists(StoragePath)) return [];
+        var info = new FileInfo(StoragePath); if (info.Length is <= 0 or > 4_000_000) throw new IOException("Saved flight-attempt document has an invalid size. File preserved.");
+        await using var stream = new FileStream(StoragePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
+        Document document;
+        try { document = await JsonSerializer.DeserializeAsync<Document>(stream, Json, cancellationToken).ConfigureAwait(false) ?? throw new IOException("Saved flight-attempt document is empty. File preserved."); }
+        catch (JsonException error) { throw new IOException("Saved flight-attempt document is corrupt or unsupported. File preserved.", error); }
+        if (document.SchemaVersion != 1 || document.Attempts is null) throw new IOException("Saved flight-attempt document uses an unsupported schema. File preserved.");
+        try
+        {
+            var attempts = document.Attempts.Select(x => x.EnsureValid()).ToArray();
+            if (attempts.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != attempts.Length) throw new InvalidDataException("Duplicate flight-attempt ID.");
+            if (attempts.Select(x => x.ShipmentId).Distinct(StringComparer.Ordinal).Count() != attempts.Length) throw new InvalidDataException("Duplicate flight-attempt shipment.");
+            return attempts;
+        }
+        catch (Exception error) when (error is InvalidDataException or ArgumentException or NullReferenceException)
+        { throw new IOException("Saved flight-attempt document is inconsistent. File preserved.", error); }
+    }
+
+    private async Task WriteUnlockedAsync(IReadOnlyList<FlightAttempt> attempts, CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(directory); var temporary = Path.Combine(directory, ".flight-attempts-" + Guid.NewGuid().ToString("N") + ".tmp"); EnsureOwnedPath(temporary);
+        try
+        {
+            await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous))
+            {
+                await JsonSerializer.SerializeAsync(stream, new Document(1, attempts), Json, cancellationToken).ConfigureAwait(false);
+                await stream.FlushAsync(cancellationToken).ConfigureAwait(false); stream.Flush(true);
+            }
+            cancellationToken.ThrowIfCancellationRequested(); File.Move(temporary, StoragePath, true);
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
+    }
+
+    private static void ValidateForward(FlightAttempt old, FlightAttempt next)
+    {
+        if (old.JobId != next.JobId || old.ShipmentId != next.ShipmentId || old.OriginLocationId != next.OriginLocationId ||
+            old.DestinationLocationId != next.DestinationLocationId || old.LoadedUtc != next.LoadedUtc || old.Aircraft != next.Aircraft ||
+            old.LoadedPosition != next.LoadedPosition || next.State < old.State || next.MaximumDistanceFromOriginNauticalMiles < old.MaximumDistanceFromOriginNauticalMiles ||
+            old.FirstAirborneUtc is not null && old.FirstAirborneUtc != next.FirstAirborneUtc ||
+            old.MovementObservedUtc is not null && old.MovementObservedUtc != next.MovementObservedUtc ||
+            old.DeliveryProof is not null && old.DeliveryProof != next.DeliveryProof || old.DeliveredUtc is not null && old.DeliveredUtc != next.DeliveredUtc)
+            throw new InvalidDataException("Flight-attempt progress cannot be rewritten or moved backwards.");
+    }
+
+    private IDisposable Lock()
+    {
+        var name = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(StoragePath.ToUpperInvariant())))[..24];
+        var gate = new Semaphore(1, 1, "Local\\Frontier-FlightAttempt-" + name);
+        if (!gate.WaitOne(0)) { gate.Dispose(); throw new IOException("Another Frontier flight-attempt operation is running. Retry when it finishes."); }
+        return new Lease(gate);
+    }
+    private sealed class Lease(Semaphore gate) : IDisposable { public void Dispose() { gate.Release(); gate.Dispose(); } }
+    private void EnsureOwnedPath(string path)
+    {
+        var root = Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        if (!Path.GetFullPath(path).StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new IOException("Flight-attempt path escapes its managed directory.");
+    }
+}
+
+public sealed class MemoryFlightAttemptStore : IFlightAttemptStore
+{
+    private readonly Dictionary<string, FlightAttempt> attempts = new(StringComparer.Ordinal);
+    public string StoragePath => "memory://flight-attempts-v0";
+    public Task<IReadOnlyList<FlightAttempt>> LoadAsync(CancellationToken cancellationToken = default)
+    { cancellationToken.ThrowIfCancellationRequested(); return Task.FromResult<IReadOnlyList<FlightAttempt>>(attempts.Values.OrderBy(x => x.Id).ToArray()); }
+    public Task SaveAsync(FlightAttempt attempt, CancellationToken cancellationToken = default)
+    { cancellationToken.ThrowIfCancellationRequested(); attempt = attempt.EnsureValid(); attempts[attempt.Id] = attempt; return Task.CompletedTask; }
+}

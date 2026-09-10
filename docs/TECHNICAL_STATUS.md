@@ -115,4 +115,10 @@ Pure status transitions require verification before activation. The ordinary liv
 
 Catalogue 0.2.0 records Matt's manual MSFS inspection of Eros/FYWE, Uis/FYUS and Arandis/FYAR separately from published OurAirports coordinates. Eros remains the locked gateway; Uis and Arandis are the only active customers.
 
-The WPF Jobs page exposes two temporary deterministic General Supplies offers from the Eros system employer. Acceptance uses the existing atomic Economy Core transaction, persists one reserved shipment and prevents another active acceptance. Restart restores the accepted job. The UI boundary has no delivery or payment operation; destination inventory and the authoritative ledger remain unchanged until future verified delivery evidence exists. See [employed-cargo-jobs-v0.md](employed-cargo-jobs-v0.md).
+The WPF Jobs page exposes two temporary deterministic General Supplies offers from the Eros system employer. Acceptance uses the existing atomic Economy Core transaction, persists one reserved shipment and prevents another active acceptance. Restart restores the accepted job. At this milestone the UI had no delivery or payment operation; Flight Attempt V0 below now adds tracker-qualified, player-triggered unloading without letting the UI construct evidence. See [employed-cargo-jobs-v0.md](employed-cargo-jobs-v0.md).
+
+## Flight Attempt V0 — 2026-09-10
+
+The Jobs page now receives validated live aircraft observations from the existing Tracking boundary. A persistent `FlightAttemptTracker` qualifies simulated loading at Eros, airborne/movement/10-NM evidence and a ten-second stopped arrival at the selected Uis or Arandis coordinate. Last-known tracking state is never flight evidence; invalid samples, disconnects and gaps reset stationary timers.
+
+Attempts persist atomically in `economy/flight-attempts.json`. Loading writes its attempt before the idempotent Economy Core InTransit transition; immutable arrival proof precedes player-triggered unload. Restart reconciliation can finish only these already-proven transitions. The tracker alone creates `VerifiedDeliveryEvidence`; Economy Core still atomically delivers inventory and records one authoritative-ledger payment. Simulated loading does not alter MSFS payload. See [flight-attempt-v0.md](flight-attempt-v0.md).

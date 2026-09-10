@@ -16,7 +16,7 @@ public sealed record CargoJobDisplay(string JobId, string Employer, string Origi
 }
 
 public sealed record EmployedCargoJobsSnapshot(IReadOnlyList<CargoJobDisplay> Offers, CargoJobDisplay? ActiveJob,
-    string StoragePath, int EconomyRevision);
+    string StoragePath, int EconomyRevision, decimal PlayerBalance, string CurrencyCode);
 
 /// <summary>The employee-facing boundary deliberately exposes selection and acceptance only. Delivery requires a later evidence provider.</summary>
 public interface IEmployedCargoJobs
@@ -100,8 +100,10 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
         var offers = world.Jobs.Where(x => x.State == EconomyJobState.Offered)
             .Where(x => catalogue.Get(world.Requirements.Single(r => r.Id == x.RequirementId).DestinationLocationId).CanGenerateOrdinaryLiveJobs)
             .OrderBy(x => x.Id, StringComparer.Ordinal).Select(Display).ToArray();
-        var activeJob = world.Jobs.SingleOrDefault(x => x.State == EconomyJobState.Accepted);
-        return new(offers, activeJob is null ? null : Display(activeJob), StoragePath, world.Revision);
+        var currentJob = world.Jobs.SingleOrDefault(x => x.State == EconomyJobState.Accepted) ??
+            world.Jobs.Where(x => x.State == EconomyJobState.Completed).OrderByDescending(x => x.CompletedUtc).FirstOrDefault();
+        var player = world.Players.Single(x => x.Id == EmployedCargoPrototype.PlayerId);
+        return new(offers, currentJob is null ? null : Display(currentJob), StoragePath, world.Revision, player.CachedBalance, player.CurrencyCode);
     }
 }
 
@@ -130,24 +132,33 @@ public sealed class MemoryEconomyStateStore : IEconomyStateStore
 public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
 {
     private readonly IEmployedCargoJobs jobs;
+    private readonly IFlightAttemptTracker flight;
+    private readonly SynchronizationContext? context;
     private bool busy;
     private string status = "Loading employed cargo jobs…", error = "";
     private IReadOnlyList<CargoJobDisplay> offers = [];
     private CargoJobDisplay? selectedOffer, activeJob;
+    private decimal playerBalance;
+    private string balanceCurrency = EmployedCargoPrototype.Currency;
     public event PropertyChangedEventHandler? PropertyChanged;
     public ActionCommand RefreshCommand { get; }
     public ActionCommand AcceptCommand { get; }
+    public ActionCommand LoadCargoCommand { get; }
+    public ActionCommand UnloadCargoCommand { get; }
 
-    public EmployedCargoJobsViewModel(IEmployedCargoJobs jobs)
+    public EmployedCargoJobsViewModel(IEmployedCargoJobs jobs, IFlightAttemptTracker flight)
     {
-        this.jobs = jobs; RefreshCommand = new(() => _ = InitializeAsync(), () => !busy);
-        AcceptCommand = new(() => _ = AcceptSelectedAsync(), () => !busy && selectedOffer is not null && activeJob is null);
+        this.jobs = jobs; this.flight = flight; context = SynchronizationContext.Current; flight.Changed += FlightChanged;
+        RefreshCommand = new(() => _ = InitializeAsync(), () => !busy);
+        AcceptCommand = new(() => _ = AcceptSelectedAsync(), () => !busy && selectedOffer is not null && !HasActiveJob);
+        LoadCargoCommand = new(() => _ = LoadCargoAsync(), () => !busy && flight.Current.CanLoadCargo);
+        UnloadCargoCommand = new(() => _ = UnloadCargoAsync(), () => !busy && flight.Current.CanUnloadCargo);
     }
     public IReadOnlyList<CargoJobDisplay> Offers { get => offers; private set { offers = value; Changed(); } }
     public CargoJobDisplay? SelectedOffer { get => selectedOffer; set { selectedOffer = value; Changed(); Changed(nameof(SelectedPurpose)); Changed(nameof(SelectedDestinationInformation)); AcceptCommand.Refresh(); } }
     public CargoJobDisplay? ActiveJob { get => activeJob; private set { activeJob = value; Changed(); Changed(nameof(ActiveRoute)); Changed(nameof(ActiveCargo)); Changed(nameof(ActiveShipment)); AcceptCommand.Refresh(); } }
-    public bool HasActiveJob => ActiveJob is not null;
-    public bool IsBusy { get => busy; private set { busy = value; Changed(); RefreshCommand.Refresh(); AcceptCommand.Refresh(); } }
+    public bool HasActiveJob => ActiveJob?.ShipmentState is ShipmentState.Reserved or ShipmentState.InTransit;
+    public bool IsBusy { get => busy; private set { busy = value; Changed(); RefreshCommands(); } }
     public string Status { get => status; private set { status = value; Changed(); } }
     public string Error { get => error; private set { error = value; Changed(); } }
     public string StoragePath => jobs.StoragePath;
@@ -156,25 +167,70 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     public string ActiveRoute => ActiveJob?.Route ?? "No active shipment";
     public string ActiveCargo => ActiveJob is null ? "—" : $"{ActiveJob.Cargo} · payment on externally verified delivery: {ActiveJob.Payment}";
     public string ActiveShipment => ActiveJob?.Shipment ?? "—";
+    public string FlightStage => flight.Current.Stage;
+    public string FlightReason => flight.Current.Reason;
+    public string OriginDistance => flight.Current.OriginDistanceNauticalMiles is { } value ? $"Eros distance: {value:F2} NM" : "Eros distance: —";
+    public string DestinationDistance => flight.Current.DestinationDistanceNauticalMiles is { } value ? $"Destination distance: {value:F2} NM" : "Destination distance: —";
+    public string Balance => $"Balance: {playerBalance:0.##} {balanceCurrency}";
+    public string FlightStoragePath => flight.StoragePath;
 
-    public async Task InitializeAsync(CancellationToken cancellationToken = default) => await RunAsync(() => jobs.LoadAsync(cancellationToken), "Choose one employed cargo offer.");
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        await RunAsync(() => jobs.LoadAsync(cancellationToken), "Choose one employed cargo offer.");
+        if (Error == "") try { await flight.InitializeAsync(cancellationToken); } catch (Exception error) { Error = error.Message; Status = "Flight-attempt data could not be loaded. Existing files were preserved."; }
+    }
     public async Task AcceptSelectedAsync(CancellationToken cancellationToken = default)
     {
-        var selected = SelectedOffer; if (selected is null || ActiveJob is not null) return;
-        await RunAsync(() => jobs.AcceptAsync(selected.JobId, cancellationToken), "Shipment reserved. Flight and delivery verification are not implemented yet.");
+        var selected = SelectedOffer; if (selected is null || HasActiveJob) return;
+        await RunAsync(() => jobs.AcceptAsync(selected.JobId, cancellationToken), "Shipment reserved. Travel to Eros for simulated loading.");
+        if (Error == "") try { await flight.RefreshEconomyAsync(cancellationToken); } catch (Exception error) { ReportFlightError(error); }
+    }
+    public async Task ObserveTelemetryAsync(AircraftTelemetry? telemetry, CancellationToken cancellationToken = default)
+    { try { await flight.ObserveAsync(telemetry, cancellationToken); } catch (Exception error) { ReportFlightError(error); } }
+    public async Task LoadCargoAsync(CancellationToken cancellationToken = default)
+    { await RunFlightAsync(() => flight.LoadCargoAsync(cancellationToken), cancellationToken); }
+    public async Task UnloadCargoAsync(CancellationToken cancellationToken = default)
+    { await RunFlightAsync(() => flight.UnloadCargoAsync(cancellationToken), cancellationToken); }
+    private async Task RunFlightAsync(Func<Task> action, CancellationToken cancellationToken)
+    {
+        if (IsBusy) return; IsBusy = true; Error = "";
+        try
+        {
+            await action(); await ApplySnapshotAsync(await jobs.LoadAsync(cancellationToken));
+            Status = ActiveJob?.ShipmentState == ShipmentState.Delivered ? "Delivery completed and payment recorded." :
+                HasActiveJob ? "One employed shipment is active. Further acceptance is locked." : "Choose one employed cargo offer.";
+        }
+        catch (Exception error) { ReportFlightError(error); }
+        finally { IsBusy = false; }
     }
     private async Task RunAsync(Func<Task<EmployedCargoJobsSnapshot>> action, string success)
     {
         if (IsBusy) return; IsBusy = true; Error = "";
         try
         {
-            var snapshot = await action(); Offers = snapshot.Offers; ActiveJob = snapshot.ActiveJob;
-            if (SelectedOffer is not null) SelectedOffer = Offers.SingleOrDefault(x => x.JobId == SelectedOffer.JobId);
-            Status = ActiveJob is null ? success : "One employed shipment is active. Further acceptance is locked.";
+            var snapshot = await action(); await ApplySnapshotAsync(snapshot);
+            Status = HasActiveJob ? "One employed shipment is active. Further acceptance is locked." : success;
             Changed(nameof(HasActiveJob)); Changed(nameof(ActiveRoute)); Changed(nameof(ActiveCargo)); Changed(nameof(ActiveShipment));
         }
         catch (Exception exception) { Error = exception.Message; Status = "Jobs could not be loaded or changed. Existing economy data was preserved."; }
         finally { IsBusy = false; }
     }
+    private Task ApplySnapshotAsync(EmployedCargoJobsSnapshot snapshot)
+    {
+        Offers = snapshot.Offers; ActiveJob = snapshot.ActiveJob; playerBalance = snapshot.PlayerBalance; balanceCurrency = snapshot.CurrencyCode; Changed(nameof(Balance));
+        if (SelectedOffer is not null) SelectedOffer = Offers.SingleOrDefault(x => x.JobId == SelectedOffer.JobId);
+        return Task.CompletedTask;
+    }
+    private void FlightChanged(FlightAttemptStatus value)
+    {
+        void Notify() { Changed(nameof(FlightStage)); Changed(nameof(FlightReason)); Changed(nameof(OriginDistance)); Changed(nameof(DestinationDistance)); RefreshCommands(); }
+        if (context is not null && !ReferenceEquals(context, SynchronizationContext.Current)) context.Post(_ => Notify(), null); else Notify();
+    }
+    private void ReportFlightError(Exception error)
+    {
+        void Report() { Error = error.Message; Status = "Flight action was refused; persisted cargo and payment state were unchanged."; }
+        if (context is not null && !ReferenceEquals(context, SynchronizationContext.Current)) context.Post(_ => Report(), null); else Report();
+    }
+    private void RefreshCommands() { RefreshCommand.Refresh(); AcceptCommand.Refresh(); LoadCargoCommand.Refresh(); UnloadCargoCommand.Refresh(); }
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
 }

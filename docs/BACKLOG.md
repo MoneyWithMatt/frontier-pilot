@@ -24,10 +24,10 @@
 - Expand surfaces only after compile and simulator visual proof.
 
 ## Later product work
-Economy Core and the Eros employed-cargo selection/acceptance slice now prove persistent, atomic reservation. The next economy task is the narrowly specified flight-attempt lifecycle and its `VerifiedDeliveryEvidence` authority. Do not fold settlement production, player companies, multiplayer or worldwide economics into that slice.
+Economy Core, employed-cargo selection and Flight Attempt V0 now implement the first Eros-to-Uis/Arandis delivery lifecycle. Manual MSFS acceptance is next. Do not fold settlement production, player companies, multiplayer or worldwide economics into follow-up tuning.
 
 ## Economy V0 follow-up decisions
-- Define the SimConnect observations, reconnect policy and tolerances for flight-attempt tracking and verified delivery evidence.
+- Manually run Eros to Uis or Arandis and verify telemetry progression, connection recovery, unload, inventory and payment. Tune tolerances only from observed behavior.
 - Review the temporary 120 kg / 240 TPC Uis and 100 kg / 200 TPC Arandis values after UI testing; compensation design remains open.
 - Define loading, cancellation, expiry and reservation release.
 - Define flight/location evidence and arrival conditions without adding a weather or safety verdict.

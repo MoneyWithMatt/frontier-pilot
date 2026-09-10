@@ -56,12 +56,18 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     };
     public event PropertyChangedEventHandler? PropertyChanged;
     public BuilderViewModel(IBuilderServices services, string sdkRoot, ITrackingTelemetrySource? telemetrySource = null,
-        IAircraftStateStore? aircraftStateStore = null, IEmployedCargoJobs? employedCargoJobs = null)
+        IAircraftStateStore? aircraftStateStore = null, IEmployedCargoJobs? employedCargoJobs = null,
+        IFlightAttemptTracker? flightAttemptTracker = null)
     {
         this.services = services; this.sdkRoot = sdkRoot;
         aircraftStateStore ??= services.IsDryRun ? new MemoryAircraftStateStore() : new LocalAircraftStateStore();
         Tracking = new(telemetrySource ?? new FrontierAirportBuilder.MsfsSdk.LiveAircraftTelemetry(), aircraftStateStore, () => this.sdkRoot, !services.IsDryRun);
-        Jobs = new(employedCargoJobs ?? (services.IsDryRun ? EmployedCargoJobsService.CreateMemory() : EmployedCargoJobsService.CreateLocal()));
+        IEconomyStateStore economyStore = services.IsDryRun ? new MemoryEconomyStateStore() : new LocalEconomyStateStore();
+        employedCargoJobs ??= new EmployedCargoJobsService(economyStore);
+        IFlightAttemptStore attemptStore = services.IsDryRun ? new MemoryFlightAttemptStore() : new LocalFlightAttemptStore();
+        flightAttemptTracker ??= new FlightAttemptTracker(economyStore, attemptStore);
+        Jobs = new(employedCargoJobs, flightAttemptTracker);
+        Tracking.TelemetryChanged += sample => _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft);
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading));
         Layout.Edited += (_,_)=>Invalidate();
         AddParkingCommand = new(()=>AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading)),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Stands.Count<8);

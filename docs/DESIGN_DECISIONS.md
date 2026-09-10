@@ -103,7 +103,17 @@
 - **Implemented:** activate only Uis and Arandis; Eros stays the locked system gateway. Eligibility remains a catalogue lifecycle decision and contains no aircraft or weather judgment.
 - **Prototype only:** seed one configurable General Supplies offer per active destination with temporary kilogram and TPC values. No recurring need or mineral output exists.
 - **Implemented:** keep the employee UI behind a load/accept-only boundary. Acceptance uses Economy Core's atomic reservation and one-active-shipment guard. Delivery, customer inventory and ledger payment remain unreachable without later verified evidence.
-- **Deferred:** flight-attempt lifecycle, in-transit transition, cancellation/release rules, expiry and permanent economy balance.
+- **Superseded by Flight Attempt V0:** the flight-attempt and InTransit portions were deferred here; cancellation/release, expiry and permanent balance remain deferred.
+
+## Flight Attempt V0 — 2026-09-10
+
+- **Implemented:** consume only validated live aircraft samples emitted by Tracking; never use last-known aircraft or avatar state as flight evidence.
+- **Implemented:** persist load, aircraft identity, airborne observation, later movement, maximum origin distance and qualified arrival as explicit attempt facts. Stationary timers remain transient and reset across telemetry gaps.
+- **Implemented:** use normalized SimConnect title/model to reject clearly different aircraft. This is a conservative prototype fingerprint, not stable ownership identity.
+- **Implemented:** write attempt/proof before their related economy mutation and reconcile only idempotent state already proven by those files. Economy completion remains one atomic inventory/job/payment revision.
+- **Player action:** qualified landing enables Unload; landing never automatically pays or delivers.
+- **Prototype policy:** 1.5 NM endpoint radius, 5 kt, ten seconds, 2 NM meaningful movement and 10 NM maximum departure distance are configurable test rules, not balance or safety judgments.
+- **Deferred:** cancellation, reservation release, expiry, payload stations, weather, anti-teleport enforcement and recurring demand.
 
 ## Tracking V4 — 2026-09-08
 

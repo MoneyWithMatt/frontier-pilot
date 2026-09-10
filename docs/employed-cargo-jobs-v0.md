@@ -16,9 +16,9 @@ The accepted job and shipment reload from `%LOCALAPPDATA%\FrontierAirportBuilder
 
 ## Deliberate boundary
 
-There is no Deliver action in the view model or UI. Acceptance cannot update destination inventory, create a financial transaction or pay the player. Those changes remain behind `VerifiedDeliveryEvidence` and `EconomyService.CompleteDeliveryAsync` for a later flight-lifecycle component. The ledger remains authoritative and empty after acceptance.
+Acceptance itself cannot update destination inventory, create a financial transaction or pay the player. Flight Attempt V0 now places those changes behind a tracker-owned `VerifiedDeliveryEvidence` and an explicit Unload action. The Jobs view model cannot manufacture evidence. The ledger remains authoritative and empty until verified unloading.
 
-No SimConnect departure/arrival logic, weather, aircraft filtering, cancellation, expiry, recurring demand, production, offline progression or Namibia-wide generation was added.
+No weather or aircraft-suitability filtering, cancellation, expiry, recurring demand, production, offline progression or Namibia-wide generation was added.
 
 ## Verification
 

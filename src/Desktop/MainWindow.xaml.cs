@@ -23,7 +23,7 @@ public partial class MainWindow : Window
     {
         if(!IsInitialized || !ReferenceEquals(e.Source,MainTabs))return;
         BuilderFooter.Visibility=MainTabs.SelectedIndex==0?Visibility.Visible:Visibility.Collapsed;
-        if(MainTabs.SelectedIndex==2 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
+        if(MainTabs.SelectedIndex is 1 or 2 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
             _=model.Tracking.ConnectAsync();
     }
     private void TrackingDisplayChanged(FrontierAirportBuilder.Core.AircraftTelemetry? aircraft,FrontierAirportBuilder.Core.PlayerTelemetry? player,bool isLive) =>
