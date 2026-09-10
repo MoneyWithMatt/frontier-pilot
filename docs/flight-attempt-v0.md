@@ -29,7 +29,7 @@ Once arrival qualifies, the tracker stores immutable `FlightDeliveryProof` and e
 
 Economy state remains at `%LOCALAPPDATA%\FrontierAirportBuilder\desktop\economy\economy-state.json`.
 
-Flight attempts use strict schema-1 JSON at `%LOCALAPPDATA%\FrontierAirportBuilder\desktop\economy\flight-attempts.json`. The document supports multiple attempt records keyed by deterministic job/shipment IDs. Writes use the same managed-path, same-directory temporary file, flush, atomic replacement, in-process gate and path-derived named semaphore conventions as Economy Core. Corrupt, unsupported or inconsistent data is reported and preserved.
+Flight attempts use strict schema-2 JSON at `%LOCALAPPDATA%\FrontierAirportBuilder\desktop\economy\flight-attempts.json`. Schema 2 adds the observability timeline described in [flight-attempt-observability-v0.md](flight-attempt-observability-v0.md); schema-1 attempt records migrate without changing authoritative progress or evidence. The document supports multiple attempt records keyed by deterministic job/shipment IDs. Writes use the same managed-path, same-directory temporary file, flush, atomic replacement, in-process gate and path-derived named semaphore conventions as Economy Core. Corrupt, unsupported or inconsistent data is reported and preserved.
 
 Loading writes the attempt before moving the shipment to InTransit. If the process stops between these files, startup reconciliation completes the idempotent InTransit transition. Qualified arrival proof is written before explicit unload. If the process stops around unloading, the immutable proof and Economy Core's idempotent evidence/payment IDs allow startup and another unload to converge without duplicating cargo or money.
 

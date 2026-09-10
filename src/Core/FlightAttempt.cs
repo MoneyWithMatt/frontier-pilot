@@ -1,6 +1,33 @@
 namespace FrontierAirportBuilder.Core;
 
 public enum FlightAttemptState { CargoLoaded, Departed, EnRoute, ReadyToUnload, Delivered }
+public enum FlightDiagnosticEventType
+{
+    FlightAttemptCreated, SimConnectConnected, SimConnectDisconnected,
+    OriginQualificationStarted, OriginQualificationInterrupted, ReadyToLoad,
+    CargoLoaded, ShipmentEnteredInTransit, AirborneEvidenceRecorded,
+    PostDepartureMovementRecorded, RequiredMaximumDistanceReached,
+    ArrivalQualificationStarted, ArrivalQualificationInterrupted, ReadyToUnload,
+    UnloadRequested, DeliveryCommitted, DeliveryRefused, ApplicationRecovery,
+    AircraftIdentityMismatchObserved
+}
+
+/// <summary>Read-only diagnostic history. Events describe observations and never qualify a delivery.</summary>
+public sealed record FlightDiagnosticEvent(string Id, string JobId, string ShipmentId, DateTimeOffset OccurredUtc,
+    FlightDiagnosticEventType Type, IReadOnlyDictionary<string, string> Details)
+{
+    public FlightDiagnosticEvent EnsureValid()
+    {
+        EconomyValidation.Id(Id, nameof(Id)); EconomyValidation.Id(JobId, nameof(JobId)); EconomyValidation.Id(ShipmentId, nameof(ShipmentId));
+        if (OccurredUtc == default || Details is null || Details.Count > 16) throw new InvalidDataException("Flight diagnostic event is invalid.");
+        foreach (var pair in Details)
+        {
+            EconomyValidation.Text(pair.Key, "diagnostic detail key", 48);
+            if (pair.Value is null || pair.Value.Length > 256) throw new InvalidDataException("Flight diagnostic detail value is invalid.");
+        }
+        return this;
+    }
+}
 
 public sealed record FlightAircraftIdentity(string Title, string Type)
 {

@@ -18,6 +18,7 @@ public sealed record CargoJobDisplay(string JobId, string Employer, string Origi
 public sealed record EmployedCargoJobsSnapshot(IReadOnlyList<CargoJobDisplay> Offers, CargoJobDisplay? ActiveJob,
     IReadOnlyList<CargoJobDisplay> RecentCompletedJobs,
     string StoragePath, int EconomyRevision, decimal PlayerBalance, string CurrencyCode);
+public sealed record FlightDiagnosticEventDisplay(string Utc, string Event, string Details);
 
 /// <summary>The employee-facing boundary deliberately exposes selection and acceptance only. Delivery requires a later evidence provider.</summary>
 public interface IEmployedCargoJobs
@@ -184,6 +185,21 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     public string DestinationDistance => flight.Current.DestinationDistanceNauticalMiles is { } value ? $"Destination distance: {value:F2} NM" : "Destination distance: —";
     public string Balance => $"Balance: {playerBalance:0.##} {balanceCurrency}";
     public string FlightStoragePath => flight.StoragePath;
+    private FlightAttemptDiagnosticSnapshot FlightDiagnostic => flight.Current.Diagnostic;
+    public string DiagnosticConnection => FlightDiagnostic.ConnectionState;
+    public string DiagnosticFreshness => FlightDiagnostic.TelemetryFreshness;
+    public string DiagnosticLastSample => FlightDiagnostic.LastValidSampleUtc?.ToString("O") ?? "—";
+    public string DiagnosticRoute => $"{FlightDiagnostic.Origin} → {FlightDiagnostic.Destination}";
+    public string DiagnosticIds => $"Job {FlightDiagnostic.JobId} · Shipment {FlightDiagnostic.ShipmentId}";
+    public string DiagnosticRecordedAircraft => FlightDiagnostic.RecordedAircraftIdentity;
+    public string DiagnosticObservedAircraft => FlightDiagnostic.CurrentAircraftIdentity;
+    public string DiagnosticLiveValues => $"On ground: {FlightDiagnostic.OnGround} · Ground speed: {FlightDiagnostic.GroundSpeed}";
+    public string DiagnosticDistances => $"Origin: {FlightDiagnostic.OriginDistance} · Destination: {FlightDiagnostic.DestinationDistance}";
+    public string DiagnosticPersistedEvidence => $"Airborne: {FlightDiagnostic.AirborneEvidenceRecorded} · Movement: {FlightDiagnostic.MovementEvidenceRecorded} · Maximum from origin: {FlightDiagnostic.MaximumOriginDistance}";
+    public string DiagnosticQualification => $"Current: {FlightDiagnostic.QualificationDuration} · Required: {FlightDiagnostic.RequiredQualificationDuration}";
+    public string DiagnosticUnavailableReason => FlightDiagnostic.UnavailableReason;
+    public IReadOnlyList<FlightDiagnosticEventDisplay> DiagnosticTimeline => FlightDiagnostic.Timeline.Select(x => new FlightDiagnosticEventDisplay(
+        x.OccurredUtc.ToString("O"), x.Type.ToString(), string.Join(" · ", x.Details.Select(pair => pair.Key + "=" + pair.Value)))).ToArray();
     public bool CanResetIncompleteFlight => flight.Current.Attempt is { State: not FlightAttemptState.Delivered } && HasActiveJob;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -204,6 +220,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     public async Task UnloadCargoAsync(CancellationToken cancellationToken = default)
     { await RunFlightAsync(() => flight.UnloadCargoAsync(cancellationToken), cancellationToken); }
     public Task<string> ExportFlightDiagnosticAsync(CancellationToken cancellationToken = default) => flight.ExportDeveloperDiagnosticAsync(cancellationToken);
+    public Task<string> CopyFlightDiagnosticSummaryAsync(CancellationToken cancellationToken = default) => flight.CreateDiagnosticSummaryAsync(cancellationToken);
     public async Task ResetIncompleteFlightAsync(CancellationToken cancellationToken = default)
     {
         if (IsBusy || !CanResetIncompleteFlight) return;
@@ -245,7 +262,13 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     }
     private void FlightChanged(FlightAttemptStatus value)
     {
-        void Notify() { Changed(nameof(FlightStage)); Changed(nameof(FlightReason)); Changed(nameof(OriginDistance)); Changed(nameof(DestinationDistance)); Changed(nameof(CanResetIncompleteFlight)); RefreshCommands(); }
+        void Notify()
+        {
+            Changed(nameof(FlightStage)); Changed(nameof(FlightReason)); Changed(nameof(OriginDistance)); Changed(nameof(DestinationDistance)); Changed(nameof(CanResetIncompleteFlight));
+            Changed(nameof(DiagnosticConnection)); Changed(nameof(DiagnosticFreshness)); Changed(nameof(DiagnosticLastSample)); Changed(nameof(DiagnosticRoute)); Changed(nameof(DiagnosticIds));
+            Changed(nameof(DiagnosticRecordedAircraft)); Changed(nameof(DiagnosticObservedAircraft)); Changed(nameof(DiagnosticLiveValues)); Changed(nameof(DiagnosticDistances));
+            Changed(nameof(DiagnosticPersistedEvidence)); Changed(nameof(DiagnosticQualification)); Changed(nameof(DiagnosticUnavailableReason)); Changed(nameof(DiagnosticTimeline)); RefreshCommands();
+        }
         if (context is not null && !ReferenceEquals(context, SynchronizationContext.Current)) context.Post(_ => Notify(), null); else Notify();
     }
     private void ReportFlightError(Exception error)

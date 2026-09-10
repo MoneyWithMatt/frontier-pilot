@@ -99,7 +99,7 @@ The Tracking panel shows airport, stand, distance, state and the tuning reason. 
 
 Core now models data-driven locations (gateway, mine, community and lodge), system/player businesses, resources, inventory, customer needs, funded transport requirements, employed players, jobs, shipments and an authoritative financial ledger. Acceptance reserves source cargo once. Externally verified delivery moves the shipment, updates customer inventory and records one payment as a single validated world revision. Replay is idempotent across restarts; cached player money must equal the ledger.
 
-Workflow adds strict schema-1 JSON persistence at `%LOCALAPPDATA%\FrontierAirportBuilder\desktop\economy\economy-state.json`, using the repository's same-directory flushed temporary write and atomic replacement convention plus cross-process serialization. Existing corrupt, unsupported or inconsistent state is reported and preserved, including during initialization. Deterministic prototype data is explicitly temporary, supports mines/communities/lodges through records and is not automatically created or connected to the application.
+Workflow originally introduced strict schema-1 JSON persistence at `%LOCALAPPDATA%\FrontierAirportBuilder\desktop\economy\economy-state.json`; the current economy format is schema 2 with the migration described below. It uses the repository's same-directory flushed temporary write and atomic replacement convention plus cross-process serialization. Existing corrupt, unsupported or inconsistent state is reported and preserved, including during initialization. Deterministic prototype data is explicitly temporary and supports mines, communities and lodges through records.
 
 Economy Core itself contains no UI, SimConnect flight lifecycle, weather logic, flight-validity policy, economic clock or permanent balance data. The later accept-only Jobs slice composes this kernel without weakening `VerifiedDeliveryEvidence`. See [economy-core-v0.md](economy-core-v0.md).
 
@@ -120,6 +120,10 @@ The WPF Jobs page exposes two temporary deterministic General Supplies offers fr
 ## Employed Cargo Job Cycle V0 — 2026-09-10
 
 The system employer now maintains one funded offer for each active prototype customer through generic persisted `RecurringDemandDefinition` data. Board maintenance is deterministic and idempotent at initialization, Jobs load/refresh, restart and verified delivery. Sequence IDs preserve completed history, while the UI separates available, active and recent completed work. Eros stock shortfalls are introduced only through audited `SystemGatewaySupply` inventory transactions; inventory audit remains separate from the authoritative player financial ledger. Economy persistence is schema 2 with an explicit atomic schema-1 migration and a separate one-time aggregate upgrade for the recurring definitions. See [employed-cargo-job-cycle-v0.md](employed-cargo-job-cycle-v0.md).
+
+## Flight Attempt Observability V0 — 2026-09-10
+
+Jobs now exposes separated live observations, persisted evidence and derived qualification diagnostics plus a significant-event timeline. Flight-attempt persistence is schema 2 with an atomic schema-1 migration; timeline events are append-only diagnostics and cannot participate in delivery qualification. Redacted JSON support bundles and plain-text summaries omit local paths and usernames. Automated behavior is verified, while the complete Flight Attempt V0 lifecycle still awaits Matt's live MSFS test. See [flight-attempt-observability-v0.md](flight-attempt-observability-v0.md).
 
 ## Flight Attempt V0 — 2026-09-10
 

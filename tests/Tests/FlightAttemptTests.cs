@@ -172,6 +172,102 @@ public sealed class FlightAttemptTrackerTests
     }
 
     [Fact]
+    public async Task SignificantEventsAreRecordedOnceAndRepeatedSamplesDoNotFloodTimeline()
+    {
+        var h = await Harness.Create();
+        await ObserveSeconds(h.Tracker, At(EmployedCargoPrototype.ErosId, Start), 20);
+        var beforeLoad = await h.Attempts.LoadDiagnosticTimelineAsync();
+        Assert.Single(beforeLoad, x => x.Type == FlightDiagnosticEventType.SimConnectConnected);
+        Assert.Single(beforeLoad, x => x.Type == FlightDiagnosticEventType.OriginQualificationStarted);
+        Assert.Single(beforeLoad, x => x.Type == FlightDiagnosticEventType.ReadyToLoad);
+        await h.Tracker.LoadCargoAsync(); await RecordDeparture(h);
+        var events = await h.Attempts.LoadDiagnosticTimelineAsync();
+        Assert.Single(events, x => x.Type == FlightDiagnosticEventType.FlightAttemptCreated);
+        Assert.Single(events, x => x.Type == FlightDiagnosticEventType.CargoLoaded);
+        Assert.Single(events, x => x.Type == FlightDiagnosticEventType.ShipmentEnteredInTransit);
+        Assert.Single(events, x => x.Type == FlightDiagnosticEventType.AirborneEvidenceRecorded);
+        Assert.Single(events, x => x.Type == FlightDiagnosticEventType.PostDepartureMovementRecorded);
+        Assert.Single(events, x => x.Type == FlightDiagnosticEventType.RequiredMaximumDistanceReached);
+        Assert.True(events.Count < 12);
+    }
+
+    [Fact]
+    public async Task QualificationInterruptionAndConnectionCycleContainFactualCause()
+    {
+        var h = await Harness.Create(); await ObserveSeconds(h.Tracker, At(EmployedCargoPrototype.ErosId, Start), 3);
+        await h.Tracker.ObserveAsync(null); await h.Tracker.ObserveAsync(At(EmployedCargoPrototype.ErosId, Start.AddMinutes(1)));
+        var events = await h.Attempts.LoadDiagnosticTimelineAsync();
+        Assert.Equal(2, events.Count(x => x.Type == FlightDiagnosticEventType.SimConnectConnected));
+        Assert.Single(events, x => x.Type == FlightDiagnosticEventType.SimConnectDisconnected);
+        var interrupted = Assert.Single(events, x => x.Type == FlightDiagnosticEventType.OriginQualificationInterrupted);
+        Assert.Contains("disconnected", interrupted.Details["reason"], StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ArrivalInterruptionAndRefusedUnloadRecordReasonsWithoutCreatingProof()
+    {
+        var h = await Loaded(); await RecordDeparture(h);
+        await ObserveSeconds(h.Tracker, At(h.DestinationId, Start.AddMinutes(1)), 3); await h.Tracker.ObserveAsync(null);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => h.Tracker.UnloadCargoAsync());
+        var events = await h.Attempts.LoadDiagnosticTimelineAsync();
+        var interrupted = Assert.Single(events, x => x.Type == FlightDiagnosticEventType.ArrivalQualificationInterrupted);
+        Assert.Contains("disconnected", interrupted.Details["reason"], StringComparison.OrdinalIgnoreCase);
+        var refused = Assert.Single(events, x => x.Type == FlightDiagnosticEventType.DeliveryRefused);
+        Assert.Contains("not ready", refused.Details["reason"], StringComparison.OrdinalIgnoreCase);
+        Assert.Null(h.Tracker.Current.Attempt!.DeliveryProof);
+    }
+
+    [Fact]
+    public async Task RestartRecoveryIsRecordedOnceAndDoesNotDuplicateMilestones()
+    {
+        using var temp = new TestDirectory();
+        var economyPath = Path.Combine(temp.Root, "economy", "economy-state.json"); var attemptPath = Path.Combine(temp.Root, "economy", "flight-attempts.json");
+        var jobs = new EmployedCargoJobsService(new LocalEconomyStateStore(economyPath), utcNow: () => Start);
+        await jobs.LoadAsync(); await jobs.AcceptAsync("job-uis-supplies-v0");
+        var first = new FlightAttemptTracker(new LocalEconomyStateStore(economyPath), new LocalFlightAttemptStore(attemptPath), utcNow: () => Start.AddMinutes(1));
+        await first.InitializeAsync(); await ObserveSeconds(first, At(EmployedCargoPrototype.ErosId, Start), 10); await first.LoadCargoAsync();
+        var reopened = new FlightAttemptTracker(new LocalEconomyStateStore(economyPath), new LocalFlightAttemptStore(attemptPath), utcNow: () => Start.AddMinutes(2));
+        await reopened.InitializeAsync(); await reopened.InitializeAsync();
+        var events = await new LocalFlightAttemptStore(attemptPath).LoadDiagnosticTimelineAsync();
+        Assert.Single(events, x => x.Type == FlightDiagnosticEventType.ApplicationRecovery);
+        Assert.Single(events, x => x.Type == FlightDiagnosticEventType.CargoLoaded);
+    }
+
+    [Fact]
+    public async Task DiagnosticTimelineCannotSatisfyDeliveryEvidence()
+    {
+        var h = await Loaded(); var attempt = h.Tracker.Current.Attempt!;
+        await h.Attempts.AppendDiagnosticEventAsync(new FlightDiagnosticEvent("forged-diagnostic-event", attempt.JobId, attempt.ShipmentId,
+            Start.AddMinutes(1), FlightDiagnosticEventType.ReadyToUnload, new Dictionary<string, string> { ["note"] = "diagnostic only" }));
+        await h.Tracker.RefreshEconomyAsync();
+        Assert.Null(h.Tracker.Current.Attempt!.DeliveryProof); Assert.False(h.Tracker.Current.CanUnloadCargo);
+        Assert.Equal("Cargo loaded", h.Tracker.Current.Stage);
+    }
+
+    [Fact]
+    public async Task SupportBundleAndSummaryAreReadOnlyAndExcludePathsAndUsername()
+    {
+        var h = await Loaded(); var beforeWorld = await h.Economy.LoadAsync(); var beforeAttempt = await h.Attempts.LoadAsync();
+        var beforeEvents = await h.Attempts.LoadDiagnosticTimelineAsync();
+        var bundle = await h.Tracker.ExportDeveloperDiagnosticAsync(); var summary = await h.Tracker.CreateDiagnosticSummaryAsync();
+        Assert.Contains("SupportBundleSchemaVersion", bundle); Assert.Contains("DiagnosticTimeline", bundle); Assert.Contains("Thresholds", bundle);
+        Assert.Contains("Frontier Pilot Flight Attempt diagnostic", summary);
+        Assert.DoesNotContain(Environment.UserName, bundle, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Path.GetPathRoot(Environment.CurrentDirectory) + "\\", bundle, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(beforeWorld, await h.Economy.LoadAsync()); Assert.Equal(beforeAttempt, await h.Attempts.LoadAsync());
+        Assert.Equal(beforeEvents, await h.Attempts.LoadDiagnosticTimelineAsync());
+    }
+
+    [Fact]
+    public void ObservabilityDoesNotChangeFlightAttemptThresholds()
+    {
+        var options = new FlightAttemptTrackerOptions();
+        Assert.Equal(1.5, options.AirportRadiusNauticalMiles); Assert.Equal(5, options.MaximumGroundSpeedKnots);
+        Assert.Equal(TimeSpan.FromSeconds(10), options.RequiredStationaryDuration); Assert.Equal(2, options.MeaningfulMovementNauticalMiles);
+        Assert.Equal(10, options.RequiredMaximumDistanceNauticalMiles); Assert.Equal(TimeSpan.FromSeconds(2), options.MaximumSampleGap);
+    }
+
+    [Fact]
     public void UiBoundaryCannotSubmitOrManufactureVerifiedDeliveryEvidence()
     {
         Assert.DoesNotContain(typeof(IFlightAttemptTracker).GetMethods(), method =>
@@ -232,6 +328,37 @@ public sealed class FlightAttemptPersistenceTests : TemporaryDirectoryTest
         await File.WriteAllTextAsync(FilePath, "{\"SchemaVersion\":99,\"Attempts\":[]}"); original = await File.ReadAllTextAsync(FilePath);
         var unsupported = await Assert.ThrowsAsync<IOException>(() => store.LoadAsync()); Assert.Contains("unsupported schema", unsupported.Message);
         Assert.Equal(original, await File.ReadAllTextAsync(FilePath));
+    }
+
+    [Fact]
+    public async Task SchemaOneAttemptMigratesWithoutLosingAuthoritativeProgress()
+    {
+        var loaded = DateTimeOffset.Parse("2026-09-10T08:00:00Z");
+        var attempt = new FlightAttempt("flight-shipment-test", "job-test", "shipment-test", "origin-test", "destination-test",
+            FlightAttemptState.CargoLoaded, loaded, new("Cessna 208B", "C208B"), new(loaded, -22, 17, 1000, 90, 0, true));
+        var ready = loaded.AddMinutes(30); var proof = new FlightDeliveryProof("delivery-shipment-complete", ready,
+            new(ready, -21.9, 16.8, 900, 180, 0, true), loaded.AddMinutes(1), loaded.AddMinutes(2), 12);
+        var completed = new FlightAttempt("flight-shipment-complete", "job-complete", "shipment-complete", "origin-test", "destination-test",
+            FlightAttemptState.Delivered, loaded, new("Cessna 208B", "C208B"), new(loaded, -22, 17, 1000, 90, 0, true),
+            loaded.AddMinutes(1), loaded.AddMinutes(2), 12, loaded.AddMinutes(3), proof, ready);
+        var store = new LocalFlightAttemptStore(FilePath); await store.SaveAsync(attempt); await store.SaveAsync(completed);
+        var document = JsonNode.Parse(await File.ReadAllTextAsync(FilePath))!.AsObject(); document["SchemaVersion"] = 1;
+        document.Remove("DiagnosticTimeline"); await File.WriteAllTextAsync(FilePath, document.ToJsonString());
+        var original = await new LocalFlightAttemptStore(FilePath).LoadAsync();
+        Assert.Contains(attempt, original); Assert.Contains(completed, original); Assert.Empty(await new LocalFlightAttemptStore(FilePath).LoadDiagnosticTimelineAsync());
+        Assert.Equal(2, JsonNode.Parse(await File.ReadAllTextAsync(FilePath))!["SchemaVersion"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public void TimelineRetentionIsBoundedWithoutRemovingLifecycleMilestones()
+    {
+        var start = DateTimeOffset.Parse("2026-09-10T08:00:00Z");
+        var events = Enumerable.Range(0, 300).Select(index => new FlightDiagnosticEvent($"event-{index:D4}", "job-test", "shipment-test",
+            start.AddSeconds(index), FlightDiagnosticEventType.SimConnectConnected, new Dictionary<string, string>())).ToList();
+        var milestone = new FlightDiagnosticEvent("event-milestone", "job-test", "shipment-test", start.AddSeconds(150),
+            FlightDiagnosticEventType.CargoLoaded, new Dictionary<string, string>()); events.Add(milestone);
+        var bounded = LocalFlightAttemptStore.Bound(events, "shipment-test");
+        Assert.True(bounded.Count <= 256); Assert.Contains(milestone, bounded);
     }
 }
 

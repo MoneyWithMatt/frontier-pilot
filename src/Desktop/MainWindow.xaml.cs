@@ -48,6 +48,11 @@ public partial class MainWindow : Window
         try { await DiagnosticLog.SaveNewAsync(dialog.FileName,await model.Jobs.ExportFlightDiagnosticAsync()); }
         catch(Exception error) { MessageBox.Show(this,error.Message,"Could not export flight diagnostic",MessageBoxButton.OK,MessageBoxImage.Error); }
     }
+    private async void CopyFlightDiagnosticSummary(object sender,RoutedEventArgs e)
+    {
+        try { Clipboard.SetText(await model.Jobs.CopyFlightDiagnosticSummaryAsync()); }
+        catch(Exception error) { MessageBox.Show(this,error.Message,"Could not copy flight diagnostic",MessageBoxButton.OK,MessageBoxImage.Error); }
+    }
     private async void ResetIncompleteFlight(object sender,RoutedEventArgs e)
     {
         const string warning="Reset only the persisted airborne, movement and arrival observations for this incomplete prototype flight? Cargo will remain loaded and InTransit. Completed deliveries, inventory, ledger payments and balance cannot be changed.";

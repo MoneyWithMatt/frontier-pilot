@@ -138,3 +138,10 @@
 - Gateway stock enters only as the exact unfunded shortfall for a missing offer and receives a separate inventory audit record. It never touches the player financial ledger.
 - Historical jobs, requirements, shipments and ledger payments are immutable. Deterministic cycle suffixes derive from retained history.
 - Flight Attempt V0 remains the exclusive producer of delivery evidence and its qualification policy remains unchanged pending simulator testing.
+## Flight attempt observability — 2026-09-10
+
+- Diagnostic timeline events are persisted beside attempts but are not evidence and are never inputs to qualification.
+- Stable lifecycle keys deduplicate milestones across telemetry replay and restart; observation timestamps distinguish real connection and qualification cycles.
+- Timeline retention is bounded per shipment by coalescing older connection/interruption entries before any lifecycle milestone or error.
+- The support bundle selects only the relevant economy records and omits all local paths, usernames and unrelated files.
+- Flight Attempt V0 thresholds, state transitions, identity policy and transaction entry points remain fixed pending live MSFS verification.

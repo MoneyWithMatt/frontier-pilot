@@ -10,14 +10,19 @@ public interface IFlightAttemptStore
 {
     string StoragePath { get; }
     Task<IReadOnlyList<FlightAttempt>> LoadAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FlightDiagnosticEvent>> LoadDiagnosticTimelineAsync(CancellationToken cancellationToken = default);
     Task SaveAsync(FlightAttempt attempt, CancellationToken cancellationToken = default);
+    Task AppendDiagnosticEventAsync(FlightDiagnosticEvent diagnosticEvent, CancellationToken cancellationToken = default);
     Task<FlightAttempt> ResetIncompleteProgressAsync(string attemptId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Strict whole-document persistence using flushed same-directory replacement. Invalid files are preserved.</summary>
 public sealed class LocalFlightAttemptStore : IFlightAttemptStore
 {
-    private sealed record Document(int SchemaVersion, IReadOnlyList<FlightAttempt> Attempts);
+    public const int CurrentSchemaVersion = 2;
+    private const int MaximumEventsPerShipment = 256;
+    private sealed record Document(int SchemaVersion, IReadOnlyList<FlightAttempt> Attempts,
+        IReadOnlyList<FlightDiagnosticEvent>? DiagnosticTimeline = null);
     private static readonly JsonSerializerOptions Json = new()
     {
         WriteIndented = true, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
@@ -40,7 +45,14 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
     public async Task<IReadOnlyList<FlightAttempt>> LoadAsync(CancellationToken cancellationToken = default)
     {
         await instanceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try { using var lease = Lock(); return await ReadUnlockedAsync(cancellationToken).ConfigureAwait(false); }
+        try { using var lease = Lock(); return (await ReadUnlockedAsync(cancellationToken).ConfigureAwait(false)).Attempts; }
+        finally { instanceGate.Release(); }
+    }
+
+    public async Task<IReadOnlyList<FlightDiagnosticEvent>> LoadDiagnosticTimelineAsync(CancellationToken cancellationToken = default)
+    {
+        await instanceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try { using var lease = Lock(); return (await ReadUnlockedAsync(cancellationToken).ConfigureAwait(false)).DiagnosticTimeline ?? []; }
         finally { instanceGate.Release(); }
     }
 
@@ -50,10 +62,26 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
         await instanceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            using var lease = Lock(); var attempts = (await ReadUnlockedAsync(cancellationToken).ConfigureAwait(false)).ToList();
+            using var lease = Lock(); var document = await ReadUnlockedAsync(cancellationToken).ConfigureAwait(false); var attempts = document.Attempts.ToList();
             var index = attempts.FindIndex(x => x.Id == attempt.Id);
             if (index < 0) attempts.Add(attempt); else { ValidateForward(attempts[index], attempt); attempts[index] = attempt; }
-            await WriteUnlockedAsync(attempts.OrderBy(x => x.Id, StringComparer.Ordinal).ToArray(), cancellationToken).ConfigureAwait(false);
+            await WriteUnlockedAsync(attempts.OrderBy(x => x.Id, StringComparer.Ordinal).ToArray(), document.DiagnosticTimeline ?? [], cancellationToken).ConfigureAwait(false);
+        }
+        finally { instanceGate.Release(); }
+    }
+
+    public async Task AppendDiagnosticEventAsync(FlightDiagnosticEvent diagnosticEvent, CancellationToken cancellationToken = default)
+    {
+        diagnosticEvent = diagnosticEvent.EnsureValid();
+        await instanceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            using var lease = Lock(); var document = await ReadUnlockedAsync(cancellationToken).ConfigureAwait(false);
+            var timeline = (document.DiagnosticTimeline ?? []).ToList();
+            if (timeline.Any(x => x.Id == diagnosticEvent.Id)) return;
+            timeline.Add(diagnosticEvent);
+            timeline = Bound(timeline, diagnosticEvent.ShipmentId);
+            await WriteUnlockedAsync(document.Attempts, timeline, cancellationToken).ConfigureAwait(false);
         }
         finally { instanceGate.Release(); }
     }
@@ -64,52 +92,73 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
         await instanceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            using var lease = Lock(); var attempts = (await ReadUnlockedAsync(cancellationToken).ConfigureAwait(false)).ToList();
+            using var lease = Lock(); var document = await ReadUnlockedAsync(cancellationToken).ConfigureAwait(false); var attempts = document.Attempts.ToList();
             var index = attempts.FindIndex(x => x.Id == attemptId);
             if (index < 0) throw new InvalidOperationException("Flight attempt was not found.");
             var existing = attempts[index];
             if (existing.State == FlightAttemptState.Delivered || existing.DeliveredUtc is not null)
                 throw new InvalidOperationException("Completed delivery evidence cannot be reset.");
             var reset = ResetProgress(existing).EnsureValid(); attempts[index] = reset;
-            await WriteUnlockedAsync(attempts.OrderBy(x => x.Id, StringComparer.Ordinal).ToArray(), cancellationToken).ConfigureAwait(false);
+            await WriteUnlockedAsync(attempts.OrderBy(x => x.Id, StringComparer.Ordinal).ToArray(), document.DiagnosticTimeline ?? [], cancellationToken).ConfigureAwait(false);
             return reset;
         }
         finally { instanceGate.Release(); }
     }
 
-    private async Task<IReadOnlyList<FlightAttempt>> ReadUnlockedAsync(CancellationToken cancellationToken)
+    private async Task<Document> ReadUnlockedAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(StoragePath)) return [];
+        if (!File.Exists(StoragePath)) return new(CurrentSchemaVersion, [], []);
         var info = new FileInfo(StoragePath); if (info.Length is <= 0 or > 4_000_000) throw new IOException("Saved flight-attempt document has an invalid size. File preserved.");
-        await using var stream = new FileStream(StoragePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
         Document document;
-        try { document = await JsonSerializer.DeserializeAsync<Document>(stream, Json, cancellationToken).ConfigureAwait(false) ?? throw new IOException("Saved flight-attempt document is empty. File preserved."); }
+        try
+        {
+            await using var stream = new FileStream(StoragePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
+            document = await JsonSerializer.DeserializeAsync<Document>(stream, Json, cancellationToken).ConfigureAwait(false) ?? throw new IOException("Saved flight-attempt document is empty. File preserved.");
+        }
         catch (JsonException error) { throw new IOException("Saved flight-attempt document is corrupt or unsupported. File preserved.", error); }
-        if (document.SchemaVersion != 1 || document.Attempts is null) throw new IOException("Saved flight-attempt document uses an unsupported schema. File preserved.");
+        if (document.SchemaVersion is not (1 or CurrentSchemaVersion) || document.Attempts is null) throw new IOException("Saved flight-attempt document uses an unsupported schema. File preserved.");
         try
         {
             var attempts = document.Attempts.Select(x => x.EnsureValid()).ToArray();
             if (attempts.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != attempts.Length) throw new InvalidDataException("Duplicate flight-attempt ID.");
             if (attempts.Select(x => x.ShipmentId).Distinct(StringComparer.Ordinal).Count() != attempts.Length) throw new InvalidDataException("Duplicate flight-attempt shipment.");
-            return attempts;
+            var timeline = (document.DiagnosticTimeline ?? []).Select(x => x.EnsureValid()).ToArray();
+            if (timeline.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != timeline.Length) throw new InvalidDataException("Duplicate flight diagnostic event ID.");
+            var migrated = new Document(CurrentSchemaVersion, attempts, timeline);
+            if (document.SchemaVersion == 1) await WriteUnlockedAsync(attempts, timeline, cancellationToken).ConfigureAwait(false);
+            return migrated;
         }
         catch (Exception error) when (error is InvalidDataException or ArgumentException or NullReferenceException)
         { throw new IOException("Saved flight-attempt document is inconsistent. File preserved.", error); }
     }
 
-    private async Task WriteUnlockedAsync(IReadOnlyList<FlightAttempt> attempts, CancellationToken cancellationToken)
+    private async Task WriteUnlockedAsync(IReadOnlyList<FlightAttempt> attempts, IReadOnlyList<FlightDiagnosticEvent> timeline, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(directory); var temporary = Path.Combine(directory, ".flight-attempts-" + Guid.NewGuid().ToString("N") + ".tmp"); EnsureOwnedPath(temporary);
         try
         {
             await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous))
             {
-                await JsonSerializer.SerializeAsync(stream, new Document(1, attempts), Json, cancellationToken).ConfigureAwait(false);
+                await JsonSerializer.SerializeAsync(stream, new Document(CurrentSchemaVersion, attempts, timeline), Json, cancellationToken).ConfigureAwait(false);
                 await stream.FlushAsync(cancellationToken).ConfigureAwait(false); stream.Flush(true);
             }
             cancellationToken.ThrowIfCancellationRequested(); File.Move(temporary, StoragePath, true);
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
+    }
+
+    internal static List<FlightDiagnosticEvent> Bound(List<FlightDiagnosticEvent> events, string shipmentId)
+    {
+        var shipmentEvents = events.Where(x => x.ShipmentId == shipmentId).OrderBy(x => x.OccurredUtc).ThenBy(x => x.Id).ToList();
+        while (shipmentEvents.Count > MaximumEventsPerShipment)
+        {
+            var removable = shipmentEvents.FirstOrDefault(x => x.Type is FlightDiagnosticEventType.SimConnectConnected or
+                FlightDiagnosticEventType.SimConnectDisconnected or FlightDiagnosticEventType.OriginQualificationInterrupted or
+                FlightDiagnosticEventType.ArrivalQualificationInterrupted);
+            if (removable is null) break;
+            events.Remove(removable); shipmentEvents.Remove(removable);
+        }
+        return events;
     }
 
     private static void ValidateForward(FlightAttempt old, FlightAttempt next)
@@ -152,11 +201,20 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
 public sealed class MemoryFlightAttemptStore : IFlightAttemptStore
 {
     private readonly Dictionary<string, FlightAttempt> attempts = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, FlightDiagnosticEvent> timeline = new(StringComparer.Ordinal);
     public string StoragePath => "memory://flight-attempts-v0";
     public Task<IReadOnlyList<FlightAttempt>> LoadAsync(CancellationToken cancellationToken = default)
     { cancellationToken.ThrowIfCancellationRequested(); return Task.FromResult<IReadOnlyList<FlightAttempt>>(attempts.Values.OrderBy(x => x.Id).ToArray()); }
+    public Task<IReadOnlyList<FlightDiagnosticEvent>> LoadDiagnosticTimelineAsync(CancellationToken cancellationToken = default)
+    { cancellationToken.ThrowIfCancellationRequested(); return Task.FromResult<IReadOnlyList<FlightDiagnosticEvent>>(timeline.Values.OrderBy(x => x.OccurredUtc).ThenBy(x => x.Id).ToArray()); }
     public Task SaveAsync(FlightAttempt attempt, CancellationToken cancellationToken = default)
     { cancellationToken.ThrowIfCancellationRequested(); attempt = attempt.EnsureValid(); attempts[attempt.Id] = attempt; return Task.CompletedTask; }
+    public Task AppendDiagnosticEventAsync(FlightDiagnosticEvent diagnosticEvent, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested(); diagnosticEvent.EnsureValid(); timeline.TryAdd(diagnosticEvent.Id, diagnosticEvent);
+        var bounded = LocalFlightAttemptStore.Bound(timeline.Values.ToList(), diagnosticEvent.ShipmentId);
+        timeline.Clear(); foreach (var item in bounded) timeline[item.Id] = item; return Task.CompletedTask;
+    }
     public Task<FlightAttempt> ResetIncompleteProgressAsync(string attemptId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
