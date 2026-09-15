@@ -79,7 +79,8 @@ public sealed record FlightAttempt(string Id, string JobId, string ShipmentId, s
     string DestinationLocationId, FlightAttemptState State, DateTimeOffset LoadedUtc, FlightAircraftIdentity Aircraft,
     FlightPosition LoadedPosition, DateTimeOffset? FirstAirborneUtc = null, DateTimeOffset? MovementObservedUtc = null,
     double MaximumDistanceFromOriginNauticalMiles = 0, DateTimeOffset? MaximumDistanceObservedUtc = null,
-    FlightDeliveryProof? DeliveryProof = null, DateTimeOffset? DeliveredUtc = null)
+    FlightDeliveryProof? DeliveryProof = null, DateTimeOffset? DeliveredUtc = null,
+    double RequiredMaximumDistanceNauticalMiles = 10)
 {
     public FlightAttempt EnsureValid()
     {
@@ -89,7 +90,8 @@ public sealed record FlightAttempt(string Id, string JobId, string ShipmentId, s
         Aircraft.EnsureValid(); LoadedPosition.EnsureValid();
         if (LoadedPosition.ObservedUtc != LoadedUtc || !LoadedPosition.IsOnGround)
             throw new InvalidDataException("Flight attempt load observation is inconsistent.");
-        if (!double.IsFinite(MaximumDistanceFromOriginNauticalMiles) || MaximumDistanceFromOriginNauticalMiles < 0 ||
+        if (!double.IsFinite(RequiredMaximumDistanceNauticalMiles) || RequiredMaximumDistanceNauticalMiles is < 0.5 or > 10 ||
+            !double.IsFinite(MaximumDistanceFromOriginNauticalMiles) || MaximumDistanceFromOriginNauticalMiles < 0 ||
             (MaximumDistanceFromOriginNauticalMiles > 0) != (MaximumDistanceObservedUtc is not null))
             throw new InvalidDataException("Flight attempt maximum-distance evidence is invalid.");
         if (MaximumDistanceObservedUtc is { } maximumTime && maximumTime < LoadedUtc)
@@ -107,7 +109,7 @@ public sealed record FlightAttempt(string Id, string JobId, string ShipmentId, s
         if (State is FlightAttemptState.ReadyToUnload or FlightAttemptState.Delivered && DeliveryProof is null)
             throw new InvalidDataException("Flight attempt state requires delivery proof.");
         DeliveryProof?.EnsureValid();
-        if (DeliveryProof is { } proof && (proof.EvidenceId != "delivery-" + ShipmentId || proof.FirstAirborneUtc != FirstAirborneUtc ||
+        if (DeliveryProof is { } proof && (proof.EvidenceId != FlightAttemptIds.DeliveryEvidence(ShipmentId) || proof.FirstAirborneUtc != FirstAirborneUtc ||
             proof.MovementObservedUtc != MovementObservedUtc || proof.MaximumDistanceFromOriginNauticalMiles != MaximumDistanceFromOriginNauticalMiles))
             throw new InvalidDataException("Flight delivery proof does not match its attempt.");
         if ((State == FlightAttemptState.Delivered) != (DeliveredUtc is not null))
@@ -115,5 +117,18 @@ public sealed record FlightAttempt(string Id, string JobId, string ShipmentId, s
         if (DeliveredUtc is not null && DeliveredUtc != DeliveryProof?.ReadyUtc)
             throw new InvalidDataException("Flight attempt delivery time does not match its proof.");
         return this;
+    }
+}
+
+public static class FlightAttemptIds
+{
+    public static string Attempt(string shipmentId) => Derive("flight-", shipmentId);
+    public static string DeliveryEvidence(string shipmentId) => Derive("delivery-", shipmentId);
+    private static string Derive(string prefix, string source)
+    {
+        EconomyValidation.Id(source, nameof(source)); var candidate = prefix + source;
+        if (candidate.Length <= 64) return candidate;
+        var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(source))).ToLowerInvariant();
+        return prefix + hash[..(64 - prefix.Length)];
     }
 }

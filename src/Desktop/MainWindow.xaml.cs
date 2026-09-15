@@ -21,6 +21,7 @@ public partial class MainWindow : Window
         {
             await Task.WhenAll(model.RefreshAirportsAsync(),model.Tracking.InitializeAsync());
             await model.Jobs.InitializeAsync();
+            await model.AircraftLoading.InitializeAsync();
             await model.Operations.RefreshAsync();
         };
     }
@@ -28,8 +29,15 @@ public partial class MainWindow : Window
     {
         if(!IsInitialized || !ReferenceEquals(e.Source,MainTabs))return;
         BuilderFooter.Visibility=MainTabs.SelectedIndex==0?Visibility.Visible:Visibility.Collapsed;
-        if(MainTabs.SelectedIndex is 1 or 2 or 3 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
+        if(MainTabs.SelectedIndex is 1 or 2 or 3 or 4 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
             _=model.Tracking.ConnectAsync();
+    }
+    private void OpenAircraftLoading(object sender,RoutedEventArgs e)=>MainTabs.SelectedIndex=2;
+    private async void ConfirmSimulatedUnload(object sender,RoutedEventArgs e)
+    {
+        const string warning="Use simulated compatibility unload only when verified MSFS payload removal is unsupported or has failed. This leaves MSFS payload unchanged and commits the existing verified economic delivery. Continue?";
+        if(MessageBox.Show(this,warning,"Confirm simulated compatibility unload",MessageBoxButton.YesNo,MessageBoxImage.Warning,MessageBoxResult.No)==MessageBoxResult.Yes)
+            await model.AircraftLoading.CompleteSimulatedUnloadAsync();
     }
     private void TrackingDisplayChanged(FrontierAirportBuilder.Core.AircraftTelemetry? aircraft,FrontierAirportBuilder.Core.PlayerTelemetry? player,bool isLive) =>
         Dispatcher.InvokeAsync(()=>TrackingMap.Show(aircraft,player,isLive));

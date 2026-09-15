@@ -9,7 +9,7 @@ namespace FrontierAirportBuilder.Workflow;
 
 public sealed record FlightAttemptTrackerOptions(double AirportRadiusNauticalMiles = 1.5,
     double MaximumGroundSpeedKnots = 5, TimeSpan? StationaryDuration = null,
-    double MeaningfulMovementNauticalMiles = 2, double RequiredMaximumDistanceNauticalMiles = 10,
+    double MeaningfulMovementNauticalMiles = 2,
     TimeSpan? MaximumContinuousSampleGap = null)
 {
     public TimeSpan RequiredStationaryDuration => StationaryDuration ?? TimeSpan.FromSeconds(10);
@@ -19,7 +19,6 @@ public sealed record FlightAttemptTrackerOptions(double AirportRadiusNauticalMil
         if (!double.IsFinite(AirportRadiusNauticalMiles) || AirportRadiusNauticalMiles <= 0 ||
             !double.IsFinite(MaximumGroundSpeedKnots) || MaximumGroundSpeedKnots < 0 ||
             !double.IsFinite(MeaningfulMovementNauticalMiles) || MeaningfulMovementNauticalMiles <= 0 ||
-            !double.IsFinite(RequiredMaximumDistanceNauticalMiles) || RequiredMaximumDistanceNauticalMiles < MeaningfulMovementNauticalMiles ||
             RequiredStationaryDuration <= TimeSpan.Zero || MaximumSampleGap <= TimeSpan.Zero)
             throw new InvalidDataException("Flight-attempt tracker options are invalid.");
         return this;
@@ -57,6 +56,7 @@ public interface IFlightAttemptTracker
     Task RefreshEconomyAsync(CancellationToken cancellationToken = default);
     Task ObserveAsync(AircraftTelemetry? telemetry, CancellationToken cancellationToken = default);
     Task LoadCargoAsync(CancellationToken cancellationToken = default);
+    Task LoadCargoAsync(AircraftLoadingMode mode, CancellationToken cancellationToken = default) => LoadCargoAsync(cancellationToken);
     Task UnloadCargoAsync(CancellationToken cancellationToken = default);
     Task<string> ExportDeveloperDiagnosticAsync(CancellationToken cancellationToken = default);
     Task<string> CreateDiagnosticSummaryAsync(CancellationToken cancellationToken = default);
@@ -73,6 +73,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
     private readonly SemaphoreSlim gate = new(1, 1);
     private readonly Func<DateTimeOffset> utcNow;
     private EconomyWorld? world;
+    public Func<object?>? AircraftLoadingDiagnosticProvider { get; set; }
     private FlightAttempt? attempt;
     private AircraftTelemetry? latest;
     private DateTimeOffset? stationarySince, lastSampleUtc, lastValidSampleUtc;
@@ -83,6 +84,13 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
     public string StoragePath => store.StoragePath;
     public FlightAttemptStatus Current { get; private set; } = FlightAttemptStatus.Empty();
     public event Action<FlightAttemptStatus>? Changed;
+
+    public static double RequiredDistanceForRoute(double directRouteDistanceNauticalMiles)
+    {
+        if (!double.IsFinite(directRouteDistanceNauticalMiles) || directRouteDistanceNauticalMiles < 0)
+            throw new ArgumentOutOfRangeException(nameof(directRouteDistanceNauticalMiles));
+        return Math.Min(10, Math.Max(0.5, directRouteDistanceNauticalMiles * 0.5));
+    }
 
     public FlightAttemptTracker(IEconomyStateStore economyStore, IFlightAttemptStore attemptStore,
         NamibiaLocationCatalogueDocument? catalogue = null, FlightAttemptTrackerOptions? options = null,
@@ -202,7 +210,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             }
             if (originDistance > updated.MaximumDistanceFromOriginNauticalMiles)
             {
-                bool crossedRequirement = updated.MaximumDistanceFromOriginNauticalMiles < options.RequiredMaximumDistanceNauticalMiles && originDistance >= options.RequiredMaximumDistanceNauticalMiles;
+                bool crossedRequirement = updated.MaximumDistanceFromOriginNauticalMiles < updated.RequiredMaximumDistanceNauticalMiles && originDistance >= updated.RequiredMaximumDistanceNauticalMiles;
                 bool checkpoint = originDistance - updated.MaximumDistanceFromOriginNauticalMiles >= 0.25;
                 updated = updated with { MaximumDistanceFromOriginNauticalMiles = originDistance, MaximumDistanceObservedUtc = sample.ObservedUtc };
                 persist |= crossedRequirement || checkpoint;
@@ -211,7 +219,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             attempt = updated;
 
             bool evidenceComplete = attempt.FirstAirborneUtc is not null && attempt.MovementObservedUtc is not null &&
-                attempt.MaximumDistanceFromOriginNauticalMiles >= options.RequiredMaximumDistanceNauticalMiles;
+                attempt.MaximumDistanceFromOriginNauticalMiles >= attempt.RequiredMaximumDistanceNauticalMiles;
             var destination = Coordinates(attempt.DestinationLocationId);
             double destinationDistance = DistanceNm(sample, destination);
             if (attempt.DeliveryProof is null && evidenceComplete && destinationDistance > options.AirportRadiusNauticalMiles)
@@ -239,7 +247,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 }
                 if (sample.ObservedUtc - stationarySince >= options.RequiredStationaryDuration)
                 {
-                    var proof = new FlightDeliveryProof(BoundId("delivery-", attempt.ShipmentId), sample.ObservedUtc, FlightPosition.From(sample),
+                    var proof = new FlightDeliveryProof(FlightAttemptIds.DeliveryEvidence(attempt.ShipmentId), sample.ObservedUtc, FlightPosition.From(sample),
                         attempt.FirstAirborneUtc!.Value, attempt.MovementObservedUtc!.Value, attempt.MaximumDistanceFromOriginNauticalMiles).EnsureValid();
                     attempt = attempt with { State = FlightAttemptState.ReadyToUnload, DeliveryProof = proof }; persist = true;
                     observationReason = "Verified arrival is persisted. Unload cargo when ready.";
@@ -255,7 +263,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 ("originDistanceNm", originDistance.ToString("F3"))).ConfigureAwait(false);
             if (recordedMaximum) await RecordAsync(FlightDiagnosticEventType.RequiredMaximumDistanceReached, sample.ObservedUtc,
                 "maximum-distance", cancellationToken, ("originDistanceNm", originDistance.ToString("F3")),
-                ("requiredNm", options.RequiredMaximumDistanceNauticalMiles.ToString("F1"))).ConfigureAwait(false);
+                ("requiredNm", attempt.RequiredMaximumDistanceNauticalMiles.ToString("F2"))).ConfigureAwait(false);
             if (recordedReadyToUnload) await RecordAsync(FlightDiagnosticEventType.ReadyToUnload, sample.ObservedUtc, "ready-unload", cancellationToken,
                 ("qualifiedSeconds", (sample.ObservedUtc - stationarySince!.Value).TotalSeconds.ToString("F1"))).ConfigureAwait(false);
             UpdateStatus();
@@ -263,7 +271,9 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         finally { gate.Release(); }
     }
 
-    public async Task LoadCargoAsync(CancellationToken cancellationToken = default)
+    public Task LoadCargoAsync(CancellationToken cancellationToken = default) => LoadCargoAsync(AircraftLoadingMode.SimulatedFrontierLoading, cancellationToken);
+
+    public async Task LoadCargoAsync(AircraftLoadingMode mode, CancellationToken cancellationToken = default)
     {
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -281,18 +291,23 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             if (shipment.State == ShipmentState.InTransit && attempt is not null) { UpdateStatus(); return; }
             if (shipment.State != ShipmentState.Reserved) throw new InvalidOperationException("The accepted shipment is not reserved for loading.");
             var identity = FlightAircraftIdentity.From(latest);
-            attempt ??= new FlightAttempt(BoundId("flight-", shipment.Id), job.Id, shipment.Id, requirement.OriginLocationId,
-                requirement.DestinationLocationId, FlightAttemptState.CargoLoaded, latest.ObservedUtc, identity, FlightPosition.From(latest)).EnsureValid();
+            var origin = Coordinates(requirement.OriginLocationId); var destination = Coordinates(requirement.DestinationLocationId);
+            var directNm = WorldTracking.DistanceMeters(origin.Latitude, origin.Longitude, destination.Latitude, destination.Longitude) / MetersPerNauticalMile;
+            attempt ??= new FlightAttempt(FlightAttemptIds.Attempt(shipment.Id), job.Id, shipment.Id, requirement.OriginLocationId,
+                requirement.DestinationLocationId, FlightAttemptState.CargoLoaded, latest.ObservedUtc, identity, FlightPosition.From(latest),
+                RequiredMaximumDistanceNauticalMiles: RequiredDistanceForRoute(directNm)).EnsureValid();
             await store.SaveAsync(attempt, cancellationToken).ConfigureAwait(false);
             await RecordAsync(FlightDiagnosticEventType.FlightAttemptCreated, latest.ObservedUtc, "created", cancellationToken,
                 ("origin", attempt.OriginLocationId), ("destination", attempt.DestinationLocationId)).ConfigureAwait(false);
             await RecordAsync(FlightDiagnosticEventType.CargoLoaded, latest.ObservedUtc, "cargo-loaded", cancellationToken,
-                ("aircraft", identity.Title + " / " + identity.Type), ("mode", "simulated; MSFS payload unchanged")).ConfigureAwait(false);
+                ("aircraft", identity.Title + " / " + identity.Type), ("mode", mode == AircraftLoadingMode.MsfsPayloadIntegration ? "MSFS payload integration; station weights verified" : "simulated; MSFS payload unchanged")).ConfigureAwait(false);
             var transition = await economy.MarkShipmentInTransitAsync(job.Id, cancellationToken).ConfigureAwait(false);
             world = transition.World;
             await RecordAsync(FlightDiagnosticEventType.ShipmentEnteredInTransit, latest.ObservedUtc, "in-transit", cancellationToken,
                 ("shipmentState", ShipmentState.InTransit.ToString())).ConfigureAwait(false);
-            stationarySince = null; observationReason = "Cargo loaded in Frontier Pilot; MSFS payload stations are unchanged."; UpdateStatus();
+            stationarySince = null; observationReason = mode == AircraftLoadingMode.MsfsPayloadIntegration
+                ? "Cargo station weights were verified in MSFS and the shipment entered InTransit."
+                : "Cargo loaded in Frontier Pilot compatibility mode; MSFS payload stations are unchanged."; UpdateStatus();
         }
         finally { gate.Release(); }
     }
@@ -347,10 +362,10 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 ExportedUtc = utcNow(),
                 Notice = "Read-only, redacted Frontier Pilot flight diagnostic. Diagnostic events are not delivery evidence.",
                 ApplicationVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "unavailable",
-                PersistenceSchemas = new { Economy = LocalEconomyStateStore.CurrentSchemaVersion, FlightAttempt = LocalFlightAttemptStore.CurrentSchemaVersion },
+                PersistenceSchemas = new { Economy = LocalEconomyStateStore.CurrentSchemaVersion, FlightAttempt = LocalFlightAttemptStore.CurrentSchemaVersion, AircraftLoading = LocalAircraftLoadingStore.CurrentSchemaVersion },
                 Thresholds = new { options.AirportRadiusNauticalMiles, options.MaximumGroundSpeedKnots,
                     StationaryDurationSeconds = options.RequiredStationaryDuration.TotalSeconds, options.MeaningfulMovementNauticalMiles,
-                    options.RequiredMaximumDistanceNauticalMiles, MaximumContinuousSampleGapSeconds = options.MaximumSampleGap.TotalSeconds },
+                    RouteSensitiveMaximumDistanceFormula = "min(10, max(0.5, directRouteDistanceNm * 0.5))", MaximumContinuousSampleGapSeconds = options.MaximumSampleGap.TotalSeconds },
                 LiveTelemetry = latest,
                 DerivedDiagnostic = Current.Diagnostic with { Timeline = [] },
                 FlightAttempt = attempt,
@@ -358,6 +373,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                     Movement = attempt.MovementObservedUtc is not null, MaximumDistanceNauticalMiles = attempt.MaximumDistanceFromOriginNauticalMiles,
                     ArrivalProof = attempt.DeliveryProof is not null },
                 DiagnosticTimeline = Current.Diagnostic.Timeline,
+                AircraftLoading = AircraftLoadingDiagnosticProvider?.Invoke(),
                 Economy = selectedJob is null ? null : new { SchemaVersion = LocalEconomyStateStore.CurrentSchemaVersion,
                     WorldId = world!.Id, world.Revision, Job = selectedJob, Requirement = requirement, Shipment = shipment,
                     RelatedPayments = payments, PlayerBalance = world.Players.SingleOrDefault(x => x.Id == selectedJob.PlayerId)?.CachedBalance }
@@ -384,7 +400,9 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 $"Qualification: {d.QualificationDuration} / required {d.RequiredQualificationDuration}",
                 $"Timeline events: {d.Timeline.Count}"
             };
-            return string.Join(Environment.NewLine, lines);
+            var summary=string.Join(Environment.NewLine, lines);
+            if(AircraftLoadingDiagnosticProvider?.Invoke() is { } loading)summary+=Environment.NewLine+"Aircraft loading: "+JsonSerializer.Serialize(loading);
+            return summary;
         }
         finally { gate.Release(); }
     }
@@ -479,13 +497,13 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         { SetStatus(new("Delivered and paid", observationReason, connected, false, false, originDistance, destinationDistance, attempt, balance, currency)); return; }
         if (attempt.DeliveryProof is not null)
         { SetStatus(new("Ready to unload", observationReason, connected, false, true, originDistance, destinationDistance, attempt, balance, currency)); return; }
-        bool evidence = attempt.FirstAirborneUtc is not null && attempt.MovementObservedUtc is not null && attempt.MaximumDistanceFromOriginNauticalMiles >= options.RequiredMaximumDistanceNauticalMiles;
+        bool evidence = attempt.FirstAirborneUtc is not null && attempt.MovementObservedUtc is not null && attempt.MaximumDistanceFromOriginNauticalMiles >= attempt.RequiredMaximumDistanceNauticalMiles;
         string stage = attempt.FirstAirborneUtc is null ? "Cargo loaded" : attempt.MovementObservedUtc is null ? "Departed" :
             evidence && destinationDistance <= options.AirportRadiusNauticalMiles ? "Arrived — stop aircraft" : "En route";
         string reason = connected ? observationReason : "SimConnect is disconnected; persisted flight evidence is retained and timers are paused.";
         if (connected && !evidence && attempt.FirstAirborneUtc is not null)
             reason = attempt.MovementObservedUtc is null ? $"Meaningful movement of {options.MeaningfulMovementNauticalMiles:F1} NM after takeoff has not yet been recorded." :
-                $"Maximum recorded distance from {PlaceName(requirement.OriginLocationId)} is {attempt.MaximumDistanceFromOriginNauticalMiles:F2} NM; {options.RequiredMaximumDistanceNauticalMiles:F0} NM is required.";
+                $"Maximum recorded distance from {PlaceName(requirement.OriginLocationId)} is {attempt.MaximumDistanceFromOriginNauticalMiles:F2} NM; {attempt.RequiredMaximumDistanceNauticalMiles:F2} NM is required.";
         SetStatus(new(stage, reason, connected, false, false, originDistance, destinationDistance, attempt, balance, currency));
     }
 
@@ -507,13 +525,6 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         try { identity = FlightAircraftIdentity.From(sample); error = ""; return true; }
         catch (InvalidDataException exception) { identity = null; error = "Aircraft identity is not stable enough for flight evidence: " + exception.Message; return false; }
     }
-    private static string BoundId(string prefix, string source)
-    {
-        var candidate = prefix + source;
-        if (candidate.Length <= 64) return candidate;
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source))).ToLowerInvariant();
-        return prefix + hash[..(64 - prefix.Length)];
-    }
     private static double DistanceNm(AircraftTelemetry sample, ApproximateCoordinates target) =>
         WorldTracking.DistanceMeters(sample.Latitude, sample.Longitude, target.Latitude, target.Longitude) / MetersPerNauticalMile;
     private void Pause(string reason) { connected = false; latest = null; stationarySince = null; lastSampleUtc = null; observationReason = reason; }
@@ -530,7 +541,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         if (stationarySince is not { } started) return;
         var type = attempt is null ? FlightDiagnosticEventType.OriginQualificationInterrupted :
             attempt.FirstAirborneUtc is not null && attempt.MovementObservedUtc is not null &&
-            attempt.MaximumDistanceFromOriginNauticalMiles >= options.RequiredMaximumDistanceNauticalMiles
+            attempt.MaximumDistanceFromOriginNauticalMiles >= attempt.RequiredMaximumDistanceNauticalMiles
                 ? FlightDiagnosticEventType.ArrivalQualificationInterrupted : (FlightDiagnosticEventType?)null;
         stationarySince = null;
         if (type is { } eventType)
@@ -594,8 +605,8 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         else if (attempt?.State == FlightAttemptState.Delivered) unavailableReason = "Delivery is already committed.";
         else if (attempt is not null && attempt.FirstAirborneUtc is null) unavailableReason = "Unloading is unavailable because airborne evidence has not been recorded.";
         else if (attempt is not null && attempt.MovementObservedUtc is null) unavailableReason = "Unloading is unavailable because post-departure movement evidence has not been recorded.";
-        else if (attempt is not null && attempt.MaximumDistanceFromOriginNauticalMiles < options.RequiredMaximumDistanceNauticalMiles)
-            unavailableReason = $"Unloading is unavailable because maximum origin distance is {attempt.MaximumDistanceFromOriginNauticalMiles:F2} NM; {options.RequiredMaximumDistanceNauticalMiles:F0} NM is required.";
+        else if (attempt is not null && attempt.MaximumDistanceFromOriginNauticalMiles < attempt.RequiredMaximumDistanceNauticalMiles)
+            unavailableReason = $"Unloading is unavailable because maximum origin distance is {attempt.MaximumDistanceFromOriginNauticalMiles:F2} NM; {attempt.RequiredMaximumDistanceNauticalMiles:F2} NM is required.";
         var events = job is null ? [] : timeline.Where(x => x.JobId == job.Id && x.ShipmentId == job.ShipmentId)
             .OrderByDescending(x => x.OccurredUtc).ThenBy(x => x.Id, StringComparer.Ordinal).ToArray();
         var freshness = connected && latest is not null ? "Fresh validated live sample" : "No valid live sample";
@@ -605,7 +616,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             job?.ShipmentId ?? "—", recordedIdentity, observedIdentity, latest is null ? "—" : latest.IsOnGround.ToString(),
             latest is null ? "—" : $"{latest.GroundSpeedKnots:F1} kt", status.OriginDistanceNauticalMiles is { } origin ? $"{origin:F2} NM" : "—",
             status.DestinationDistanceNauticalMiles is { } destination ? $"{destination:F2} NM" : "—",
-            $"{attempt?.MaximumDistanceFromOriginNauticalMiles ?? 0:F2} NM", attempt?.FirstAirborneUtc is not null,
+            $"{attempt?.MaximumDistanceFromOriginNauticalMiles ?? 0:F2} NM / required {attempt?.RequiredMaximumDistanceNauticalMiles ?? 10:F2} NM", attempt?.FirstAirborneUtc is not null,
             attempt?.MovementObservedUtc is not null, qualification, $"{options.RequiredStationaryDuration.TotalSeconds:F0} seconds",
             unavailableReason, events);
     }

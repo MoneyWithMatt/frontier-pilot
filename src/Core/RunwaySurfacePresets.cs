@@ -79,7 +79,9 @@ public static class RunwaySurfacePresets
     public static IReadOnlyList<RunwaySurfacePreset> All { get; } =
     [
         new(CompactedDirtId, "Compacted Dirt", "DIRT", SurfacePresetAvailability.Native, RunwaySurface.Dirt, true, false, Probe),
-        new(SandyDirtId, "Sandy Dirt", "SAND", SurfacePresetAvailability.Native, RunwaySurface.Dirt, true, false, Probe),
+        new(SandyDirtId, "Sandy Dirt", "DIRT", SurfacePresetAvailability.TemporaryFallback, RunwaySurface.Dirt, true, false, Probe,
+            "Uses the live-proven visible native DIRT surface because native SAND compiled but did not render. Pale tint metadata is retained for a future material-capable renderer.",
+            new SurfaceColourAdjustment(1.15, 1.08, 0.82)),
         new(GravelId, "Gravel", "GRAVEL", SurfacePresetAvailability.Native, RunwaySurface.Dirt, true, false, Probe),
         new(DryGrassId, "Dry Grass", "GRASS", SurfacePresetAvailability.TemporaryFallback, RunwaySurface.Dirt, true, false, Probe,
             "Uses native GRASS until a reliably referenced dry-colour material is established."),

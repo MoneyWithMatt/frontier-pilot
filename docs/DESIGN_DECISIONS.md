@@ -156,3 +156,12 @@
 - Flight Attempt V0 thresholds remain fixed. Dynamic economic-site coordinates extend its route resolver without changing how a flight qualifies.
 - A linked airport cannot be administratively deleted until a future explicit abandonment/demolition design exists. Missing airport definitions never erase their economic site.
 - Flight Attempt V0 thresholds, state transitions, identity policy and transaction entry points remain fixed pending live MSFS verification.
+
+## Aircraft loading authority and continuity — 2026-09-15
+
+- Economy shipment plus committed manifest is authoritative for Frontier cargo; simulator payload is reconciled external state and never creates delivery evidence.
+- A simulator write and Economy transaction are bridged with durable intent, read-back verification, and forward-only recovery rather than pretending they are atomic.
+- Live fuel is authoritative only during one uninterrupted validated session. After disconnect, the saved snapshot freezes until the player explicitly restores it or keeps simulator fuel.
+- Structural station/tank limits are hard when authoritative. Maximum gross and CG envelope are advisory warnings. Unknown limits are reported and never derived from defaults.
+- TITLE/ATC MODEL is a conservative compatibility identity, not a unique airframe. Automatic cargo/fuel restoration is forbidden.
+- Payload/fuel integration failure may use the existing simulated lifecycle only after an explicit player choice.

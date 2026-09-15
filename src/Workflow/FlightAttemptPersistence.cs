@@ -19,7 +19,7 @@ public interface IFlightAttemptStore
 /// <summary>Strict whole-document persistence using flushed same-directory replacement. Invalid files are preserved.</summary>
 public sealed class LocalFlightAttemptStore : IFlightAttemptStore
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
     private const int MaximumEventsPerShipment = 256;
     private sealed record Document(int SchemaVersion, IReadOnlyList<FlightAttempt> Attempts,
         IReadOnlyList<FlightDiagnosticEvent>? DiagnosticTimeline = null);
@@ -116,16 +116,18 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
             document = await JsonSerializer.DeserializeAsync<Document>(stream, Json, cancellationToken).ConfigureAwait(false) ?? throw new IOException("Saved flight-attempt document is empty. File preserved.");
         }
         catch (JsonException error) { throw new IOException("Saved flight-attempt document is corrupt or unsupported. File preserved.", error); }
-        if (document.SchemaVersion is not (1 or CurrentSchemaVersion) || document.Attempts is null) throw new IOException("Saved flight-attempt document uses an unsupported schema. File preserved.");
+        if (document.SchemaVersion is < 1 or > CurrentSchemaVersion || document.Attempts is null) throw new IOException("Saved flight-attempt document uses an unsupported schema. File preserved.");
         try
         {
-            var attempts = document.Attempts.Select(x => x.EnsureValid()).ToArray();
+            var attempts = document.Attempts.Select(x => (document.SchemaVersion < 3
+                ? x with { RequiredMaximumDistanceNauticalMiles = 10 }
+                : x).EnsureValid()).ToArray();
             if (attempts.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != attempts.Length) throw new InvalidDataException("Duplicate flight-attempt ID.");
             if (attempts.Select(x => x.ShipmentId).Distinct(StringComparer.Ordinal).Count() != attempts.Length) throw new InvalidDataException("Duplicate flight-attempt shipment.");
             var timeline = (document.DiagnosticTimeline ?? []).Select(x => x.EnsureValid()).ToArray();
             if (timeline.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != timeline.Length) throw new InvalidDataException("Duplicate flight diagnostic event ID.");
             var migrated = new Document(CurrentSchemaVersion, attempts, timeline);
-            if (document.SchemaVersion == 1) await WriteUnlockedAsync(attempts, timeline, cancellationToken).ConfigureAwait(false);
+            if (document.SchemaVersion < CurrentSchemaVersion) await WriteUnlockedAsync(attempts, timeline, cancellationToken).ConfigureAwait(false);
             return migrated;
         }
         catch (Exception error) when (error is InvalidDataException or ArgumentException or NullReferenceException)
@@ -165,6 +167,7 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
     {
         if (old.JobId != next.JobId || old.ShipmentId != next.ShipmentId || old.OriginLocationId != next.OriginLocationId ||
             old.DestinationLocationId != next.DestinationLocationId || old.LoadedUtc != next.LoadedUtc || old.Aircraft != next.Aircraft ||
+            old.RequiredMaximumDistanceNauticalMiles != next.RequiredMaximumDistanceNauticalMiles ||
             old.LoadedPosition != next.LoadedPosition || next.State < old.State || next.MaximumDistanceFromOriginNauticalMiles < old.MaximumDistanceFromOriginNauticalMiles ||
             old.FirstAirborneUtc is not null && old.FirstAirborneUtc != next.FirstAirborneUtc ||
             old.MovementObservedUtc is not null && old.MovementObservedUtc != next.MovementObservedUtc ||

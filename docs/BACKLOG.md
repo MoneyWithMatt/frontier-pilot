@@ -1,5 +1,12 @@
 # Backlog
 
+## Aircraft Loading V0 live acceptance
+
+- Run the Piper PA28 payload/fuel procedure in [aircraft-payload-loading-v0.md](aircraft-payload-loading-v0.md); record station/tank enumeration, write/read-back, restart reconciliation and unload behavior.
+- Replace normalized model identity with a stable player-owned airframe ID before permanent multi-aircraft cargo/fuel continuity.
+- Investigate modern `[FUEL_SYSTEM]` tank enumeration and authoritative station geometry/limits for default and third-party aircraft; retain fail-closed behavior until proven.
+- Visually rebuild Sandy Dirt and confirm the DIRT fallback is visible; its pale colour hint is metadata only pending a proven SDK control.
+
 ## After Prospecting Camp V0 live acceptance
 
 - Live-test founding from the guarded avatar at a saved Base Lodge site, then accept both camp-origin and camp-destination Flight Attempt routes.

@@ -37,7 +37,7 @@ public sealed class SceneryMaterialsTests : TemporaryDirectoryTest
 
     [Theory]
     [InlineData(RunwaySurfacePresets.CompactedDirtId, "DIRT")]
-    [InlineData(RunwaySurfacePresets.SandyDirtId, "SAND")]
+    [InlineData(RunwaySurfacePresets.SandyDirtId, "DIRT")]
     [InlineData(RunwaySurfacePresets.GravelId, "GRAVEL")]
     [InlineData(RunwaySurfacePresets.DryGrassId, "GRASS")]
     [InlineData(RunwaySurfacePresets.GreenGrassId, "SHORT_GRASS")]

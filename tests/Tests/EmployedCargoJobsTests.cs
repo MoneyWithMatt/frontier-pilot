@@ -108,7 +108,8 @@ public sealed class EmployedCargoDesktopTests
         Assert.Contains(document.Descendants(presentation + "TabItem"), x => x.Attribute("Header")?.Value == "Jobs");
         var buttons = document.Descendants(presentation + "Button").Select(x => x.Attribute("Content")?.Value ?? "").ToArray();
         Assert.Contains("Accept selected job", buttons);
-        Assert.Contains("Load cargo", buttons); Assert.Contains("Unload cargo", buttons);
+        Assert.Contains("Prepare aircraft…", buttons); Assert.Contains("Unload cargo…", buttons);
+        Assert.Contains(document.Descendants(presentation + "TabItem"), x => x.Attribute("Header")?.Value == "Aircraft Loading");
         Assert.Contains("Copy diagnostic summary", buttons); Assert.Contains("Export support bundle…", buttons);
         Assert.Contains(document.Descendants(presentation + "TextBlock"), x => x.Attribute("Text")?.Value == "Recently completed");
         Assert.DoesNotContain(buttons, text => text.Contains("deliver", StringComparison.OrdinalIgnoreCase) || text.Contains("payment", StringComparison.OrdinalIgnoreCase));

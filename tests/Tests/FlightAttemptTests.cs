@@ -314,7 +314,10 @@ public sealed class FlightAttemptTrackerTests
         var options = new FlightAttemptTrackerOptions();
         Assert.Equal(1.5, options.AirportRadiusNauticalMiles); Assert.Equal(5, options.MaximumGroundSpeedKnots);
         Assert.Equal(TimeSpan.FromSeconds(10), options.RequiredStationaryDuration); Assert.Equal(2, options.MeaningfulMovementNauticalMiles);
-        Assert.Equal(10, options.RequiredMaximumDistanceNauticalMiles); Assert.Equal(TimeSpan.FromSeconds(2), options.MaximumSampleGap);
+        Assert.Equal(TimeSpan.FromSeconds(2), options.MaximumSampleGap);
+        Assert.Equal(3.27, FlightAttemptTracker.RequiredDistanceForRoute(6.54), 6);
+        Assert.Equal(10, FlightAttemptTracker.RequiredDistanceForRoute(25));
+        Assert.Equal(.5, FlightAttemptTracker.RequiredDistanceForRoute(.2));
     }
 
     [Fact]
@@ -404,7 +407,18 @@ public sealed class FlightAttemptPersistenceTests : TemporaryDirectoryTest
         document.Remove("DiagnosticTimeline"); await File.WriteAllTextAsync(FilePath, document.ToJsonString());
         var original = await new LocalFlightAttemptStore(FilePath).LoadAsync();
         Assert.Contains(attempt, original); Assert.Contains(completed, original); Assert.Empty(await new LocalFlightAttemptStore(FilePath).LoadDiagnosticTimelineAsync());
-        Assert.Equal(2, JsonNode.Parse(await File.ReadAllTextAsync(FilePath))!["SchemaVersion"]!.GetValue<int>());
+        Assert.Equal(3, JsonNode.Parse(await File.ReadAllTextAsync(FilePath))!["SchemaVersion"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task SchemaTwoAttemptKeepsItsHistoricalTenNauticalMileRequirement()
+    {
+        var loaded=DateTimeOffset.Parse("2026-09-10T08:00:00Z");
+        var attempt=new FlightAttempt("flight-shipment-legacy","job-legacy","shipment-legacy","origin-test","destination-test",
+            FlightAttemptState.CargoLoaded,loaded,new("Cessna 208B","C208B"),new(loaded,-22,17,1000,90,0,true),RequiredMaximumDistanceNauticalMiles:3.27);
+        var store=new LocalFlightAttemptStore(FilePath);await store.SaveAsync(attempt);
+        var document=JsonNode.Parse(await File.ReadAllTextAsync(FilePath))!.AsObject();document["SchemaVersion"]=2;await File.WriteAllTextAsync(FilePath,document.ToJsonString());
+        var migrated=Assert.Single(await new LocalFlightAttemptStore(FilePath).LoadAsync());Assert.Equal(10,migrated.RequiredMaximumDistanceNauticalMiles);
     }
 
     [Fact]

@@ -40,6 +40,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public ActionCommand ApplyObjectCommand { get; }
     public TrackingViewModel Tracking { get; }
     public EmployedCargoJobsViewModel Jobs { get; }
+    public AircraftLoadingViewModel AircraftLoading { get; }
     public ProspectingOperationsViewModel Operations { get; }
     public double LayoutRunwayHeading => Survey?.TrueHeadingDegrees ?? 0;
     public double LayoutRunwayLength => double.TryParse(length,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 200;
@@ -73,12 +74,17 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         IFlightAttemptStore attemptStore = services.IsDryRun ? new MemoryFlightAttemptStore() : new LocalFlightAttemptStore();
         flightAttemptTracker ??= new FlightAttemptTracker(economyStore, attemptStore);
         Jobs = new(employedCargoJobs, flightAttemptTracker);
+        IAircraftLoadingStore loadingStore = services.IsDryRun ? new MemoryAircraftLoadingStore() : new LocalAircraftLoadingStore();
+        var loadingCoordinator = new AircraftLoadingCoordinator(loadingStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(),
+            flightAttemptTracker, () => this.sdkRoot, () => Tracking.World, () => Jobs.ActiveJob);
+        AircraftLoading = new(loadingCoordinator);
+        if (flightAttemptTracker is FlightAttemptTracker concreteFlightTracker) concreteFlightTracker.AircraftLoadingDiagnosticProvider = loadingCoordinator.CreateDiagnosticSnapshot;
         if (services is BuilderServices concrete) concrete.SetEconomyDependencyStore(economyStore);
         prospectingOperations ??= services is IAirportManagement management
             ? new ProspectingOperationsService(economyStore, management, new GuardedAvatarSitePresence(() => Tracking.World))
             : new UnavailableProspectingOperations();
         Operations = new(prospectingOperations);
-        Tracking.TelemetryChanged += sample => _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft);
+        Tracking.TelemetryChanged += sample => { _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft); _ = AircraftLoading.ObserveAsync(sample); };
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading));
         Layout.Edited += (_,_)=>Invalidate();
         AddParkingCommand = new(()=>AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading)),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Stands.Count<8);
