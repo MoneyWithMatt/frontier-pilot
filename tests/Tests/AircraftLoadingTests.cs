@@ -90,7 +90,7 @@ public sealed class AircraftLoadingTests
     {
         var h=Harness();h.tracker.SetReady(false);var vm=new AircraftLoadingViewModel(h.coordinator);
         await vm.InitializeAsync();await h.coordinator.RefreshAsync();vm.PayloadStations[0].AssignedKilogramsText="120";
-        Assert.False(vm.ApplyCargoCommand.CanExecute(null));h.tracker.SetReady(true);
+        Assert.False(vm.ApplyCargoCommand.CanExecute(null));Assert.Contains("WAITING",vm.AllocationState);h.tracker.SetReady(true);
         Assert.True(vm.ApplyCargoCommand.CanExecute(null));Assert.Equal("120",vm.PayloadStations[0].AssignedKilogramsText);
     }
 
@@ -103,6 +103,13 @@ public sealed class AircraftLoadingTests
         Assert.Equal(85.25m,h.sim.Value.PayloadStations[0].CurrentWeightKilograms);
         Assert.Equal(64.75m,h.sim.Value.PayloadStations[1].CurrentWeightKilograms);
         vm.ApplyCargoCommand.Execute(null);Assert.Equal(1,h.sim.PayloadWrites);Assert.Equal(1,h.tracker.Loads);
+    }
+
+    [Fact] public async Task Reading_loading_requests_tracking_reconnection()
+    {
+        var h=Harness();int requests=0;var vm=new AircraftLoadingViewModel(h.coordinator,()=>requests++);
+        await vm.InitializeAsync();vm.RefreshCommand.Execute(null);
+        Assert.Equal(1,requests);Assert.NotEmpty(vm.PayloadStations);
     }
 
     private static (AircraftLoadingCoordinator coordinator,MemoryAircraftLoadingStore store,FakeSimulator sim,FakeTracker tracker) Harness(AircraftLoadingSnapshot? snapshot=null,TrackingWorldState? world=null)

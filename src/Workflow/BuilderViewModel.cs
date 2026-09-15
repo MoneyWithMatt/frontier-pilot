@@ -77,7 +77,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         IAircraftLoadingStore loadingStore = services.IsDryRun ? new MemoryAircraftLoadingStore() : new LocalAircraftLoadingStore();
         var loadingCoordinator = new AircraftLoadingCoordinator(loadingStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(),
             flightAttemptTracker, () => this.sdkRoot, () => Tracking.World, () => Jobs.ActiveJob);
-        AircraftLoading = new(loadingCoordinator);
+        AircraftLoading = new(loadingCoordinator, () => { if (Tracking.ConnectCommand.CanExecute(null)) _ = Tracking.ConnectAsync(); });
         if (flightAttemptTracker is FlightAttemptTracker concreteFlightTracker) concreteFlightTracker.AircraftLoadingDiagnosticProvider = loadingCoordinator.CreateDiagnosticSnapshot;
         if (services is BuilderServices concrete) concrete.SetEconomyDependencyStore(economyStore);
         prospectingOperations ??= services is IAirportManagement management
