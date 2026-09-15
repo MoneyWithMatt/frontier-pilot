@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using FrontierAirportBuilder.Core;
 
@@ -7,21 +8,32 @@ namespace FrontierAirportBuilder.Workflow;
 
 public sealed class PayloadStationViewModel : INotifyPropertyChanged
 {
-    private decimal assigned;
+    private decimal assigned; private string assignedText="0";
+    public PayloadStationViewModel()=>ResetCommand=new(()=>AssignedKilograms=0);
     public int Index { get; init; } public string Name { get; init; }=""; public decimal CurrentKilograms { get; init; }
     public decimal AssignmentMaximumKilograms { get; init; }
     public decimal? LimitKilograms { get; init; } public string Limit => LimitKilograms is { } x?$"{x:0.0} kg":"Unavailable from aircraft";
-    public decimal AssignedKilograms {get=>assigned;set{if(value==assigned)return;assigned=value;PropertyChanged?.Invoke(this,new(nameof(AssignedKilograms)));PropertyChanged?.Invoke(this,new(nameof(PlannedKilograms)));PropertyChanged?.Invoke(this,new(nameof(PlannedPounds)));}}
+    public ActionCommand ResetCommand{get;}
+    public decimal AssignedKilograms {get=>assigned;set{if(value==assigned&&assignedText==Format(value))return;assigned=value;assignedText=Format(value);Changed(nameof(AssignedKilograms));Changed(nameof(AssignedKilogramsText));Changed(nameof(PlannedKilograms));Changed(nameof(PlannedPounds));}}
+    public string AssignedKilogramsText {get=>assignedText;set{if(value==assignedText)return;assignedText=value;Changed();if(TryNumber(value,out var number)&&number!=assigned){assigned=number;Changed(nameof(AssignedKilograms));Changed(nameof(PlannedKilograms));Changed(nameof(PlannedPounds));}}}
     public decimal PlannedKilograms=>CurrentKilograms+AssignedKilograms;
     public decimal CurrentPounds=>LoadingUnits.KilogramsToPounds(CurrentKilograms);public decimal PlannedPounds=>LoadingUnits.KilogramsToPounds(PlannedKilograms);
     public event PropertyChangedEventHandler? PropertyChanged;
+    private void Changed([CallerMemberName]string name="")=>PropertyChanged?.Invoke(this,new(name));
+    internal static bool TryNumber(string value,out decimal number)=>decimal.TryParse(value,NumberStyles.Number,CultureInfo.CurrentCulture,out number)||decimal.TryParse(value,NumberStyles.Number,CultureInfo.InvariantCulture,out number);
+    internal static string Format(decimal value)=>value.ToString("0.##",CultureInfo.CurrentCulture);
 }
 public sealed class FuelTankViewModel : INotifyPropertyChanged
 {
-    private decimal planned;
+    private decimal planned;private string plannedText="0";
+    public FuelTankViewModel()=>ResetCommand=new(()=>PlannedGallons=0);
     public string Id {get;init;}="";public string Name {get;init;}="";public decimal CurrentGallons{get;init;}public decimal CapacityGallons{get;init;}
-    public decimal PlannedGallons{get=>planned;set{if(value==planned)return;planned=value;PropertyChanged?.Invoke(this,new(nameof(PlannedGallons)));}}
+    public ActionCommand ResetCommand{get;}
+    public decimal PlannedGallons{get=>planned;set{if(value==planned&&plannedText==PayloadStationViewModel.Format(value))return;planned=value;plannedText=PayloadStationViewModel.Format(value);Changed(nameof(PlannedGallons));Changed(nameof(PlannedGallonsText));}}
+    public string PlannedGallonsText{get=>plannedText;set{if(value==plannedText)return;plannedText=value;Changed();if(PayloadStationViewModel.TryNumber(value,out var number)&&number!=planned){planned=number;Changed(nameof(PlannedGallons));}}}
+    public decimal CurrentLitres=>LoadingUnits.GallonsToLitres(CurrentGallons);public decimal PlannedLitres=>LoadingUnits.GallonsToLitres(PlannedGallons);
     public event PropertyChangedEventHandler? PropertyChanged;
+    private void Changed([CallerMemberName]string name="")=>PropertyChanged?.Invoke(this,new(name));
 }
 
 public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
@@ -55,18 +67,26 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     public string Warnings{get{var warnings=service.Current.Warnings.ToList();var s=service.Current.Live;if(s?.FuelWeightKilogramsPerGallon is { } d&&s.Weights.CurrentGrossWeightKilograms is { } gross&&s.Weights.MaximumGrossWeightKilograms is { } maximum){var planned=gross+AssignedCargo+(FuelTanks.Sum(x=>x.PlannedGallons)-s.FuelTanks.Sum(x=>x.QuantityGallons))*d;if(planned>maximum&&!warnings.Any(x=>x.Contains("maximum gross")))warnings.Add("Planned weight is above the reported maximum gross weight.");}return string.Join("\n",warnings);}}public decimal AssignedCargo=>PayloadStations.Sum(x=>x.AssignedKilograms);public decimal RemainingCargo=>ActiveCargo-AssignedCargo;
     public double AllocationProgressMaximum=>Math.Max(1,(double)ActiveCargo);public double AllocationProgressValue=>Math.Clamp((double)AssignedCargo,0,AllocationProgressMaximum);
     public string AllocationState=>AllocationValid?"READY TO APPLY":RemainingCargo>0?$"ASSIGN {RemainingCargo:0.##} KG MORE":$"REMOVE {-RemainingCargo:0.##} KG";
+    public string FuelPlanState=>FuelTanks.Count==0?"No fuel tanks reported.":$"Live {FuelTanks.Sum(x=>x.CurrentGallons):0.##} gal  →  Planned {FuelTanks.Sum(x=>x.PlannedGallons):0.##} gal";
+    public double CurrentCgMarkerTop=>CgTop(service.Current.Live?.Weights.CurrentCgPercent);
+    public double PlannedCgMarkerTop=>CgTop(service.Current.Plan?.PlannedCgPercent);
+    public double ForwardCgTop=>CgTop(service.Current.Live?.Weights.ForwardCgLimitPercent);
+    public double AftCgTop=>CgTop(service.Current.Live?.Weights.AftCgLimitPercent);
+    public string CurrentCgLabel=>service.Current.Live?.Weights.CurrentCgPercent is { } value?$"Current {value:0.00}%":"Current CG unavailable";
+    public string PlannedCgLabel=>service.Current.Plan?.PlannedCgPercent is { } value?$"Planned {value:0.00}%":"Planned CG unavailable";
     public bool CanUnload=>service.Current.CanUnload;
     private decimal ActiveCargo=>service.ActiveCargoKilograms;
     public bool AllocationValid=>ActiveCargo>0&&Math.Abs(AssignedCargo-ActiveCargo)<=.001m;
     private void Apply(AircraftLoadingStatus value)
-    {if(value.Live is { } live){var allocations=PayloadStations.ToDictionary(x=>x.Index,x=>x.AssignedKilograms);PayloadStations.Clear();foreach(var p in live.PayloadStations){var maximum=Math.Max(0,Math.Min(ActiveCargo,p.AuthoritativeMaximumKilograms is { } limit?limit-p.CurrentWeightKilograms:ActiveCargo));var row=new PayloadStationViewModel{Index=p.Index,Name=p.Name,CurrentKilograms=p.CurrentWeightKilograms,LimitKilograms=p.AuthoritativeMaximumKilograms,AssignmentMaximumKilograms=maximum,AssignedKilograms=Math.Min(maximum,allocations.GetValueOrDefault(p.Index))};row.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(PayloadStationViewModel.AssignedKilograms)){Changed(nameof(AssignedCargo));Changed(nameof(RemainingCargo));Changed(nameof(AllocationValid));Changed(nameof(AllocationProgressValue));Changed(nameof(AllocationState));Changed(nameof(WeightAndBalance));Changed(nameof(Warnings));ApplyCargoCommand.Refresh();}};PayloadStations.Add(row);}FuelTanks.Clear();foreach(var f in live.FuelTanks){var row=new FuelTankViewModel{Id=f.Id,Name=f.Name,CurrentGallons=f.QuantityGallons,CapacityGallons=f.CapacityGallons,PlannedGallons=f.QuantityGallons};row.PropertyChanged+=(_,_)=>{Changed(nameof(WeightAndBalance));Changed(nameof(Warnings));};FuelTanks.Add(row);}}
+    {if(value.Live is { } live){var allocations=PayloadStations.ToDictionary(x=>x.Index,x=>x.AssignedKilograms);PayloadStations.Clear();foreach(var p in live.PayloadStations){var maximum=Math.Max(0,Math.Min(ActiveCargo,p.AuthoritativeMaximumKilograms is { } limit?limit-p.CurrentWeightKilograms:ActiveCargo));var row=new PayloadStationViewModel{Index=p.Index,Name=p.Name,CurrentKilograms=p.CurrentWeightKilograms,LimitKilograms=p.AuthoritativeMaximumKilograms,AssignmentMaximumKilograms=maximum,AssignedKilograms=Math.Min(maximum,allocations.GetValueOrDefault(p.Index))};row.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(PayloadStationViewModel.AssignedKilograms)){Changed(nameof(AssignedCargo));Changed(nameof(RemainingCargo));Changed(nameof(AllocationValid));Changed(nameof(AllocationProgressValue));Changed(nameof(AllocationState));Changed(nameof(WeightAndBalance));Changed(nameof(Warnings));Changed(nameof(PlannedCgMarkerTop));Changed(nameof(PlannedCgLabel));ApplyCargoCommand.Refresh();}};PayloadStations.Add(row);}FuelTanks.Clear();foreach(var f in live.FuelTanks){var row=new FuelTankViewModel{Id=f.Id,Name=f.Name,CurrentGallons=f.QuantityGallons,CapacityGallons=f.CapacityGallons,PlannedGallons=f.QuantityGallons};row.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(FuelTankViewModel.PlannedGallons)){Changed(nameof(WeightAndBalance));Changed(nameof(Warnings));Changed(nameof(FuelPlanState));}};FuelTanks.Add(row);}}
      NotifyAll();}
     private void UpdatePlan(){try{service.CreatePlan(PayloadStations.Select(x=>new CargoStationAllocation(x.Index,x.AssignedKilograms)).ToArray());Error="";}catch(Exception e){Error=e.Message;}NotifyAll();}
     private async Task ApplyPlannedCargoAsync(){if(service.Current.Manifest?.State is not (LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied))UpdatePlan();if(Error=="")await Run(service.ApplyCargoAsync,"MSFS payload verified and shipment committed InTransit.");}
     private async Task Run(Func<CancellationToken,Task> action,string success){if(busy)return;busy=true;Error="";Refresh();try{await action(default);Status=success;}catch(Exception e){Error=e.Message;Status="Loading action was refused; persistent economy and simulator state were not guessed.";}finally{busy=false;Refresh();}}
     private static string Mass(decimal? x)=>x is null?"Unavailable":$"{x:0.0} kg / {LoadingUnits.KilogramsToPounds(x.Value):0.0} lb";private static string Pct(double? x)=>x is null?"Unavailable":$"{x:0.00}%";
     private static string FuelMass(AircraftLoadingSnapshot s)=>s.FuelWeightKilogramsPerGallon is { } d?$"{s.FuelTanks.Sum(x=>x.QuantityGallons)*d:0.0} kg":"Unavailable (fuel density not reported)";
-    private void NotifyAll(){foreach(var n in new[]{nameof(Shipment),nameof(Aircraft),nameof(CargoReason),nameof(FuelReason),nameof(Reconciliation),nameof(EngineState),nameof(WeightAndBalance),nameof(Warnings),nameof(AssignedCargo),nameof(RemainingCargo),nameof(AllocationValid),nameof(AllocationProgressMaximum),nameof(AllocationProgressValue),nameof(AllocationState),nameof(CargoMassKilograms),nameof(CanUnload)})Changed(n);Refresh();}
+    private static double CgTop(double? percent)=>percent is { } value?25+Math.Clamp(value,0,50)/50*210:-100;
+    private void NotifyAll(){foreach(var n in new[]{nameof(Shipment),nameof(Aircraft),nameof(CargoReason),nameof(FuelReason),nameof(Reconciliation),nameof(EngineState),nameof(WeightAndBalance),nameof(Warnings),nameof(AssignedCargo),nameof(RemainingCargo),nameof(AllocationValid),nameof(AllocationProgressMaximum),nameof(AllocationProgressValue),nameof(AllocationState),nameof(FuelPlanState),nameof(CurrentCgMarkerTop),nameof(PlannedCgMarkerTop),nameof(ForwardCgTop),nameof(AftCgTop),nameof(CurrentCgLabel),nameof(PlannedCgLabel),nameof(CargoMassKilograms),nameof(CanUnload)})Changed(n);Refresh();}
     private void Refresh(){foreach(var c in new[]{RefreshCommand,ClearAllocationCommand,ApplyCargoCommand,SimulatedCargoCommand,ApplyFuelCommand,KeepFuelCommand,RestoreFuelCommand,RestoreCargoCommand,UnloadCommand})c.Refresh();Changed(nameof(Status));Changed(nameof(Error));}
     private void Changed([CallerMemberName]string? n=null)=>PropertyChanged?.Invoke(this,new(n));
 }

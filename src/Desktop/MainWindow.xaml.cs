@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Navigation;
 using FrontierAirportBuilder.Workflow;
 namespace FrontierAirportBuilder.Desktop;
@@ -33,6 +34,10 @@ public partial class MainWindow : Window
             _=model.Tracking.ConnectAsync();
     }
     private void OpenAircraftLoading(object sender,RoutedEventArgs e)=>MainTabs.SelectedIndex=2;
+    private void SelectAllNumericText(object sender,KeyboardFocusChangedEventArgs e)
+    { if(sender is TextBox textBox)textBox.SelectAll(); }
+    private void FocusNumericText(object sender,MouseButtonEventArgs e)
+    { if(sender is TextBox textBox&&!textBox.IsKeyboardFocusWithin){e.Handled=true;textBox.Focus();} }
     private async void ConfirmSimulatedUnload(object sender,RoutedEventArgs e)
     {
         const string warning="Use simulated compatibility unload only when verified MSFS payload removal is unsupported or has failed. This leaves MSFS payload unchanged and commits the existing verified economic delivery. Continue?";
