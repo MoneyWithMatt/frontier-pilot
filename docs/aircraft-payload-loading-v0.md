@@ -51,3 +51,8 @@ Sandy Dirt now emits native `DIRT`, because live testing showed native `SAND` co
 10. Rebuild a disposable airport after selecting Sandy Dirt and confirm the runway is visibly DIRT-coloured. Preserve existing airports unless intentionally rebuilt.
 
 Do not claim third-party aircraft, modern custom fuel-system enumeration, planned CG, or the live SimConnect write/read-back path as accepted until these checks pass.
+
+## Live freshness correction
+
+Every mutating action obtains a fresh simulator read immediately before validating access and writing. Cargo Apply compares this read against the plan baseline; if another source changed payload after planning, it refuses and requires a new review rather than applying an outdated target.
+

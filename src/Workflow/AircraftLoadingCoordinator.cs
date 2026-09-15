@@ -145,12 +145,15 @@ public sealed class AircraftLoadingCoordinator
     {
         await gate.WaitAsync(token);try
         {
-            var live=Current.Live??throw new InvalidOperationException("Read live aircraft loading data first.");
+            var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();
             if(Access(live,false)!="Ready."||!flight.Current.CanLoadCargo)throw new InvalidOperationException(Access(live,false)=="Ready."?flight.Current.Reason:Access(live,false));
             var job=activeJob()!; var attemptId=FlightAttemptIds.Attempt(job.ShipmentId!);
             var id="manifest-"+attemptId; var existing=(await store.LoadManifestsAsync(token)).SingleOrDefault(x=>x.Id==id);
             var plan=Current.Plan;
             if(existing is null&&plan is null)throw new InvalidOperationException("Allocate the full job cargo before applying it.");
+            if(existing is null&&plan!.Stations.Any(x=>live.PayloadStations.All(s=>s.Index!=x.StationIndex)||
+                Math.Abs(live.PayloadStations.Single(s=>s.Index==x.StationIndex).CurrentWeightKilograms-x.BaselineKilograms)>options.PayloadToleranceKilograms))
+                throw new InvalidOperationException("Simulator payload changed after the plan was prepared. Read the aircraft again and review a new plan.");
             var manifest=existing??new CargoLoadManifest(id,job.JobId,job.ShipmentId!,attemptId,LoadingIdentityExtensions.FromSnapshot(live),
                 AircraftLoadingMode.MsfsPayloadIntegration,plan!.Stations,plan.CargoKilograms,LoadManifestState.PendingApplication,utcNow(),
                 VerificationToleranceKilograms:options.PayloadToleranceKilograms,LastValidPosition:live.Position);
@@ -171,7 +174,7 @@ public sealed class AircraftLoadingCoordinator
     {
         await gate.WaitAsync(token);try
         {
-            var live=Current.Live??throw new InvalidOperationException("Live loading conditions must still be checked for simulated loading.");
+            var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();
             if(Access(live,false)!="Ready."||!flight.Current.CanLoadCargo)throw new InvalidOperationException(Access(live,false)=="Ready."?flight.Current.Reason:Access(live,false));
             var job=activeJob()!;var attemptId=FlightAttemptIds.Attempt(job.ShipmentId!);var id="manifest-"+attemptId;
             var manifest=(await store.LoadManifestsAsync(token)).SingleOrDefault(x=>x.Id==id)??new CargoLoadManifest(id,job.JobId,job.ShipmentId!,attemptId,
@@ -190,7 +193,7 @@ public sealed class AircraftLoadingCoordinator
             if(!flight.Current.CanUnloadCargo)throw new InvalidOperationException(flight.Current.Reason);
             if(manifest.Mode==AircraftLoadingMode.MsfsPayloadIntegration && !simulatedCompatibilityConfirmed && manifest.State!=LoadManifestState.SimulatorUnloaded)
             {
-                var live=Current.Live??throw new InvalidOperationException("Read live station weights before unloading.");if(Access(live,false)!="Ready.")throw new InvalidOperationException(Access(live,false));
+                var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();if(Access(live,false)!="Ready.")throw new InvalidOperationException(Access(live,false));
                 var changed=manifest.State==LoadManifestState.PendingUnload?manifest.Stations.ToArray():manifest.Stations.Select(x=>{var now=live.PayloadStations.Single(s=>s.Index==x.StationIndex).CurrentWeightKilograms;var target=now-x.FrontierCargoKilograms;if(target<0)throw new InvalidOperationException($"Station {x.StationIndex} no longer contains enough weight to remove Frontier cargo.");return x with{UnloadTargetKilograms=target};}).ToArray();
                 if(manifest.State!=LoadManifestState.PendingUnload){manifest=manifest with{Stations=changed,State=LoadManifestState.PendingUnload,UnloadStartedUtc=utcNow(),VerificationResult="Unload intent persisted before MSFS write."};await store.SaveManifestAsync(manifest,token);}
                 var targets=changed.ToDictionary(x=>x.StationIndex,x=>x.UnloadTargetKilograms!.Value);
@@ -205,7 +208,7 @@ public sealed class AircraftLoadingCoordinator
 
     public async Task ApplyFuelAsync(IReadOnlyDictionary<string,decimal> planned,CancellationToken token=default)
     {
-        await gate.WaitAsync(token);try{var live=Current.Live??throw new InvalidOperationException("Read live fuel data first.");var reason=Access(live,true);if(reason!="Ready.")throw new InvalidOperationException(reason);
+        await gate.WaitAsync(token);try{var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var reason=Access(live,true);if(reason!="Ready.")throw new InvalidOperationException(reason);
             foreach(var pair in planned){var tank=live.FuelTanks.SingleOrDefault(x=>x.Id==pair.Key)??throw new InvalidOperationException("Fuel plan contains an unavailable tank.");if(pair.Value<0||pair.Value>tank.CapacityGallons)throw new InvalidOperationException($"Fuel for {tank.Name} must remain within its reported capacity.");}
             var read=await simulator.WriteFuelAsync(sdkRoot(),planned,token);foreach(var pair in planned)if(Math.Abs(read.FuelTanks.Single(x=>x.Id==pair.Key).QuantityGallons-pair.Value)>options.FuelToleranceGallons)throw new IOException("MSFS fuel read-back did not match the requested quantities.");
             var saved=FuelState(read,FuelReconciliationState.ContinuousLive,"Free prototype fuel applied and verified through read-back.");await store.SaveFuelStateAsync(saved,token);Current=Current with{Live=read,SavedFuel=saved,FuelDecisionRequired=false,FuelActionReason="Fuel applied and verified. Prototype fuel has no financial cost."};Notify();
@@ -213,12 +216,12 @@ public sealed class AircraftLoadingCoordinator
     }
 
     public async Task KeepSimulatorFuelAsync(CancellationToken token=default)
-    { var live=Current.Live??throw new InvalidOperationException("No live fuel state is available.");var saved=FuelState(live,FuelReconciliationState.KeptSimulatorFuel,"Player explicitly kept simulator fuel after reconciliation.");await store.SaveFuelStateAsync(saved,token);lastFuelCheckpoint=utcNow();Current=Current with{SavedFuel=saved,FuelDecisionRequired=false};Notify(); }
+    { var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var saved=FuelState(live,FuelReconciliationState.KeptSimulatorFuel,"Player explicitly kept simulator fuel after reconciliation.");await store.SaveFuelStateAsync(saved,token);lastFuelCheckpoint=utcNow();Current=Current with{Live=live,SavedFuel=saved,FuelDecisionRequired=false};Notify(); }
     public async Task RestoreSavedFuelAsync(CancellationToken token=default)
-    { var saved=Current.SavedFuel??throw new InvalidOperationException("No saved fuel state exists.");var live=Current.Live??throw new InvalidOperationException("No live aircraft state exists.");var reason=RestoreReason(live,saved,true);if(reason!="Ready.")throw new InvalidOperationException(reason);
+    { var saved=Current.SavedFuel??throw new InvalidOperationException("No saved fuel state exists.");var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var reason=RestoreReason(live,saved,true);if(reason!="Ready.")throw new InvalidOperationException(reason);
       var targets=saved.Tanks.ToDictionary(x=>x.Id,x=>x.QuantityGallons);var read=await simulator.WriteFuelAsync(sdkRoot(),targets,token);foreach(var pair in targets)if(Math.Abs(read.FuelTanks.Single(x=>x.Id==pair.Key).QuantityGallons-pair.Value)>options.FuelToleranceGallons)throw new IOException("Saved fuel restoration was not verified.");saved=FuelState(read,FuelReconciliationState.RestoredVerified,"Saved fuel restored and verified through read-back.");await store.SaveFuelStateAsync(saved,token);lastFuelCheckpoint=utcNow();Current=Current with{Live=read,SavedFuel=saved,FuelDecisionRequired=false};Notify(); }
     public async Task RestoreCargoAsync(CancellationToken token=default)
-    { var manifest=Current.Manifest??throw new InvalidOperationException("No cargo manifest exists.");var live=Current.Live??throw new InvalidOperationException("No live aircraft state exists.");var reason=RestoreReason(live,manifest,true);if(reason!="Ready.")throw new InvalidOperationException(reason);
+    { var manifest=Current.Manifest??throw new InvalidOperationException("No cargo manifest exists.");var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var reason=RestoreReason(live,manifest,false);if(reason!="Ready.")throw new InvalidOperationException(reason);
       var read=await simulator.WritePayloadAsync(sdkRoot(),manifest.Stations.ToDictionary(x=>x.StationIndex,x=>x.TargetKilograms),token);if(!PayloadMatches(read,manifest.Stations.ToDictionary(x=>x.StationIndex,x=>x.TargetKilograms),options.PayloadToleranceKilograms))throw new IOException("Restored cargo did not pass MSFS read-back verification.");manifest=manifest with{Reconciliation=SimulatorReconciliationState.MatchesManifest,LastReconciledUtc=utcNow(),VerificationResult="Player-confirmed cargo restoration written once and verified."};await store.SaveManifestAsync(manifest,token);Current=Current with{Live=read,Manifest=manifest};UpdateRestoreAvailability();Notify(); }
 
     private string Access(AircraftLoadingSnapshot live,bool fuel)
@@ -250,6 +253,7 @@ internal static class LoadingIdentityExtensions
 {
     public static FlightAircraftIdentity FromSnapshot(AircraftLoadingSnapshot snapshot)=>snapshot.Aircraft.EnsureValid();
 }
+
 
 
 

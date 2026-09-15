@@ -26,6 +26,9 @@ public sealed class AircraftLoadingTests
     [Fact] public async Task Pending_intent_precedes_write_and_apply_is_idempotent()
     {var h=Harness();await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();Assert.Equal(1,h.sim.PayloadWrites);Assert.Equal(AircraftLoadingMode.MsfsPayloadIntegration,h.tracker.Mode);Assert.Equal(1,h.tracker.Loads);Assert.Equal(LoadManifestState.CommittedInTransit,h.coordinator.Current.Manifest!.State);await Assert.ThrowsAsync<InvalidOperationException>(()=>h.coordinator.ApplyCargoAsync());Assert.Equal(1,h.sim.PayloadWrites);}
 
+    [Fact] public async Task Apply_refreshes_telemetry_at_write_time_instead_of_reusing_an_expired_table_snapshot()
+    {var now=new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);var h=Harness(snapshot:Snapshot(now:now.AddSeconds(-10)),world:World(now:now));await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();h.coordinator.CreatePlan([new(1,70),new(2,50)]);h.sim.Value=Snapshot(now:now);await h.coordinator.ApplyCargoAsync();Assert.Equal(LoadManifestState.CommittedInTransit,h.coordinator.Current.Manifest!.State);}
+
     [Fact] public async Task Matching_payload_on_reconnect_is_not_added_again()
     {var h=Harness();await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();var writes=h.sim.PayloadWrites;await h.coordinator.ObserveConnectionAsync(null);await h.coordinator.RefreshAsync();Assert.Equal(writes,h.sim.PayloadWrites);Assert.Equal(SimulatorReconciliationState.MatchesManifest,h.coordinator.Current.Manifest!.Reconciliation);}
 

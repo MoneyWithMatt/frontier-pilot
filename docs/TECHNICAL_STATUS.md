@@ -148,3 +148,8 @@ Jobs now exposes a guarded developer diagnostic export and confirmation-gated re
 ## Aircraft Payload and Loading V0 — 2026-09-15
 
 A new Aircraft Loading page exposes payload, fuel, and factual weight/balance data through a dedicated SDK adapter. Cargo uses a persistent apply–verify–commit manifest; fuel uses bounded trusted snapshots and explicit reconnect reconciliation. All writes require fresh grounded/stationary telemetry and a fresh controlled walking-avatar observation within 100 m. Unsupported aircraft retain an explicit, never-automatic simulated mode. New flight attempts use a persisted route-sensitive maximum-origin-distance rule; schema-1/2 attempts retain 10 NM. Sandy Dirt now uses visible DIRT as a labelled fallback. Automated verification is complete; live payload/fuel and Sandy Dirt visual acceptance remain pending. See [aircraft-payload-loading-v0.md](aircraft-payload-loading-v0.md).
+
+## Aircraft-loading live freshness correction — 2026-09-15
+
+Apply, simulated load, unload, restore and fuel actions now acquire a new simulator snapshot at the action boundary. A displayed table may age while the player reviews it, but the write never relies on that stale sample. Cargo application additionally compares the newly read station weights with the planned baseline and refuses if payload changed after planning.
+
