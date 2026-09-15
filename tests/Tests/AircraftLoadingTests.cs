@@ -1,5 +1,6 @@
 using FrontierAirportBuilder.Core;
 using FrontierAirportBuilder.Workflow;
+using System.Xml.Linq;
 
 namespace FrontierAirportBuilder.Tests;
 
@@ -10,6 +11,12 @@ public sealed class AircraftLoadingTests
 
     [Fact] public void Exact_cargo_can_be_distributed_without_overwriting_baseline()
     {var p=AircraftLoadPlan.Create(Snapshot(),120,[new(1,70),new(2,50)]);Assert.Equal(120,p.Stations.Sum(x=>x.FrontierCargoKilograms));Assert.Equal(80,p.Stations[0].TargetKilograms);Assert.Equal(70,p.Stations[1].TargetKilograms);}
+
+    [Fact] public void Manual_station_entry_changes_only_the_station_the_player_selected()
+    {var first=new PayloadStationViewModel{Index=1,Name="Front",CurrentKilograms=10,AssignmentMaximumKilograms=120};var second=new PayloadStationViewModel{Index=2,Name="Rear",CurrentKilograms=20,AssignmentMaximumKilograms=120};first.AssignedKilograms=35;Assert.Equal(35,first.AssignedKilograms);Assert.Equal(45,first.PlannedKilograms);Assert.Equal(0,second.AssignedKilograms);Assert.Equal(20,second.PlannedKilograms);}
+
+    [Fact] public void Desktop_uses_explicit_manual_payload_and_fuel_controls_without_auto_balance()
+    {var document=XDocument.Load(Path.Combine(AppContext.BaseDirectory,"Desktop","MainWindow.xaml"));XNamespace p="http://schemas.microsoft.com/winfx/2006/xaml/presentation";var buttons=document.Descendants(p+"Button").Select(x=>x.Attribute("Content")?.Value).ToArray();Assert.DoesNotContain("Distribute evenly",buttons);var textBindings=document.Descendants(p+"TextBox").Select(x=>x.Attribute("Text")?.Value??"").ToArray();Assert.Contains(textBindings,x=>x.Contains("AssignedKilograms")&&x.Contains("Mode=TwoWay")&&x.Contains("UpdateSourceTrigger=LostFocus"));Assert.Contains(textBindings,x=>x.Contains("PlannedGallons")&&x.Contains("Mode=TwoWay"));var sliders=document.Descendants(p+"Slider").Select(x=>x.Attribute("Value")?.Value??"").ToArray();Assert.Contains(sliders,x=>x.Contains("AssignedKilograms")&&x.Contains("Mode=TwoWay"));Assert.Contains(sliders,x=>x.Contains("PlannedGallons")&&x.Contains("Mode=TwoWay"));}
 
     [Theory][InlineData(119)][InlineData(121)] public void Under_or_over_allocation_is_refused(decimal assigned)
     {Assert.Throws<InvalidOperationException>(()=>AircraftLoadPlan.Create(Snapshot(),120,[new(1,assigned)]));}

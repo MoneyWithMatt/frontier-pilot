@@ -153,3 +153,8 @@ A new Aircraft Loading page exposes payload, fuel, and factual weight/balance da
 
 Apply, simulated load, unload, restore and fuel actions now acquire a new simulator snapshot at the action boundary. A displayed table may age while the player reviews it, but the write never relies on that stale sample. Cargo application additionally compares the newly read station weights with the planned baseline and refuses if payload changed after planning.
 
+
+## Manual aircraft-loading editor — 2026-09-15
+
+Live testing proved the PA28 payload write/read-back path. The original editable DataGrid column did not reliably commit typed station values. Aircraft Loading now uses explicit two-way slider and numeric controls per payload station and fuel tank, with a fixed-cargo allocation summary and current/planned weight review. Automatic distribution was removed so allocation remains a player decision.
+

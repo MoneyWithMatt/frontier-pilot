@@ -165,3 +165,8 @@
 - Structural station/tank limits are hard when authoritative. Maximum gross and CG envelope are advisory warnings. Unknown limits are reported and never derived from defaults.
 - TITLE/ATC MODEL is a conservative compatibility identity, not a unique airframe. Automatic cargo/fuel restoration is forbidden.
 - Payload/fuel integration failure may use the existing simulated lifecycle only after an explicit player choice.
+
+## Player-authored load distribution — 2026-09-15
+
+Frontier Pilot does not automatically balance job cargo. Each station receives an explicit player-entered allocation; the application validates exact cargo mass and available authoritative limits, then reports factual weight/CG consequences. This preserves player judgment for the future Performance Calculator rather than embedding an unexplained optimiser in loading.
+

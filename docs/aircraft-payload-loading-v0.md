@@ -56,3 +56,8 @@ Do not claim third-party aircraft, modern custom fuel-system enumeration, planne
 
 Every mutating action obtains a fresh simulator read immediately before validating access and writing. Cargo Apply compares this read against the plan baseline; if another source changed payload after planning, it refuses and requires a new review rather than applying an outdated target.
 
+
+## Manual loading interface acceptance correction
+
+The initial DataGrid editor was replaced after live testing showed typed allocations did not reliably commit. Each station and tank now has a dedicated two-way slider and numeric field. Automatic distribution has been removed. A live summary shows assigned and remaining job cargo, while current/planned weights and warnings remain visible during the player's allocation decision.
+
