@@ -170,3 +170,7 @@
 
 Frontier Pilot does not automatically balance job cargo. Each station receives an explicit player-entered allocation; the application validates exact cargo mass and available authoritative limits, then reports factual weight/CG consequences. This preserves player judgment for the future Performance Calculator rather than embedding an unexplained optimiser in loading.
 
+
+## Manual-only new cargo loading
+
+At Matt's request, remove the UI action that starts a new simulated cargo load. Preserve existing simulated shipments and their recovery/unload semantics. All newly initiated UI loading uses explicit station allocation and simulator verification. Editing refreshes must preserve draft text and focus; an invalid draft blocks submission rather than using a hidden previous value.

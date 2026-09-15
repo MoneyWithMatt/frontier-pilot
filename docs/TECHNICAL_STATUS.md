@@ -158,3 +158,13 @@ Apply, simulated load, unload, restore and fuel actions now acquire a new simula
 
 Live testing proved the PA28 payload write/read-back path. The original editable DataGrid column did not reliably commit typed station values. Aircraft Loading now uses explicit two-way slider and numeric controls per payload station and fuel tank, with a fixed-cargo allocation summary and current/planned weight review. Automatic distribution was removed so allocation remains a player decision.
 
+
+## Loading editor lifecycle repair
+
+Manual editing now retains row instances and draft text across loading/flight-status refreshes. Fuel plans no longer reset to live quantities during refresh. Numeric fields are widened; competing slider bindings and the simulated-loading creation button are removed. Existing simulated manifests remain readable/unloadable. Empty, negative, or out-of-range text cannot submit the previous valid value.
+
+Loading eligibility subscribes to flight qualification changes. UI readiness may use an aged inspection table, but the actual Apply action still obtains and validates fresh simulator data, current avatar presence, aircraft identity and origin qualification before writing. No qualification threshold changed.
+
+Verification: 490 solution tests, Release build, and the Windows WPF control smoke test passed. Run `.tools/dotnet/dotnet.exe run --project tests/LoadingWpfSmoke -c Release -- src/Desktop/MainWindow.xaml` for synthetic control tests without MSFS. This exercises the actual production templates, focus, fractional entry, refresh retention and zero reset. Live aircraft application remains a user acceptance step.
+
+Manual retest: accept a reserved job, qualify stopped at its origin, exit nearby, Read live aircraft, enter allocations totaling the shown mass, wait through refresh, then Apply and verify. Check the displayed reason if disabled. For fuel, engines must be off; enter a different tank quantity and apply, then check simulator read-back. No simulated loading button should be present.

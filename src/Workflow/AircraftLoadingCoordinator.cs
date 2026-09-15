@@ -33,6 +33,7 @@ public sealed class AircraftLoadingCoordinator
     public AircraftLoadingStatus Current { get; private set; } = AircraftLoadingStatus.Empty;
     public event Action<AircraftLoadingStatus>? Changed;
     public string StoragePath => store.StoragePath;
+    public string? ActiveShipmentId=>activeJob()?.ShipmentId;
     public decimal ActiveCargoKilograms => activeJob()?.CargoMassKilograms ?? Current.Manifest?.CargoKilograms ?? 0;
     public object CreateDiagnosticSnapshot()
     {
@@ -55,7 +56,17 @@ public sealed class AircraftLoadingCoordinator
         Func<string> sdkRoot, Func<TrackingWorldState?> tracking, Func<CargoJobDisplay?> activeJob,
         AircraftLoadingOptions? options = null, Func<DateTimeOffset>? utcNow = null)
     { this.store=store;this.simulator=simulator;this.flight=flight;this.sdkRoot=sdkRoot;this.tracking=tracking;this.activeJob=activeJob;
-      this.options=options??new();this.utcNow=utcNow??(()=>DateTimeOffset.UtcNow); }
+      this.options=options??new();this.utcNow=utcNow??(()=>DateTimeOffset.UtcNow);
+      flight.Changed+=_=>RefreshEligibility(); }
+
+    private void RefreshEligibility()
+    {
+        if(Current.Live is not { } live)return;
+        var reason=Access(live,false,checkSnapshotFreshness:false);
+        Current=Current with{CanApplyCargo=reason=="Ready."&&flight.Current.CanLoadCargo,
+            CargoActionReason=reason=="Ready."&&!flight.Current.CanLoadCargo?flight.Current.Reason:reason};
+        Notify();
+    }
 
     public async Task InitializeAsync(CancellationToken token=default)
     {
@@ -224,9 +235,9 @@ public sealed class AircraftLoadingCoordinator
     { var manifest=Current.Manifest??throw new InvalidOperationException("No cargo manifest exists.");var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var reason=RestoreReason(live,manifest,false);if(reason!="Ready.")throw new InvalidOperationException(reason);
       var read=await simulator.WritePayloadAsync(sdkRoot(),manifest.Stations.ToDictionary(x=>x.StationIndex,x=>x.TargetKilograms),token);if(!PayloadMatches(read,manifest.Stations.ToDictionary(x=>x.StationIndex,x=>x.TargetKilograms),options.PayloadToleranceKilograms))throw new IOException("Restored cargo did not pass MSFS read-back verification.");manifest=manifest with{Reconciliation=SimulatorReconciliationState.MatchesManifest,LastReconciledUtc=utcNow(),VerificationResult="Player-confirmed cargo restoration written once and verified."};await store.SaveManifestAsync(manifest,token);Current=Current with{Live=read,Manifest=manifest};UpdateRestoreAvailability();Notify(); }
 
-    private string Access(AircraftLoadingSnapshot live,bool fuel)
+    private string Access(AircraftLoadingSnapshot live,bool fuel,bool checkSnapshotFreshness=true)
     {
-        var world=tracking();if(world is null)return "Validated live tracking is unavailable.";var now=utcNow();if(now-world.Aircraft.ObservedUtc>options.MaximumAge||now-live.ObservedUtc>options.MaximumAge)return "Aircraft telemetry is stale.";
+        var world=tracking();if(world is null)return "Validated live tracking is unavailable.";var now=utcNow();if(now-world.Aircraft.ObservedUtc>options.MaximumAge||(checkSnapshotFreshness&&now-live.ObservedUtc>options.MaximumAge))return "Aircraft telemetry is stale.";
         if(!live.Position.IsOnGround)return "Aircraft must be on the ground.";if(live.Position.GroundSpeedKnots>5)return $"Aircraft ground speed is {live.Position.GroundSpeedKnots:F1} kt; 5 kt or less is required.";
         if(world.PlayerMode!=PlayerControlMode.OnFoot||world.Player is null||world.CurrentObjectId!=world.AvatarObjectId||world.CurrentObjectId==world.AircraftObjectId)return "Exit the aircraft; a fresh explicit walking-avatar observation is required.";
         if(now-world.Player.ObservedUtc>options.MaximumAge)return "Walking-avatar observation is stale.";if(!world.Player.IsOnGround)return "Walking avatar must be on the ground.";if(world.DistanceFromAircraftMeters is not { } distance||distance>options.AvatarRadiusMeters)return $"Walking avatar must be within {options.AvatarRadiusMeters:F0} m of the aircraft.";
