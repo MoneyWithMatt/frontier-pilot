@@ -188,7 +188,11 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             }
 
             var activeShipmentBeforeDeparture = world.Shipments.Single(x => x.Id == active.ShipmentId);
-            if (attempt.FirstAirborneUtc is null && activeShipmentBeforeDeparture.State == ShipmentState.Loaded && sample.IsOnGround)
+            // A player may unload part or all of a shipment back at its origin before
+            // departure. A full return correctly changes the shipment back to Reserved,
+            // while the recoverable attempt remains. Both states must therefore be able
+            // to qualify for a subsequent physical load.
+            if (attempt.FirstAirborneUtc is null && activeShipmentBeforeDeparture.State is (ShipmentState.Reserved or ShipmentState.Loaded) && sample.IsOnGround)
             {
                 var before = stationarySince; EvaluateOriginStationary(active);
                 if (before is null && stationarySince is { } started)

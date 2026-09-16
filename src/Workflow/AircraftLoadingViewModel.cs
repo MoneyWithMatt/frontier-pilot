@@ -72,7 +72,10 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     public string Aircraft=>service.Current.Live is { } s?$"{s.Aircraft.Title} / {s.Aircraft.Type}":"No live aircraft data";
     public bool HasCommittedCargo=>service.Current.Manifest is {CargoKilograms:>0,State:not (LoadManifestState.Completed or LoadManifestState.Abandoned)};
     public bool CanEditCargo=>!busy&&service.Current.Live is not null&&(service.ActiveShipmentId is not null||HasCommittedCargo);
-    public bool CanApplyCargo=>!busy&&CanEditCargo&&service.Current.CanApplyCargo&&AllocationValid&&Math.Abs(AssignedCargo-(service.Current.Manifest?.CargoKilograms??0))>.001m;
+    // The command must remain available for a valid changed draft so it can submit that
+    // draft to the coordinator. The coordinator performs the authoritative live access,
+    // location, avatar and flight-qualification checks immediately before any MSFS write.
+    public bool CanApplyCargo=>!busy&&CanEditCargo&&AllocationValid&&Math.Abs(AssignedCargo-(service.Current.Manifest?.CargoKilograms??0))>.001m;
     public string CargoReason=>!PayloadStations.All(x=>x.IsInputValid)?"Enter valid non-negative cargo weights within reported limits.":!AllocationValid?$"Requested cargo exceeds the {ActiveCargo:0.##} kg currently aboard or available for this shipment.":service.Current.CargoActionReason;public string FuelReason=>service.Current.FuelActionReason;public string Reconciliation=>service.Current.ReconciliationReason;
     public string EngineState=>service.Current.Live is null?"—":service.Current.Live.Engines.Count==0?"Unavailable":string.Join(", ",service.Current.Live.Engines.Select(x=>$"Engine {x.Index}: {(x.IsRunning is null?"unknown":x.IsRunning.Value?"running":"off")}"));
     public string WeightAndBalance

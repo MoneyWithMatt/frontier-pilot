@@ -48,6 +48,9 @@ public sealed class FlightAttemptTrackerTests
         await h.Tracker.ApplyCargoTransferAsync("transfer-unload-60","command-unload-60",0,EmployedCargoPrototype.ErosId,
             atEros.Latitude,atEros.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
         Assert.True(h.Tracker.Current.CanLoadCargo);Assert.Equal(ShipmentState.Reserved,(await h.Economy.LoadAsync())!.Shipments.Single().State);
+        await h.Tracker.ObserveAsync(atEros with { ObservedUtc = Start.AddSeconds(11) });
+        Assert.True(h.Tracker.Current.CanLoadCargo);
+        Assert.Contains("ready",h.Tracker.Current.Reason,StringComparison.OrdinalIgnoreCase);
         await h.Tracker.ApplyCargoTransferAsync("transfer-load-120","command-load-120",120,EmployedCargoPrototype.ErosId,
             atEros.Latitude,atEros.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
         Assert.Equal(120,(await h.Economy.LoadAsync())!.Shipments.Single().LoadedQuantity);

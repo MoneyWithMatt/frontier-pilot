@@ -184,11 +184,14 @@ public sealed class AircraftLoadingTests
         row.AssignedKilogramsText="";Assert.False(vm.ApplyCargoCommand.CanExecute(null));
         row.ResetCommand.Execute(null);Assert.Equal("0",row.AssignedKilogramsText);
     }
-    [Fact] public async Task Qualification_changes_refresh_apply_without_replacing_manual_values()
+    [Fact] public async Task Valid_manual_draft_can_be_submitted_while_live_qualification_is_pending()
     {
         var h=Harness();h.tracker.SetReady(false);var vm=new AircraftLoadingViewModel(h.coordinator);
         await vm.InitializeAsync();await h.coordinator.RefreshAsync();vm.PayloadStations[0].AssignedKilogramsText="120";
-        Assert.False(vm.ApplyCargoCommand.CanExecute(null));Assert.Contains("DESIRED STATE",vm.AllocationState);h.tracker.SetReady(true);
+        Assert.True(vm.ApplyCargoCommand.CanExecute(null));Assert.Contains("DESIRED STATE",vm.AllocationState);
+        await vm.ApplyDesiredCargoAsync(false);
+        Assert.Contains("Ready",vm.Error);Assert.Equal(0,h.sim.PayloadWrites);Assert.Equal(0,h.tracker.Loads);
+        h.tracker.SetReady(true);
         Assert.True(vm.ApplyCargoCommand.CanExecute(null));Assert.Equal("120",vm.PayloadStations[0].AssignedKilogramsText);
     }
 
