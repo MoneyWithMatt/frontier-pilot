@@ -64,8 +64,19 @@ public sealed class AircraftLoadingCoordinator
         if(Current.Live is not { } live)return;
         var reason=Access(live,false,checkSnapshotFreshness:false);
         Current=Current with{CanApplyCargo=reason=="Ready."&&flight.Current.CanLoadCargo,
-            CargoActionReason=reason=="Ready."&&!flight.Current.CanLoadCargo?flight.Current.Reason:reason};
+            CargoActionReason=CargoReason(reason)};
         Notify();
+    }
+
+    private string CargoReason(string access)
+    {
+        if(Current.Manifest is {State:LoadManifestState.CommittedInTransit} manifest)
+            return "Shipment already loaded and InTransit. " + (manifest.Reconciliation switch {
+                SimulatorReconciliationState.CargoAppearsMissing => "Saved cargo is missing from MSFS. Use Restore manifest cargo; Apply cannot load this shipment again.",
+                SimulatorReconciliationState.MatchesManifest => "MSFS matches the saved load. Continue the flight; no further loading is needed.",
+                _ => "Read live aircraft to compare the saved load. No second load is permitted."
+            });
+        return access=="Ready."&&!flight.Current.CanLoadCargo?flight.Current.Reason:access;
     }
 
     public async Task InitializeAsync(CancellationToken token=default)
@@ -112,7 +123,7 @@ public sealed class AircraftLoadingCoordinator
             if(manifest is {Mode:AircraftLoadingMode.MsfsPayloadIntegration,State:LoadManifestState.CommittedInTransit})
             {
                 var comparison=ComparePayload(snapshot,manifest);
-                manifest=manifest with {Reconciliation=comparison.state,LastReconciledUtc=utcNow(),VerificationResult=comparison.reason,LastValidPosition=snapshot.Position};
+                manifest=manifest with {Reconciliation=comparison.state,LastReconciledUtc=utcNow(),VerificationResult=comparison.reason,LastValidPosition=comparison.state==SimulatorReconciliationState.MatchesManifest?snapshot.Position:manifest.LastValidPosition};
                 await store.SaveManifestAsync(manifest,token);
             }
             var identity=LoadingIdentityExtensions.FromSnapshot(snapshot);
@@ -141,7 +152,7 @@ public sealed class AircraftLoadingCoordinator
             Current=Current with {Live=snapshot,Manifest=manifest,SavedFuel=saved,CargoActionReason=access,FuelActionReason=fuelAccess,
                 CanApplyCargo=access.StartsWith("Ready.",StringComparison.Ordinal)&&flight.Current.CanLoadCargo,CanApplyFuel=fuelAccess=="Ready.",CanUnload=(flight.Current.CanUnloadCargo && manifest is not null)||manifest?.State==LoadManifestState.SimulatorUnloaded,
                 FuelDecisionRequired=saved.Reconciliation==FuelReconciliationState.AwaitingDecision,Warnings=warnings};
-            UpdateRestoreAvailability();Notify();
+            Current=Current with{CargoActionReason=CargoReason(access)};UpdateRestoreAvailability();Notify();
         }finally{gate.Release();}
     }
 

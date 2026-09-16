@@ -112,6 +112,17 @@ public sealed class AircraftLoadingTests
         Assert.Equal(1,requests);Assert.NotEmpty(vm.PayloadStations);
     }
 
+    [Fact] public async Task Existing_committed_load_reports_recovery_instead_of_ready_or_generic_telemetry()
+    {
+        var h=Harness();await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,60),new(2,60)]);await h.coordinator.ApplyCargoAsync();
+        h.sim.Value=Snapshot();var vm=new AircraftLoadingViewModel(h.coordinator);await h.coordinator.RefreshAsync();
+        Assert.Contains("Restore manifest cargo",vm.CargoReason);Assert.Equal("CARGO ALREADY LOADED",vm.AllocationState);
+        Assert.False(vm.CanEditCargo);Assert.False(vm.ApplyCargoCommand.CanExecute(null));
+        h.tracker.SetReady(false);Assert.Contains("Restore manifest cargo",vm.CargoReason);
+        Assert.Equal(60,vm.PayloadStations[0].AssignedKilograms);Assert.Equal(1,h.tracker.Loads);
+    }
+
     private static (AircraftLoadingCoordinator coordinator,MemoryAircraftLoadingStore store,FakeSimulator sim,FakeTracker tracker) Harness(AircraftLoadingSnapshot? snapshot=null,TrackingWorldState? world=null)
     {var now=new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);snapshot??=Snapshot(now:now);world??=World(now:now);var sim=new FakeSimulator(snapshot);var tracker=new FakeTracker();var store=new MemoryAircraftLoadingStore();var job=new CargoJobDisplay("job-test","Employer","Origin","Destination","Purpose","General Supplies",120,240,"TPC","Test","shipment-test",ShipmentState.Reserved);var c=new AircraftLoadingCoordinator(store,sim,tracker,()=>"sdk",()=>world,()=>job,new(TelemetryMaximumAge:TimeSpan.FromHours(1)),()=>now);return(c,store,sim,tracker);}
     private static AircraftLoadingSnapshot Snapshot(DateTimeOffset? now=null,IReadOnlyList<PayloadStationReading>? stations=null,IReadOnlyList<FuelTankReading>? fuel=null,IReadOnlyList<AircraftEngineReading>? engines=null,AircraftWeightReading? weights=null)
