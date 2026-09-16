@@ -88,7 +88,7 @@ public sealed class LocalAircraftLoadingStore : IAircraftLoadingStore
     }
     private static void ValidateForward(CargoLoadManifest old, CargoLoadManifest next)
     {
-        if (old.State == LoadManifestState.Completed && old != next) throw new InvalidDataException("Completed cargo manifests are immutable.");
+        if (old.State is LoadManifestState.Completed or LoadManifestState.Abandoned && old != next) throw new InvalidDataException("Terminal cargo manifests are immutable.");
         bool allocationChanged = old.Stations.Count != next.Stations.Count || old.Stations.Zip(next.Stations).Any(pair =>
             pair.First.StationIndex != pair.Second.StationIndex || pair.First.BaselineKilograms != pair.Second.BaselineKilograms ||
             pair.First.FrontierCargoKilograms != pair.Second.FrontierCargoKilograms || pair.First.TargetKilograms != pair.Second.TargetKilograms ||

@@ -40,6 +40,28 @@ public sealed class EmployedCargoJobCycleTests : TemporaryDirectoryTest
     }
 
     [Fact]
+    public void ExplicitPrototypeSkipReturnsInventoryArchivesRecordsAndCreatesOneReplacementWithoutPayment()
+    {
+        var initial = EmployedCargoPrototype.Create(NamibiaLocationCatalogue.Load());
+        var originBefore = initial.Inventories.Single(x => x.LocationId == EmployedCargoPrototype.ErosId && x.ResourceId == EmployedCargoPrototype.ResourceId).AvailableQuantity;
+        var accepted = EconomyKernel.AcceptJob(initial, "job-arandis-supplies-v0", T0).World;
+        var inTransit = EconomyKernel.MarkShipmentInTransit(accepted, "job-arandis-supplies-v0").World;
+        var skipped = EconomyKernel.AbandonIncompletePrototypeShipment(inTransit, "job-arandis-supplies-v0", T0.AddMinutes(5));
+
+        Assert.True(skipped.Changed);
+        Assert.Equal(EconomyJobState.Cancelled, skipped.World.Jobs.Single(x => x.Id == "job-arandis-supplies-v0").State);
+        Assert.Equal(TransportRequirementState.Cancelled, skipped.World.Requirements.Single(x => x.Id == "requirement-arandis-supplies-v0").State);
+        Assert.Equal(ShipmentState.Cancelled, skipped.World.Shipments.Single(x => x.Id == "shipment-arandis-supplies-v0").State);
+        Assert.Equal(originBefore, skipped.World.Inventories.Single(x => x.LocationId == EmployedCargoPrototype.ErosId && x.ResourceId == EmployedCargoPrototype.ResourceId).AvailableQuantity);
+        Assert.Single(skipped.World.InventoryLedger, x => x.Kind == InventoryTransactionKind.ShipmentReservationReleased && x.JobId == "job-arandis-supplies-v0");
+        Assert.Empty(skipped.World.FinancialLedger); Assert.Equal(0, skipped.World.Players.Single().CachedBalance);
+        Assert.Contains(skipped.World.Jobs, x => x.Id == "job-arandis-supplies-v0-000002" && x.State == EconomyJobState.Offered);
+
+        var replay = EconomyKernel.AbandonIncompletePrototypeShipment(skipped.World, "job-arandis-supplies-v0", T0.AddMinutes(6));
+        Assert.False(replay.Changed); Assert.Equal(skipped.World, replay.World);
+    }
+
+    [Fact]
     public async Task CompletingThenRestartingKeepsReplacementIdAndAllowsAnotherAcceptance()
     {
         var store = new LocalEconomyStateStore(FilePath); var economy = new EconomyService(store);

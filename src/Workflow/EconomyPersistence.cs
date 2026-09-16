@@ -173,6 +173,8 @@ public sealed class EconomyService(IEconomyStateStore store)
         store.ApplyAsync(world => EconomyKernel.AcceptJob(world, jobId, acceptedUtc), cancellationToken);
     public Task<EconomyTransition> MarkShipmentInTransitAsync(string jobId, CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => EconomyKernel.MarkShipmentInTransit(world, jobId), cancellationToken);
+    public Task<EconomyTransition> AbandonIncompletePrototypeShipmentAsync(string jobId, DateTimeOffset cancelledUtc, CancellationToken cancellationToken = default) =>
+        store.ApplyAsync(world => EconomyKernel.AbandonIncompletePrototypeShipment(world, jobId, cancelledUtc), cancellationToken);
     public Task<EconomyTransition> CompleteDeliveryAsync(VerifiedDeliveryEvidence evidence, CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => EconomyKernel.CompleteDelivery(world, evidence), cancellationToken);
     public Task<EconomyTransition> MaintainJobBoardAsync(DateTimeOffset occurredUtc, CancellationToken cancellationToken = default) =>

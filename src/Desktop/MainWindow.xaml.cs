@@ -44,6 +44,13 @@ public partial class MainWindow : Window
         if(MessageBox.Show(this,warning,"Confirm simulated compatibility unload",MessageBoxButton.YesNo,MessageBoxImage.Warning,MessageBoxResult.No)==MessageBoxResult.Yes)
             await model.AircraftLoading.CompleteSimulatedUnloadAsync();
     }
+    private async void SkipPrototypeMission(object sender,RoutedEventArgs e)
+    {
+        const string warning="Skip this incomplete prototype mission? Frontier Pilot will first remove and verify only its manifest cargo from MSFS, return the reserved goods to the origin through an inventory audit entry, archive the job, and create a fresh replacement offer. No delivery or payment will be created. Completed jobs and ledger transactions cannot be changed.";
+        if(MessageBox.Show(this,warning,"Skip incomplete prototype mission",MessageBoxButton.YesNo,MessageBoxImage.Warning,MessageBoxResult.No)!=MessageBoxResult.Yes)return;
+        await model.AircraftLoading.AbandonPrototypeMissionAsync();
+        await model.Jobs.InitializeAsync();
+    }
     private void TrackingDisplayChanged(FrontierAirportBuilder.Core.AircraftTelemetry? aircraft,FrontierAirportBuilder.Core.PlayerTelemetry? player,bool isLive) =>
         Dispatcher.InvokeAsync(()=>TrackingMap.Show(aircraft,player,isLive));
     private void CenterAircraft(object sender,RoutedEventArgs e)=>TrackingMap.CenterOnAircraft();

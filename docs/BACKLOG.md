@@ -44,7 +44,7 @@ Economy Core, employed-cargo selection and Flight Attempt V0 now implement the f
 ## Economy V0 follow-up decisions
 - Manually run Eros to Uis or Arandis and verify telemetry progression, connection recovery, unload, inventory and payment. Tune tolerances only from observed behavior.
 - Review the temporary 120 kg / 240 TPC Uis and 100 kg / 200 TPC Arandis values after UI testing; compensation design remains open.
-- Define loading, cancellation, expiry and reservation release.
+- Define player-facing cancellation, expiry, cargo loss and reservation-release rules. The current skip action is a prototype-only administrative retest tool.
 - Define flight/location evidence and arrival conditions without adding a weather or safety verdict.
 - Decide when the economic clock advances and whether anything advances while Frontier Pilot is closed.
 

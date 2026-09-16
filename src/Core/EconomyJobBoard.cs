@@ -18,7 +18,7 @@ public static class EconomyJobBoard
             var destination = world.Locations.Single(x => x.Id == definition.DestinationLocationId);
             if (destination.Status != EconomicLocationStatus.ActiveCustomer) continue;
 
-            var outstanding = requirements.Count(x => x.NeedId == definition.NeedId && x.State != TransportRequirementState.Fulfilled);
+            var outstanding = requirements.Count(x => x.NeedId == definition.NeedId && x.State is TransportRequirementState.Open or TransportRequirementState.Reserved);
             var missing = Math.Max(0, definition.DesiredAvailableOffers - outstanding);
             for (var index = 0; index < missing; index++)
             {

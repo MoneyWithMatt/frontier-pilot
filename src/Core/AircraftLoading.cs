@@ -11,7 +11,7 @@ public static class LoadingUnits
 }
 
 public enum AircraftLoadingMode { MsfsPayloadIntegration, SimulatedFrontierLoading }
-public enum LoadManifestState { PendingApplication, SimulatorApplied, CommittedInTransit, PendingUnload, SimulatorUnloaded, Completed }
+public enum LoadManifestState { PendingApplication, SimulatorApplied, CommittedInTransit, PendingUnload, SimulatorUnloaded, Completed, PendingAbandonment, Abandoned }
 public enum SimulatorReconciliationState { NotChecked, MatchesManifest, CargoAppearsMissing, Indeterminate, RestoreAvailable, RestoreBlocked }
 public enum FuelReconciliationState { ContinuousLive, FrozenAfterDisconnect, AwaitingDecision, RestoredVerified, KeptSimulatorFuel, Blocked }
 

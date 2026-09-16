@@ -169,6 +169,10 @@ Verification: 490 solution tests, Release build, and the Windows WPF control smo
 
 Manual retest: accept a reserved job, qualify stopped at its origin, exit nearby, Read live aircraft, enter allocations totaling the shown mass, wait through refresh, then Apply and verify. Check the displayed reason if disabled. For fuel, engines must be off; enter a different tank quantity and apply, then check simulator read-back. No simulated loading button should be present.
 
+## Prototype mission skip recovery — 2026-09-16
+
+Aircraft Loading now provides a confirmation-gated **Skip incomplete prototype mission** action for retesting. It applies only to a committed, incomplete shipment. For an MSFS-integrated manifest it first persists a removal intent, subtracts exactly the Frontier allocation from the current station weights, and requires read-back verification. It then atomically marks the economy requirement, job and shipment `Cancelled`, returns the reserved quantity to the origin through a `ShipmentReservationReleased` inventory-audit entry, and runs the normal idempotent board maintenance to create one replacement offer. No delivery evidence, destination inventory, financial transaction or payment is created. Completed jobs and terminal manifests remain immutable. This is an explicit prototype administration tool, not the eventual gameplay cancellation design.
+
 ## Loading tracking recovery
 The payload snapshot reader can succeed while continuous Tracking is disconnected. Aircraft Loading now shows Tracking status and its exact error, offers Reconnect tracking, and retries connection on Read live aircraft. A complete allocation no longer says READY TO APPLY unless live qualification also permits loading. No avatar/flight checks were bypassed. The screenshot proves World was unavailable, but the underlying simulator connection failure requires its Tracking error to diagnose. 491 tests and Release build passed; update staged while the user application is open.
 

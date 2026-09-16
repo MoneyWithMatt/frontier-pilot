@@ -61,6 +61,8 @@ public interface IFlightAttemptTracker
     Task<string> ExportDeveloperDiagnosticAsync(CancellationToken cancellationToken = default);
     Task<string> CreateDiagnosticSummaryAsync(CancellationToken cancellationToken = default);
     Task ResetIncompletePrototypeProgressAsync(CancellationToken cancellationToken = default);
+    Task AbandonIncompletePrototypeShipmentAsync(string jobId, CancellationToken cancellationToken = default) =>
+        Task.FromException(new NotSupportedException("Prototype shipment abandonment is unavailable."));
 }
 
 public sealed class FlightAttemptTracker : IFlightAttemptTracker
@@ -421,6 +423,22 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             attempt = await store.ResetIncompleteProgressAsync(attempt.Id, cancellationToken).ConfigureAwait(false);
             stationarySince = null; lastSampleUtc = null; latest = null; connected = false;
             observationReason = "Developer reset cleared incomplete flight observations. Shipment remains loaded and InTransit; no inventory or money changed.";
+            UpdateStatus();
+        }
+        finally { gate.Release(); }
+    }
+
+    public async Task AbandonIncompletePrototypeShipmentAsync(string jobId, CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var transition = await economy.AbandonIncompletePrototypeShipmentAsync(jobId, utcNow(), cancellationToken).ConfigureAwait(false);
+            world = transition.World; attempt = SelectAttempt(world, await store.LoadAsync(cancellationToken).ConfigureAwait(false));
+            stationarySince = null; lastSampleUtc = null;
+            observationReason = transition.Changed
+                ? "Incomplete prototype mission skipped. Reserved goods returned to origin inventory; no delivery or payment was created."
+                : "Prototype mission was already skipped; no inventory or money changed.";
             UpdateStatus();
         }
         finally { gate.Release(); }

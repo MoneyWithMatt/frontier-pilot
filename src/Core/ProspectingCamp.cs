@@ -254,7 +254,7 @@ public static class OperationJobBoard
             Requirements = requirements, Jobs = jobs, Inventories = inventories, InventoryLedger = inventoryLedger };
         return new(next.EnsureValid(), true);
 
-        bool Outstanding(string needId) => requirements.Any(x => x.NeedId == needId && x.State != TransportRequirementState.Fulfilled);
+        bool Outstanding(string needId) => requirements.Any(x => x.NeedId == needId && x.State is TransportRequirementState.Open or TransportRequirementState.Reserved);
         decimal OfferedAtOrigin(string origin, string resource) => jobs.Where(x => x.State == EconomyJobState.Offered)
             .Select(x => requirements.Single(r => r.Id == x.RequirementId)).Where(x => x.OriginLocationId == origin && x.ResourceId == resource).Sum(x => x.Quantity);
         (string Requirement, string Job, string Shipment) Ids(string operationId, string kind, string needId)

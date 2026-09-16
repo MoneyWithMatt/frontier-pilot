@@ -59,6 +59,7 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
      UnloadCommand=new(()=>_=Run(t=>service.UnloadAsync(false,t),"MSFS cargo removed and delivery committed."),()=>!busy&&service.Current.CanUnload);}
     public async Task InitializeAsync(CancellationToken token=default)=>await service.InitializeAsync(token);
     public Task CompleteSimulatedUnloadAsync(CancellationToken token=default)=>Run(t=>service.UnloadAsync(true,t),"Compatibility unload confirmed and economic delivery committed.");
+    public Task AbandonPrototypeMissionAsync(CancellationToken token=default)=>Run(service.AbandonPrototypeMissionAsync,"Prototype mission skipped; no delivery or payment was created.");
     public Task ObserveAsync(TrackingWorldState? world,CancellationToken token=default)=>service.ObserveConnectionAsync(world,token);
     public void RequestOpen()=>OpenRequested?.Invoke();
     public string Status{get=>status;private set{status=value;Changed();}}public string Error{get=>error;private set{error=value;Changed();}}
@@ -82,6 +83,7 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     public string CurrentCgLabel=>service.Current.Live?.Weights.CurrentCgPercent is { } value?$"Current {value:0.00}%":"Current CG unavailable";
     public string PlannedCgLabel=>service.Current.Plan?.PlannedCgPercent is { } value?$"Planned {value:0.00}%":"Planned CG unavailable";
     public bool CanUnload=>service.Current.CanUnload;
+    public bool CanAbandonPrototypeMission=>!busy&&service.CanAbandonPrototypeMission;
     private decimal ActiveCargo=>service.ActiveCargoKilograms;
     public bool AllocationValid=>PayloadStations.All(x=>x.IsInputValid)&&ActiveCargo>0&&Math.Abs(AssignedCargo-ActiveCargo)<=.001m;
     private string? editingIdentity;
@@ -121,7 +123,7 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     private static string Mass(decimal? x)=>x is null?"Unavailable":$"{x:0.0} kg / {LoadingUnits.KilogramsToPounds(x.Value):0.0} lb";private static string Pct(double? x)=>x is null?"Unavailable":$"{x:0.00}%";
     private static string FuelMass(AircraftLoadingSnapshot s)=>s.FuelWeightKilogramsPerGallon is { } d?$"{s.FuelTanks.Sum(x=>x.QuantityGallons)*d:0.0} kg":"Unavailable (fuel density not reported)";
     private static double CgTop(double? percent)=>percent is { } value?25+Math.Clamp(value,0,50)/50*210:-100;
-    private void NotifyAll(){foreach(var n in new[]{nameof(HasCommittedCargo),nameof(CanEditCargo),nameof(Shipment),nameof(Aircraft),nameof(CargoReason),nameof(FuelReason),nameof(Reconciliation),nameof(EngineState),nameof(WeightAndBalance),nameof(Warnings),nameof(AssignedCargo),nameof(RemainingCargo),nameof(AllocationValid),nameof(AllocationProgressMaximum),nameof(AllocationProgressValue),nameof(AllocationState),nameof(FuelPlanState),nameof(CurrentCgMarkerTop),nameof(PlannedCgMarkerTop),nameof(ForwardCgTop),nameof(AftCgTop),nameof(CurrentCgLabel),nameof(PlannedCgLabel),nameof(CargoMassKilograms),nameof(CanUnload)})Changed(n);Refresh();}
+    private void NotifyAll(){foreach(var n in new[]{nameof(HasCommittedCargo),nameof(CanEditCargo),nameof(Shipment),nameof(Aircraft),nameof(CargoReason),nameof(FuelReason),nameof(Reconciliation),nameof(EngineState),nameof(WeightAndBalance),nameof(Warnings),nameof(AssignedCargo),nameof(RemainingCargo),nameof(AllocationValid),nameof(AllocationProgressMaximum),nameof(AllocationProgressValue),nameof(AllocationState),nameof(FuelPlanState),nameof(CurrentCgMarkerTop),nameof(PlannedCgMarkerTop),nameof(ForwardCgTop),nameof(AftCgTop),nameof(CurrentCgLabel),nameof(PlannedCgLabel),nameof(CargoMassKilograms),nameof(CanUnload),nameof(CanAbandonPrototypeMission)})Changed(n);Refresh();}
     private void Refresh(){foreach(var c in new[]{RefreshCommand,ClearAllocationCommand,ApplyCargoCommand,ApplyFuelCommand,KeepFuelCommand,RestoreFuelCommand,RestoreCargoCommand,UnloadCommand})c.Refresh();Changed(nameof(Status));Changed(nameof(Error));}
     private void Changed([CallerMemberName]string? n=null)=>PropertyChanged?.Invoke(this,new(n));
 }

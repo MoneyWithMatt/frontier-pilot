@@ -35,6 +35,7 @@ public sealed class AircraftLoadingCoordinator
     public string StoragePath => store.StoragePath;
     public string? ActiveShipmentId=>activeJob()?.ShipmentId;
     public decimal ActiveCargoKilograms => activeJob()?.CargoMassKilograms ?? Current.Manifest?.CargoKilograms ?? 0;
+    public bool CanAbandonPrototypeMission => Current.Manifest?.State is LoadManifestState.CommittedInTransit or LoadManifestState.PendingAbandonment;
     public object CreateDiagnosticSnapshot()
     {
         var live=Current.Live;var saved=Current.SavedFuel;var manifest=Current.Manifest;
@@ -83,8 +84,8 @@ public sealed class AircraftLoadingCoordinator
     {
         var manifests=await store.LoadManifestsAsync(token); var fuel=await store.LoadFuelStatesAsync(token);
         var attempt=flight.Current.Attempt;
-        var manifest=attempt is null ? manifests.Where(x=>x.State!=LoadManifestState.Completed).OrderByDescending(x=>x.CreatedUtc).FirstOrDefault()
-            : manifests.SingleOrDefault(x=>x.FlightAttemptId==attempt.Id);
+        var recoverable=manifests.Where(x=>x.State is not (LoadManifestState.Completed or LoadManifestState.Abandoned)).OrderByDescending(x=>x.CreatedUtc).FirstOrDefault();
+        var manifest=recoverable??(attempt is null?null:manifests.SingleOrDefault(x=>x.FlightAttemptId==attempt.Id));
         if(manifest is null&&attempt is {State:not FlightAttemptState.Delivered}&&activeJob() is {ShipmentId:not null} legacy)
         {
             manifest=new CargoLoadManifest("manifest-"+attempt.Id,legacy.JobId,legacy.ShipmentId!,attempt.Id,attempt.Aircraft,
@@ -245,6 +246,59 @@ public sealed class AircraftLoadingCoordinator
     public async Task RestoreCargoAsync(CancellationToken token=default)
     { var manifest=Current.Manifest??throw new InvalidOperationException("No cargo manifest exists.");var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var reason=RestoreReason(live,manifest,false);if(reason!="Ready.")throw new InvalidOperationException(reason);
       var read=await simulator.WritePayloadAsync(sdkRoot(),manifest.Stations.ToDictionary(x=>x.StationIndex,x=>x.TargetKilograms),token);if(!PayloadMatches(read,manifest.Stations.ToDictionary(x=>x.StationIndex,x=>x.TargetKilograms),options.PayloadToleranceKilograms))throw new IOException("Restored cargo did not pass MSFS read-back verification.");manifest=manifest with{Reconciliation=SimulatorReconciliationState.MatchesManifest,LastReconciledUtc=utcNow(),VerificationResult="Player-confirmed cargo restoration written once and verified."};await store.SaveManifestAsync(manifest,token);Current=Current with{Live=read,Manifest=manifest};UpdateRestoreAvailability();Notify(); }
+
+    public async Task AbandonPrototypeMissionAsync(CancellationToken token=default)
+    {
+        await gate.WaitAsync(token); try
+        {
+            var manifest = Current.Manifest ?? throw new InvalidOperationException("No persistent cargo manifest exists.");
+            if (manifest.State == LoadManifestState.Abandoned) return;
+            if (manifest.State is not (LoadManifestState.CommittedInTransit or LoadManifestState.PendingAbandonment))
+                throw new InvalidOperationException("Only a committed incomplete prototype shipment can be skipped.");
+            if (manifest.Mode == AircraftLoadingMode.MsfsPayloadIntegration)
+            {
+                var live = (await simulator.ReadAsync(sdkRoot(), token)).EnsureValid();
+                var access = Access(live, false); if (access != "Ready.") throw new InvalidOperationException(access);
+                PlannedPayloadStation[] stations;
+                if (manifest.State == LoadManifestState.PendingAbandonment)
+                    stations = manifest.Stations.ToArray();
+                else
+                {
+                    stations = manifest.Stations.Select(x =>
+                    {
+                        var current = live.PayloadStations.Single(s => s.Index == x.StationIndex).CurrentWeightKilograms;
+                        var target = current - x.FrontierCargoKilograms;
+                        if (target < 0) throw new InvalidOperationException($"Station {x.StationIndex} no longer contains enough weight to remove Frontier cargo.");
+                        return x with { UnloadTargetKilograms = target };
+                    }).ToArray();
+                    manifest = manifest with { Stations = stations, State = LoadManifestState.PendingAbandonment,
+                        UnloadStartedUtc = utcNow(), VerificationResult = "Prototype-skip unload intent persisted before MSFS write." };
+                    await store.SaveManifestAsync(manifest, token);
+                }
+                var targets = stations.ToDictionary(x => x.StationIndex, x => x.UnloadTargetKilograms ??
+                    throw new InvalidDataException("Prototype-skip unload target is missing."));
+                var readBack = PayloadMatches(live, targets, options.PayloadToleranceKilograms)
+                    ? live : await simulator.WritePayloadAsync(sdkRoot(), targets, token);
+                stations = stations.Select(x => x with { UnloadReadBackKilograms = readBack.PayloadStations
+                    .Single(s => s.Index == x.StationIndex).CurrentWeightKilograms }).ToArray();
+                if (stations.Any(x => Math.Abs(x.UnloadReadBackKilograms!.Value - x.UnloadTargetKilograms!.Value) > options.PayloadToleranceKilograms))
+                    throw new IOException("Frontier cargo removal could not be verified. The mission remains active and can be retried.");
+                manifest = manifest with { Stations = stations, VerificationResult = "Frontier cargo removed from MSFS and verified before prototype mission skip." };
+                await store.SaveManifestAsync(manifest, token); Current = Current with { Live = readBack, Manifest = manifest };
+            }
+            await flight.AbandonIncompletePrototypeShipmentAsync(manifest.JobId, token);
+            manifest = manifest with { State = LoadManifestState.Abandoned, CompletedUtc = utcNow(),
+                Reconciliation = SimulatorReconciliationState.NotChecked,
+                VerificationResult = manifest.Mode == AircraftLoadingMode.MsfsPayloadIntegration
+                    ? "Frontier cargo removal verified; incomplete prototype mission skipped without delivery or payment."
+                    : "Explicit simulated-loading prototype mission skipped without delivery or payment." };
+            await store.SaveManifestAsync(manifest, token);
+            Current = Current with { Manifest = manifest, Plan = null, CanApplyCargo = false, CanUnload = false,
+                CanRestoreCargo = false, CargoActionReason = "Prototype mission skipped. Choose a fresh offer on Jobs to retest." };
+            Notify();
+        }
+        finally { gate.Release(); }
+    }
 
     private string Access(AircraftLoadingSnapshot live,bool fuel,bool checkSnapshotFreshness=true)
     {

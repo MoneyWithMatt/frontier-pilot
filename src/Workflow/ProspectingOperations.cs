@@ -161,7 +161,7 @@ public sealed class ProspectingOperationsService : IProspectingOperations
             var site = world.Sites.Single(x => x.Id == operation.SiteId); var a = OperationArchetypeCatalogue.Get(operation.ArchetypeId);
             var rations = world.Inventories.Single(x => x.LocationId == site.LocationId && x.ResourceId == a.Process.InputResourceId);
             var minerals = world.Inventories.Single(x => x.LocationId == site.LocationId && x.ResourceId == a.Process.OutputResourceId);
-            var pending = world.Requirements.Where(x => x.State != TransportRequirementState.Fulfilled &&
+            var pending = world.Requirements.Where(x => x.State is TransportRequirementState.Open or TransportRequirementState.Reserved &&
                     (x.NeedId == ProspectingCampKernel.InboundNeed(operation.Id) || x.NeedId == ProspectingCampKernel.OutboundNeed(operation.Id)))
                 .Select(x => { var job = world.Jobs.Single(j => j.RequirementId == x.Id); var resource = world.Resources.Single(r => r.Id == x.ResourceId);
                     var origin = world.Locations.Single(p => p.Id == x.OriginLocationId).Name; var destination = world.Locations.Single(p => p.Id == x.DestinationLocationId).Name;

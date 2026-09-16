@@ -122,6 +122,7 @@
 - **Implemented:** keep colour adjustment, ground merging, tiling, falloff and additional material-layer metadata in the preset model. V0 emits only established values and never invents texture art or unknown GUIDs.
 - **Implemented:** catalogue construction categories independently from placed instances and economy. Only the Base Lodge category resolves to a placeable V0 placeholder, using the already-proven stock `Gen_Hangar56` dependency under a new stable asset ID.
 - **Developer recovery:** resetting an incomplete flight means clearing flight-observation progress only. Cargo remains loaded/InTransit; this is not cancellation or inventory rollback. Completed delivery and all economic records are immutable through this tool.
+- **Prototype retest recovery:** a separate, confirmation-gated skip action may archive one incomplete shipment. Verified MSFS manifest cargo must be removed first; the economy then records explicit cancelled states and an audited reservation release, creates no payment, and replenishes the board once. This is intentionally an administrative retest mechanism and does not define future cancellation, failure, loss or refund gameplay.
 
 ## Tracking V4 — 2026-09-08
 
