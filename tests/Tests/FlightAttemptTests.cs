@@ -38,6 +38,22 @@ public sealed class FlightAttemptTrackerTests
     }
 
     [Fact]
+    public async Task Qualified_origin_remains_available_for_repeated_partial_load_and_unload_changes()
+    {
+        var h=await Harness.Create();var atEros=At(EmployedCargoPrototype.ErosId,Start);await ObserveSeconds(h.Tracker,atEros,10);
+        Assert.True(h.Tracker.Current.CanLoadCargo);
+        await h.Tracker.ApplyCargoTransferAsync("transfer-load-60","command-load-60",60,EmployedCargoPrototype.ErosId,
+            atEros.Latitude,atEros.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
+        Assert.True(h.Tracker.Current.CanLoadCargo);Assert.Equal(60,(await h.Economy.LoadAsync())!.Shipments.Single().LoadedQuantity);
+        await h.Tracker.ApplyCargoTransferAsync("transfer-unload-60","command-unload-60",0,EmployedCargoPrototype.ErosId,
+            atEros.Latitude,atEros.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
+        Assert.True(h.Tracker.Current.CanLoadCargo);Assert.Equal(ShipmentState.Reserved,(await h.Economy.LoadAsync())!.Shipments.Single().State);
+        await h.Tracker.ApplyCargoTransferAsync("transfer-load-120","command-load-120",120,EmployedCargoPrototype.ErosId,
+            atEros.Latitude,atEros.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
+        Assert.Equal(120,(await h.Economy.LoadAsync())!.Shipments.Single().LoadedQuantity);
+    }
+
+    [Fact]
     public async Task LoadingAndProgressSurviveRestartWithoutASecondTransition()
     {
         using var temp = new TestDirectory();

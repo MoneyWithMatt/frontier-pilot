@@ -405,7 +405,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 await RecordAsync(FlightDiagnosticEventType.DeliveryCommitted, attempt.DeliveredUtc!.Value, "delivery-committed", cancellationToken,
                     ("economyChanged", transition.Changed.ToString()), ("evidenceId", evidence?.Id ?? "unavailable")).ConfigureAwait(false);
             }
-            stationarySince = null;
+            if (currentLocationId != attempt?.OriginLocationId && attempt?.DeliveryProof is null) stationarySince = null;
             observationReason = updatedJob.State switch
             {
                 EconomyJobState.Completed => "All shipment cargo was physically delivered; inventory and payment were committed once.",
@@ -623,14 +623,14 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         if (attempt.DeliveryProof is not null)
         { SetStatus(new("Ready to unload", observationReason, connected, false, true, originDistance, destinationDistance, attempt, balance, currency)); return; }
         bool evidence = (!attempt.TransitBeginsAtDeparture || attempt.OriginDepartedUtc is not null) && attempt.FirstAirborneUtc is not null && attempt.MovementObservedUtc is not null && attempt.MaximumDistanceFromOriginNauticalMiles >= attempt.RequiredMaximumDistanceNauticalMiles;
-        string stage = attempt.FirstAirborneUtc is null ? "Cargo loaded" : attempt.MovementObservedUtc is null ? "Departed" :
+        var activeShipment = world.Shipments.Single(x => x.Id == currentJob.ShipmentId);
+        string stage = attempt.FirstAirborneUtc is null ? activeShipment.LoadedQuantity > 0 ? "Cargo loaded" : "Ready to load" : attempt.MovementObservedUtc is null ? "Departed" :
             evidence && destinationDistance <= options.AirportRadiusNauticalMiles ? "Arrived — stop aircraft" : "En route";
         string reason = connected ? observationReason : "SimConnect is disconnected; persisted flight evidence is retained and timers are paused.";
         if (connected && !evidence && attempt.FirstAirborneUtc is not null)
             reason = attempt.MovementObservedUtc is null ? $"Meaningful movement of {options.MeaningfulMovementNauticalMiles:F1} NM after takeoff has not yet been recorded." :
                 $"Maximum recorded distance from {PlaceName(requirement.OriginLocationId)} is {attempt.MaximumDistanceFromOriginNauticalMiles:F2} NM; {attempt.RequiredMaximumDistanceNauticalMiles:F2} NM is required.";
-        var activeShipment = world.Shipments.Single(x => x.Id == currentJob.ShipmentId);
-        var canLoadMore = attempt.FirstAirborneUtc is null && activeShipment.State == ShipmentState.Loaded &&
+        var canLoadMore = attempt.FirstAirborneUtc is null && activeShipment.State is (ShipmentState.Reserved or ShipmentState.Loaded) &&
             activeShipment.LoadedQuantity + activeShipment.DeliveredQuantity < activeShipment.Quantity - .001m &&
             connected && latest is not null && stationarySince is { } loadSince && latest.ObservedUtc - loadSince >= options.RequiredStationaryDuration &&
             latest.IsOnGround && latest.GroundSpeedKnots <= options.MaximumGroundSpeedKnots && originDistance <= options.AirportRadiusNauticalMiles;

@@ -90,6 +90,8 @@ public sealed class AircraftLoadingCoordinator
         if(access!="Ready.")return access;
         if(Current.Plan is { } plan && Current.Manifest is { } manifest && Math.Abs(plan.CargoKilograms-manifest.CargoKilograms)>.001m)
             return plan.CargoKilograms>manifest.CargoKilograms?"Ready to add reserved cargo and verify the requested aircraft state.":"Ready to remove Frontier cargo and verify the requested aircraft state.";
+        if(activeJob() is not null&&(Current.Manifest?.CargoKilograms??0)<=.001m&&!flight.Current.CanLoadCargo)
+            return flight.Current.Reason;
         if(Current.Manifest is {State:LoadManifestState.CommittedInTransit} saved)
             return saved.Reconciliation switch {
                 SimulatorReconciliationState.CargoAppearsMissing => "Saved Frontier cargo is not present in the reported MSFS stations. Set the desired state to zero to reconcile removal, or use Restore manifest cargo.",
