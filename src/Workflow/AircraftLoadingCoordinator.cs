@@ -49,8 +49,10 @@ public sealed class AircraftLoadingCoordinator
     {
         null or {Mode:AircraftLoadingMode.SimulatedFrontierLoading} => null,
         {Reconciliation:SimulatorReconciliationState.CargoAppearsMissing} => 0,
+        {State:LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied,Reconciliation:SimulatorReconciliationState.MatchesManifest} pending when Current.Live is { } live =>
+            Math.Min(pending.PriorCargoKilograms,pending.Stations.Sum(x=>Math.Max(0,live.PayloadStations.Single(p=>p.Index==x.StationIndex).CurrentWeightKilograms-x.BaselineKilograms))),
         {Reconciliation:SimulatorReconciliationState.MatchesManifest} manifest when Current.Live is { } live =>
-            manifest.Stations.Sum(x=>Math.Max(0,live.PayloadStations.Single(p=>p.Index==x.StationIndex).CurrentWeightKilograms-x.BaselineKilograms)),
+            DetectedCargo(manifest,live),
         _ => null
     };
     public decimal DeliveredCargoKilograms=>activeJob()?.DeliveredCargoKilograms??Current.Manifest?.DeliveredCargoKilograms??0;

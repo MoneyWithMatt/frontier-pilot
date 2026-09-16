@@ -343,6 +343,13 @@ public sealed class AircraftLoadingTests
     [Fact] public async Task Committed_load_display_does_not_count_frontier_cargo_twice()
     {var h=Harness();var vm=new AircraftLoadingViewModel(h.coordinator);await vm.InitializeAsync();await h.coordinator.RefreshAsync();vm.PayloadStations[0].AssignedKilogramsText="70";vm.PayloadStations[1].AssignedKilogramsText="50";vm.ApplyCargoCommand.Execute(null);Assert.Equal(10,vm.PayloadStations[0].CurrentKilograms);Assert.Equal(80,vm.PayloadStations[0].PlannedKilograms);Assert.Equal(20,vm.PayloadStations[1].CurrentKilograms);Assert.Equal(70,vm.PayloadStations[1].PlannedKilograms);Assert.Contains("Existing non-Frontier payload: 30.0 kg",vm.WeightAndBalance);Assert.Contains("Total planned payload: 150.0 kg",vm.WeightAndBalance);}
 
+    [Fact] public async Task Unmanaged_seat_change_is_not_reported_as_detected_frontier_cargo()
+    {
+        var h=Harness();await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();h.coordinator.CreatePlan([new(1,0),new(2,120)]);await h.coordinator.ApplyCargoAsync();
+        h.sim.Value=h.sim.Value with{PayloadStations=[new(1,"Front",96.1825503m),new(2,"Rear",140)]};await h.coordinator.RefreshAsync();
+        Assert.Equal(120,h.coordinator.SimulatorDetectedCargoKilograms);
+    }
+
     [Fact] public async Task Return_job_with_cargo_already_cleared_preserves_baseline_and_never_writes_payload()
     {
         var h=Harness(); await h.coordinator.InitializeAsync(); await h.coordinator.RefreshAsync();
