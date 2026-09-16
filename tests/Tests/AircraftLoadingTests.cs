@@ -51,6 +51,9 @@ public sealed class AircraftLoadingTests
     [Fact] public async Task Prototype_skip_removes_only_manifest_cargo_and_never_invokes_delivery()
     {var h=Harness();await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();h.sim.Value=h.sim.Value with{PayloadStations=[new(1,"Front",85),new(2,"Rear",70)]};await h.coordinator.RefreshAsync();await h.coordinator.AbandonPrototypeMissionAsync();Assert.Equal(15,h.sim.Value.PayloadStations[0].CurrentWeightKilograms);Assert.Equal(20,h.sim.Value.PayloadStations[1].CurrentWeightKilograms);Assert.Equal(1,h.tracker.Abandons);Assert.Equal(0,h.tracker.Unloads);Assert.Equal(LoadManifestState.Abandoned,h.coordinator.Current.Manifest!.State);await h.coordinator.AbandonPrototypeMissionAsync();Assert.Equal(1,h.tracker.Abandons);Assert.Equal(2,h.sim.PayloadWrites);}
 
+    [Fact] public async Task Prototype_skip_tolerates_simconnect_conversion_drift_just_below_cargo_mass()
+    {var h=Harness(snapshot:Snapshot(stations:[new(1,"Front",0),new(2,"Rear",20)]));await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();h.coordinator.CreatePlan([new(1,20),new(2,100)]);await h.coordinator.ApplyCargoAsync();h.sim.Value=h.sim.Value with{PayloadStations=[new(1,"Front",19.999999999999993m),new(2,"Rear",120)]};await h.coordinator.RefreshAsync();await h.coordinator.AbandonPrototypeMissionAsync();Assert.Equal(0,h.sim.Value.PayloadStations[0].CurrentWeightKilograms);Assert.Equal(20,h.sim.Value.PayloadStations[1].CurrentWeightKilograms);Assert.Equal(LoadManifestState.Abandoned,h.coordinator.Current.Manifest!.State);}
+
     [Fact] public async Task Engine_running_blocks_fuel_but_not_cargo()
     {var h=Harness(snapshot:Snapshot(engines:[new(1,true)]));await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();Assert.True(h.coordinator.Current.CanApplyCargo);Assert.False(h.coordinator.Current.CanApplyFuel);Assert.Contains(h.coordinator.Current.Warnings,x=>x.Contains("engines are running"));}
 
@@ -125,6 +128,9 @@ public sealed class AircraftLoadingTests
         h.tracker.SetReady(false);Assert.Contains("Restore manifest cargo",vm.CargoReason);
         Assert.Equal(60,vm.PayloadStations[0].AssignedKilograms);Assert.Equal(1,h.tracker.Loads);
     }
+
+    [Fact] public async Task Committed_load_display_does_not_count_frontier_cargo_twice()
+    {var h=Harness();var vm=new AircraftLoadingViewModel(h.coordinator);await vm.InitializeAsync();await h.coordinator.RefreshAsync();vm.PayloadStations[0].AssignedKilogramsText="70";vm.PayloadStations[1].AssignedKilogramsText="50";vm.ApplyCargoCommand.Execute(null);Assert.Equal(10,vm.PayloadStations[0].CurrentKilograms);Assert.Equal(80,vm.PayloadStations[0].PlannedKilograms);Assert.Equal(20,vm.PayloadStations[1].CurrentKilograms);Assert.Equal(70,vm.PayloadStations[1].PlannedKilograms);Assert.Contains("Existing non-Frontier payload: 30.0 kg",vm.WeightAndBalance);Assert.Contains("Total planned payload: 150.0 kg",vm.WeightAndBalance);}
 
     private static (AircraftLoadingCoordinator coordinator,MemoryAircraftLoadingStore store,FakeSimulator sim,FakeTracker tracker) Harness(AircraftLoadingSnapshot? snapshot=null,TrackingWorldState? world=null)
     {var now=new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);snapshot??=Snapshot(now:now);world??=World(now:now);var sim=new FakeSimulator(snapshot);var tracker=new FakeTracker();var store=new MemoryAircraftLoadingStore();var job=new CargoJobDisplay("job-test","Employer","Origin","Destination","Purpose","General Supplies",120,240,"TPC","Test","shipment-test",ShipmentState.Reserved);var c=new AircraftLoadingCoordinator(store,sim,tracker,()=>"sdk",()=>world,()=>job,new(TelemetryMaximumAge:TimeSpan.FromHours(1)),()=>now);return(c,store,sim,tracker);}
