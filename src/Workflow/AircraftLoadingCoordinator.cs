@@ -34,6 +34,18 @@ public sealed class AircraftLoadingCoordinator
     public event Action<AircraftLoadingStatus>? Changed;
     public string StoragePath => store.StoragePath;
     public string? ActiveShipmentId=>activeJob()?.ShipmentId;
+    public decimal JobCargoKilograms=>activeJob()?.CargoMassKilograms??Current.Manifest?.ShipmentQuantityKilograms??0;
+    public decimal LoadedCargoKilograms=>Current.Manifest?.CargoKilograms??activeJob()?.LoadedCargoKilograms??0;
+    public decimal DeliveredCargoKilograms=>activeJob()?.DeliveredCargoKilograms??Current.Manifest?.DeliveredCargoKilograms??0;
+    public decimal CargoAvailableAtCurrentLocation
+    {
+        get
+        {
+            var job=activeJob();var live=Current.Live;
+            if(job is null||live is null||job.ShipmentState is not (ShipmentState.Reserved or ShipmentState.Loaded)||CurrentLocation(job,live.Position)!=job.OriginLocationId)return 0;
+            return Math.Max(0,job.CargoMassKilograms-job.DeliveredCargoKilograms-LoadedCargoKilograms);
+        }
+    }
     public decimal ActiveCargoKilograms => activeJob() is { } job ? Math.Max(0, job.CargoMassKilograms - job.DeliveredCargoKilograms) :
         Current.Manifest is { State: not (LoadManifestState.Completed or LoadManifestState.Abandoned) } manifest ? manifest.CargoKilograms : 0;
     public bool CanAbandonPrototypeMission => Current.Manifest?.State is LoadManifestState.CommittedInTransit or LoadManifestState.PendingAbandonment;

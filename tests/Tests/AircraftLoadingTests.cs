@@ -19,7 +19,7 @@ public sealed class AircraftLoadingTests
     {var payload=new PayloadStationViewModel{Index=1,Name="Front",CurrentKilograms=10,AssignmentMaximumKilograms=120,AssignedKilograms=35};payload.AssignedKilogramsText="";Assert.Equal(35,payload.AssignedKilograms);payload.AssignedKilogramsText="12.5";Assert.Equal(12.5m,payload.AssignedKilograms);payload.ResetCommand.Execute(null);Assert.Equal(0,payload.AssignedKilograms);Assert.Equal("0",payload.AssignedKilogramsText);var fuel=new FuelTankViewModel{Id="left",Name="Left",CurrentGallons=20,CapacityGallons=50,PlannedGallons=20};fuel.PlannedGallonsText="7.25";Assert.Equal(7.25m,fuel.PlannedGallons);fuel.ResetCommand.Execute(null);Assert.Equal(0,fuel.PlannedGallons);Assert.Equal("0",fuel.PlannedGallonsText);}
 
     [Fact] public void Desktop_uses_explicit_manual_payload_and_fuel_controls_without_auto_balance()
-    {var document=XDocument.Load(Path.Combine(AppContext.BaseDirectory,"Desktop","MainWindow.xaml"));XNamespace p="http://schemas.microsoft.com/winfx/2006/xaml/presentation";var buttons=document.Descendants(p+"Button").Select(x=>x.Attribute("Content")?.Value).ToArray();Assert.DoesNotContain("Distribute evenly",buttons);Assert.Contains("0",buttons);var textBindings=document.Descendants(p+"TextBox").Select(x=>x.Attribute("Text")?.Value??"").ToArray();Assert.Contains(textBindings,x=>x.Contains("AssignedKilogramsText")&&x.Contains("Mode=TwoWay")&&x.Contains("UpdateSourceTrigger=PropertyChanged"));Assert.Contains(textBindings,x=>x.Contains("PlannedGallonsText")&&x.Contains("Mode=TwoWay")&&x.Contains("UpdateSourceTrigger=PropertyChanged"));Assert.DoesNotContain("Use simulated loading�",buttons);var progress=Assert.Single(document.Descendants(p+"ProgressBar"),x=>(x.Attribute("Value")?.Value??"").Contains("AllocationProgressValue"));Assert.Contains("Mode=OneWay",progress.Attribute("Value")!.Value);Assert.Contains("Mode=OneWay",progress.Attribute("Maximum")!.Value);Assert.Contains(document.Descendants(p+"Path"),x=>(x.Attribute("Data")?.Value??"").StartsWith("M62,8"));Assert.Contains(document.Descendants(p+"Ellipse"),x=>(x.Attribute("Canvas.Top")?.Value??"").Contains("CurrentCgMarkerTop"));}
+    {var document=XDocument.Load(Path.Combine(AppContext.BaseDirectory,"Desktop","MainWindow.xaml"));XNamespace p="http://schemas.microsoft.com/winfx/2006/xaml/presentation";var buttons=document.Descendants(p+"Button").Select(x=>x.Attribute("Content")?.Value).ToArray();Assert.DoesNotContain("Distribute evenly",buttons);Assert.Contains("0",buttons);var textBindings=document.Descendants(p+"TextBox").Select(x=>x.Attribute("Text")?.Value??"").ToArray();Assert.Contains(textBindings,x=>x.Contains("AssignedKilogramsText")&&x.Contains("Mode=TwoWay")&&x.Contains("UpdateSourceTrigger=PropertyChanged"));Assert.Contains(textBindings,x=>x.Contains("PlannedGallonsText")&&x.Contains("Mode=TwoWay")&&x.Contains("UpdateSourceTrigger=PropertyChanged"));Assert.DoesNotContain("Use simulated loading�",buttons);var labels=document.Descendants(p+"TextBlock").Select(x=>x.Attribute("Text")?.Value??"").ToArray();Assert.Contains("JOB CARGO",labels);Assert.Contains("Available here",labels);Assert.Contains("Loaded aboard",labels);Assert.Contains("Requested aboard",labels);Assert.Contains("Delivered",labels);var progress=Assert.Single(document.Descendants(p+"ProgressBar"),x=>(x.Attribute("Value")?.Value??"").Contains("AllocationProgressValue"));Assert.Contains("Mode=OneWay",progress.Attribute("Value")!.Value);Assert.Contains("Mode=OneWay",progress.Attribute("Maximum")!.Value);Assert.Contains(document.Descendants(p+"Path"),x=>(x.Attribute("Data")?.Value??"").StartsWith("M62,8"));Assert.Contains(document.Descendants(p+"Ellipse"),x=>(x.Attribute("Canvas.Top")?.Value??"").Contains("CurrentCgMarkerTop"));}
 
     [Theory][InlineData(119)][InlineData(121)] public void Under_or_over_allocation_is_refused(decimal assigned)
     {Assert.Throws<InvalidOperationException>(()=>AircraftLoadPlan.Create(Snapshot(),120,[new(1,assigned)]));}
@@ -219,6 +219,27 @@ public sealed class AircraftLoadingTests
         Assert.True(vm.CanEditCargo);Assert.False(vm.ApplyCargoCommand.CanExecute(null));
         h.tracker.SetReady(false);Assert.Contains("Restore manifest cargo",vm.CargoReason);
         Assert.Equal(60,vm.PayloadStations[0].AssignedKilograms);Assert.Equal(1,h.tracker.Loads);
+    }
+
+    [Fact] public async Task Live_status_updates_do_not_replace_a_zero_unload_draft_with_the_manifest_load()
+    {
+        var h=Harness();await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();
+        var vm=new AircraftLoadingViewModel(h.coordinator);await h.coordinator.RefreshAsync();
+        foreach(var row in vm.PayloadStations)row.AssignedKilogramsText="0";
+        Assert.Equal(0,vm.AssignedCargo);Assert.True(vm.CanApplyCargo);
+        h.tracker.SetReady(false);h.tracker.SetReady(true);await h.coordinator.RefreshAsync();
+        Assert.Equal(0,vm.AssignedCargo);Assert.All(vm.PayloadStations,row=>Assert.Equal("0",row.AssignedKilogramsText));Assert.True(vm.CanApplyCargo);
+        await vm.ApplyDesiredCargoAsync(false);
+        Assert.Equal(10,h.sim.Value.PayloadStations[0].CurrentWeightKilograms);Assert.Equal(20,h.sim.Value.PayloadStations[1].CurrentWeightKilograms);
+        Assert.Equal(0,h.coordinator.Current.Manifest!.CargoKilograms);
+    }
+
+    [Fact] public async Task Summary_separates_job_available_loaded_and_requested_cargo()
+    {
+        var h=Harness();await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();var vm=new AircraftLoadingViewModel(h.coordinator);await h.coordinator.RefreshAsync();
+        Assert.Equal(120,vm.JobCargoKilograms);Assert.Equal(120,vm.CargoAvailableKilograms);Assert.Equal(0,vm.LoadedCargoKilograms);
+        vm.PayloadStations[0].AssignedKilogramsText="40";vm.PayloadStations[1].AssignedKilogramsText="20";await vm.ApplyDesiredCargoAsync(false);
+        Assert.Equal(60,vm.LoadedCargoKilograms);Assert.Equal(60,vm.CargoAvailableKilograms);Assert.Equal(60,vm.AssignedCargo);
     }
 
     [Fact] public async Task Committed_load_display_does_not_count_frontier_cargo_twice()

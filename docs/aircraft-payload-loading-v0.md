@@ -28,6 +28,8 @@ The live Station 5 failure was not caused by a station-index or kilogram/pound c
 
 The dedicated mission-specific unload button is no longer the primary UI. The player types the desired Frontier cargo per station and chooses **Apply desired state and verify**. Fuel remains on its own tab. Automatic distribution and new simulated loading were removed from the UI; existing simulated manifests remain readable and retain their explicit compatibility recovery path.
 
+Typed station values are editor drafts. Live telemetry and qualification refreshes update factual aircraft readings without replacing an unfinished draft with the committed manifest. The summary displays total job cargo, cargo available to load at the current location, cargo aboard, the requested aboard amount and cargo already delivered. At the origin, loading moves quantity from available to aboard; at the destination, unloading moves quantity from aboard to delivered. Cargo can be physically unloaded elsewhere only through the explicit forfeiture confirmation.
+
 ## Other retained corrections
 
 New flight attempts persist `min(10, max(0.5, directRouteDistanceNm * 0.5))`. Existing schema-1/schema-2 attempts retain their historical 10 NM requirement. Loading records `Loaded`; InTransit begins on proven departure, while all airborne, movement, arrival, identity and stationary thresholds remain unchanged.
