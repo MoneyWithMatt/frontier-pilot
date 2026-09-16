@@ -330,6 +330,16 @@ public sealed class AircraftLoadingTests
         Assert.Equal(1,h.sim.PayloadWrites);Assert.Equal(1,h.tracker.Loads);Assert.Equal(LoadManifestState.CommittedInTransit,h.coordinator.Current.Manifest!.State);
     }
 
+    [Fact] public async Task Existing_outside_cargo_can_be_authorized_without_first_making_it_disappear()
+    {
+        var h=Harness(requireBoarded:true);await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();
+        h.setWorld(World(seated:true));await h.coordinator.RefreshAsync();await h.coordinator.ApplyAuthorizedCargoAfterBoardingAsync();
+        h.setWorld(World());await h.coordinator.RefreshAsync();Assert.True(h.coordinator.Current.CanRestoreCargo);
+        var writes=h.sim.PayloadWrites;await h.coordinator.RestoreCargoAsync();Assert.Equal(writes+1,h.sim.PayloadWrites);
+        Assert.Equal(SimulatorReconciliationState.RestoreAvailable,h.coordinator.Current.Manifest!.Reconciliation);
+        Assert.Equal(1020,h.coordinator.Current.Manifest.BoardedExpectedGrossWeightKilograms);
+    }
+
     [Fact] public async Task Committed_load_display_does_not_count_frontier_cargo_twice()
     {var h=Harness();var vm=new AircraftLoadingViewModel(h.coordinator);await vm.InitializeAsync();await h.coordinator.RefreshAsync();vm.PayloadStations[0].AssignedKilogramsText="70";vm.PayloadStations[1].AssignedKilogramsText="50";vm.ApplyCargoCommand.Execute(null);Assert.Equal(10,vm.PayloadStations[0].CurrentKilograms);Assert.Equal(80,vm.PayloadStations[0].PlannedKilograms);Assert.Equal(20,vm.PayloadStations[1].CurrentKilograms);Assert.Equal(70,vm.PayloadStations[1].PlannedKilograms);Assert.Contains("Existing non-Frontier payload: 30.0 kg",vm.WeightAndBalance);Assert.Contains("Total planned payload: 150.0 kg",vm.WeightAndBalance);}
 
