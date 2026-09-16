@@ -199,6 +199,10 @@ public sealed record CargoLoadManifest(string Id, string JobId, string ShipmentI
     public decimal PriorCargoKilograms { get; init; }
     public string? LastTransferCommandId { get; init; }
     public bool IsDesiredStateManifest { get; init; }
+    public DateTimeOffset? BoardedAuthorizationUtc { get; init; }
+    public FlightPosition? BoardedAuthorizationPosition { get; init; }
+    public decimal? BoardedBaselineGrossWeightKilograms { get; init; }
+    public decimal? BoardedExpectedGrossWeightKilograms { get; init; }
     public CargoLoadManifest EnsureValid()
     {
         EconomyValidation.Id(Id, nameof(Id)); EconomyValidation.Id(JobId, nameof(JobId)); EconomyValidation.Id(ShipmentId, nameof(ShipmentId)); EconomyValidation.Id(FlightAttemptId, nameof(FlightAttemptId));
@@ -208,11 +212,15 @@ public sealed record CargoLoadManifest(string Id, string JobId, string ShipmentI
         if (Mode == AircraftLoadingMode.MsfsPayloadIntegration && Math.Abs(Stations.Sum(x => x.FrontierCargoKilograms) - CargoKilograms) > .001m) throw new InvalidDataException("Manifest cargo allocation does not equal shipment mass.");
         if (IsDesiredStateManifest && (ShipmentQuantityKilograms <= 0 || CargoKilograms + DeliveredCargoKilograms > ShipmentQuantityKilograms + .001m || DeliveredCargoKilograms < 0))
             throw new InvalidDataException("Desired-state manifest quantities are invalid.");
+        if (BoardedAuthorizationUtc is not null && BoardedAuthorizationPosition is null || BoardedAuthorizationUtc is null && BoardedAuthorizationPosition is not null ||
+            BoardedBaselineGrossWeightKilograms is <= 0 || BoardedExpectedGrossWeightKilograms is <= 0 ||
+            BoardedExpectedGrossWeightKilograms is { } expected && BoardedBaselineGrossWeightKilograms is { } baseline && expected < baseline)
+            throw new InvalidDataException("Boarded payload authorization is invalid.");
         foreach (var station in Stations) if (station.StationIndex is < 1 or > 15 || station.BaselineKilograms < 0 || station.FrontierCargoKilograms < 0 || station.TargetKilograms != station.BaselineKilograms + station.FrontierCargoKilograms || station.ReadBackKilograms < 0 || station.UnloadTargetKilograms < 0 || station.UnloadReadBackKilograms < 0)
             throw new InvalidDataException("Manifest station data is invalid.");
         if (Mode == AircraftLoadingMode.SimulatedFrontierLoading && State is LoadManifestState.SimulatorApplied or LoadManifestState.SimulatorUnloaded)
             throw new InvalidDataException("Simulated loading cannot claim a simulator write state.");
-        EconomyValidation.Text(VerificationResult, "manifest verification result", 512); LastValidPosition?.EnsureValid(); return this;
+        EconomyValidation.Text(VerificationResult, "manifest verification result", 512); LastValidPosition?.EnsureValid(); BoardedAuthorizationPosition?.EnsureValid(); return this;
     }
 }
 

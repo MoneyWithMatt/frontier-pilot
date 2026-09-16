@@ -183,3 +183,9 @@ At Matt's request, remove the UI action that starts a new simulated cargo load. 
 - Payment remains separate from physical payload manipulation and occurs only when the complete shipment has arrived with tracker-created evidence.
 - Unloading active shipment cargo away from its route requires explicit confirmation and forfeits the shipment without payment. This is a terminal prototype outcome, not the future cancellation/loss design.
 - Simulator station state is external and reconcilable. The persisted manifest and economy transfer log remain authoritative for managed cargo and exactly-once consequences.
+
+## Outside authorization with seated physical application — 2026-09-16
+
+- Guarded avatar presence remains the authority for permitting ground handling. It can authorize a short-lived explicit seated retry when a third-party aircraft accepts a station value outside but does not incorporate that value into aircraft weight.
+- Boarding never writes payload automatically. The player must invoke the separate seated action in the same aircraft, on the ground, stationary, within 1.5 NM and within five minutes of authorization.
+- A payload-station read-back is insufficient evidence of physical loading. The seated compatibility path also requires reported total aircraft weight to increase by the authorized cargo delta within 1 kg before any new economy cargo transfer is committed.
