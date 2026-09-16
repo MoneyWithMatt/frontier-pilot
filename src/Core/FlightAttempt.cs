@@ -9,7 +9,7 @@ public enum FlightDiagnosticEventType
     PostDepartureMovementRecorded, RequiredMaximumDistanceReached,
     ArrivalQualificationStarted, ArrivalQualificationInterrupted, ReadyToUnload,
     UnloadRequested, DeliveryCommitted, DeliveryRefused, ApplicationRecovery,
-    AircraftIdentityMismatchObserved
+    AircraftIdentityMismatchObserved, ShipmentLoaded
 }
 
 /// <summary>Read-only diagnostic history. Events describe observations and never qualify a delivery.</summary>
@@ -80,7 +80,8 @@ public sealed record FlightAttempt(string Id, string JobId, string ShipmentId, s
     FlightPosition LoadedPosition, DateTimeOffset? FirstAirborneUtc = null, DateTimeOffset? MovementObservedUtc = null,
     double MaximumDistanceFromOriginNauticalMiles = 0, DateTimeOffset? MaximumDistanceObservedUtc = null,
     FlightDeliveryProof? DeliveryProof = null, DateTimeOffset? DeliveredUtc = null,
-    double RequiredMaximumDistanceNauticalMiles = 10)
+    double RequiredMaximumDistanceNauticalMiles = 10, bool TransitBeginsAtDeparture = false,
+    DateTimeOffset? OriginDepartedUtc = null)
 {
     public FlightAttempt EnsureValid()
     {
@@ -88,6 +89,8 @@ public sealed record FlightAttempt(string Id, string JobId, string ShipmentId, s
         EconomyValidation.Id(OriginLocationId, nameof(OriginLocationId)); EconomyValidation.Id(DestinationLocationId, nameof(DestinationLocationId));
         if (OriginLocationId == DestinationLocationId || LoadedUtc == default) throw new InvalidDataException("Flight attempt route or load time is invalid.");
         Aircraft.EnsureValid(); LoadedPosition.EnsureValid();
+        if (OriginDepartedUtc is { } departed && (FirstAirborneUtc is null || departed < FirstAirborneUtc || departed <= LoadedUtc))
+            throw new InvalidDataException("Origin departure requires a preceding airborne observation.");
         if (LoadedPosition.ObservedUtc != LoadedUtc || !LoadedPosition.IsOnGround)
             throw new InvalidDataException("Flight attempt load observation is inconsistent.");
         if (!double.IsFinite(RequiredMaximumDistanceNauticalMiles) || RequiredMaximumDistanceNauticalMiles is < 0.5 or > 10 ||

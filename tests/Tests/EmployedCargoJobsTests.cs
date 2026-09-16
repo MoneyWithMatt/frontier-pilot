@@ -101,14 +101,15 @@ public sealed class EmployedCargoJobsPersistenceTests : TemporaryDirectoryTest
 public sealed class EmployedCargoDesktopTests
 {
     [Fact]
-    public void JobsPageHasExplicitLoadAndUnloadWithoutDirectDeliveryOrPaymentAction()
+    public void JobsPageOpensGeneralLoadManagerWithoutDirectDeliveryOrPaymentAction()
     {
         var document = XDocument.Load(Path.Combine(AppContext.BaseDirectory, "Desktop", "MainWindow.xaml"));
         XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
         Assert.Contains(document.Descendants(presentation + "TabItem"), x => x.Attribute("Header")?.Value == "Jobs");
         var buttons = document.Descendants(presentation + "Button").Select(x => x.Attribute("Content")?.Value ?? "").ToArray();
         Assert.Contains("Accept selected job", buttons);
-        Assert.Contains("Prepare aircraft…", buttons); Assert.Contains("Unload cargo…", buttons);
+        Assert.Contains("Manage aircraft load…", buttons);
+        Assert.DoesNotContain("Unload cargo…", buttons);
         Assert.Contains(document.Descendants(presentation + "TabItem"), x => x.Attribute("Header")?.Value == "Aircraft Loading");
         Assert.Contains("Copy diagnostic summary", buttons); Assert.Contains("Export support bundle…", buttons);
         Assert.Contains(document.Descendants(presentation + "TextBlock"), x => x.Attribute("Text")?.Value == "Recently completed");

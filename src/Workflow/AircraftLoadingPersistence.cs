@@ -17,7 +17,7 @@ public interface IAircraftLoadingStore
 
 public sealed class LocalAircraftLoadingStore : IAircraftLoadingStore
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
     private sealed record Document(int SchemaVersion, IReadOnlyList<CargoLoadManifest> Manifests,
         IReadOnlyList<PersistentAircraftFuelState> FuelStates);
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true,
@@ -66,14 +66,21 @@ public sealed class LocalAircraftLoadingStore : IAircraftLoadingStore
         try { await using var stream = new FileStream(StoragePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
             document = await JsonSerializer.DeserializeAsync<Document>(stream, Json, token) ?? throw new IOException("Aircraft-loading document is empty. File preserved."); }
         catch (JsonException error) { throw new IOException("Aircraft-loading document is corrupt or unsupported. File preserved.", error); }
-        if (document.SchemaVersion != CurrentSchemaVersion || document.Manifests is null || document.FuelStates is null)
+        if (document.SchemaVersion is < 1 or > CurrentSchemaVersion || document.Manifests is null || document.FuelStates is null)
             throw new IOException("Aircraft-loading document uses an unsupported schema. File preserved.");
         try
         {
-            var manifests = document.Manifests.Select(x => x.EnsureValid()).ToArray(); var fuels = document.FuelStates.Select(x => x.EnsureValid()).ToArray();
+            var manifests = document.Manifests.Select(x => document.SchemaVersion < 2 ? x with
+            {
+                ShipmentQuantityKilograms = x.CargoKilograms,
+                DeliveredCargoKilograms = x.State == LoadManifestState.Completed ? x.CargoKilograms : 0,
+                IsDesiredStateManifest = x.State is not (LoadManifestState.Completed or LoadManifestState.Abandoned)
+            } : x).Select(x => x.EnsureValid()).ToArray(); var fuels = document.FuelStates.Select(x => x.EnsureValid()).ToArray();
             if (manifests.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != manifests.Length || fuels.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != fuels.Length)
                 throw new InvalidDataException("Aircraft-loading document contains duplicate records.");
-            return new(CurrentSchemaVersion, manifests, fuels);
+            var migrated = new Document(CurrentSchemaVersion, manifests, fuels);
+            if (document.SchemaVersion < CurrentSchemaVersion) await WriteAsync(migrated, token);
+            return migrated;
         }
         catch (Exception error) when (error is InvalidDataException or ArgumentException or NullReferenceException)
         { throw new IOException("Aircraft-loading document is inconsistent. File preserved.", error); }
@@ -94,8 +101,9 @@ public sealed class LocalAircraftLoadingStore : IAircraftLoadingStore
             pair.First.FrontierCargoKilograms != pair.Second.FrontierCargoKilograms || pair.First.TargetKilograms != pair.Second.TargetKilograms ||
             pair.First.UnloadTargetKilograms is not null && pair.First.UnloadTargetKilograms != pair.Second.UnloadTargetKilograms);
         if (old.JobId != next.JobId || old.ShipmentId != next.ShipmentId || old.FlightAttemptId != next.FlightAttemptId || old.Aircraft != next.Aircraft ||
-            old.Mode != next.Mode || allocationChanged ||
-            old.CargoKilograms != next.CargoKilograms || old.CreatedUtc != next.CreatedUtc || next.State < old.State)
+            old.Mode != next.Mode || old.CreatedUtc != next.CreatedUtc || old.IsDesiredStateManifest != next.IsDesiredStateManifest ||
+            old.ShipmentQuantityKilograms != next.ShipmentQuantityKilograms ||
+            (!old.IsDesiredStateManifest && (allocationChanged || old.CargoKilograms != next.CargoKilograms || next.State < old.State)))
             throw new InvalidDataException("Cargo manifest identity, allocation or progress cannot be rewritten.");
     }
     private IDisposable Lock()

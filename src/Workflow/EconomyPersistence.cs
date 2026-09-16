@@ -18,7 +18,7 @@ public interface IEconomyStateStore
 /// inventory and ledger changes cannot become independently visible.</summary>
 public sealed class LocalEconomyStateStore : IEconomyStateStore
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 5;
     private sealed record Document(int SchemaVersion, EconomyWorld World);
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -106,7 +106,21 @@ public sealed class LocalEconomyStateStore : IEconomyStateStore
             throw new IOException("Saved economy document uses an unsupported schema. File preserved.");
         try
         {
-            var world = document.World.EnsureValid();
+            var world = document.World;
+            if (document.SchemaVersion < 5)
+            {
+                world = world with
+                {
+                    Shipments = world.Shipments.Select(shipment => shipment with
+                    {
+                        LoadedQuantity = shipment.State is ShipmentState.Loaded or ShipmentState.InTransit ? shipment.Quantity : 0,
+                        DeliveredQuantity = shipment.State == ShipmentState.Delivered ? shipment.Quantity : 0,
+                        ForfeitedQuantity = 0
+                    }).ToArray(),
+                    CargoTransfers = world.CargoTransfers ?? []
+                };
+            }
+            world = world.EnsureValid();
             if (document.SchemaVersion < CurrentSchemaVersion)
             {
                 var ledger = world.InventoryLedger.ToList();
@@ -173,6 +187,10 @@ public sealed class EconomyService(IEconomyStateStore store)
         store.ApplyAsync(world => EconomyKernel.AcceptJob(world, jobId, acceptedUtc), cancellationToken);
     public Task<EconomyTransition> MarkShipmentInTransitAsync(string jobId, CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => EconomyKernel.MarkShipmentInTransit(world, jobId), cancellationToken);
+    public Task<EconomyTransition> MarkShipmentLoadedAsync(string jobId, CancellationToken cancellationToken = default) =>
+        store.ApplyAsync(world => EconomyKernel.MarkShipmentLoaded(world, jobId), cancellationToken);
+    public Task<EconomyTransition> ApplyCargoTransferAsync(ShipmentCargoTransferRequest request, CancellationToken cancellationToken = default) =>
+        store.ApplyAsync(world => EconomyKernel.ApplyCargoTransfer(world, request), cancellationToken);
     public Task<EconomyTransition> AbandonIncompletePrototypeShipmentAsync(string jobId, DateTimeOffset cancelledUtc, CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => EconomyKernel.AbandonIncompletePrototypeShipment(world, jobId, cancelledUtc), cancellationToken);
     public Task<EconomyTransition> CompleteDeliveryAsync(VerifiedDeliveryEvidence evidence, CancellationToken cancellationToken = default) =>

@@ -7,7 +7,10 @@ namespace FrontierAirportBuilder.Workflow;
 
 public sealed record CargoJobDisplay(string JobId, string Employer, string Origin, string Destination,
     string CustomerPurpose, string CargoCategory, decimal CargoMassKilograms, decimal PaymentAmount,
-    string CurrencyCode, string KnownDestinationInformation, string? ShipmentId = null, ShipmentState? ShipmentState = null)
+    string CurrencyCode, string KnownDestinationInformation, string? ShipmentId = null, ShipmentState? ShipmentState = null,
+    string? OriginLocationId = null, string? DestinationLocationId = null, double? OriginLatitude = null,
+    double? OriginLongitude = null, double? DestinationLatitude = null, double? DestinationLongitude = null,
+    decimal LoadedCargoKilograms = 0, decimal DeliveredCargoKilograms = 0)
 {
     public string Cargo => $"{CargoCategory} · {CargoMassKilograms:0.#} kg";
     public string Payment => $"{PaymentAmount:0.##} {CurrencyCode}";
@@ -97,7 +100,9 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
             var shipment = world.Shipments.SingleOrDefault(x => x.JobId == job.Id);
             return new(job.Id, employer.Name, origin.Display, destination.Display,
                 requirement.Purpose ?? destination.Purpose, resource.Name, requirement.Quantity,
-                requirement.PaymentAmount, requirement.CurrencyCode, destination.Known, shipment?.Id, shipment?.State);
+                requirement.PaymentAmount, requirement.CurrencyCode, destination.Known, shipment?.Id, shipment?.State,
+                requirement.OriginLocationId, requirement.DestinationLocationId, origin.Latitude, origin.Longitude,
+                destination.Latitude, destination.Longitude, shipment?.LoadedQuantity ?? 0, shipment?.DeliveredQuantity ?? 0);
         }
 
         var operationNeedIds = world.Operations.SelectMany(x => new[] { ProspectingCampKernel.InboundNeed(x.Id), ProspectingCampKernel.OutboundNeed(x.Id) }).ToHashSet(StringComparer.Ordinal);
@@ -112,7 +117,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
         var player = world.Players.Single(x => x.Id == EmployedCargoPrototype.PlayerId);
         return new(offers, currentJob is null ? null : Display(currentJob), completed, StoragePath, world.Revision, player.CachedBalance, player.CurrencyCode);
 
-        (string Display, string Purpose, string Known) Place(string id)
+        (string Display, string Purpose, string Known, double Latitude, double Longitude) Place(string id)
         {
             var authored = catalogue.Locations.SingleOrDefault(x => x.StableId == id);
             if (authored is not null)
@@ -122,12 +127,13 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
                     ? $"published position {point.Latitude.ToString("F6", CultureInfo.InvariantCulture)}, {point.Longitude.ToString("F6", CultureInfo.InvariantCulture)}"
                     : "published position unavailable";
                 var timing = authored.ApproximateFlightMinutesFromErosAt120Knots is { } minutes ? $" · about {minutes} min direct at 120 kt" : "";
+                var cataloguePoint = authored.ApproximateCoordinates ?? throw new InvalidDataException("Job location has no configured coordinates.");
                 return ($"{authored.Name} ({identifier})", authored.EconomicRole,
-                    $"{identifier} · {coordinates}{timing} · {authored.VerificationEvidence?.Method ?? "MSFS verification unavailable"}");
+                    $"{identifier} · {coordinates}{timing} · {authored.VerificationEvidence?.Method ?? "MSFS verification unavailable"}", cataloguePoint.Latitude, cataloguePoint.Longitude);
             }
             var site = world.Sites.SingleOrDefault(x => x.LocationId == id) ?? throw new InvalidDataException("Job refers to an unknown authored or player-created location.");
             return ($"{site.Name} ({site.AirportIdentifier})", "Player-owned economic operation",
-                string.Create(CultureInfo.InvariantCulture, $"{site.AirportIdentifier} · player-created airport anchor {site.Latitude:F6}, {site.Longitude:F6}"));
+                string.Create(CultureInfo.InvariantCulture, $"{site.AirportIdentifier} · player-created airport anchor {site.Latitude:F6}, {site.Longitude:F6}"), site.Latitude, site.Longitude);
         }
     }
 }
@@ -184,7 +190,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     public IReadOnlyList<CargoJobDisplay> CompletedJobs { get => completedJobs; private set { completedJobs = value; Changed(); } }
     public CargoJobDisplay? SelectedOffer { get => selectedOffer; set { selectedOffer = value; Changed(); Changed(nameof(SelectedPurpose)); Changed(nameof(SelectedDestinationInformation)); AcceptCommand.Refresh(); } }
     public CargoJobDisplay? ActiveJob { get => activeJob; private set { activeJob = value; Changed(); Changed(nameof(ActiveRoute)); Changed(nameof(ActiveCargo)); Changed(nameof(ActiveShipment)); AcceptCommand.Refresh(); } }
-    public bool HasActiveJob => ActiveJob?.ShipmentState is ShipmentState.Reserved or ShipmentState.InTransit;
+    public bool HasActiveJob => ActiveJob?.ShipmentState is ShipmentState.Reserved or ShipmentState.Loaded or ShipmentState.InTransit;
     public bool IsBusy { get => busy; private set { busy = value; Changed(); RefreshCommands(); } }
     public string Status { get => status; private set { status = value; Changed(); } }
     public string Error { get => error; private set { error = value; Changed(); } }
@@ -193,7 +199,9 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     public string SelectedDestinationInformation => SelectedOffer?.KnownDestinationInformation ?? "No offer selected.";
     public string ActiveRoute => ActiveJob?.Route ?? "No active shipment";
     public string ActiveCargo => ActiveJob is null ? "—" : $"{ActiveJob.Cargo} · payment on externally verified delivery: {ActiveJob.Payment}";
-    public string ActiveShipment => ActiveJob?.Shipment ?? "—";
+    public string ActiveShipment => ActiveJob is { } job && flight.Current.Attempt is { } attempt && attempt.JobId == job.JobId
+        ? $"{(attempt.TransitBeginsAtDeparture && attempt.OriginDepartedUtc is null ? "Loaded" : "InTransit")} · {job.ShipmentId}"
+        : ActiveJob?.Shipment ?? "—";
     public string FlightStage => flight.Current.Stage;
     public string FlightReason => flight.Current.Reason;
     public string OriginDistance => flight.Current.OriginDistanceNauticalMiles is { } value ? $"Origin distance: {value:F2} NM" : "Origin distance: —";
@@ -279,6 +287,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     {
         void Notify()
         {
+            Changed(nameof(ActiveShipment));
             Changed(nameof(FlightStage)); Changed(nameof(FlightReason)); Changed(nameof(OriginDistance)); Changed(nameof(DestinationDistance)); Changed(nameof(CanResetIncompleteFlight));
             Changed(nameof(DiagnosticConnection)); Changed(nameof(DiagnosticFreshness)); Changed(nameof(DiagnosticLastSample)); Changed(nameof(DiagnosticRoute)); Changed(nameof(DiagnosticIds));
             Changed(nameof(DiagnosticRecordedAircraft)); Changed(nameof(DiagnosticObservedAircraft)); Changed(nameof(DiagnosticLiveValues)); Changed(nameof(DiagnosticDistances));

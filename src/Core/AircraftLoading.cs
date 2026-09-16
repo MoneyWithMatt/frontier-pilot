@@ -124,6 +124,54 @@ public sealed record AircraftLoadPlan(decimal CargoKilograms, IReadOnlyList<Plan
         return new(cargoKilograms, planned, totalPayload, gross, plannedCgPercent, warnings);
     }
 
+    public static AircraftLoadPlan CreateDesiredState(AircraftLoadingSnapshot supplied,
+        IReadOnlyList<CargoStationAllocation> suppliedAllocations, CargoLoadManifest? currentManifest,
+        decimal maximumAvailableCargoKilograms, double? plannedCgPercent = null, decimal toleranceKilograms = .25m)
+    {
+        var snapshot = supplied.EnsureValid();
+        if (suppliedAllocations is null || maximumAvailableCargoKilograms < 0 || toleranceKilograms <= 0)
+            throw new InvalidDataException("Desired cargo plan is invalid.");
+        var allocations = suppliedAllocations.Select(x => x.EnsureValid()).ToArray();
+        if (allocations.Select(x => x.StationIndex).Distinct().Count() != allocations.Length)
+            throw new InvalidDataException("Cargo allocation repeats a station.");
+        if (allocations.Any(x => snapshot.PayloadStations.All(s => s.Index != x.StationIndex)))
+            throw new InvalidOperationException("Cargo was assigned to an unavailable station.");
+        var desiredTotal = allocations.Sum(x => x.CargoKilograms);
+        if (desiredTotal > maximumAvailableCargoKilograms + .001m)
+            throw new InvalidOperationException($"Requested Frontier cargo is {desiredTotal:0.###} kg, but only {maximumAvailableCargoKilograms:0.###} kg exists for this aircraft and location.");
+        var oldStations = currentManifest?.Stations.ToDictionary(x => x.StationIndex) ?? [];
+        var planned = new List<PlannedPayloadStation>();
+        decimal currentManagedTotal = 0;
+        foreach (var station in snapshot.PayloadStations)
+        {
+            var desired = allocations.SingleOrDefault(x => x.StationIndex == station.Index)?.CargoKilograms ?? 0;
+            var priorManaged = oldStations.TryGetValue(station.Index, out var old) ? old.FrontierCargoKilograms : 0;
+            var physicalManaged = currentManifest?.Reconciliation == SimulatorReconciliationState.CargoAppearsMissing ? 0 : priorManaged;
+            var baseline = station.CurrentWeightKilograms - physicalManaged;
+            if (baseline < -toleranceKilograms)
+                throw new InvalidOperationException($"Station {station.Index} ({station.Name}) mismatch: live {station.CurrentWeightKilograms:0.###} kg, persisted Frontier cargo {priorManaged:0.###} kg, inferred non-Frontier baseline {baseline:0.###} kg. Reconcile the manifest before applying changes.");
+            baseline = Math.Max(0, baseline); currentManagedTotal += physicalManaged;
+            if (desired != priorManaged && !station.IsWritable)
+                throw new InvalidOperationException($"Payload station {station.Index} is not writable through the simulator adapter.");
+            var target = baseline + desired;
+            if (station.AuthoritativeMaximumKilograms is { } maximum && target > maximum + .001m)
+                throw new InvalidOperationException($"Payload station {station.Index} exceeds its authoritative structural limit.");
+            planned.Add(new(station.Index, baseline, desired, target));
+        }
+        var totalPayload = planned.Sum(x => x.TargetKilograms);
+        if (snapshot.Weights.MaximumPayloadKilograms is { } maximumPayload && totalPayload > maximumPayload + .001m)
+            throw new InvalidOperationException("Planned payload exceeds the aircraft's authoritative maximum-payload value.");
+        var cargoDelta = desiredTotal - currentManagedTotal;
+        decimal? gross = snapshot.Weights.CurrentGrossWeightKilograms + cargoDelta;
+        if (gross is { } plannedGross && snapshot.Weights.MaximumGrossWeightKilograms is { } maximumGross && plannedGross > maximumGross + .001m)
+            throw new InvalidOperationException("Planned gross weight exceeds the aircraft's authoritative maximum-gross-weight value.");
+        var warnings = EvaluateWarnings(snapshot.Weights, gross, plannedCgPercent);
+        if (snapshot.PayloadStations.Any(x => x.AuthoritativeMaximumKilograms is null)) warnings.Add("One or more structural station limits are unavailable from the aircraft.");
+        if (snapshot.Weights.MaximumPayloadKilograms is null) warnings.Add("Authoritative overall maximum payload is unavailable from the aircraft.");
+        if (plannedCgPercent is null) warnings.Add("Planned CG cannot be calculated because authoritative station arms and empty-aircraft moment are unavailable through SimConnect.");
+        return new(desiredTotal, planned, totalPayload, gross, plannedCgPercent, warnings);
+    }
+
     public static List<string> EvaluateWarnings(AircraftWeightReading weights, decimal? gross, double? cg)
     {
         var warnings = new List<string>();
@@ -146,13 +194,20 @@ public sealed record CargoLoadManifest(string Id, string JobId, string ShipmentI
     string VerificationResult = "Pending", FlightPosition? LastValidPosition = null,
     DateTimeOffset? LastReconciledUtc = null, SimulatorReconciliationState Reconciliation = SimulatorReconciliationState.NotChecked)
 {
+    public decimal ShipmentQuantityKilograms { get; init; }
+    public decimal DeliveredCargoKilograms { get; init; }
+    public decimal PriorCargoKilograms { get; init; }
+    public string? LastTransferCommandId { get; init; }
+    public bool IsDesiredStateManifest { get; init; }
     public CargoLoadManifest EnsureValid()
     {
         EconomyValidation.Id(Id, nameof(Id)); EconomyValidation.Id(JobId, nameof(JobId)); EconomyValidation.Id(ShipmentId, nameof(ShipmentId)); EconomyValidation.Id(FlightAttemptId, nameof(FlightAttemptId));
-        Aircraft.EnsureValid(); if (Stations is null || CargoKilograms <= 0 || CreatedUtc == default || VerificationToleranceKilograms <= 0)
+        Aircraft.EnsureValid(); if (Stations is null || CargoKilograms < 0 || PriorCargoKilograms < 0 || CreatedUtc == default || VerificationToleranceKilograms <= 0)
             throw new InvalidDataException("Cargo manifest is invalid.");
         EconomyValidation.Unique(Stations.Select(x => x.StationIndex.ToString()), "manifest station");
         if (Mode == AircraftLoadingMode.MsfsPayloadIntegration && Math.Abs(Stations.Sum(x => x.FrontierCargoKilograms) - CargoKilograms) > .001m) throw new InvalidDataException("Manifest cargo allocation does not equal shipment mass.");
+        if (IsDesiredStateManifest && (ShipmentQuantityKilograms <= 0 || CargoKilograms + DeliveredCargoKilograms > ShipmentQuantityKilograms + .001m || DeliveredCargoKilograms < 0))
+            throw new InvalidDataException("Desired-state manifest quantities are invalid.");
         foreach (var station in Stations) if (station.StationIndex is < 1 or > 15 || station.BaselineKilograms < 0 || station.FrontierCargoKilograms < 0 || station.TargetKilograms != station.BaselineKilograms + station.FrontierCargoKilograms || station.ReadBackKilograms < 0 || station.UnloadTargetKilograms < 0 || station.UnloadReadBackKilograms < 0)
             throw new InvalidDataException("Manifest station data is invalid.");
         if (Mode == AircraftLoadingMode.SimulatedFrontierLoading && State is LoadManifestState.SimulatorApplied or LoadManifestState.SimulatorUnloaded)

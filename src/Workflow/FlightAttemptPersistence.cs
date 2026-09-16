@@ -19,7 +19,7 @@ public interface IFlightAttemptStore
 /// <summary>Strict whole-document persistence using flushed same-directory replacement. Invalid files are preserved.</summary>
 public sealed class LocalFlightAttemptStore : IFlightAttemptStore
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
     private const int MaximumEventsPerShipment = 256;
     private sealed record Document(int SchemaVersion, IReadOnlyList<FlightAttempt> Attempts,
         IReadOnlyList<FlightDiagnosticEvent>? DiagnosticTimeline = null);
@@ -168,6 +168,8 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
         if (old.JobId != next.JobId || old.ShipmentId != next.ShipmentId || old.OriginLocationId != next.OriginLocationId ||
             old.DestinationLocationId != next.DestinationLocationId || old.LoadedUtc != next.LoadedUtc || old.Aircraft != next.Aircraft ||
             old.RequiredMaximumDistanceNauticalMiles != next.RequiredMaximumDistanceNauticalMiles ||
+            old.TransitBeginsAtDeparture != next.TransitBeginsAtDeparture ||
+            old.OriginDepartedUtc is not null && old.OriginDepartedUtc != next.OriginDepartedUtc ||
             old.LoadedPosition != next.LoadedPosition || next.State < old.State || next.MaximumDistanceFromOriginNauticalMiles < old.MaximumDistanceFromOriginNauticalMiles ||
             old.FirstAirborneUtc is not null && old.FirstAirborneUtc != next.FirstAirborneUtc ||
             old.MovementObservedUtc is not null && old.MovementObservedUtc != next.MovementObservedUtc ||
@@ -179,6 +181,7 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
     {
         State = FlightAttemptState.CargoLoaded,
         FirstAirborneUtc = null,
+        OriginDepartedUtc = null,
         MovementObservedUtc = null,
         MaximumDistanceFromOriginNauticalMiles = 0,
         MaximumDistanceObservedUtc = null,

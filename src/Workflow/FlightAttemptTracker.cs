@@ -58,6 +58,10 @@ public interface IFlightAttemptTracker
     Task LoadCargoAsync(CancellationToken cancellationToken = default);
     Task LoadCargoAsync(AircraftLoadingMode mode, CancellationToken cancellationToken = default) => LoadCargoAsync(cancellationToken);
     Task UnloadCargoAsync(CancellationToken cancellationToken = default);
+    Task ApplyCargoTransferAsync(string transferId, string commandId, decimal desiredLoadedKilograms,
+        string? currentLocationId, double latitude, double longitude, bool confirmForfeit,
+        AircraftLoadingMode mode, CancellationToken cancellationToken = default) =>
+        desiredLoadedKilograms > 0 ? LoadCargoAsync(mode, cancellationToken) : UnloadCargoAsync(cancellationToken);
     Task<string> ExportDeveloperDiagnosticAsync(CancellationToken cancellationToken = default);
     Task<string> CreateDiagnosticSummaryAsync(CancellationToken cancellationToken = default);
     Task ResetIncompletePrototypeProgressAsync(CancellationToken cancellationToken = default);
@@ -183,6 +187,19 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 UpdateStatus(); return;
             }
 
+            var activeShipmentBeforeDeparture = world.Shipments.Single(x => x.Id == active.ShipmentId);
+            if (attempt.FirstAirborneUtc is null && activeShipmentBeforeDeparture.State == ShipmentState.Loaded && sample.IsOnGround)
+            {
+                var before = stationarySince; EvaluateOriginStationary(active);
+                if (before is null && stationarySince is { } started)
+                    await RecordAsync(FlightDiagnosticEventType.OriginQualificationStarted, started, "origin-reload-start-" + started.UtcTicks,
+                        cancellationToken, ("distanceNm", CurrentDistanceToActiveOrigin().ToString("F3")), ("purpose", "additional reserved cargo")).ConfigureAwait(false);
+                if (stationarySince is { } since && sample.ObservedUtc - since >= options.RequiredStationaryDuration)
+                    await RecordAsync(FlightDiagnosticEventType.ReadyToLoad, sample.ObservedUtc, "ready-load-more", cancellationToken,
+                        ("qualifiedSeconds", (sample.ObservedUtc - since).TotalSeconds.ToString("F1"))).ConfigureAwait(false);
+                UpdateStatus(); return;
+            }
+
             if (!TryIdentity(sample, out var identity, out var identityError))
             { await InterruptQualificationAsync(identityError, sample.ObservedUtc, cancellationToken).ConfigureAwait(false); observationReason = identityError; UpdateStatus(); return; }
             if (attempt.Aircraft.ClearlyDiffersFrom(identity!))
@@ -220,7 +237,11 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             }
             attempt = updated;
 
-            bool evidenceComplete = attempt.FirstAirborneUtc is not null && attempt.MovementObservedUtc is not null &&
+            if (attempt.TransitBeginsAtDeparture && attempt.OriginDepartedUtc is null &&
+                attempt.FirstAirborneUtc is not null && !sample.IsOnGround && originDistance > options.AirportRadiusNauticalMiles)
+            { attempt = attempt with { OriginDepartedUtc = sample.ObservedUtc }; persist = true; }
+            bool evidenceComplete = (!attempt.TransitBeginsAtDeparture || attempt.OriginDepartedUtc is not null) &&
+                attempt.FirstAirborneUtc is not null && attempt.MovementObservedUtc is not null &&
                 attempt.MaximumDistanceFromOriginNauticalMiles >= attempt.RequiredMaximumDistanceNauticalMiles;
             var destination = Coordinates(attempt.DestinationLocationId);
             double destinationDistance = DistanceNm(sample, destination);
@@ -259,6 +280,13 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             }
             else if (attempt.DeliveryProof is null) await InterruptQualificationAsync("Required persisted flight evidence is incomplete.", sample.ObservedUtc, cancellationToken).ConfigureAwait(false);
             if (persist) await store.SaveAsync(attempt, cancellationToken).ConfigureAwait(false);
+            if (attempt.TransitBeginsAtDeparture && attempt.OriginDepartedUtc is { } departureUtc &&
+                world.Shipments.Single(x => x.Id == attempt.ShipmentId).State == ShipmentState.Loaded)
+            {
+                world = (await economy.MarkShipmentInTransitAsync(attempt.JobId, cancellationToken).ConfigureAwait(false)).World;
+                await RecordAsync(FlightDiagnosticEventType.ShipmentEnteredInTransit, departureUtc, "in-transit", cancellationToken,
+                    ("reason", "Airborne outside the origin airport radius.")).ConfigureAwait(false);
+            }
             if (recordedAirborne) await RecordAsync(FlightDiagnosticEventType.AirborneEvidenceRecorded, sample.ObservedUtc, "airborne", cancellationToken,
                 ("onGround", "false")).ConfigureAwait(false);
             if (recordedMovement) await RecordAsync(FlightDiagnosticEventType.PostDepartureMovementRecorded, sample.ObservedUtc, "movement", cancellationToken,
@@ -284,32 +312,108 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             {
                 var existingJob = ActiveJob(world);
                 var existingShipment = existingJob is null ? null : world.Shipments.Single(x => x.Id == existingJob.ShipmentId);
-                if (existingJob?.Id == attempt.JobId && existingShipment?.State == ShipmentState.InTransit) { UpdateStatus(); return; }
+                if (existingJob?.Id == attempt.JobId && existingShipment?.State is (ShipmentState.Loaded or ShipmentState.InTransit)) { UpdateStatus(); return; }
             }
             UpdateStatus(); if (!Current.CanLoadCargo || latest is null || world is null) throw new InvalidOperationException(Current.Reason);
             var job = ActiveJob(world) ?? throw new InvalidOperationException("No accepted shipment is available for loading.");
             var requirement = world.Requirements.Single(x => x.Id == job.RequirementId);
             var shipment = world.Shipments.Single(x => x.Id == job.ShipmentId);
-            if (shipment.State == ShipmentState.InTransit && attempt is not null) { UpdateStatus(); return; }
+            if (shipment.State is (ShipmentState.Loaded or ShipmentState.InTransit) && attempt is not null) { UpdateStatus(); return; }
             if (shipment.State != ShipmentState.Reserved) throw new InvalidOperationException("The accepted shipment is not reserved for loading.");
             var identity = FlightAircraftIdentity.From(latest);
             var origin = Coordinates(requirement.OriginLocationId); var destination = Coordinates(requirement.DestinationLocationId);
             var directNm = WorldTracking.DistanceMeters(origin.Latitude, origin.Longitude, destination.Latitude, destination.Longitude) / MetersPerNauticalMile;
             attempt ??= new FlightAttempt(FlightAttemptIds.Attempt(shipment.Id), job.Id, shipment.Id, requirement.OriginLocationId,
                 requirement.DestinationLocationId, FlightAttemptState.CargoLoaded, latest.ObservedUtc, identity, FlightPosition.From(latest),
-                RequiredMaximumDistanceNauticalMiles: RequiredDistanceForRoute(directNm)).EnsureValid();
+                RequiredMaximumDistanceNauticalMiles: RequiredDistanceForRoute(directNm), TransitBeginsAtDeparture: true).EnsureValid();
             await store.SaveAsync(attempt, cancellationToken).ConfigureAwait(false);
             await RecordAsync(FlightDiagnosticEventType.FlightAttemptCreated, latest.ObservedUtc, "created", cancellationToken,
                 ("origin", attempt.OriginLocationId), ("destination", attempt.DestinationLocationId)).ConfigureAwait(false);
             await RecordAsync(FlightDiagnosticEventType.CargoLoaded, latest.ObservedUtc, "cargo-loaded", cancellationToken,
                 ("aircraft", identity.Title + " / " + identity.Type), ("mode", mode == AircraftLoadingMode.MsfsPayloadIntegration ? "MSFS payload integration; station weights verified" : "simulated; MSFS payload unchanged")).ConfigureAwait(false);
-            var transition = await economy.MarkShipmentInTransitAsync(job.Id, cancellationToken).ConfigureAwait(false);
+            var transition = await economy.MarkShipmentLoadedAsync(job.Id, cancellationToken).ConfigureAwait(false);
             world = transition.World;
-            await RecordAsync(FlightDiagnosticEventType.ShipmentEnteredInTransit, latest.ObservedUtc, "in-transit", cancellationToken,
-                ("shipmentState", ShipmentState.InTransit.ToString())).ConfigureAwait(false);
+            await RecordAsync(FlightDiagnosticEventType.ShipmentLoaded, latest.ObservedUtc, "shipment-loaded", cancellationToken,
+                ("shipmentState", ShipmentState.Loaded.ToString())).ConfigureAwait(false);
             stationarySince = null; observationReason = mode == AircraftLoadingMode.MsfsPayloadIntegration
-                ? "Cargo station weights were verified in MSFS and the shipment entered InTransit."
+                ? "Cargo station weights were verified in MSFS and the shipment is Loaded; InTransit begins after departure."
                 : "Cargo loaded in Frontier Pilot compatibility mode; MSFS payload stations are unchanged."; UpdateStatus();
+        }
+        finally { gate.Release(); }
+    }
+
+    public async Task ApplyCargoTransferAsync(string transferId, string commandId, decimal desiredLoadedKilograms,
+        string? currentLocationId, double latitude, double longitude, bool confirmForfeit,
+        AircraftLoadingMode mode, CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (world is null) throw new InvalidOperationException("Economy state is unavailable.");
+            var job = ActiveJob(world);
+            if (job is null)
+            {
+                var replay = world.CargoTransfers.SingleOrDefault(x => x.CommandId == commandId);
+                if (replay is not null)
+                {
+                    observationReason = "The persisted cargo transfer was already committed; no inventory or payment was repeated.";
+                    UpdateStatus();
+                    return;
+                }
+                throw new InvalidOperationException("No accepted shipment is available for cargo transfer.");
+            }
+            var shipment = world.Shipments.Single(x => x.Id == job.ShipmentId);
+            var loading = desiredLoadedKilograms > shipment.LoadedQuantity + .001m;
+            if (loading && attempt is null)
+            {
+                UpdateStatus();
+                if (!Current.CanLoadCargo || latest is null) throw new InvalidOperationException(Current.Reason);
+                var requirement = world.Requirements.Single(x => x.Id == job.RequirementId);
+                var identity = FlightAircraftIdentity.From(latest);
+                var origin = Coordinates(requirement.OriginLocationId); var destination = Coordinates(requirement.DestinationLocationId);
+                var directNm = WorldTracking.DistanceMeters(origin.Latitude, origin.Longitude, destination.Latitude, destination.Longitude) / MetersPerNauticalMile;
+                attempt = new FlightAttempt(FlightAttemptIds.Attempt(shipment.Id), job.Id, shipment.Id, requirement.OriginLocationId,
+                    requirement.DestinationLocationId, FlightAttemptState.CargoLoaded, latest.ObservedUtc, identity, FlightPosition.From(latest),
+                    RequiredMaximumDistanceNauticalMiles: RequiredDistanceForRoute(directNm), TransitBeginsAtDeparture: true).EnsureValid();
+                await store.SaveAsync(attempt, cancellationToken).ConfigureAwait(false);
+                await RecordAsync(FlightDiagnosticEventType.FlightAttemptCreated, latest.ObservedUtc, "created", cancellationToken,
+                    ("origin", attempt.OriginLocationId), ("destination", attempt.DestinationLocationId)).ConfigureAwait(false);
+            }
+            VerifiedDeliveryEvidence? evidence = null;
+            if (attempt?.DeliveryProof is { } proof)
+                evidence = new VerifiedDeliveryEvidence(proof.EvidenceId, "frontier-flight-attempt-v0", attempt.JobId, attempt.ShipmentId,
+                    attempt.OriginLocationId, attempt.DestinationLocationId, proof.ReadyUtc,
+                    $"Persisted flight proof: airborne {proof.FirstAirborneUtc:O}; movement {proof.MovementObservedUtc:O}; maximum origin distance {proof.MaximumDistanceFromOriginNauticalMiles:F2} NM.").EnsureValid();
+            var request = new ShipmentCargoTransferRequest(transferId, commandId, job.Id, desiredLoadedKilograms,
+                currentLocationId, latitude, longitude, utcNow(), confirmForfeit, evidence);
+            var transition = await economy.ApplyCargoTransferAsync(request, cancellationToken).ConfigureAwait(false);
+            world = transition.World;
+            var updatedJob = world.Jobs.Single(x => x.Id == job.Id);
+            var updatedShipment = world.Shipments.Single(x => x.Id == shipment.Id);
+            if (loading && transition.Changed)
+            {
+                await RecordAsync(FlightDiagnosticEventType.CargoLoaded, request.OccurredUtc, "cargo-transfer-" + commandId, cancellationToken,
+                    ("aircraft", attempt!.Aircraft.Title + " / " + attempt.Aircraft.Type), ("mode", mode.ToString()),
+                    ("loadedKilograms", updatedShipment.LoadedQuantity.ToString("0.###"))).ConfigureAwait(false);
+                await RecordAsync(FlightDiagnosticEventType.ShipmentLoaded, request.OccurredUtc, "shipment-loaded", cancellationToken,
+                    ("shipmentState", updatedShipment.State.ToString())).ConfigureAwait(false);
+            }
+            if (updatedJob.State == EconomyJobState.Completed && attempt is not null && attempt.State != FlightAttemptState.Delivered)
+            {
+                attempt = attempt with { State = FlightAttemptState.Delivered, DeliveredUtc = evidence?.VerifiedUtc ?? request.OccurredUtc };
+                await store.SaveAsync(attempt, cancellationToken).ConfigureAwait(false);
+                await RecordAsync(FlightDiagnosticEventType.DeliveryCommitted, attempt.DeliveredUtc!.Value, "delivery-committed", cancellationToken,
+                    ("economyChanged", transition.Changed.ToString()), ("evidenceId", evidence?.Id ?? "unavailable")).ConfigureAwait(false);
+            }
+            stationarySince = null;
+            observationReason = updatedJob.State switch
+            {
+                EconomyJobState.Completed => "All shipment cargo was physically delivered; inventory and payment were committed once.",
+                EconomyJobState.Forfeited => "Cargo was unloaded away from its valid destination; the job was forfeited without payment.",
+                _ when updatedShipment.DeliveredQuantity > 0 => $"Partial delivery recorded: {updatedShipment.DeliveredQuantity:0.###} of {updatedShipment.Quantity:0.###} kg.",
+                _ => $"Aircraft now carries {updatedShipment.LoadedQuantity:0.###} kg of this reserved shipment."
+            };
+            UpdateStatus();
         }
         finally { gate.Release(); }
     }
@@ -417,7 +521,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             if (world is null || attempt is null) throw new InvalidOperationException("No loaded prototype flight attempt is available to reset.");
             var job = world.Jobs.SingleOrDefault(x => x.Id == attempt.JobId);
             var shipment = world.Shipments.SingleOrDefault(x => x.Id == attempt.ShipmentId);
-            if (job?.State != EconomyJobState.Accepted || shipment?.State != ShipmentState.InTransit ||
+            if (job?.State != EconomyJobState.Accepted || shipment?.State is not (ShipmentState.Loaded or ShipmentState.InTransit) ||
                 attempt.State == FlightAttemptState.Delivered || attempt.DeliveredUtc is not null)
                 throw new InvalidOperationException("Only observation progress for an incomplete, loaded shipment can be reset. Completed economy state is protected.");
             attempt = await store.ResetIncompleteProgressAsync(attempt.Id, cancellationToken).ConfigureAwait(false);
@@ -450,7 +554,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         if (attempt is null)
         {
             var activeWithoutAttempt = ActiveJob(world);
-            if (activeWithoutAttempt is not null && world.Shipments.Single(x => x.Id == activeWithoutAttempt.ShipmentId).State == ShipmentState.InTransit)
+            if (activeWithoutAttempt is not null && world.Shipments.Single(x => x.Id == activeWithoutAttempt.ShipmentId).State is (ShipmentState.Loaded or ShipmentState.InTransit))
                 throw new IOException("An in-transit shipment has no persisted flight attempt. Files preserved.");
             return;
         }
@@ -460,10 +564,12 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         if (requirement.OriginLocationId != attempt.OriginLocationId || requirement.DestinationLocationId != attempt.DestinationLocationId)
             throw new IOException("Flight attempt route does not match its job. File preserved.");
         var shipment = world.Shipments.Single(x => x.Id == attempt.ShipmentId);
-        if (job.State == EconomyJobState.Accepted && shipment.State == ShipmentState.Reserved)
+        if (job.State == EconomyJobState.Accepted && shipment.State == ShipmentState.Reserved && !attempt.TransitBeginsAtDeparture)
             world = (await economy.MarkShipmentInTransitAsync(job.Id, cancellationToken).ConfigureAwait(false)).World;
-        else if (job.State == EconomyJobState.Accepted && shipment.State != ShipmentState.InTransit)
+        else if (job.State == EconomyJobState.Accepted && shipment.State is not (ShipmentState.Loaded or ShipmentState.InTransit))
             throw new IOException("Flight attempt shipment state is inconsistent. Files preserved.");
+        if (job.State == EconomyJobState.Accepted && attempt.TransitBeginsAtDeparture && attempt.OriginDepartedUtc is not null)
+            world = (await economy.MarkShipmentInTransitAsync(job.Id, cancellationToken).ConfigureAwait(false)).World;
         if (job.State == EconomyJobState.Completed && attempt.DeliveryProof is not null)
         {
             if (attempt.State != FlightAttemptState.Delivered)
@@ -477,7 +583,8 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
     {
         if (active is null || world is null || latest is null) { stationarySince = null; return; }
         var shipment = world.Shipments.Single(x => x.Id == active.ShipmentId);
-        if (shipment.State != ShipmentState.Reserved) { stationarySince = null; observationReason = "Accepted shipment is not in its reserved state."; return; }
+        if (shipment.State is not (ShipmentState.Reserved or ShipmentState.Loaded)) { stationarySince = null; observationReason = "Accepted shipment is not available for origin loading."; return; }
+        if (shipment.LoadedQuantity + shipment.DeliveredQuantity >= shipment.Quantity - .001m) { stationarySince = null; observationReason = "All remaining shipment cargo is already aboard or delivered."; return; }
         var requirement = world.Requirements.Single(x => x.Id == active.RequirementId);
         var origin = Coordinates(requirement.OriginLocationId);
         var originName = PlaceName(requirement.OriginLocationId);
@@ -515,14 +622,19 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         { SetStatus(new("Delivered and paid", observationReason, connected, false, false, originDistance, destinationDistance, attempt, balance, currency)); return; }
         if (attempt.DeliveryProof is not null)
         { SetStatus(new("Ready to unload", observationReason, connected, false, true, originDistance, destinationDistance, attempt, balance, currency)); return; }
-        bool evidence = attempt.FirstAirborneUtc is not null && attempt.MovementObservedUtc is not null && attempt.MaximumDistanceFromOriginNauticalMiles >= attempt.RequiredMaximumDistanceNauticalMiles;
+        bool evidence = (!attempt.TransitBeginsAtDeparture || attempt.OriginDepartedUtc is not null) && attempt.FirstAirborneUtc is not null && attempt.MovementObservedUtc is not null && attempt.MaximumDistanceFromOriginNauticalMiles >= attempt.RequiredMaximumDistanceNauticalMiles;
         string stage = attempt.FirstAirborneUtc is null ? "Cargo loaded" : attempt.MovementObservedUtc is null ? "Departed" :
             evidence && destinationDistance <= options.AirportRadiusNauticalMiles ? "Arrived — stop aircraft" : "En route";
         string reason = connected ? observationReason : "SimConnect is disconnected; persisted flight evidence is retained and timers are paused.";
         if (connected && !evidence && attempt.FirstAirborneUtc is not null)
             reason = attempt.MovementObservedUtc is null ? $"Meaningful movement of {options.MeaningfulMovementNauticalMiles:F1} NM after takeoff has not yet been recorded." :
                 $"Maximum recorded distance from {PlaceName(requirement.OriginLocationId)} is {attempt.MaximumDistanceFromOriginNauticalMiles:F2} NM; {attempt.RequiredMaximumDistanceNauticalMiles:F2} NM is required.";
-        SetStatus(new(stage, reason, connected, false, false, originDistance, destinationDistance, attempt, balance, currency));
+        var activeShipment = world.Shipments.Single(x => x.Id == currentJob.ShipmentId);
+        var canLoadMore = attempt.FirstAirborneUtc is null && activeShipment.State == ShipmentState.Loaded &&
+            activeShipment.LoadedQuantity + activeShipment.DeliveredQuantity < activeShipment.Quantity - .001m &&
+            connected && latest is not null && stationarySince is { } loadSince && latest.ObservedUtc - loadSince >= options.RequiredStationaryDuration &&
+            latest.IsOnGround && latest.GroundSpeedKnots <= options.MaximumGroundSpeedKnots && originDistance <= options.AirportRadiusNauticalMiles;
+        SetStatus(new(stage, reason, connected, canLoadMore, false, originDistance, destinationDistance, attempt, balance, currency));
     }
 
     private static FlightAttempt? SelectAttempt(EconomyWorld? world, IReadOnlyList<FlightAttempt> attempts)

@@ -30,11 +30,103 @@ public sealed class AircraftLoadingTests
     [Fact] public void Maximum_gross_and_CG_limits_warn_without_blocking()
     {var w=new AircraftWeightReading(700,1000,950,null,25,20,30);var plan=AircraftLoadPlan.Create(Snapshot(weights:w),120,[new(1,120)],35);Assert.Contains(plan.Warnings,x=>x.Contains("maximum gross"));Assert.Contains(plan.Warnings,x=>x.Contains("aft"));}
 
+    [Fact] public void Desired_state_plan_supports_partial_loads_unloads_and_preserves_non_frontier_payload()
+    {
+        var live=Snapshot(stations:[new(1,"Front",86),new(5,"Baggage",0)]);
+        var first=AircraftLoadPlan.CreateDesiredState(live,[new(1,0),new(5,60)],null,100);
+        Assert.Equal(60,first.CargoKilograms);Assert.Equal(86,first.Stations.Single(x=>x.StationIndex==1).TargetKilograms);Assert.Equal(60,first.Stations.Single(x=>x.StationIndex==5).TargetKilograms);
+        var manifest=new CargoLoadManifest("manifest-test","job-test","shipment-test","flight-test",live.Aircraft,AircraftLoadingMode.MsfsPayloadIntegration,
+            first.Stations,60,LoadManifestState.CommittedInTransit,live.ObservedUtc,Reconciliation:SimulatorReconciliationState.MatchesManifest)
+            {ShipmentQuantityKilograms=100,IsDesiredStateManifest=true};
+        var loaded=live with{PayloadStations=[new(1,"Front",86),new(5,"Baggage",60)]};
+        var full=AircraftLoadPlan.CreateDesiredState(loaded,[new(1,10),new(5,90)],manifest,100);
+        Assert.Equal(96,full.Stations.Single(x=>x.StationIndex==1).TargetKilograms);Assert.Equal(90,full.Stations.Single(x=>x.StationIndex==5).TargetKilograms);
+        var partialUnload=AircraftLoadPlan.CreateDesiredState(loaded,[new(1,0),new(5,40)],manifest,100);
+        Assert.Equal(86,partialUnload.Stations.Single(x=>x.StationIndex==1).TargetKilograms);Assert.Equal(40,partialUnload.Stations.Single(x=>x.StationIndex==5).TargetKilograms);
+        Assert.Throws<InvalidOperationException>(()=>AircraftLoadPlan.CreateDesiredState(loaded,[new(5,101)],manifest,100));
+    }
+
+    [Fact] public void Desired_state_enforces_authoritative_station_payload_and_gross_limits()
+    {
+        var stationLimited=Snapshot(stations:[new(1,"Cargo",20,null,50)]);
+        Assert.Throws<InvalidOperationException>(()=>AircraftLoadPlan.CreateDesiredState(stationLimited,[new(1,40)],null,100));
+        var payloadLimited=Snapshot(weights:new(700,1400,900,50,25,20,30));
+        Assert.Throws<InvalidOperationException>(()=>AircraftLoadPlan.CreateDesiredState(payloadLimited,[new(1,40),new(2,20)],null,100));
+        var grossLimited=Snapshot(weights:new(700,940,900,null,25,20,30));
+        Assert.Throws<InvalidOperationException>(()=>AircraftLoadPlan.CreateDesiredState(grossLimited,[new(1,50)],null,100));
+    }
+
+    [Fact] public void Economy_tracks_partial_loading_delivery_and_exactly_once_payment()
+    {
+        var now=DateTimeOffset.Parse("2026-09-16T12:00:00Z");var world=AcceptedWorld(now,out var job,out var shipment);
+        world=EconomyKernel.ApplyCargoTransfer(world,Transfer("load-60",job.Id,60,shipment.OriginLocationId,now)).World;
+        Assert.Equal(60,world.Shipments.Single(x=>x.Id==shipment.Id).LoadedQuantity);
+        world=EconomyKernel.ApplyCargoTransfer(world,Transfer("load-100",job.Id,100,shipment.OriginLocationId,now.AddMinutes(1))).World;
+        Assert.Equal(100,world.Shipments.Single(x=>x.Id==shipment.Id).LoadedQuantity);
+        world=EconomyKernel.MarkShipmentInTransit(world,job.Id).World;
+        world=EconomyKernel.ApplyCargoTransfer(world,Transfer("deliver-60",job.Id,40,shipment.DestinationLocationId,now.AddHours(1))).World;
+        Assert.Equal(60,world.Shipments.Single(x=>x.Id==shipment.Id).DeliveredQuantity);Assert.Empty(world.FinancialLedger);
+        var evidence=new VerifiedDeliveryEvidence("evidence-test","test",job.Id,shipment.Id,shipment.OriginLocationId,shipment.DestinationLocationId,now.AddHours(2),"test proof");
+        world=EconomyKernel.ApplyCargoTransfer(world,Transfer("deliver-final",job.Id,0,shipment.DestinationLocationId,now.AddHours(2),evidence:evidence)).World;
+        Assert.Equal(ShipmentState.Delivered,world.Shipments.Single(x=>x.Id==shipment.Id).State);Assert.Single(world.FinancialLedger.Where(x=>x.JobId==job.Id));
+        var replay=EconomyKernel.ApplyCargoTransfer(world,Transfer("deliver-final",job.Id,0,shipment.DestinationLocationId,now.AddHours(2),evidence:evidence));
+        Assert.False(replay.Changed);Assert.Single(replay.World.FinancialLedger.Where(x=>x.JobId==job.Id));
+    }
+
+    [Fact] public void Wrong_location_unload_requires_confirmation_and_forfeits_without_payment()
+    {
+        var now=DateTimeOffset.Parse("2026-09-16T12:00:00Z");var world=AcceptedWorld(now,out var job,out var shipment);
+        world=EconomyKernel.ApplyCargoTransfer(world,Transfer("load-full",job.Id,shipment.Quantity,shipment.OriginLocationId,now)).World;
+        world=EconomyKernel.MarkShipmentInTransit(world,job.Id).World;
+        Assert.Throws<InvalidOperationException>(()=>EconomyKernel.ApplyCargoTransfer(world,Transfer("wrong",job.Id,40,null,now.AddHours(1))));
+        var forfeited=EconomyKernel.ApplyCargoTransfer(world,Transfer("wrong",job.Id,40,null,now.AddHours(1),confirm:true)).World;
+        Assert.Equal(EconomyJobState.Forfeited,forfeited.Jobs.Single(x=>x.Id==job.Id).State);Assert.Equal(ShipmentState.Forfeited,forfeited.Shipments.Single(x=>x.Id==shipment.Id).State);
+        Assert.Empty(forfeited.FinancialLedger.Where(x=>x.JobId==job.Id));
+        Assert.Throws<InvalidOperationException>(()=>EconomyKernel.CompleteDelivery(forfeited,new("evidence-late","test",job.Id,shipment.Id,shipment.OriginLocationId,shipment.DestinationLocationId,now.AddHours(2),"late")));
+    }
+
     [Fact] public async Task Opening_and_initializing_does_not_touch_simulator()
     {var h=Harness();await h.coordinator.InitializeAsync();Assert.Equal(0,h.sim.ReadCount);Assert.Empty(await h.store.LoadManifestsAsync());}
 
     [Fact] public async Task Pending_intent_precedes_write_and_apply_is_idempotent()
     {var h=Harness();await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();Assert.Equal(1,h.sim.PayloadWrites);Assert.Equal(AircraftLoadingMode.MsfsPayloadIntegration,h.tracker.Mode);Assert.Equal(1,h.tracker.Loads);Assert.Equal(LoadManifestState.CommittedInTransit,h.coordinator.Current.Manifest!.State);await Assert.ThrowsAsync<InvalidOperationException>(()=>h.coordinator.ApplyCargoAsync());Assert.Equal(1,h.sim.PayloadWrites);}
+
+    [Fact] public async Task Simulator_applied_intent_recovers_without_writing_or_loading_twice()
+    {
+        var h=Harness();await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();h.coordinator.CreatePlan([new(1,70),new(2,50)]);
+        h.tracker.FailNextTransfer=true;
+        await Assert.ThrowsAsync<IOException>(()=>h.coordinator.ApplyCargoAsync());
+        Assert.Equal(1,h.sim.PayloadWrites);Assert.Equal(LoadManifestState.SimulatorApplied,(await h.store.LoadManifestsAsync()).Single().State);
+        await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();await h.coordinator.ApplyCargoAsync();
+        Assert.Equal(1,h.sim.PayloadWrites);Assert.Equal(1,h.tracker.Loads);Assert.Equal(LoadManifestState.CommittedInTransit,h.coordinator.Current.Manifest!.State);
+    }
+
+    [Fact] public async Task Coordinator_applies_partial_zero_to_sixty_to_full_without_replacing_baseline()
+    {
+        var h=Harness();await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,40),new(2,20)]);await h.coordinator.ApplyCargoAsync();
+        Assert.Equal(50,h.sim.Value.PayloadStations[0].CurrentWeightKilograms);Assert.Equal(40,h.sim.Value.PayloadStations[1].CurrentWeightKilograms);Assert.Equal(60,h.coordinator.Current.Manifest!.CargoKilograms);
+        h.tracker.SetReady(true);h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();
+        Assert.Equal(80,h.sim.Value.PayloadStations[0].CurrentWeightKilograms);Assert.Equal(70,h.sim.Value.PayloadStations[1].CurrentWeightKilograms);Assert.Equal(120,h.coordinator.Current.Manifest!.CargoKilograms);
+    }
+
+    [Fact] public async Task Station_five_missing_cargo_reconciles_to_zero_without_subtracting_baseline_again()
+    {
+        var h=Harness(snapshot:Snapshot(stations:[new(5,"Baggage",0)]));await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(5,120)]);await h.coordinator.ApplyCargoAsync();h.sim.Value=Snapshot(stations:[new(5,"Baggage",0)]);
+        await h.coordinator.RefreshAsync();Assert.Equal(SimulatorReconciliationState.CargoAppearsMissing,h.coordinator.Current.Manifest!.Reconciliation);
+        h.coordinator.CreatePlan([new(5,0)]);await h.coordinator.ApplyCargoAsync();
+        Assert.Equal(0,h.sim.Value.PayloadStations.Single().CurrentWeightKilograms);Assert.Equal(0,h.coordinator.Current.Manifest!.CargoKilograms);
+    }
+
+    [Fact] public async Task Terminal_manifest_does_not_present_stale_job_cargo_as_available()
+    {
+        var h=Harness(noActiveJob:true);var t=DateTimeOffset.Parse("2026-09-16T12:00:00Z");
+        await h.store.SaveManifestAsync(new CargoLoadManifest("manifest-old","job-test","shipment-test","flight-test",Snapshot().Aircraft,
+            AircraftLoadingMode.MsfsPayloadIntegration,[new(5,0,100,100,100)],100,LoadManifestState.Completed,t,CompletedUtc:t));
+        await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
+        Assert.Null(h.coordinator.Current.Manifest);Assert.Equal(0,h.coordinator.ActiveCargoKilograms);
+    }
 
     [Fact] public async Task Apply_refreshes_telemetry_at_write_time_instead_of_reusing_an_expired_table_snapshot()
     {var now=new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);var h=Harness(snapshot:Snapshot(now:now.AddSeconds(-10)),world:World(now:now));await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();h.coordinator.CreatePlan([new(1,70),new(2,50)]);h.sim.Value=Snapshot(now:now);await h.coordinator.ApplyCargoAsync();Assert.Equal(LoadManifestState.CommittedInTransit,h.coordinator.Current.Manifest!.State);}
@@ -96,7 +188,7 @@ public sealed class AircraftLoadingTests
     {
         var h=Harness();h.tracker.SetReady(false);var vm=new AircraftLoadingViewModel(h.coordinator);
         await vm.InitializeAsync();await h.coordinator.RefreshAsync();vm.PayloadStations[0].AssignedKilogramsText="120";
-        Assert.False(vm.ApplyCargoCommand.CanExecute(null));Assert.Contains("WAITING",vm.AllocationState);h.tracker.SetReady(true);
+        Assert.False(vm.ApplyCargoCommand.CanExecute(null));Assert.Contains("DESIRED STATE",vm.AllocationState);h.tracker.SetReady(true);
         Assert.True(vm.ApplyCargoCommand.CanExecute(null));Assert.Equal("120",vm.PayloadStations[0].AssignedKilogramsText);
     }
 
@@ -123,8 +215,8 @@ public sealed class AircraftLoadingTests
         var h=Harness();await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
         h.coordinator.CreatePlan([new(1,60),new(2,60)]);await h.coordinator.ApplyCargoAsync();
         h.sim.Value=Snapshot();var vm=new AircraftLoadingViewModel(h.coordinator);await h.coordinator.RefreshAsync();
-        Assert.Contains("Restore manifest cargo",vm.CargoReason);Assert.Equal("CARGO ALREADY LOADED",vm.AllocationState);
-        Assert.False(vm.CanEditCargo);Assert.False(vm.ApplyCargoCommand.CanExecute(null));
+        Assert.Contains("Restore manifest cargo",vm.CargoReason);Assert.Contains("DESIRED STATE",vm.AllocationState);
+        Assert.True(vm.CanEditCargo);Assert.False(vm.ApplyCargoCommand.CanExecute(null));
         h.tracker.SetReady(false);Assert.Contains("Restore manifest cargo",vm.CargoReason);
         Assert.Equal(60,vm.PayloadStations[0].AssignedKilograms);Assert.Equal(1,h.tracker.Loads);
     }
@@ -132,8 +224,56 @@ public sealed class AircraftLoadingTests
     [Fact] public async Task Committed_load_display_does_not_count_frontier_cargo_twice()
     {var h=Harness();var vm=new AircraftLoadingViewModel(h.coordinator);await vm.InitializeAsync();await h.coordinator.RefreshAsync();vm.PayloadStations[0].AssignedKilogramsText="70";vm.PayloadStations[1].AssignedKilogramsText="50";vm.ApplyCargoCommand.Execute(null);Assert.Equal(10,vm.PayloadStations[0].CurrentKilograms);Assert.Equal(80,vm.PayloadStations[0].PlannedKilograms);Assert.Equal(20,vm.PayloadStations[1].CurrentKilograms);Assert.Equal(70,vm.PayloadStations[1].PlannedKilograms);Assert.Contains("Existing non-Frontier payload: 30.0 kg",vm.WeightAndBalance);Assert.Contains("Total planned payload: 150.0 kg",vm.WeightAndBalance);}
 
-    private static (AircraftLoadingCoordinator coordinator,MemoryAircraftLoadingStore store,FakeSimulator sim,FakeTracker tracker) Harness(AircraftLoadingSnapshot? snapshot=null,TrackingWorldState? world=null)
-    {var now=new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);snapshot??=Snapshot(now:now);world??=World(now:now);var sim=new FakeSimulator(snapshot);var tracker=new FakeTracker();var store=new MemoryAircraftLoadingStore();var job=new CargoJobDisplay("job-test","Employer","Origin","Destination","Purpose","General Supplies",120,240,"TPC","Test","shipment-test",ShipmentState.Reserved);var c=new AircraftLoadingCoordinator(store,sim,tracker,()=>"sdk",()=>world,()=>job,new(TelemetryMaximumAge:TimeSpan.FromHours(1)),()=>now);return(c,store,sim,tracker);}
+    [Fact] public async Task Return_job_with_cargo_already_cleared_preserves_baseline_and_never_writes_payload()
+    {
+        var h=Harness(); await h.coordinator.InitializeAsync(); await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,70),new(2,50)]); await h.coordinator.ApplyCargoAsync();
+        h.sim.Value=Snapshot(); var writes=h.sim.PayloadWrites;
+        await h.coordinator.AbandonPrototypeMissionAsync();
+        Assert.Equal(writes,h.sim.PayloadWrites); Assert.Equal(10,h.sim.Value.PayloadStations[0].CurrentWeightKilograms);
+        Assert.Equal(20,h.sim.Value.PayloadStations[1].CurrentWeightKilograms); Assert.Equal(1,h.tracker.Abandons);
+        Assert.Equal(0,h.tracker.Unloads); Assert.Equal(LoadManifestState.Abandoned,h.coordinator.Current.Manifest!.State);
+    }
+
+    [Fact] public async Task Return_job_handles_one_cleared_station_without_subtracting_its_cargo_again()
+    {
+        var h=Harness(); await h.coordinator.InitializeAsync(); await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,70),new(2,50)]); await h.coordinator.ApplyCargoAsync();
+        h.sim.Value=Snapshot(stations:[new(1,"Front",10),new(2,"Rear",75)]);
+        await h.coordinator.AbandonPrototypeMissionAsync();
+        Assert.Equal(10,h.sim.Value.PayloadStations[0].CurrentWeightKilograms); Assert.Equal(25,h.sim.Value.PayloadStations[1].CurrentWeightKilograms);
+    }
+
+    [Fact] public async Task Return_job_refuses_ambiguous_partial_cargo_without_changing_payload_or_economy()
+    {
+        var h=Harness(); await h.coordinator.InitializeAsync(); await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,70),new(2,50)]); await h.coordinator.ApplyCargoAsync();
+        h.sim.Value=Snapshot(stations:[new(1,"Front",35),new(2,"Rear",70)]); var writes=h.sim.PayloadWrites;
+        var error=await Assert.ThrowsAsync<InvalidOperationException>(()=>h.coordinator.AbandonPrototypeMissionAsync());
+        Assert.Contains("Partial cargo",error.Message);Assert.Equal(writes,h.sim.PayloadWrites);Assert.Equal(0,h.tracker.Abandons);
+    }
+
+    [Fact] public async Task Return_job_retries_persisted_targets_after_restart_without_subtracting_twice()
+    {
+        var h=Harness(); await h.coordinator.InitializeAsync(); await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,70),new(2,50)]); await h.coordinator.ApplyCargoAsync();
+        var m=h.coordinator.Current.Manifest!;
+        await h.store.SaveManifestAsync(m with {State=LoadManifestState.PendingAbandonment,
+            Stations=m.Stations.Select(x=>x with{UnloadTargetKilograms=x.BaselineKilograms}).ToArray()});
+        h.sim.Value=Snapshot(); var writes=h.sim.PayloadWrites;
+        await h.coordinator.InitializeAsync(); await h.coordinator.AbandonPrototypeMissionAsync();
+        Assert.Equal(writes,h.sim.PayloadWrites);Assert.Equal(1,h.tracker.Abandons);
+    }
+
+    private static EconomyWorld AcceptedWorld(DateTimeOffset now,out EconomyJob job,out Shipment shipment)
+    {
+        var world=EmployedCargoPrototype.Create(NamibiaLocationCatalogue.Load());var offered=world.Jobs.First(x=>x.State==EconomyJobState.Offered);
+        world=EconomyKernel.AcceptJob(world,offered.Id,now).World;job=world.Jobs.Single(x=>x.Id==offered.Id);var shipmentId=job.ShipmentId;shipment=world.Shipments.Single(x=>x.Id==shipmentId);return world;
+    }
+    private static ShipmentCargoTransferRequest Transfer(string id,string jobId,decimal desired,string? location,DateTimeOffset time,bool confirm=false,VerifiedDeliveryEvidence? evidence=null)=>
+        new("transfer-"+id,"command-"+id,jobId,desired,location,-22.5,17.1,time,confirm,evidence);
+    private static (AircraftLoadingCoordinator coordinator,MemoryAircraftLoadingStore store,FakeSimulator sim,FakeTracker tracker) Harness(AircraftLoadingSnapshot? snapshot=null,TrackingWorldState? world=null,bool noActiveJob=false)
+    {var now=new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);snapshot??=Snapshot(now:now);world??=World(now:now);var sim=new FakeSimulator(snapshot);var tracker=new FakeTracker();var store=new MemoryAircraftLoadingStore();var job=new CargoJobDisplay("job-test","Employer","Origin","Destination","Purpose","General Supplies",120,240,"TPC","Test","shipment-test",ShipmentState.Reserved,"origin-test","destination-test",-22.5,15,-21,15);var c=new AircraftLoadingCoordinator(store,sim,tracker,()=>"sdk",()=>world,()=>noActiveJob?null:job,new(TelemetryMaximumAge:TimeSpan.FromHours(1)),()=>now);return(c,store,sim,tracker);}
     private static AircraftLoadingSnapshot Snapshot(DateTimeOffset? now=null,IReadOnlyList<PayloadStationReading>? stations=null,IReadOnlyList<FuelTankReading>? fuel=null,IReadOnlyList<AircraftEngineReading>? engines=null,AircraftWeightReading? weights=null)
     {var t=now??new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);return new AircraftLoadingSnapshot(t,new("Piper PA28","PA28"),new(t,-22.5,15,100,90,0,true),stations??[new(1,"Front",10),new(2,"Rear",20)],fuel??[new("left","Left",20,50)],engines??[new(1,false)],2.72m,weights??new(700,1300,900,null,25,20,30),"test adapter").EnsureValid();}
     private static TrackingWorldState World(DateTimeOffset? now=null,double avatarLat=-22.5)
@@ -141,7 +281,7 @@ public sealed class AircraftLoadingTests
     private sealed class FakeSimulator(AircraftLoadingSnapshot value):IAircraftLoadingSimulator
     {public AircraftLoadingSnapshot Value{get;set;}=value;public int ReadCount{get;private set;}public int PayloadWrites{get;private set;}public int FuelWrites{get;private set;}public Task<AircraftLoadingSnapshot> ReadAsync(string s,CancellationToken c=default){ReadCount++;return Task.FromResult(Value);}public Task<AircraftLoadingSnapshot> WritePayloadAsync(string s,IReadOnlyDictionary<int,decimal> target,CancellationToken c=default){PayloadWrites++;Value=Value with{PayloadStations=Value.PayloadStations.Select(x=>target.TryGetValue(x.Index,out var v)?x with{CurrentWeightKilograms=v}:x).ToArray()};return Task.FromResult(Value);}public Task<AircraftLoadingSnapshot> WriteFuelAsync(string s,IReadOnlyDictionary<string,decimal> target,CancellationToken c=default){FuelWrites++;Value=Value with{FuelTanks=Value.FuelTanks.Select(x=>target.TryGetValue(x.Id,out var v)?x with{QuantityGallons=v}:x).ToArray()};return Task.FromResult(Value);}}
     private sealed class FakeTracker:IFlightAttemptTracker
-    {public void SetReady(bool ready){Current=Current with{CanLoadCargo=ready};Changed?.Invoke(Current);}public string StoragePath=>"memory";public FlightAttemptStatus Current{get;private set;}=new("Ready to load","Ready",true,true,false,0,10,null,0,"TPC");public event Action<FlightAttemptStatus>? Changed;public int Loads{get;private set;}public int Unloads{get;private set;}public int Abandons{get;private set;}public AircraftLoadingMode? Mode{get;private set;}public Task InitializeAsync(CancellationToken c=default)=>Task.CompletedTask;public Task RefreshEconomyAsync(CancellationToken c=default)=>Task.CompletedTask;public Task ObserveAsync(AircraftTelemetry? t,CancellationToken c=default)=>Task.CompletedTask;public Task LoadCargoAsync(CancellationToken c=default)=>LoadCargoAsync(AircraftLoadingMode.SimulatedFrontierLoading,c);public Task LoadCargoAsync(AircraftLoadingMode mode,CancellationToken c=default){Loads++;Mode=mode;Current=Current with{CanLoadCargo=false,CanUnloadCargo=true};Changed?.Invoke(Current);return Task.CompletedTask;}public Task UnloadCargoAsync(CancellationToken c=default){if(!Current.CanUnloadCargo)return Task.CompletedTask;Unloads++;Current=Current with{CanUnloadCargo=false};return Task.CompletedTask;}public Task AbandonIncompletePrototypeShipmentAsync(string jobId,CancellationToken c=default){Abandons++;Current=Current with{CanUnloadCargo=false};Changed?.Invoke(Current);return Task.CompletedTask;}public Task<string> ExportDeveloperDiagnosticAsync(CancellationToken c=default)=>Task.FromResult("{}");public Task<string>CreateDiagnosticSummaryAsync(CancellationToken c=default)=>Task.FromResult("");public Task ResetIncompletePrototypeProgressAsync(CancellationToken c=default)=>Task.CompletedTask;}
+    {public bool FailNextTransfer{get;set;}public void SetReady(bool ready){Current=Current with{CanLoadCargo=ready};Changed?.Invoke(Current);}public string StoragePath=>"memory";public FlightAttemptStatus Current{get;private set;}=new("Ready to load","Ready",true,true,false,0,10,null,0,"TPC");public event Action<FlightAttemptStatus>? Changed;public int Loads{get;private set;}public int Unloads{get;private set;}public int Abandons{get;private set;}public AircraftLoadingMode? Mode{get;private set;}public Task InitializeAsync(CancellationToken c=default)=>Task.CompletedTask;public Task RefreshEconomyAsync(CancellationToken c=default)=>Task.CompletedTask;public Task ObserveAsync(AircraftTelemetry? t,CancellationToken c=default)=>Task.CompletedTask;public Task LoadCargoAsync(CancellationToken c=default)=>LoadCargoAsync(AircraftLoadingMode.SimulatedFrontierLoading,c);public Task LoadCargoAsync(AircraftLoadingMode mode,CancellationToken c=default){Loads++;Mode=mode;Current=Current with{CanLoadCargo=false,CanUnloadCargo=true};Changed?.Invoke(Current);return Task.CompletedTask;}public Task ApplyCargoTransferAsync(string transferId,string commandId,decimal desiredLoadedKilograms,string? currentLocationId,double latitude,double longitude,bool confirmForfeit,AircraftLoadingMode mode,CancellationToken c=default){if(FailNextTransfer){FailNextTransfer=false;throw new IOException("Injected economy commit failure.");}return desiredLoadedKilograms>0?LoadCargoAsync(mode,c):UnloadCargoAsync(c);}public Task UnloadCargoAsync(CancellationToken c=default){if(!Current.CanUnloadCargo)return Task.CompletedTask;Unloads++;Current=Current with{CanUnloadCargo=false};return Task.CompletedTask;}public Task AbandonIncompletePrototypeShipmentAsync(string jobId,CancellationToken c=default){Abandons++;Current=Current with{CanUnloadCargo=false};Changed?.Invoke(Current);return Task.CompletedTask;}public Task<string> ExportDeveloperDiagnosticAsync(CancellationToken c=default)=>Task.FromResult("{}");public Task<string>CreateDiagnosticSummaryAsync(CancellationToken c=default)=>Task.FromResult("");public Task ResetIncompletePrototypeProgressAsync(CancellationToken c=default)=>Task.CompletedTask;}
 }
 
 public sealed class AircraftLoadingPersistenceTests : TemporaryDirectoryTest

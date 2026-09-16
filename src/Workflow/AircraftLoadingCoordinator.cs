@@ -34,7 +34,8 @@ public sealed class AircraftLoadingCoordinator
     public event Action<AircraftLoadingStatus>? Changed;
     public string StoragePath => store.StoragePath;
     public string? ActiveShipmentId=>activeJob()?.ShipmentId;
-    public decimal ActiveCargoKilograms => activeJob()?.CargoMassKilograms ?? Current.Manifest?.CargoKilograms ?? 0;
+    public decimal ActiveCargoKilograms => activeJob() is { } job ? Math.Max(0, job.CargoMassKilograms - job.DeliveredCargoKilograms) :
+        Current.Manifest is { State: not (LoadManifestState.Completed or LoadManifestState.Abandoned) } manifest ? manifest.CargoKilograms : 0;
     public bool CanAbandonPrototypeMission => Current.Manifest?.State is LoadManifestState.CommittedInTransit or LoadManifestState.PendingAbandonment;
     public object CreateDiagnosticSnapshot()
     {
@@ -62,22 +63,28 @@ public sealed class AircraftLoadingCoordinator
 
     private void RefreshEligibility()
     {
+        if (Current.Manifest is { State: LoadManifestState.Abandoned or LoadManifestState.Completed } terminal &&
+            activeJob() is { } selected && selected.JobId != terminal.JobId)
+            Current = Current with { Manifest = null, Plan = null };
         if(Current.Live is not { } live)return;
         var reason=Access(live,false,checkSnapshotFreshness:false);
-        Current=Current with{CanApplyCargo=reason=="Ready."&&flight.Current.CanLoadCargo,
+        Current=Current with{CanApplyCargo=CanApplyDesiredState(live, reason),
             CargoActionReason=CargoReason(reason)};
         Notify();
     }
 
     private string CargoReason(string access)
     {
-        if(Current.Manifest is {State:LoadManifestState.CommittedInTransit} manifest)
-            return "Shipment already loaded and InTransit. " + (manifest.Reconciliation switch {
-                SimulatorReconciliationState.CargoAppearsMissing => "Saved cargo is missing from MSFS. Use Restore manifest cargo; Apply cannot load this shipment again.",
-                SimulatorReconciliationState.MatchesManifest => "MSFS matches the saved load. Continue the flight; no further loading is needed.",
-                _ => "Read live aircraft to compare the saved load. No second load is permitted."
-            });
-        return access=="Ready."&&!flight.Current.CanLoadCargo?flight.Current.Reason:access;
+        if(access!="Ready.")return access;
+        if(Current.Plan is { } plan && Current.Manifest is { } manifest && Math.Abs(plan.CargoKilograms-manifest.CargoKilograms)>.001m)
+            return plan.CargoKilograms>manifest.CargoKilograms?"Ready to add reserved cargo and verify the requested aircraft state.":"Ready to remove Frontier cargo and verify the requested aircraft state.";
+        if(Current.Manifest is {State:LoadManifestState.CommittedInTransit} saved)
+            return saved.Reconciliation switch {
+                SimulatorReconciliationState.CargoAppearsMissing => "Saved Frontier cargo is not present in the reported MSFS stations. Set the desired state to zero to reconcile removal, or use Restore manifest cargo.",
+                SimulatorReconciliationState.Indeterminate => "Live payload differs from the saved managed state. Review the station mismatch before applying.",
+                _ => $"Aircraft currently has {saved.CargoKilograms:0.###} kg of Frontier-managed cargo. Edit the desired station values to load or unload."
+            };
+        return activeJob() is null?"No cargo is available at this location. Fuel and current aircraft payload remain available for inspection.":flight.Current.Reason;
     }
 
     public async Task InitializeAsync(CancellationToken token=default)
@@ -85,7 +92,7 @@ public sealed class AircraftLoadingCoordinator
         var manifests=await store.LoadManifestsAsync(token); var fuel=await store.LoadFuelStatesAsync(token);
         var attempt=flight.Current.Attempt;
         var recoverable=manifests.Where(x=>x.State is not (LoadManifestState.Completed or LoadManifestState.Abandoned)).OrderByDescending(x=>x.CreatedUtc).FirstOrDefault();
-        var manifest=recoverable??(attempt is null?null:manifests.SingleOrDefault(x=>x.FlightAttemptId==attempt.Id));
+        var manifest=recoverable;
         if(manifest is null&&attempt is {State:not FlightAttemptState.Delivered}&&activeJob() is {ShipmentId:not null} legacy)
         {
             manifest=new CargoLoadManifest("manifest-"+attempt.Id,legacy.JobId,legacy.ShipmentId!,attempt.Id,attempt.Aircraft,
@@ -95,8 +102,8 @@ public sealed class AircraftLoadingCoordinator
         }
         if(attempt?.State==FlightAttemptState.Delivered&&manifest is {State:LoadManifestState.SimulatorUnloaded})
         {manifest=manifest with{State=LoadManifestState.Completed,CompletedUtc=attempt.DeliveredUtc,VerificationResult="Recovered after economic delivery; previously verified simulator unload is complete."};await store.SaveManifestAsync(manifest,token);}
-        if(activeJob()?.ShipmentState==ShipmentState.InTransit&&manifest is {State:LoadManifestState.SimulatorApplied})
-        {manifest=manifest with{State=LoadManifestState.CommittedInTransit,CommittedUtc=attempt?.LoadedUtc??utcNow(),VerificationResult="Recovered existing idempotent InTransit economy commit after verified simulator application."};await store.SaveManifestAsync(manifest,token);}
+        if(activeJob()?.ShipmentState is (ShipmentState.Loaded or ShipmentState.InTransit)&&manifest is {State:LoadManifestState.SimulatorApplied})
+        {manifest=manifest with{State=LoadManifestState.CommittedInTransit,CommittedUtc=attempt?.LoadedUtc??utcNow(),VerificationResult="Recovered existing idempotent cargo economy commit after verified simulator application."};await store.SaveManifestAsync(manifest,token);}
         Current=Current with { Manifest=manifest, SavedFuel=fuel.OrderByDescending(x=>x.ObservedUtc).FirstOrDefault(),
             CargoActionReason=manifest is null?"No persistent cargo manifest.":"Persistent cargo manifest restored; verify simulator state before changing it.",
             ReconciliationReason=manifest is null?"No cargo reconciliation is required.":"Simulator reconciliation has not run in this session."}; Notify();
@@ -151,7 +158,7 @@ public sealed class AircraftLoadingCoordinator
             if(snapshot.Weights.MaximumPayloadKilograms is null)warnings.Add("Authoritative maximum payload is unavailable from this aircraft.");
             if(snapshot.Engines.Any(x=>x.IsRunning==true))warnings.Add("One or more engines are running; cargo remains selectable, with a ground-handling caution.");
             Current=Current with {Live=snapshot,Manifest=manifest,SavedFuel=saved,CargoActionReason=access,FuelActionReason=fuelAccess,
-                CanApplyCargo=access.StartsWith("Ready.",StringComparison.Ordinal)&&flight.Current.CanLoadCargo,CanApplyFuel=fuelAccess=="Ready.",CanUnload=(flight.Current.CanUnloadCargo && manifest is not null)||manifest?.State==LoadManifestState.SimulatorUnloaded,
+                CanApplyCargo=CanApplyDesiredState(snapshot,access),CanApplyFuel=fuelAccess=="Ready.",CanUnload=(flight.Current.CanUnloadCargo && manifest is not null)||manifest?.State==LoadManifestState.SimulatorUnloaded,
                 FuelDecisionRequired=saved.Reconciliation==FuelReconciliationState.AwaitingDecision,Warnings=warnings};
             Current=Current with{CargoActionReason=CargoReason(access)};UpdateRestoreAvailability();Notify();
         }finally{gate.Release();}
@@ -160,38 +167,72 @@ public sealed class AircraftLoadingCoordinator
     public AircraftLoadPlan CreatePlan(IReadOnlyList<CargoStationAllocation> allocations)
     {
         var live=Current.Live??throw new InvalidOperationException("Read live aircraft loading data first.");
-        var job=activeJob()??throw new InvalidOperationException("No active cargo shipment is selected.");
-        var plan=AircraftLoadPlan.Create(live,job.CargoMassKilograms,allocations);Current=Current with {Plan=plan,Warnings=plan.Warnings};Notify();return plan;
+        var job=activeJob(); var manifest=Current.Manifest;
+        if(job is null&&manifest is null)throw new InvalidOperationException("No Frontier-managed cargo is aboard or available at this location.");
+        var location=job is null?null:CurrentLocation(job,live.Position);
+        var aboard=manifest?.CargoKilograms??job?.LoadedCargoKilograms??0;
+        var maximum=job is not null&&location==job.OriginLocationId&&job.ShipmentState is ShipmentState.Reserved or ShipmentState.Loaded
+            ? job.CargoMassKilograms-job.DeliveredCargoKilograms : aboard;
+        var plan=AircraftLoadPlan.CreateDesiredState(live,allocations,manifest,Math.Max(0,maximum),toleranceKilograms:options.PayloadToleranceKilograms);
+        Current=Current with {Plan=plan,Warnings=plan.Warnings,CanApplyCargo=CanApplyDesiredState(live,"Ready.")};Notify();return plan;
     }
 
-    public async Task ApplyCargoAsync(CancellationToken token=default)
+    public async Task ApplyCargoAsync(bool confirmForfeit=false,CancellationToken token=default)
     {
         await gate.WaitAsync(token);try
         {
             var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();
-            if(Access(live,false)!="Ready."||!flight.Current.CanLoadCargo)throw new InvalidOperationException(Access(live,false)=="Ready."?flight.Current.Reason:Access(live,false));
-            var job=activeJob()!; var attemptId=FlightAttemptIds.Attempt(job.ShipmentId!);
-            var id="manifest-"+attemptId; var existing=(await store.LoadManifestsAsync(token)).SingleOrDefault(x=>x.Id==id);
-            var plan=Current.Plan;
-            if(existing is null&&plan is null)throw new InvalidOperationException("Allocate the full job cargo before applying it.");
-            if(existing is null&&plan!.Stations.Any(x=>live.PayloadStations.All(s=>s.Index!=x.StationIndex)||
-                Math.Abs(live.PayloadStations.Single(s=>s.Index==x.StationIndex).CurrentWeightKilograms-x.BaselineKilograms)>options.PayloadToleranceKilograms))
-                throw new InvalidOperationException("Simulator payload changed after the plan was prepared. Read the aircraft again and review a new plan.");
-            var manifest=existing??new CargoLoadManifest(id,job.JobId,job.ShipmentId!,attemptId,LoadingIdentityExtensions.FromSnapshot(live),
-                AircraftLoadingMode.MsfsPayloadIntegration,plan!.Stations,plan.CargoKilograms,LoadManifestState.PendingApplication,utcNow(),
-                VerificationToleranceKilograms:options.PayloadToleranceKilograms,LastValidPosition:live.Position);
+            var access=Access(live,false);if(access!="Ready.")throw new InvalidOperationException(access);
+            var job=activeJob();var existing=Current.Manifest;
+            var plan=Current.Plan??(existing is {State:LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied}
+                ? PlanFromManifest(existing) : throw new InvalidOperationException("Choose the desired Frontier cargo in each station before applying."));
+            if(existing is null&&job?.ShipmentId is null)throw new InvalidOperationException("No active shipment cargo is available to load.");
+            var recoveringIntent=existing?.State is LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied;
+            var currentCargo=recoveringIntent?(job?.LoadedCargoKilograms??existing!.PriorCargoKilograms):(existing?.CargoKilograms??job?.LoadedCargoKilograms??0);
+            var delta=plan.CargoKilograms-currentCargo;
+            if(Math.Abs(delta)<=.001m)throw new InvalidOperationException("The requested Frontier cargo already matches the persistent aircraft state.");
+            var location=job is null?null:CurrentLocation(job,live.Position);
+            if(delta>0&&(job is null||location!=job.OriginLocationId||!flight.Current.CanLoadCargo))
+                throw new InvalidOperationException(job is null?"No reserved shipment cargo is available to add.":location!=job.OriginLocationId?"Reserved cargo can only be loaded at the shipment origin.":flight.Current.Reason);
+            if(delta<0&&job is not null&&location!=job.OriginLocationId&&location!=job.DestinationLocationId&&!confirmForfeit)
+                throw new CargoForfeitConfirmationRequiredException("This cargo belongs to an active delivery. Unloading it here will forfeit the job and you will not receive payment.");
+            if(delta<0&&job is not null&&location==job.DestinationLocationId&&!flight.Current.CanUnloadCargo)
+                throw new InvalidOperationException(flight.Current.Reason);
+            var attemptId=existing?.FlightAttemptId??FlightAttemptIds.Attempt(job!.ShipmentId!);
+            var id=existing?.Id??"manifest-"+attemptId;
+            var commandId=existing?.State is (LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied)&&existing.LastTransferCommandId is not null
+                ? existing.LastTransferCommandId : "cargo-transfer-"+Guid.NewGuid().ToString("N");
+            var manifest=(existing??new CargoLoadManifest(id,job!.JobId,job.ShipmentId!,attemptId,LoadingIdentityExtensions.FromSnapshot(live),
+                AircraftLoadingMode.MsfsPayloadIntegration,plan.Stations,plan.CargoKilograms,LoadManifestState.PendingApplication,utcNow(),
+                VerificationToleranceKilograms:options.PayloadToleranceKilograms,LastValidPosition:live.Position)
+                {ShipmentQuantityKilograms=job.CargoMassKilograms,DeliveredCargoKilograms=job.DeliveredCargoKilograms,IsDesiredStateManifest=true}) with
+                {Stations=plan.Stations,CargoKilograms=plan.CargoKilograms,PriorCargoKilograms=currentCargo,State=LoadManifestState.PendingApplication,
+                    LastTransferCommandId=commandId,VerificationResult=$"Desired-state intent persisted. Previous managed cargo {currentCargo:0.###} kg; requested {plan.CargoKilograms:0.###} kg."};
             await store.SaveManifestAsync(manifest,token); // durable intent precedes external write
             AircraftLoadingSnapshot readBack;
             if(PayloadMatches(live,manifest.Stations.Select(x=>(x.StationIndex,x.TargetKilograms)).ToDictionary(x=>x.StationIndex,x=>x.TargetKilograms),options.PayloadToleranceKilograms))readBack=live;
             else readBack=await simulator.WritePayloadAsync(sdkRoot(),manifest.Stations.ToDictionary(x=>x.StationIndex,x=>x.TargetKilograms),token);
             var stations=manifest.Stations.Select(x=>x with {ReadBackKilograms=readBack.PayloadStations.Single(s=>s.Index==x.StationIndex).CurrentWeightKilograms}).ToArray();
-            if(stations.Any(x=>Math.Abs(x.ReadBackKilograms!.Value-x.TargetKilograms)>options.PayloadToleranceKilograms))throw new IOException("MSFS payload read-back did not match the pending load intent.");
-            manifest=manifest with {Stations=stations,State=LoadManifestState.SimulatorApplied,SimulatorAppliedUtc=utcNow(),VerificationResult="MSFS station weights written and verified.",LastReconciledUtc=utcNow(),Reconciliation=SimulatorReconciliationState.MatchesManifest};await store.SaveManifestAsync(manifest,token);
-            await flight.LoadCargoAsync(AircraftLoadingMode.MsfsPayloadIntegration,token);
-            manifest=manifest with {State=LoadManifestState.CommittedInTransit,CommittedUtc=utcNow(),VerificationResult="Simulator load verified; shipment committed InTransit.",Reconciliation=SimulatorReconciliationState.MatchesManifest,LastReconciledUtc=utcNow()};await store.SaveManifestAsync(manifest,token);
-            Current=Current with {Manifest=manifest,Live=readBack,CanApplyCargo=false,CanUnload=flight.Current.CanUnloadCargo,CargoActionReason="Cargo is committed InTransit."};Notify();
+            if(stations.Any(x=>Math.Abs(x.ReadBackKilograms!.Value-x.TargetKilograms)>options.PayloadToleranceKilograms))
+            {var mismatch=string.Join("; ",stations.Where(x=>Math.Abs(x.ReadBackKilograms!.Value-x.TargetKilograms)>options.PayloadToleranceKilograms).Select(x=>$"station {x.StationIndex}: baseline {x.BaselineKilograms:0.###}, managed {x.FrontierCargoKilograms:0.###}, expected {x.TargetKilograms:0.###}, observed {x.ReadBackKilograms:0.###} kg"));throw new IOException("MSFS payload read-back did not match the desired state: "+mismatch);}
+            manifest=manifest with {Stations=stations,State=LoadManifestState.SimulatorApplied,SimulatorAppliedUtc=utcNow(),VerificationResult="MSFS desired station weights written and verified; persistent cargo transfer pending.",LastReconciledUtc=utcNow(),Reconciliation=SimulatorReconciliationState.MatchesManifest};await store.SaveManifestAsync(manifest,token);
+            if(job is not null)
+                await flight.ApplyCargoTransferAsync("transfer-"+commandId,commandId,plan.CargoKilograms,location,live.Position.Latitude,live.Position.Longitude,confirmForfeit,AircraftLoadingMode.MsfsPayloadIntegration,token);
+            var delivered=manifest.DeliveredCargoKilograms+(delta<0&&job is not null&&location==job.DestinationLocationId?-delta:0);
+            manifest=manifest with {State=flight.Current.Attempt?.State==FlightAttemptState.Delivered?LoadManifestState.Completed:LoadManifestState.CommittedInTransit,
+                CommittedUtc=utcNow(),CompletedUtc=flight.Current.Attempt?.State==FlightAttemptState.Delivered?utcNow():null,
+                DeliveredCargoKilograms=delivered,VerificationResult=$"Desired aircraft state verified and committed. Frontier cargo aboard: {plan.CargoKilograms:0.###} kg.",
+                Reconciliation=SimulatorReconciliationState.MatchesManifest,LastReconciledUtc=utcNow(),LastValidPosition=readBack.Position};await store.SaveManifestAsync(manifest,token);
+            Current=Current with {Manifest=manifest,Live=readBack,Plan=null,CanApplyCargo=false,CanUnload=flight.Current.CanUnloadCargo,
+                CargoActionReason=manifest.State==LoadManifestState.Completed?"Delivery completed and paid exactly once.":$"Verified aircraft state: {manifest.CargoKilograms:0.###} kg Frontier cargo aboard."};Notify();
         }finally{gate.Release();}
     }
+
+    public Task ApplyCargoAsync(CancellationToken token)=>ApplyCargoAsync(false,token);
+
+    private static AircraftLoadPlan PlanFromManifest(CargoLoadManifest manifest) => new(
+        manifest.CargoKilograms, manifest.Stations, manifest.Stations.Sum(x => x.TargetKilograms), null, null,
+        ["Recovered the exact persisted desired-state intent; MSFS read-back will be verified before persistent cargo changes are committed."]);
 
     public async Task ApplySimulatedCargoAsync(CancellationToken token=default)
     {
@@ -203,7 +244,7 @@ public sealed class AircraftLoadingCoordinator
             var manifest=(await store.LoadManifestsAsync(token)).SingleOrDefault(x=>x.Id==id)??new CargoLoadManifest(id,job.JobId,job.ShipmentId!,attemptId,
                 LoadingIdentityExtensions.FromSnapshot(live),AircraftLoadingMode.SimulatedFrontierLoading,[],job.CargoMassKilograms,LoadManifestState.PendingApplication,utcNow(),LastValidPosition:live.Position,VerificationResult:"Player explicitly selected simulated Frontier loading; MSFS payload unchanged.");
             await store.SaveManifestAsync(manifest,token);await flight.LoadCargoAsync(AircraftLoadingMode.SimulatedFrontierLoading,token);
-            manifest=manifest with {State=LoadManifestState.CommittedInTransit,CommittedUtc=utcNow()};await store.SaveManifestAsync(manifest,token);Current=Current with{Manifest=manifest,CanApplyCargo=false,CanUnload=flight.Current.CanUnloadCargo,CargoActionReason="Simulated cargo is committed InTransit; MSFS payload was not changed."};Notify();
+            manifest=manifest with {State=LoadManifestState.CommittedInTransit,CommittedUtc=utcNow()};await store.SaveManifestAsync(manifest,token);Current=Current with{Manifest=manifest,CanApplyCargo=false,CanUnload=flight.Current.CanUnloadCargo,CargoActionReason="Simulated cargo is Loaded; MSFS payload was not changed."};Notify();
         }finally{gate.Release();}
     }
 
@@ -213,6 +254,8 @@ public sealed class AircraftLoadingCoordinator
         {
             var manifest=Current.Manifest??throw new InvalidOperationException("No committed cargo manifest exists.");
             if(manifest.State==LoadManifestState.Completed)return;
+            if(manifest.State is LoadManifestState.PendingAbandonment or LoadManifestState.Abandoned)
+                throw new InvalidOperationException("This job is being returned; delivery and payment are unavailable.");
             if(!flight.Current.CanUnloadCargo)throw new InvalidOperationException(flight.Current.Reason);
             if(manifest.Mode==AircraftLoadingMode.MsfsPayloadIntegration && !simulatedCompatibilityConfirmed && manifest.State!=LoadManifestState.SimulatorUnloaded)
             {
@@ -251,14 +294,18 @@ public sealed class AircraftLoadingCoordinator
     {
         await gate.WaitAsync(token); try
         {
-            var manifest = Current.Manifest ?? throw new InvalidOperationException("No persistent cargo manifest exists.");
+            var displayed = Current.Manifest ?? throw new InvalidOperationException("No persistent cargo manifest exists.");
+            var manifest = (await store.LoadManifestsAsync(token)).Single(x => x.Id == displayed.Id);
             if (manifest.State == LoadManifestState.Abandoned) return;
+            if (flight.Current.Attempt is { State: FlightAttemptState.Delivered } completed && completed.JobId == manifest.JobId)
+                throw new InvalidOperationException("Completed delivery cannot be declined.");
             if (manifest.State is not (LoadManifestState.CommittedInTransit or LoadManifestState.PendingAbandonment))
                 throw new InvalidOperationException("Only a committed incomplete prototype shipment can be skipped.");
             if (manifest.Mode == AircraftLoadingMode.MsfsPayloadIntegration)
             {
                 var live = (await simulator.ReadAsync(sdkRoot(), token)).EnsureValid();
                 var access = Access(live, false); if (access != "Ready.") throw new InvalidOperationException(access);
+                if (manifest.Aircraft.ClearlyDiffersFrom(live.Aircraft)) throw new InvalidOperationException("Aircraft identity differs from the cargo manifest.");
                 PlannedPayloadStation[] stations;
                 if (manifest.State == LoadManifestState.PendingAbandonment)
                     stations = manifest.Stations.ToArray();
@@ -267,15 +314,24 @@ public sealed class AircraftLoadingCoordinator
                     stations = manifest.Stations.Select(x =>
                     {
                         var current = live.PayloadStations.Single(s => s.Index == x.StationIndex).CurrentWeightKilograms;
-                        var target = CargoRemovalTarget(current, x.FrontierCargoKilograms, options.PayloadToleranceKilograms, x.StationIndex);
+                        var target = PrototypeReturnTarget(current, x, manifest.VerificationToleranceKilograms);
                         return x with { UnloadTargetKilograms = target };
                     }).ToArray();
                     manifest = manifest with { Stations = stations, State = LoadManifestState.PendingAbandonment,
                         UnloadStartedUtc = utcNow(), VerificationResult = "Prototype-skip unload intent persisted before MSFS write." };
                     await store.SaveManifestAsync(manifest, token);
+                    Current = Current with { Manifest = manifest, CanUnload = false, CanRestoreCargo = false };
                 }
                 var targets = stations.ToDictionary(x => x.StationIndex, x => x.UnloadTargetKilograms ??
                     throw new InvalidDataException("Prototype-skip unload target is missing."));
+                foreach (var station in stations)
+                {
+                    var current = live.PayloadStations.Single(s => s.Index == station.StationIndex).CurrentWeightKilograms;
+                    var target = station.UnloadTargetKilograms!.Value;
+                    if (Math.Abs(current-target)>manifest.VerificationToleranceKilograms &&
+                        Math.Abs(current-target-station.FrontierCargoKilograms)>manifest.VerificationToleranceKilograms)
+                        throw new InvalidOperationException($"Station {station.StationIndex} changed after the return intent. Live {current:0.###} kg, removal target {target:0.###} kg. Payload preserved; review the station before retrying.");
+                }
                 var readBack = PayloadMatches(live, targets, options.PayloadToleranceKilograms)
                     ? live : await simulator.WritePayloadAsync(sdkRoot(), targets, token);
                 stations = stations.Select(x => x with { UnloadReadBackKilograms = readBack.PayloadStations
@@ -306,9 +362,31 @@ public sealed class AircraftLoadingCoordinator
         if(world.PlayerMode!=PlayerControlMode.OnFoot||world.Player is null||world.CurrentObjectId!=world.AvatarObjectId||world.CurrentObjectId==world.AircraftObjectId)return "Exit the aircraft; a fresh explicit walking-avatar observation is required.";
         if(now-world.Player.ObservedUtc>options.MaximumAge)return "Walking-avatar observation is stale.";if(!world.Player.IsOnGround)return "Walking avatar must be on the ground.";if(world.DistanceFromAircraftMeters is not { } distance||distance>options.AvatarRadiusMeters)return $"Walking avatar must be within {options.AvatarRadiusMeters:F0} m of the aircraft.";
         if(FlightAircraftIdentity.From(world.Aircraft).ClearlyDiffersFrom(LoadingIdentityExtensions.FromSnapshot(live)))return "Live loading aircraft identity differs from tracked aircraft.";
-        if(flight.Current.Attempt is { } activeAttempt&&activeAttempt.Aircraft.ClearlyDiffersFrom(LoadingIdentityExtensions.FromSnapshot(live)))return "Live aircraft identity differs from the active flight attempt.";
+        if(flight.Current.Attempt is {State:not FlightAttemptState.Delivered} activeAttempt&&activeAttempt.Aircraft.ClearlyDiffersFrom(LoadingIdentityExtensions.FromSnapshot(live)))return "Live aircraft identity differs from the active flight attempt.";
         if(fuel){if(live.Engines.Count==0||live.Engines.Any(x=>x.IsRunning is null))return "Engine state is unavailable; fuel changes are refused.";if(live.Engines.Any(x=>x.IsRunning==true))return "Every detected engine must be off before changing fuel.";}
         return "Ready.";
+    }
+    private bool CanApplyDesiredState(AircraftLoadingSnapshot live,string access)
+    {
+        if(access!="Ready.")return false;
+        if(Current.Plan is not { } plan)
+            return Current.Manifest?.CargoKilograms>0||activeJob() is not null&&flight.Current.CanLoadCargo;
+        var current=Current.Manifest?.CargoKilograms??activeJob()?.LoadedCargoKilograms??0;
+        var delta=plan.CargoKilograms-current;if(Math.Abs(delta)<=.001m)return false;
+        if(delta<0)
+        {
+            var job=activeJob();if(job is null)return Current.Manifest is not null;
+            var location=CurrentLocation(job,live.Position);
+            return location==job.DestinationLocationId?flight.Current.CanUnloadCargo:true;
+        }
+        var active=activeJob();return active is not null&&CurrentLocation(active,live.Position)==active.OriginLocationId&&flight.Current.CanLoadCargo;
+    }
+    private static string? CurrentLocation(CargoJobDisplay job,FlightPosition position)
+    {
+        const double radiusNm=1.5;string? best=null;double distance=double.MaxValue;
+        void Consider(string? id,double? latitude,double? longitude)
+        {if(id is null||latitude is null||longitude is null)return;var d=WorldTracking.DistanceMeters(position.Latitude,position.Longitude,latitude.Value,longitude.Value)/MetresPerNauticalMile;if(d<=radiusNm&&d<distance){best=id;distance=d;}}
+        Consider(job.OriginLocationId,job.OriginLatitude,job.OriginLongitude);Consider(job.DestinationLocationId,job.DestinationLatitude,job.DestinationLongitude);return best;
     }
     private string RestoreReason(AircraftLoadingSnapshot live,PersistentAircraftFuelState saved,bool fuel)
     {var basic=Access(live,fuel);if(basic!="Ready.")return basic;if(saved.Aircraft.ClearlyDiffersFrom(LoadingIdentityExtensions.FromSnapshot(live)))return "Aircraft identity differs from the saved state.";if(DistanceNm(live.Position,saved.LastValidPosition)>options.RestorePositionRadiusNauticalMiles)return "Aircraft is more than 1.5 NM from its last persisted position.";if(live.FuelTanks.Select(x=>x.Id).Order().SequenceEqual(saved.Tanks.Select(x=>x.Id).Order())==false)return "Fuel-tank layout differs from the saved state.";return "Ready.";}
@@ -319,12 +397,22 @@ public sealed class AircraftLoadingCoordinator
     private static bool PayloadMatches(AircraftLoadingSnapshot s,IReadOnlyDictionary<int,decimal> target,decimal tolerance)=>target.All(x=>s.PayloadStations.Any(p=>p.Index==x.Key&&Math.Abs(p.CurrentWeightKilograms-x.Value)<=tolerance));
     private static decimal CargoRemovalTarget(decimal current,decimal frontierCargo,decimal tolerance,int stationIndex)
     {var target=current-frontierCargo;if(target < -tolerance)throw new InvalidOperationException($"Station {stationIndex} no longer contains enough weight to remove Frontier cargo.");return Math.Max(0,target);}
+    private static decimal PrototypeReturnTarget(decimal current, PlannedPayloadStation station, decimal tolerance)
+    {
+        // A fresh baseline reading means MSFS has already cleared this station's Frontier cargo.
+        if (station.FrontierCargoKilograms == 0 || current <= station.BaselineKilograms + tolerance) return current;
+        if (current >= station.TargetKilograms - tolerance)
+            return CargoRemovalTarget(current, station.FrontierCargoKilograms, tolerance, station.StationIndex);
+        throw new InvalidOperationException($"Station {station.StationIndex}: live {current:0.###} kg, baseline {station.BaselineKilograms:0.###} kg, loaded target {station.TargetKilograms:0.###} kg. Partial cargo cannot be distinguished from other payload; restore the manifest before returning this job.");
+    }
     private bool ShouldCheckpoint(AircraftLoadingSnapshot s,PersistentAircraftFuelState f)=>utcNow()-(lastFuelCheckpoint??f.PersistedUtc)>=options.CheckpointInterval||s.FuelTanks.Any(x=>f.Tanks.SingleOrDefault(t=>t.Id==x.Id) is { } p&&Math.Abs(p.QuantityGallons-x.QuantityGallons)>=options.FuelToleranceGallons);
     private PersistentAircraftFuelState FuelState(AircraftLoadingSnapshot s,FuelReconciliationState state,string result)=>new PersistentAircraftFuelState("fuel-current-"+Normalize(LoadingIdentityExtensions.FromSnapshot(s).Title+"-"+LoadingIdentityExtensions.FromSnapshot(s).Type),LoadingIdentityExtensions.FromSnapshot(s),s.FuelTanks.Select(x=>new PersistedFuelTank(x.Id,x.Name,x.QuantityGallons,x.CapacityGallons)).ToArray(),s.Position,s.ObservedUtc,utcNow(),state,utcNow(),result).EnsureValid();
     private static string Normalize(string s){var chars=s.ToLowerInvariant().Select(c=>char.IsLetterOrDigit(c)?c:'-').ToArray();return new string(chars).Trim('-')[..Math.Min(40,new string(chars).Trim('-').Length)];}
     private static double DistanceNm(FlightPosition a,FlightPosition b)=>WorldTracking.DistanceMeters(a.Latitude,a.Longitude,b.Latitude,b.Longitude)/MetresPerNauticalMile;
     private void Notify()=>Changed?.Invoke(Current);
 }
+
+public sealed class CargoForfeitConfirmationRequiredException(string message):InvalidOperationException(message);
 
 internal static class LoadingIdentityExtensions
 {

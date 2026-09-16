@@ -175,3 +175,11 @@ Frontier Pilot does not automatically balance job cargo. Each station receives a
 ## Manual-only new cargo loading
 
 At Matt's request, remove the UI action that starts a new simulated cargo load. Preserve existing simulated shipments and their recovery/unload semantics. All newly initiated UI loading uses explicit station allocation and simulator verification. Editing refreshes must preserve draft text and focus; an invalid draft blocks submission rather than using a hidden previous value.
+
+## Desired-state aircraft loading — 2026-09-16
+
+- The load manager expresses the requested physical aircraft state. Loading and unloading are positive and negative deltas through the same verified Apply operation.
+- Reserved cargo is real inventory. Partial loading leaves the remainder reserved at origin; partial verified destination unloading adds only the removed quantity to destination inventory.
+- Payment remains separate from physical payload manipulation and occurs only when the complete shipment has arrived with tracker-created evidence.
+- Unloading active shipment cargo away from its route requires explicit confirmation and forfeits the shipment without payment. This is a terminal prototype outcome, not the future cancellation/loss design.
+- Simulator station state is external and reconcilable. The persisted manifest and economy transfer log remain authoritative for managed cargo and exactly-once consequences.

@@ -50,8 +50,8 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     public ActionCommand RefreshCommand{get;}public ActionCommand ClearAllocationCommand{get;}public ActionCommand ApplyCargoCommand{get;}public ActionCommand ApplyFuelCommand{get;}public ActionCommand KeepFuelCommand{get;}public ActionCommand RestoreFuelCommand{get;}public ActionCommand RestoreCargoCommand{get;}public ActionCommand UnloadCommand{get;}
     public AircraftLoadingViewModel(AircraftLoadingCoordinator service, Action? ensureTracking = null)
     {this.service=service;var context=SynchronizationContext.Current;service.Changed+=value=>{if(context is not null&&SynchronizationContext.Current!=context)context.Post(_=>Apply(value),null);else Apply(value);};RefreshCommand=new(()=>{ensureTracking?.Invoke();_=Run(service.RefreshAsync,"Live aircraft loading data refreshed.");},()=>!busy);
-     ClearAllocationCommand=new(()=>{foreach(var x in PayloadStations)x.AssignedKilograms=0;},()=>!busy&&!HasCommittedCargo&&PayloadStations.Count>0);
-     ApplyCargoCommand=new(()=>_=ApplyPlannedCargoAsync(),()=>!busy&&service.Current.CanApplyCargo&&(AllocationValid||service.Current.Manifest?.State is LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied));
+     ClearAllocationCommand=new(()=>{foreach(var x in PayloadStations)x.AssignedKilograms=0;},()=>!busy&&CanEditCargo&&PayloadStations.Count>0);
+     ApplyCargoCommand=new(()=>_=ApplyDesiredCargoAsync(false),()=>CanApplyCargo);
      ApplyFuelCommand=new(()=>_=Run(t=>service.ApplyFuelAsync(FuelTanks.ToDictionary(x=>x.Id,x=>x.PlannedGallons),t),"Fuel applied and read back from MSFS."),()=>!busy&&service.Current.CanApplyFuel&&FuelTanks.Count>0&&FuelTanks.All(x=>x.IsInputValid));
      KeepFuelCommand=new(()=>_=Run(service.KeepSimulatorFuelAsync,"Simulator fuel explicitly kept."),()=>!busy&&service.Current.FuelDecisionRequired);
      RestoreFuelCommand=new(()=>_=Run(service.RestoreSavedFuelAsync,"Saved fuel restored and verified."),()=>!busy&&service.Current.CanRestoreFuel);
@@ -64,17 +64,18 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     public void RequestOpen()=>OpenRequested?.Invoke();
     public string Status{get=>status;private set{status=value;Changed();}}public string Error{get=>error;private set{error=value;Changed();}}
     public string StoragePath=>service.StoragePath;public decimal CargoMassKilograms=>service.ActiveCargoKilograms;
-    public string Shipment=>service.Current.Manifest is { } m?$"{m.ShipmentId} · {m.State} · {m.Mode}":"No load manifest yet";
+    public string Shipment=>service.Current.Manifest is { } m?$"{m.ShipmentId} · {(m.State==LoadManifestState.CommittedInTransit?"Cargo committed":m.State.ToString())} · {m.Mode}":"No load manifest yet";
     public string Aircraft=>service.Current.Live is { } s?$"{s.Aircraft.Title} / {s.Aircraft.Type}":"No live aircraft data";
-    public bool HasCommittedCargo=>service.Current.Manifest?.State==LoadManifestState.CommittedInTransit;
-    public bool CanEditCargo=>!HasCommittedCargo;
-    public string CargoReason=>HasCommittedCargo?service.Current.CargoActionReason:!PayloadStations.All(x=>x.IsInputValid)?"Enter valid non-negative cargo weights within reported limits.":!AllocationValid?$"Assign exactly {ActiveCargo:0.##} kg. Remaining: {RemainingCargo:0.##} kg.":service.Current.CargoActionReason;public string FuelReason=>service.Current.FuelActionReason;public string Reconciliation=>service.Current.ReconciliationReason;
+    public bool HasCommittedCargo=>service.Current.Manifest is {CargoKilograms:>0,State:not (LoadManifestState.Completed or LoadManifestState.Abandoned)};
+    public bool CanEditCargo=>!busy&&service.Current.Live is not null&&(service.ActiveShipmentId is not null||HasCommittedCargo);
+    public bool CanApplyCargo=>!busy&&CanEditCargo&&service.Current.CanApplyCargo&&AllocationValid&&Math.Abs(AssignedCargo-(service.Current.Manifest?.CargoKilograms??0))>.001m;
+    public string CargoReason=>!PayloadStations.All(x=>x.IsInputValid)?"Enter valid non-negative cargo weights within reported limits.":!AllocationValid?$"Requested cargo exceeds the {ActiveCargo:0.##} kg currently aboard or available for this shipment.":service.Current.CargoActionReason;public string FuelReason=>service.Current.FuelActionReason;public string Reconciliation=>service.Current.ReconciliationReason;
     public string EngineState=>service.Current.Live is null?"—":service.Current.Live.Engines.Count==0?"Unavailable":string.Join(", ",service.Current.Live.Engines.Select(x=>$"Engine {x.Index}: {(x.IsRunning is null?"unknown":x.IsRunning.Value?"running":"off")}"));
     public string WeightAndBalance
-    {get{var s=service.Current.Live;if(s is null)return "No live weight and balance data.";var manifest=service.Current.Manifest;var committed=manifest?.State is LoadManifestState.CommittedInTransit or LoadManifestState.PendingUnload or LoadManifestState.PendingAbandonment;var matched=committed&&manifest!.Reconciliation==SimulatorReconciliationState.MatchesManifest;var cargo=committed?manifest!.CargoKilograms:service.Current.Plan?.CargoKilograms??AssignedCargo;var w=s.Weights;var livePayload=s.PayloadStations.Sum(x=>x.CurrentWeightKilograms);var existing=Math.Max(0,livePayload-(matched?cargo:0));var currentFuel=s.FuelWeightKilogramsPerGallon is { } d?s.FuelTanks.Sum(x=>x.QuantityGallons)*d:(decimal?)null;var plannedFuel=s.FuelWeightKilogramsPerGallon is { } d2?FuelTanks.Sum(x=>x.PlannedGallons)*d2:(decimal?)null;var cargoDelta=committed?(manifest!.Reconciliation==SimulatorReconciliationState.CargoAppearsMissing?cargo:0):cargo;var plannedGross=w.CurrentGrossWeightKilograms+cargoDelta+(plannedFuel-currentFuel);return $"Empty: {Mass(w.EmptyWeightKilograms)}\nExisting non-Frontier payload: {Mass(existing)}\nFrontier cargo: {Mass(cargo)}\nTotal planned payload: {Mass(existing+cargo)}\nCurrent fuel: {Mass(currentFuel)}\nPlanned fuel: {Mass(plannedFuel)}\nZero-fuel weight: {Mass(w.EmptyWeightKilograms+existing+cargo)}\nRamp/current gross: {Mass(w.CurrentGrossWeightKilograms)}\nPlanned gross: {Mass(plannedGross)}\nMaximum gross: {Mass(w.MaximumGrossWeightKilograms)}\nCurrent CG: {Pct(w.CurrentCgPercent)}\nPlanned CG: {(service.Current.Plan?.PlannedCgPercent is { } c?Pct(c):"Unavailable from aircraft data")}\nReported CG limits: {Pct(w.ForwardCgLimitPercent)} to {Pct(w.AftCgLimitPercent)}";}}
+    {get{var s=service.Current.Live;if(s is null)return "No live weight and balance data.";var manifest=service.Current.Manifest;var currentCargo=manifest?.Reconciliation==SimulatorReconciliationState.MatchesManifest?manifest.CargoKilograms:0;var desiredCargo=service.Current.Plan?.CargoKilograms??AssignedCargo;var w=s.Weights;var livePayload=s.PayloadStations.Sum(x=>x.CurrentWeightKilograms);var existing=Math.Max(0,livePayload-currentCargo);var currentFuel=s.FuelWeightKilogramsPerGallon is { } d?s.FuelTanks.Sum(x=>x.QuantityGallons)*d:(decimal?)null;var plannedFuel=s.FuelWeightKilogramsPerGallon is { } d2?FuelTanks.Sum(x=>x.PlannedGallons)*d2:(decimal?)null;var plannedGross=w.CurrentGrossWeightKilograms+(desiredCargo-currentCargo)+(plannedFuel-currentFuel);return $"Empty: {Mass(w.EmptyWeightKilograms)}\nExisting non-Frontier payload: {Mass(existing)}\nFrontier cargo aboard: {Mass(currentCargo)}\nRequested Frontier cargo: {Mass(desiredCargo)}\nTotal planned payload: {Mass(existing+desiredCargo)}\nCurrent fuel: {Mass(currentFuel)}\nPlanned fuel: {Mass(plannedFuel)}\nZero-fuel weight: {Mass(w.EmptyWeightKilograms+existing+desiredCargo)}\nRamp/current gross: {Mass(w.CurrentGrossWeightKilograms)}\nPlanned gross: {Mass(plannedGross)}\nMaximum gross: {Mass(w.MaximumGrossWeightKilograms)}\nCurrent CG: {Pct(w.CurrentCgPercent)}\nPlanned CG: {(service.Current.Plan?.PlannedCgPercent is { } c?Pct(c):"Unavailable from aircraft data")}\nReported CG limits: {Pct(w.ForwardCgLimitPercent)} to {Pct(w.AftCgLimitPercent)}";}}
     public string Warnings{get{var warnings=service.Current.Warnings.ToList();var s=service.Current.Live;if(s?.FuelWeightKilogramsPerGallon is { } d&&s.Weights.CurrentGrossWeightKilograms is { } gross&&s.Weights.MaximumGrossWeightKilograms is { } maximum){var planned=gross+AssignedCargo+(FuelTanks.Sum(x=>x.PlannedGallons)-s.FuelTanks.Sum(x=>x.QuantityGallons))*d;if(planned>maximum&&!warnings.Any(x=>x.Contains("maximum gross")))warnings.Add("Planned weight is above the reported maximum gross weight.");}return string.Join("\n",warnings);}}public decimal AssignedCargo=>PayloadStations.Sum(x=>x.AssignedKilograms);public decimal RemainingCargo=>ActiveCargo-AssignedCargo;
     public double AllocationProgressMaximum=>Math.Max(1,(double)ActiveCargo);public double AllocationProgressValue=>Math.Clamp((double)AssignedCargo,0,AllocationProgressMaximum);
-    public string AllocationState=>HasCommittedCargo?"CARGO ALREADY LOADED":AllocationValid?(service.Current.CanApplyCargo?"READY TO APPLY":"ALLOCATION COMPLETE � WAITING"):RemainingCargo>0?$"ASSIGN {RemainingCargo:0.##} KG MORE":$"REMOVE {-RemainingCargo:0.##} KG";
+    public string AllocationState=>!CanEditCargo?"NO LOADABLE CARGO AT THIS LOCATION":!AllocationValid?"REQUEST EXCEEDS AVAILABLE CARGO":CanApplyCargo?$"APPLY DESIRED STATE · {AssignedCargo:0.##} KG ABOARD":$"DESIRED STATE · {AssignedCargo:0.##} KG ABOARD";
     public string FuelPlanState=>FuelTanks.Count==0?"No fuel tanks reported.":$"Live {FuelTanks.Sum(x=>x.CurrentGallons):0.##} gal  →  Planned {FuelTanks.Sum(x=>x.PlannedGallons):0.##} gal";
     public double CurrentCgMarkerTop=>CgTop(service.Current.Live?.Weights.CurrentCgPercent);
     public double PlannedCgMarkerTop=>CgTop(service.Current.Plan?.PlannedCgPercent);
@@ -85,7 +86,7 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     public bool CanUnload=>service.Current.CanUnload;
     public bool CanAbandonPrototypeMission=>!busy&&service.CanAbandonPrototypeMission;
     private decimal ActiveCargo=>service.ActiveCargoKilograms;
-    public bool AllocationValid=>PayloadStations.All(x=>x.IsInputValid)&&ActiveCargo>0&&Math.Abs(AssignedCargo-ActiveCargo)<=.001m;
+    public bool AllocationValid=>PayloadStations.All(x=>x.IsInputValid)&&AssignedCargo>=0&&AssignedCargo<=ActiveCargo+.001m;
     private string? editingIdentity;
     private string? displayedManifest;
     private void Apply(AircraftLoadingStatus value)
@@ -107,7 +108,7 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
                 if(row is null){row=new PayloadStationViewModel{Index=p.Index,Name=p.Name};row.PropertyChanged+=(_,_)=>NotifyAll();PayloadStations.Add(row);}
                 row.RefreshReading(displayedReading,maximum);
             }
-            if(value.Manifest is {State:LoadManifestState.CommittedInTransit} manifest&&displayedManifest!=manifest.Id)
+            if(value.Manifest is { } manifest&&(displayedManifest!=manifest.Id||value.Plan is null&&Math.Abs(PayloadStations.Sum(x=>x.AssignedKilograms)-manifest.CargoKilograms)>.001m))
             {
                 displayedManifest=manifest.Id;
                 foreach(var row in PayloadStations)row.AssignedKilograms=manifest.Stations.SingleOrDefault(x=>x.StationIndex==row.Index)?.FrontierCargoKilograms??0;
@@ -123,12 +124,19 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
         NotifyAll();
     }
     private void UpdatePlan(){try{service.CreatePlan(PayloadStations.Select(x=>new CargoStationAllocation(x.Index,x.AssignedKilograms)).ToArray());Error="";}catch(Exception e){Error=e.Message;}NotifyAll();}
-    private async Task ApplyPlannedCargoAsync(){if(service.Current.Manifest?.State is not (LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied))UpdatePlan();if(Error=="")await Run(service.ApplyCargoAsync,"MSFS payload verified and shipment committed InTransit.");}
+    public async Task ApplyDesiredCargoAsync(bool confirmForfeit,CancellationToken token=default)
+    {
+        if(busy)return;UpdatePlan();if(Error!="")return;busy=true;Error="";Refresh();
+        try{await service.ApplyCargoAsync(confirmForfeit,token);Status="Desired aircraft cargo state applied and verified in MSFS.";}
+        catch(CargoForfeitConfirmationRequiredException){throw;}
+        catch(Exception e){Error=e.Message;Status="Loading action was refused; persistent economy and simulator state were not guessed.";}
+        finally{busy=false;Refresh();}
+    }
     private async Task Run(Func<CancellationToken,Task> action,string success){if(busy)return;busy=true;Error="";Refresh();try{await action(default);Status=success;}catch(Exception e){Error=e.Message;Status="Loading action was refused; persistent economy and simulator state were not guessed.";}finally{busy=false;Refresh();}}
     private static string Mass(decimal? x)=>x is null?"Unavailable":$"{x:0.0} kg / {LoadingUnits.KilogramsToPounds(x.Value):0.0} lb";private static string Pct(double? x)=>x is null?"Unavailable":$"{x:0.00}%";
     private static string FuelMass(AircraftLoadingSnapshot s)=>s.FuelWeightKilogramsPerGallon is { } d?$"{s.FuelTanks.Sum(x=>x.QuantityGallons)*d:0.0} kg":"Unavailable (fuel density not reported)";
     private static double CgTop(double? percent)=>percent is { } value?25+Math.Clamp(value,0,50)/50*210:-100;
-    private void NotifyAll(){foreach(var n in new[]{nameof(HasCommittedCargo),nameof(CanEditCargo),nameof(Shipment),nameof(Aircraft),nameof(CargoReason),nameof(FuelReason),nameof(Reconciliation),nameof(EngineState),nameof(WeightAndBalance),nameof(Warnings),nameof(AssignedCargo),nameof(RemainingCargo),nameof(AllocationValid),nameof(AllocationProgressMaximum),nameof(AllocationProgressValue),nameof(AllocationState),nameof(FuelPlanState),nameof(CurrentCgMarkerTop),nameof(PlannedCgMarkerTop),nameof(ForwardCgTop),nameof(AftCgTop),nameof(CurrentCgLabel),nameof(PlannedCgLabel),nameof(CargoMassKilograms),nameof(CanUnload),nameof(CanAbandonPrototypeMission)})Changed(n);Refresh();}
+    private void NotifyAll(){foreach(var n in new[]{nameof(HasCommittedCargo),nameof(CanEditCargo),nameof(CanApplyCargo),nameof(Shipment),nameof(Aircraft),nameof(CargoReason),nameof(FuelReason),nameof(Reconciliation),nameof(EngineState),nameof(WeightAndBalance),nameof(Warnings),nameof(AssignedCargo),nameof(RemainingCargo),nameof(AllocationValid),nameof(AllocationProgressMaximum),nameof(AllocationProgressValue),nameof(AllocationState),nameof(FuelPlanState),nameof(CurrentCgMarkerTop),nameof(PlannedCgMarkerTop),nameof(ForwardCgTop),nameof(AftCgTop),nameof(CurrentCgLabel),nameof(PlannedCgLabel),nameof(CargoMassKilograms),nameof(CanUnload),nameof(CanAbandonPrototypeMission)})Changed(n);Refresh();}
     private void Refresh(){foreach(var c in new[]{RefreshCommand,ClearAllocationCommand,ApplyCargoCommand,ApplyFuelCommand,KeepFuelCommand,RestoreFuelCommand,RestoreCargoCommand,UnloadCommand})c.Refresh();Changed(nameof(Status));Changed(nameof(Error));}
     private void Changed([CallerMemberName]string? n=null)=>PropertyChanged?.Invoke(this,new(n));
 }

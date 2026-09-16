@@ -33,7 +33,7 @@ public sealed class FlightAttemptTrackerTests
         await h.Tracker.LoadCargoAsync(); await h.Tracker.LoadCargoAsync();
         var world = await h.Economy.LoadAsync();
         Assert.Equal(3, world!.Revision); Assert.Single(world.Shipments);
-        Assert.Equal(ShipmentState.InTransit, world.Shipments.Single().State); Assert.Null(world.Shipments.Single().CurrentLocationId);
+        Assert.Equal(ShipmentState.Loaded, world.Shipments.Single().State); Assert.Equal(EmployedCargoPrototype.ErosId,world.Shipments.Single().CurrentLocationId);
         Assert.Single(await h.Attempts.LoadAsync());
     }
 
@@ -50,7 +50,7 @@ public sealed class FlightAttemptTrackerTests
         var reopened = new FlightAttemptTracker(new LocalEconomyStateStore(economyPath), new LocalFlightAttemptStore(attemptPath));
         await reopened.InitializeAsync(); await reopened.LoadCargoAsync();
         var world = await new LocalEconomyStateStore(economyPath).LoadAsync();
-        Assert.Equal(3, world!.Revision); Assert.Equal(ShipmentState.InTransit, world.Shipments.Single().State);
+        Assert.Equal(3, world!.Revision); Assert.Equal(ShipmentState.Loaded, world.Shipments.Single().State);
         Assert.Equal(FlightAttemptState.CargoLoaded, reopened.Current.Attempt!.State);
     }
 
@@ -61,6 +61,69 @@ public sealed class FlightAttemptTrackerTests
         await ObserveSeconds(h.Tracker, At(h.DestinationId, Start.AddMinutes(1)), 20);
         Assert.Null(h.Tracker.Current.Attempt!.FirstAirborneUtc); Assert.Null(h.Tracker.Current.Attempt.DeliveryProof);
         Assert.False(h.Tracker.Current.CanUnloadCargo); Assert.Equal("Cargo loaded", h.Tracker.Current.Stage);
+    }
+
+    [Fact]
+    public async Task LoadedShipmentRequiresObservedAirborneDepartureAndPersistsTransitOnce()
+    {
+        var h=await Loaded();
+        Assert.Equal(ShipmentState.Loaded,(await h.Economy.LoadAsync())!.Shipments.Single().State);
+        await h.Tracker.ObserveAsync(At(EmployedCargoPrototype.ErosId,Start.AddSeconds(20),onGround:false));
+        Assert.Equal(ShipmentState.Loaded,(await h.Economy.LoadAsync())!.Shipments.Single().State);
+        await h.Tracker.ObserveAsync(At(h.DestinationId,Start.AddSeconds(21),onGround:true));
+        Assert.Equal(ShipmentState.Loaded,(await h.Economy.LoadAsync())!.Shipments.Single().State);
+        await h.Tracker.ObserveAsync(At(h.DestinationId,Start.AddSeconds(22),onGround:false));
+        var departed=await h.Economy.LoadAsync();
+        Assert.Equal(ShipmentState.InTransit,departed!.Shipments.Single().State);
+        Assert.Equal(Start.AddSeconds(22),h.Tracker.Current.Attempt!.OriginDepartedUtc);
+        await h.Tracker.RefreshEconomyAsync();
+        await h.Tracker.ObserveAsync(At(h.DestinationId,Start.AddSeconds(23),onGround:false));
+        Assert.Equal(departed.Revision,(await h.Economy.LoadAsync())!.Revision);
+        Assert.Single(await h.Attempts.LoadDiagnosticTimelineAsync(),x=>x.Type==FlightDiagnosticEventType.ShipmentEnteredInTransit);
+    }
+
+    [Fact]
+    public async Task PersistedDepartureRecoversEconomyTransitionAfterInterruptedCommit()
+    {
+        var h=await Loaded(); var original=h.Tracker.Current.Attempt!;
+        await h.Attempts.SaveAsync(original with {State=FlightAttemptState.Departed,
+            FirstAirborneUtc=Start.AddSeconds(20),OriginDepartedUtc=Start.AddSeconds(21)});
+        await h.Tracker.RefreshEconomyAsync();
+        Assert.Equal(ShipmentState.InTransit,(await h.Economy.LoadAsync())!.Shipments.Single().State);
+        Assert.Empty((await h.Economy.LoadAsync())!.FinancialLedger);
+    }
+
+    [Fact]
+    public async Task LegacyLoadedAttemptRetainsExistingInTransitStateOnRestart()
+    {
+        var h=await Loaded(); var saved=h.Tracker.Current.Attempt!;
+        var legacy=new MemoryFlightAttemptStore(); await legacy.SaveAsync(saved with {TransitBeginsAtDeparture=false});
+        await new EconomyService(h.Economy).MarkShipmentInTransitAsync(saved.JobId);
+        var before=await h.Economy.LoadAsync();
+        var tracker=new FlightAttemptTracker(h.Economy,legacy); await tracker.InitializeAsync();
+        Assert.Equal(before,await h.Economy.LoadAsync());
+        Assert.False(tracker.Current.Attempt!.TransitBeginsAtDeparture);
+        Assert.Equal(ShipmentState.InTransit,(await h.Economy.LoadAsync())!.Shipments.Single().State);
+    }
+
+    [Fact]
+    public async Task LoadedJobCanBeReturnedOnceAndFreshJobStartsWithoutOldFlightEvidence()
+    {
+        var h=await Loaded(); var old=h.Tracker.Current.Attempt!;
+        await h.Tracker.AbandonIncompletePrototypeShipmentAsync(old.JobId);
+        await h.Tracker.AbandonIncompletePrototypeShipmentAsync(old.JobId);
+        var world=(await h.Economy.LoadAsync())!;
+        Assert.Equal(ShipmentState.Cancelled,world.Shipments.Single().State);
+        Assert.Empty(world.FinancialLedger);
+        Assert.Single(world.InventoryLedger,x=>x.Kind==InventoryTransactionKind.ShipmentReservationReleased);
+        var replacement=world.Jobs.Single(x=>x.Id=="job-uis-supplies-v0-000002");
+        await new EconomyService(h.Economy).AcceptJobAsync(replacement.Id,Start.AddMinutes(1));
+        await h.Tracker.RefreshEconomyAsync();
+        Assert.Null(h.Tracker.Current.Attempt);Assert.False(h.Tracker.Current.CanUnloadCargo);
+        await ObserveSeconds(h.Tracker,At(EmployedCargoPrototype.ErosId,Start.AddMinutes(2)),10);
+        Assert.True(h.Tracker.Current.CanLoadCargo);await h.Tracker.LoadCargoAsync();
+        Assert.NotEqual(old.Id,h.Tracker.Current.Attempt!.Id);
+        Assert.Equal(ShipmentState.Loaded,(await h.Economy.LoadAsync())!.Shipments.Single(x=>x.JobId==replacement.Id).State);
     }
 
     [Theory]
@@ -131,7 +194,7 @@ public sealed class FlightAttemptTrackerTests
         var reopened = new FlightAttemptTracker(new LocalEconomyStateStore(economyPath), new LocalFlightAttemptStore(attemptPath));
         await reopened.InitializeAsync(); await reopened.UnloadCargoAsync();
         var world = await new LocalEconomyStateStore(economyPath).LoadAsync();
-        Assert.Equal(4, world!.Revision);
+        Assert.Equal(5, world!.Revision);
         Assert.Equal(EconomyJobState.Completed, world.Jobs.Single(x => x.Id == "job-uis-supplies-v0").State);
         Assert.Equal(TransportRequirementState.Fulfilled, world.Requirements.Single(x => x.Id == "requirement-uis-supplies-v0").State);
         Assert.Equal(ShipmentState.Delivered, world.Shipments.Single().State);
@@ -166,7 +229,7 @@ public sealed class FlightAttemptTrackerTests
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => h.Tracker.ResetIncompletePrototypeProgressAsync());
         Assert.Contains("completed", error.Message, StringComparison.OrdinalIgnoreCase);
         var after = await h.Economy.LoadAsync();
-        Assert.Equal(before, after); Assert.Equal(4, after!.Revision); Assert.Single(after.FinancialLedger);
+        Assert.Equal(before, after); Assert.Equal(5, after!.Revision); Assert.Single(after.FinancialLedger);
         Assert.Equal(240, after.Players.Single().CachedBalance);
         Assert.Equal(FlightAttemptState.Delivered, Assert.Single(await h.Attempts.LoadAsync()).State);
     }
@@ -188,7 +251,8 @@ public sealed class FlightAttemptTrackerTests
         Assert.Single(events, x => x.Type == FlightDiagnosticEventType.AirborneEvidenceRecorded);
         Assert.Single(events, x => x.Type == FlightDiagnosticEventType.PostDepartureMovementRecorded);
         Assert.Single(events, x => x.Type == FlightDiagnosticEventType.RequiredMaximumDistanceReached);
-        Assert.True(events.Count < 12);
+        Assert.Single(events, x => x.Type == FlightDiagnosticEventType.ShipmentLoaded);
+        Assert.True(events.Count < 13);
     }
 
     [Fact]
@@ -407,7 +471,7 @@ public sealed class FlightAttemptPersistenceTests : TemporaryDirectoryTest
         document.Remove("DiagnosticTimeline"); await File.WriteAllTextAsync(FilePath, document.ToJsonString());
         var original = await new LocalFlightAttemptStore(FilePath).LoadAsync();
         Assert.Contains(attempt, original); Assert.Contains(completed, original); Assert.Empty(await new LocalFlightAttemptStore(FilePath).LoadDiagnosticTimelineAsync());
-        Assert.Equal(3, JsonNode.Parse(await File.ReadAllTextAsync(FilePath))!["SchemaVersion"]!.GetValue<int>());
+        Assert.Equal(4, JsonNode.Parse(await File.ReadAllTextAsync(FilePath))!["SchemaVersion"]!.GetValue<int>());
     }
 
     [Fact]

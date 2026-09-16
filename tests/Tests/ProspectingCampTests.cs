@@ -192,7 +192,7 @@ public sealed class ProspectingCampKernelTests : TemporaryDirectoryTest
         var loaded = await new LocalEconomyStateStore(path).LoadAsync();
         Assert.Empty(loaded!.Sites); Assert.Empty(loaded.Operations); Assert.Empty(loaded.OperationTicks);
         Assert.Single(loaded.FinancialLedger); Assert.Equal(240, loaded.Players.Single().CachedBalance);
-        Assert.Equal(3, System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(path))!["SchemaVersion"]!.GetValue<int>());
+        Assert.Equal(5, System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(path))!["SchemaVersion"]!.GetValue<int>());
     }
 
     [Fact]
