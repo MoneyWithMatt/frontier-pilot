@@ -56,7 +56,7 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
      ApplyFuelCommand=new(()=>_=Run(t=>service.ApplyFuelAsync(FuelTanks.ToDictionary(x=>x.Id,x=>x.PlannedGallons),t),"Fuel applied and read back from MSFS."),()=>!busy&&service.Current.CanApplyFuel&&FuelTanks.Count>0&&FuelTanks.All(x=>x.IsInputValid));
      KeepFuelCommand=new(()=>_=Run(service.KeepSimulatorFuelAsync,"Simulator fuel explicitly kept."),()=>!busy&&service.Current.FuelDecisionRequired);
      RestoreFuelCommand=new(()=>_=Run(service.RestoreSavedFuelAsync,"Saved fuel restored and verified."),()=>!busy&&service.Current.CanRestoreFuel);
-     RestoreCargoCommand=new(()=>_=Run(service.RestoreCargoAsync,"Cargo manifest restored and verified."),()=>!busy&&service.Current.CanRestoreCargo);
+     RestoreCargoCommand=new(()=>_=Run(service.RestoreCargoAsync,"Outside cargo restoration checked. Follow the displayed post-boarding instruction."),()=>!busy&&service.Current.CanRestoreCargo);
      UnloadCommand=new(()=>_=Run(t=>service.UnloadAsync(false,t),"MSFS cargo removed and delivery committed."),()=>!busy&&service.Current.CanUnload);}
     public async Task InitializeAsync(CancellationToken token=default)=>await service.InitializeAsync(token);
     public Task CompleteSimulatedUnloadAsync(CancellationToken token=default)=>Run(t=>service.UnloadAsync(true,t),"Compatibility unload confirmed and economic delivery committed.");
@@ -152,7 +152,7 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     public async Task ApplyDesiredCargoAsync(bool confirmForfeit,CancellationToken token=default)
     {
         if(busy)return;UpdatePlan();if(Error!="")return;busy=true;Error="";Refresh();
-        try{await service.ApplyCargoAsync(confirmForfeit,token);cargoDraftDirty=false;displayedManifest=service.Current.Manifest?.Id;Status="Desired aircraft cargo state applied and verified in MSFS.";}
+        try{await service.ApplyCargoAsync(confirmForfeit,token);cargoDraftDirty=false;displayedManifest=service.Current.Manifest?.Id;Status=service.Current.Manifest?.Reconciliation==SimulatorReconciliationState.RestoreAvailable?"Outside loading checks passed. Board the same aircraft and complete post-boarding verification.":"Desired aircraft cargo state applied and verified in MSFS.";}
         catch(CargoForfeitConfirmationRequiredException){throw;}
         catch(Exception e){Error=e.Message;Status="Loading action was refused; persistent economy and simulator state were not guessed.";}
         finally{busy=false;Refresh();}

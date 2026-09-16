@@ -186,6 +186,6 @@ At Matt's request, remove the UI action that starts a new simulated cargo load. 
 
 ## Outside authorization with seated physical application — 2026-09-16
 
-- Guarded avatar presence remains the authority for permitting ground handling. It can authorize a short-lived explicit seated retry when a third-party aircraft accepts a station value outside but does not incorporate that value into aircraft weight.
+- Guarded avatar presence remains the authority for permitting ground handling. Every positive MSFS cargo load creates a short-lived post-boarding verification authorization because a third-party aircraft may accept an outside station value and then rebuild or discard it when cockpit control resumes.
 - Boarding never writes payload automatically. The player must invoke the separate seated action in the same aircraft, on the ground, stationary, within 1.5 NM and within five minutes of authorization.
-- A payload-station read-back is insufficient evidence of physical loading. The seated compatibility path also requires reported total aircraft weight to increase by the authorized cargo delta within 1 kg before any new economy cargo transfer is committed.
+- A payload-station read-back is insufficient evidence of physical loading. If station and total weight survive boarding they are verified without another write; otherwise the seated compatibility path reapplies the authorized target. In either case, reported total aircraft weight must match the authorized result within 1 kg before any new economy cargo transfer is committed.
