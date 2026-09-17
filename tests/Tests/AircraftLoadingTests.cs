@@ -421,22 +421,35 @@ public sealed class AircraftLoadingTests
         Assert.True(h.coordinator.CanApplyAuthorizedCargoAfterBoarding);
     }
 
-    [Fact] public async Task Cargo_retained_through_boarding_is_verified_without_a_second_payload_write()
+    [Fact] public async Task Outside_plan_does_not_write_until_one_verified_boarded_application()
     {
         var h=Harness(requireBoarded:true);await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
-        h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();Assert.Equal(1,h.sim.PayloadWrites);
+        h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();Assert.Equal(0,h.sim.PayloadWrites);
         h.setWorld(World(seated:true));await h.coordinator.RefreshAsync();await h.coordinator.ApplyAuthorizedCargoAfterBoardingAsync();
         Assert.Equal(1,h.sim.PayloadWrites);Assert.Equal(1,h.tracker.Loads);Assert.Equal(LoadManifestState.CommittedInTransit,h.coordinator.Current.Manifest!.State);
     }
 
-    [Fact] public async Task Existing_outside_cargo_can_be_authorized_without_first_making_it_disappear()
+    [Fact] public async Task Missing_committed_cargo_is_authorized_outside_and_written_only_after_boarding()
     {
         var h=Harness(requireBoarded:true);await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();
         h.setWorld(World(seated:true));await h.coordinator.RefreshAsync();await h.coordinator.ApplyAuthorizedCargoAfterBoardingAsync();
-        h.setWorld(World());await h.coordinator.RefreshAsync();Assert.True(h.coordinator.Current.CanRestoreCargo);
-        var writes=h.sim.PayloadWrites;await h.coordinator.RestoreCargoAsync();Assert.Equal(writes+1,h.sim.PayloadWrites);
+        h.sim.Value=Snapshot();h.setWorld(World());await h.coordinator.RefreshAsync();Assert.True(h.coordinator.Current.CanRestoreCargo);
+        var writes=h.sim.PayloadWrites;await h.coordinator.RestoreCargoAsync();Assert.Equal(writes,h.sim.PayloadWrites);
         Assert.Equal(SimulatorReconciliationState.RestoreAvailable,h.coordinator.Current.Manifest!.Reconciliation);
         Assert.Equal(1020,h.coordinator.Current.Manifest.BoardedExpectedGrossWeightKilograms);
+        h.setWorld(World(seated:true));await h.coordinator.RefreshAsync();await h.coordinator.ApplyAuthorizedCargoAfterBoardingAsync();
+        Assert.Equal(writes+1,h.sim.PayloadWrites);
+    }
+
+    [Fact] public async Task Primary_cargo_action_changes_label_and_command_across_outside_and_boarded_steps()
+    {
+        var h=Harness(requireBoarded:true);var vm=new AircraftLoadingViewModel(h.coordinator);
+        await vm.InitializeAsync();await h.coordinator.RefreshAsync();vm.PayloadStations[0].AssignedKilogramsText="70";vm.PayloadStations[1].AssignedKilogramsText="50";
+        Assert.True(vm.CanUsePrimaryCargoAction);Assert.Equal("Confirm loading plan",vm.PrimaryCargoActionText);
+        await vm.ApplyPrimaryCargoAsync(false);Assert.Equal(0,h.sim.PayloadWrites);Assert.False(vm.CanUsePrimaryCargoAction);Assert.Equal("Board aircraft to continue",vm.PrimaryCargoActionText);
+        h.setWorld(World(seated:true));await h.coordinator.RefreshAsync();
+        Assert.True(vm.CanUsePrimaryCargoAction);Assert.Equal("Apply cargo to aircraft",vm.PrimaryCargoActionText);
+        await vm.ApplyPrimaryCargoAsync(false);Assert.Equal(1,h.sim.PayloadWrites);Assert.Equal(1,h.tracker.Loads);
     }
 
     [Fact] public async Task Committed_load_display_does_not_count_frontier_cargo_twice()

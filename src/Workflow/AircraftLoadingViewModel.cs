@@ -122,6 +122,16 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     public bool CanUnload=>service.Current.CanUnload;
     public bool CanApplyAuthorizedCargo=>!busy&&service.CanApplyAuthorizedCargoAfterBoarding;
     public string AuthorizedCargoReason=>service.AuthorizedBoardedCargoReason;
+    private bool AuthorizationExpired=>service.Current.Manifest?.Reconciliation==SimulatorReconciliationState.RestoreAvailable&&
+        service.AuthorizedBoardedCargoReason.StartsWith("The outside cargo authorization expired",StringComparison.Ordinal);
+    private bool NeedsRestoreAuthorization=>service.Current.Manifest?.Reconciliation==SimulatorReconciliationState.CargoAppearsMissing||AuthorizationExpired;
+    public bool CanUsePrimaryCargoAction=>CanApplyAuthorizedCargo||CanApplyCargo||(!busy&&service.Current.CanRestoreCargo&&NeedsRestoreAuthorization);
+    public string PrimaryCargoActionText=>CanApplyAuthorizedCargo?"Apply cargo to aircraft":
+        service.Current.Manifest?.Reconciliation==SimulatorReconciliationState.RestoreAvailable
+            ? AuthorizationExpired?"Renew loading authorization":"Board aircraft to continue":
+        service.Current.Manifest?.Reconciliation==SimulatorReconciliationState.CargoAppearsMissing?"Authorize cargo restoration":
+        CanApplyCargo&&AssignedCargo>(service.Current.Manifest?.CargoKilograms??0)?"Confirm loading plan":
+        CanApplyCargo?"Apply cargo changes":"Aircraft matches requested cargo";
     public bool CanAbandonPrototypeMission=>!busy&&service.CanAbandonPrototypeMission;
     private decimal ActiveCargo=>service.ActiveCargoKilograms;
     public bool AllocationValid=>PayloadStations.All(x=>x.IsInputValid)&&AssignedCargo>=0&&AssignedCargo<=ActiveCargo+.001m;
@@ -179,11 +189,19 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
         catch(Exception e){Error=e.Message;Status="Loading action was refused; persistent economy and simulator state were not guessed.";}
         finally{busy=false;Refresh();}
     }
+    public async Task ApplyPrimaryCargoAsync(bool confirmForfeit,CancellationToken token=default)
+    {
+        if(CanApplyAuthorizedCargo)
+        {await Run(service.ApplyAuthorizedCargoAfterBoardingAsync,"Cargo applied to the seated aircraft, verified in MSFS and committed.");return;}
+        if(service.Current.CanRestoreCargo&&NeedsRestoreAuthorization)
+        {await Run(service.RestoreCargoAsync,"Cargo plan authorized. Board the same aircraft and use the main cargo action again.");return;}
+        await ApplyDesiredCargoAsync(confirmForfeit,token);
+    }
     private async Task Run(Func<CancellationToken,Task> action,string success){if(busy)return;busy=true;Error="";Refresh();try{await action(default);Status=success;}catch(Exception e){Error=e.Message;Status="Loading action was refused; persistent economy and simulator state were not guessed.";}finally{busy=false;Refresh();}}
     private static string Mass(decimal? x)=>x is null?"Unavailable":$"{x:0.0} kg / {LoadingUnits.KilogramsToPounds(x.Value):0.0} lb";private static string Pct(double? x)=>x is null?"Unavailable":$"{x:0.00}%";
     private static string FuelMass(AircraftLoadingSnapshot s)=>s.FuelWeightKilogramsPerGallon is { } d?$"{s.FuelTanks.Sum(x=>x.QuantityGallons)*d:0.0} kg":"Unavailable (fuel density not reported)";
     private static double CgTop(double? percent)=>percent is { } value?25+Math.Clamp(value,0,50)/50*210:-100;
-    private void NotifyAll(){foreach(var n in new[]{nameof(HasCommittedCargo),nameof(CanEditCargo),nameof(CanApplyCargo),nameof(CanApplyAuthorizedCargo),nameof(AuthorizedCargoReason),nameof(Shipment),nameof(Aircraft),nameof(CargoReason),nameof(FuelReason),nameof(Reconciliation),nameof(EngineState),nameof(WeightAndBalance),nameof(Warnings),nameof(AssignedCargo),nameof(RemainingCargo),nameof(AllocationValid),nameof(AllocationProgressMaximum),nameof(AllocationProgressValue),nameof(AllocationState),nameof(FuelPlanState),nameof(CurrentCgMarkerTop),nameof(PlannedCgMarkerTop),nameof(ForwardCgTop),nameof(AftCgTop),nameof(CurrentCgLabel),nameof(PlannedCgLabel),nameof(LiveObservedUtc),nameof(LiveTotalWeightKilograms),nameof(LiveTotalWeightPounds),nameof(LiveCgPercent),nameof(LiveForwardCgLimitPercent),nameof(LiveAftCgLimitPercent),nameof(LiveTotalWeightText),nameof(LiveCgText),nameof(LiveForwardCgLimitText),nameof(LiveAftCgLimitText),nameof(LiveObservationText),nameof(CargoMassKilograms),nameof(JobCargoKilograms),nameof(LoadedCargoKilograms),nameof(SimulatorCargoStatus),nameof(CargoAvailableKilograms),nameof(DeliveredCargoKilograms),nameof(CanUnload),nameof(CanAbandonPrototypeMission)})Changed(n);Refresh();}
+    private void NotifyAll(){foreach(var n in new[]{nameof(HasCommittedCargo),nameof(CanEditCargo),nameof(CanApplyCargo),nameof(CanApplyAuthorizedCargo),nameof(CanUsePrimaryCargoAction),nameof(PrimaryCargoActionText),nameof(AuthorizedCargoReason),nameof(Shipment),nameof(Aircraft),nameof(CargoReason),nameof(FuelReason),nameof(Reconciliation),nameof(EngineState),nameof(WeightAndBalance),nameof(Warnings),nameof(AssignedCargo),nameof(RemainingCargo),nameof(AllocationValid),nameof(AllocationProgressMaximum),nameof(AllocationProgressValue),nameof(AllocationState),nameof(FuelPlanState),nameof(CurrentCgMarkerTop),nameof(PlannedCgMarkerTop),nameof(ForwardCgTop),nameof(AftCgTop),nameof(CurrentCgLabel),nameof(PlannedCgLabel),nameof(LiveObservedUtc),nameof(LiveTotalWeightKilograms),nameof(LiveTotalWeightPounds),nameof(LiveCgPercent),nameof(LiveForwardCgLimitPercent),nameof(LiveAftCgLimitPercent),nameof(LiveTotalWeightText),nameof(LiveCgText),nameof(LiveForwardCgLimitText),nameof(LiveAftCgLimitText),nameof(LiveObservationText),nameof(CargoMassKilograms),nameof(JobCargoKilograms),nameof(LoadedCargoKilograms),nameof(SimulatorCargoStatus),nameof(CargoAvailableKilograms),nameof(DeliveredCargoKilograms),nameof(CanUnload),nameof(CanAbandonPrototypeMission)})Changed(n);Refresh();}
     private void Refresh(){foreach(var c in new[]{RefreshCommand,ClearAllocationCommand,ApplyCargoCommand,ApplyAuthorizedCargoCommand,ApplyFuelCommand,KeepFuelCommand,RestoreFuelCommand,RestoreCargoCommand,UnloadCommand})c.Refresh();Changed(nameof(Status));Changed(nameof(Error));}
     private void Changed([CallerMemberName]string? n=null)=>PropertyChanged?.Invoke(this,new(n));
 }

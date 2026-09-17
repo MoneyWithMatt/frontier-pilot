@@ -51,14 +51,14 @@ public partial class MainWindow : Window
         await model.AircraftLoading.AbandonPrototypeMissionAsync();
         await model.Jobs.InitializeAsync();
     }
-    private async void ApplyDesiredAircraftLoad(object sender,RoutedEventArgs e)
+    private async void ApplyPrimaryAircraftLoad(object sender,RoutedEventArgs e)
     {
-        try { await model.AircraftLoading.ApplyDesiredCargoAsync(false); await model.Jobs.InitializeAsync(); }
+        try { await model.AircraftLoading.ApplyPrimaryCargoAsync(false); await model.Jobs.InitializeAsync(); }
         catch (CargoForfeitConfirmationRequiredException error)
         {
             if (MessageBox.Show(this,error.Message+"\n\nContinue and forfeit this job?","Confirm cargo unload away from destination",
                 MessageBoxButton.YesNo,MessageBoxImage.Warning,MessageBoxResult.No)==MessageBoxResult.Yes)
-            { await model.AircraftLoading.ApplyDesiredCargoAsync(true); await model.Jobs.InitializeAsync(); }
+            { await model.AircraftLoading.ApplyPrimaryCargoAsync(true); await model.Jobs.InitializeAsync(); }
         }
     }
     private void TrackingDisplayChanged(FrontierAirportBuilder.Core.AircraftTelemetry? aircraft,FrontierAirportBuilder.Core.PlayerTelemetry? player,bool isLive) =>

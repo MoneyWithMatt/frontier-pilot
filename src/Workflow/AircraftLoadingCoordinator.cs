@@ -260,6 +260,17 @@ public sealed class AircraftLoadingCoordinator
                     LastTransferCommandId=commandId,SimulatorAppliedUtc=null,CompletedUtc=null,
                     VerificationResult=$"Desired-state intent persisted. Previous managed cargo {currentCargo:0.###} kg; requested {plan.CargoKilograms:0.###} kg."};
             await store.SaveManifestAsync(manifest,token); // durable intent precedes external write
+            // The outside step proves access and durably records the exact plan. The physical
+            // payload write happens after boarding, because some aircraft clear station writes
+            // during the walkaround-to-cockpit transition.
+            if(delta>options.PayloadToleranceKilograms&&!previouslyVerifiedSimulatorApplication&&options.RequirePostBoardingCargoVerification)
+            {
+                manifest=AuthorizeBoardedApplication(manifest,live,delta,"Outside loading plan authorized; MSFS payload was not changed.");
+                await store.SaveManifestAsync(manifest,token);
+                Current=Current with{Live=live,Manifest=manifest,
+                    CargoActionReason="Loading plan saved. Board the same aircraft, then use the main cargo action to apply and verify it."};
+                UpdateRestoreAvailability();Notify();return;
+            }
             var targets=manifest.Stations.ToDictionary(x=>x.StationIndex,x=>x.TargetKilograms);
             var verificationTargets=manifest.Stations.Where(x=>x.FrontierCargoKilograms>options.PayloadToleranceKilograms||
                 Math.Abs(live.PayloadStations.Single(p=>p.Index==x.StationIndex).CurrentWeightKilograms-x.TargetKilograms)>options.PayloadToleranceKilograms)
@@ -294,15 +305,6 @@ public sealed class AircraftLoadingCoordinator
                 Current=Current with{Manifest=manifest,Live=readBack,Plan=null,CanApplyCargo=false,CanUnload=false,
                     CargoActionReason="Aircraft cargo reset. The shipment remains reserved at the origin; complete loading qualification and load it again."};
                 Notify();return;
-            }
-            if(delta>options.PayloadToleranceKilograms&&!previouslyVerifiedSimulatorApplication&&options.RequirePostBoardingCargoVerification)
-            {
-                GrossChangedBy(live,readBack,delta,out var grossReason);
-                manifest=AuthorizeBoardedApplication(manifest,live,delta,"Outside station values were retained; "+grossReason);
-                await store.SaveManifestAsync(manifest,token);Current=Current with{Live=readBack,Manifest=manifest,
-                    CargoActionReason="Outside loading checks passed. Board the same aircraft and use Apply authorized cargo after boarding so the post-boarding aircraft state can be verified."};
-                UpdateRestoreAvailability();Notify();
-                return;
             }
             manifest=manifest with {Stations=stations,State=LoadManifestState.SimulatorApplied,SimulatorAppliedUtc=utcNow(),VerificationResult=$"MSFS desired station weights remained present after {options.RetentionDelay.TotalSeconds:0.#} seconds; persistent cargo transfer pending.",LastReconciledUtc=utcNow(),Reconciliation=SimulatorReconciliationState.MatchesManifest};await store.SaveManifestAsync(manifest,token);
             if(job is not null)
@@ -380,11 +382,40 @@ public sealed class AircraftLoadingCoordinator
     { var saved=Current.SavedFuel??throw new InvalidOperationException("No saved fuel state exists.");var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var reason=RestoreReason(live,saved,true);if(reason!="Ready.")throw new InvalidOperationException(reason);
       var targets=saved.Tanks.ToDictionary(x=>x.Id,x=>x.QuantityGallons);var read=await simulator.WriteFuelAsync(sdkRoot(),targets,token);foreach(var pair in targets)if(Math.Abs(read.FuelTanks.Single(x=>x.Id==pair.Key).QuantityGallons-pair.Value)>options.FuelToleranceGallons)throw new IOException("Saved fuel restoration was not verified.");saved=FuelState(read,FuelReconciliationState.RestoredVerified,"Saved fuel restored and verified through read-back.");await store.SaveFuelStateAsync(saved,token);lastFuelCheckpoint=utcNow();Current=Current with{Live=read,SavedFuel=saved,FuelDecisionRequired=false};Notify(); }
     public async Task RestoreCargoAsync(CancellationToken token=default)
-    { var manifest=Current.Manifest??throw new InvalidOperationException("No cargo manifest exists.");var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var reason=RestoreReason(live,manifest,false);if(reason!="Ready.")throw new InvalidOperationException(reason);
-      var targets=ManagedTargets(manifest);var immediate=await simulator.WritePayloadAsync(sdkRoot(),targets,token);if(!PayloadMatches(immediate,targets,options.PayloadToleranceKilograms))throw new IOException("Restored cargo did not pass immediate MSFS read-back verification.");
-      await delay(options.RetentionDelay,token);var read=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();if(!PayloadMatches(read,targets,options.PayloadToleranceKilograms)){var comparison=ComparePayload(read,manifest);manifest=manifest with{Reconciliation=comparison.state,LastReconciledUtc=utcNow(),VerificationResult="Player-confirmed restoration was accepted initially but not retained: "+PayloadMismatch(manifest.Stations,read)};await store.SaveManifestAsync(manifest,token);Current=Current with{Live=read,Manifest=manifest};UpdateRestoreAvailability();Notify();throw new IOException("MSFS accepted the restored cargo but did not retain it after the verification delay: "+PayloadMismatch(manifest.Stations,read));}
-      var restoredDelta=Math.Max(0,manifest.CargoKilograms-DetectedCargo(manifest,live));if(manifest.CargoKilograms>options.PayloadToleranceKilograms&&options.RequirePostBoardingCargoVerification){GrossChangedBy(live,read,restoredDelta,out var grossReason);manifest=AuthorizeBoardedApplication(manifest,live,restoredDelta,"Outside restored station values were retained; "+grossReason);await store.SaveManifestAsync(manifest,token);Current=Current with{Live=read,Manifest=manifest,CargoActionReason="Outside cargo restoration is authorized. Board the same aircraft and apply the authorized cargo so the post-boarding state can be verified."};UpdateRestoreAvailability();Notify();return;}
-      manifest=manifest with{Reconciliation=SimulatorReconciliationState.MatchesManifest,LastReconciledUtc=utcNow(),VerificationResult=$"Player-confirmed cargo restoration remained present after {options.RetentionDelay.TotalSeconds:0.#} seconds."};await store.SaveManifestAsync(manifest,token);Current=Current with{Live=read,Manifest=manifest};UpdateRestoreAvailability();Notify(); }
+    {
+        await gate.WaitAsync(token);try
+        {
+            var manifest=Current.Manifest??throw new InvalidOperationException("No cargo manifest exists.");
+            if(manifest.State is not (LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied or LoadManifestState.CommittedInTransit))
+                throw new InvalidOperationException("This cargo manifest cannot be authorized for aircraft restoration.");
+            var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var reason=RestoreReason(live,manifest,false);
+            if(reason!="Ready.")throw new InvalidOperationException(reason);
+            if(!options.RequirePostBoardingCargoVerification)
+            {
+                var targets=ManagedTargets(manifest);var immediate=await simulator.WritePayloadAsync(sdkRoot(),targets,token);
+                if(!PayloadMatches(immediate,targets,options.PayloadToleranceKilograms))throw new IOException("Restored cargo did not pass immediate MSFS read-back verification.");
+                await delay(options.RetentionDelay,token);var read=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();
+                if(!PayloadMatches(read,targets,options.PayloadToleranceKilograms))
+                {
+                    var comparison=ComparePayload(read,manifest);manifest=manifest with{Reconciliation=comparison.state,LastReconciledUtc=utcNow(),VerificationResult="Player-confirmed restoration was accepted initially but not retained: "+PayloadMismatch(manifest.Stations,read)};
+                    await store.SaveManifestAsync(manifest,token);Current=Current with{Live=read,Manifest=manifest};UpdateRestoreAvailability();Notify();
+                    throw new IOException("MSFS accepted the restored cargo but did not retain it after the verification delay: "+PayloadMismatch(manifest.Stations,read));
+                }
+                manifest=manifest with{Reconciliation=SimulatorReconciliationState.MatchesManifest,LastReconciledUtc=utcNow(),VerificationResult=$"Player-confirmed cargo restoration remained present after {options.RetentionDelay.TotalSeconds:0.#} seconds."};
+                await store.SaveManifestAsync(manifest,token);Current=Current with{Live=read,Manifest=manifest};UpdateRestoreAvailability();Notify();return;
+            }
+            var expectedDelta=manifest.State is LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied
+                ? Math.Max(0,manifest.CargoKilograms-manifest.PriorCargoKilograms)
+                : Math.Max(0,manifest.CargoKilograms-DetectedCargo(manifest,live));
+            if(expectedDelta<=options.PayloadToleranceKilograms)
+                throw new InvalidOperationException("The reported aircraft already contains the saved Frontier cargo; no restoration is required.");
+            manifest=AuthorizeBoardedApplication(manifest,live,expectedDelta,"Outside cargo restoration authorized; MSFS payload was not changed.");
+            await store.SaveManifestAsync(manifest,token);
+            Current=Current with{Live=live,Manifest=manifest,
+                CargoActionReason="Cargo restoration authorized. Board the same aircraft, then use the main cargo action to apply and verify it."};
+            UpdateRestoreAvailability();Notify();
+        }finally{gate.Release();}
+    }
 
     public async Task ApplyAuthorizedCargoAfterBoardingAsync(CancellationToken token=default)
     {
@@ -566,7 +597,7 @@ public sealed class AircraftLoadingCoordinator
     {var basic=Access(live,fuel);if(basic!="Ready.")return basic;if(saved.Aircraft.ClearlyDiffersFrom(LoadingIdentityExtensions.FromSnapshot(live)))return "Aircraft identity differs from the saved state.";if(DistanceNm(live.Position,saved.LastValidPosition)>options.RestorePositionRadiusNauticalMiles)return "Aircraft is more than 1.5 NM from its last persisted position.";if(live.FuelTanks.Select(x=>x.Id).Order().SequenceEqual(saved.Tanks.Select(x=>x.Id).Order())==false)return "Fuel-tank layout differs from the saved state.";return "Ready.";}
     private string RestoreReason(AircraftLoadingSnapshot live,CargoLoadManifest manifest,bool fuel)
     {var basic=Access(live,fuel);if(basic!="Ready.")return basic;if(manifest.Aircraft.ClearlyDiffersFrom(LoadingIdentityExtensions.FromSnapshot(live)))return "Aircraft identity differs from the cargo manifest.";if(manifest.LastValidPosition is null||DistanceNm(live.Position,manifest.LastValidPosition)>options.RestorePositionRadiusNauticalMiles)return "Aircraft is more than 1.5 NM from the manifest's last persisted position.";return "Ready.";}
-    private void UpdateRestoreAvailability(){var l=Current.Live;var m=Current.Manifest;var f=Current.SavedFuel;var cr=l is null||m is null?"No cargo restoration is available.":RestoreReason(l,m,false);var fr=l is null||f is null?"No fuel restoration is available.":RestoreReason(l,f,true);Current=Current with{CanRestoreCargo=(m?.Reconciliation is SimulatorReconciliationState.CargoAppearsMissing or SimulatorReconciliationState.RestoreAvailable or SimulatorReconciliationState.MatchesManifest)&&m?.State==LoadManifestState.CommittedInTransit&&cr=="Ready.",CanRestoreFuel=f?.Reconciliation==FuelReconciliationState.AwaitingDecision&&fr=="Ready.",ReconciliationReason=$"Cargo: {cr} Fuel: {fr}"};}
+    private void UpdateRestoreAvailability(){var l=Current.Live;var m=Current.Manifest;var f=Current.SavedFuel;var cr=l is null||m is null?"No cargo restoration is available.":RestoreReason(l,m,false);var fr=l is null||f is null?"No fuel restoration is available.":RestoreReason(l,f,true);var recoverable=m?.State is LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied or LoadManifestState.CommittedInTransit;Current=Current with{CanRestoreCargo=recoverable&&(m?.Reconciliation is SimulatorReconciliationState.CargoAppearsMissing or SimulatorReconciliationState.RestoreAvailable)&&cr=="Ready.",CanRestoreFuel=f?.Reconciliation==FuelReconciliationState.AwaitingDecision&&fr=="Ready.",ReconciliationReason=$"Cargo: {cr} Fuel: {fr}"};}
     private (SimulatorReconciliationState state,string reason) ComparePayload(AircraftLoadingSnapshot live,CargoLoadManifest m){var managed=m.Stations.Where(x=>x.FrontierCargoKilograms>options.PayloadToleranceKilograms).ToArray();if(managed.Length==0)return(SimulatorReconciliationState.MatchesManifest,"The manifest contains no Frontier cargo to reconcile.");var target=managed.ToDictionary(x=>x.StationIndex,x=>x.TargetKilograms);if(PayloadMatches(live,target,options.PayloadToleranceKilograms))return(SimulatorReconciliationState.MatchesManifest,"Live MSFS payload contains the committed Frontier cargo allocation.");var baseline=managed.ToDictionary(x=>x.StationIndex,x=>x.BaselineKilograms);if(PayloadMatches(live,baseline,options.PayloadToleranceKilograms))return(SimulatorReconciliationState.CargoAppearsMissing,"Committed Frontier cargo is missing from its assigned MSFS stations; unrelated station changes were ignored and restoration requires an explicit player action.");return(SimulatorReconciliationState.Indeterminate,"A Frontier-managed station differs from both its committed target and non-Frontier baseline: "+PayloadMismatch(managed,live));}
     private static bool PayloadMatches(AircraftLoadingSnapshot s,IReadOnlyDictionary<int,decimal> target,decimal tolerance)=>target.All(x=>s.PayloadStations.Any(p=>p.Index==x.Key&&Math.Abs(p.CurrentWeightKilograms-x.Value)<=tolerance));
     private static IReadOnlyDictionary<int,decimal> ManagedTargets(CargoLoadManifest manifest)=>manifest.Stations.Where(x=>x.FrontierCargoKilograms>manifest.VerificationToleranceKilograms).ToDictionary(x=>x.StationIndex,x=>x.TargetKilograms);
