@@ -28,6 +28,8 @@ The station model is aircraft-generic. Count, names, indices and weights are dis
 
 The Black Square Duke should therefore expose its own forward/rear stations and accept the same indexed payload writes if its add-on systems allow standard SimConnect payload changes to persist. That expectation still requires the forward-versus-rear live test; third-party aircraft can overwrite standard payload state or present a separate cached EFB model.
 
+The first Duke test on 2026-09-17 showed correct gross-weight and CG movement. Its Rear Baggage station contained 18.143694758 kg (exactly 40 lb) before Frontier cargo was assigned. The Duke package defines this as payload station 8 and implements its own saved-payload local variables. Frontier Pilot therefore records the observed 40 lb as other-aircraft payload and preserves it: setting the station's Frontier cargo allocation to zero removes only the Frontier delta and returns the station to 40 lb. The Payload tab now labels this column **Other payload** and the resulting combined station value **Total after**. Removing or changing other-aircraft payload remains the responsibility of the aircraft/EFB; Frontier Pilot does not silently claim or erase it.
+
 ## Desired-state cargo architecture
 
 The Aircraft Loading page is a general aircraft state editor. A nonterminal accepted shipment can make reserved cargo available at its origin, but the mission does not own the station editor. Terminal Completed, Cancelled, Forfeited, or skipped jobs no longer present cargo as available. A nonterminal manifest can still show Frontier-managed cargo physically aboard after a job forfeiture.
