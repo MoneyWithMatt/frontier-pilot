@@ -57,6 +57,26 @@ public sealed class FlightAttemptTrackerTests
     }
 
     [Fact]
+    public async Task Resetting_an_uncommitted_zero_load_removes_stale_attempt_without_changing_economy()
+    {
+        var h=await Harness.Create();var atEros=At(EmployedCargoPrototype.ErosId,Start);await ObserveSeconds(h.Tracker,atEros,10);
+        await h.Tracker.ApplyCargoTransferAsync("transfer-load-60","command-load-60",60,EmployedCargoPrototype.ErosId,
+            atEros.Latitude,atEros.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
+        await h.Tracker.ApplyCargoTransferAsync("transfer-unload-60","command-unload-60",0,EmployedCargoPrototype.ErosId,
+            atEros.Latitude,atEros.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
+        var before=await h.Economy.LoadAsync();
+        Assert.Equal(ShipmentState.Reserved,before!.Shipments.Single().State);Assert.Equal(0,before.Shipments.Single().LoadedQuantity);
+        Assert.NotNull(h.Tracker.Current.Attempt);
+
+        await h.Tracker.ResetUncommittedCargoLoadAsync();
+        await h.Tracker.ResetUncommittedCargoLoadAsync();
+
+        Assert.Null(h.Tracker.Current.Attempt);Assert.Empty(await h.Attempts.LoadAsync());
+        Assert.Equal(before,await h.Economy.LoadAsync());Assert.Empty(before.FinancialLedger);
+        Assert.Single(await h.Attempts.LoadDiagnosticTimelineAsync(),x=>x.Type==FlightDiagnosticEventType.CargoLoadReset);
+    }
+
+    [Fact]
     public async Task LoadingAndProgressSurviveRestartWithoutASecondTransition()
     {
         using var temp = new TestDirectory();

@@ -88,7 +88,7 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     public decimal DeliveredCargoKilograms=>service.DeliveredCargoKilograms;
     public string Shipment=>service.Current.Manifest is { } m?$"{m.ShipmentId} · {(m.State==LoadManifestState.CommittedInTransit?"Cargo committed":m.State.ToString())} · {m.Mode}":"No load manifest yet";
     public string Aircraft=>service.Current.Live is { } s?$"{s.Aircraft.Title} / {s.Aircraft.Type}":"No live aircraft data";
-    public bool HasCommittedCargo=>service.Current.Manifest is {CargoKilograms:>0,State:not (LoadManifestState.Completed or LoadManifestState.Abandoned)};
+    public bool HasCommittedCargo=>service.Current.Manifest is {CargoKilograms:>0,State:not (LoadManifestState.Completed or LoadManifestState.Abandoned or LoadManifestState.ResetAtOrigin)};
     public bool CanEditCargo=>!busy&&service.Current.Live is not null&&(service.ActiveShipmentId is not null||HasCommittedCargo);
     // The command must remain available for a valid changed draft so it can submit that
     // draft to the coordinator. The coordinator performs the authoritative live access,

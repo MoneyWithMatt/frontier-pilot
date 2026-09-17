@@ -11,7 +11,7 @@ public static class LoadingUnits
 }
 
 public enum AircraftLoadingMode { MsfsPayloadIntegration, SimulatedFrontierLoading }
-public enum LoadManifestState { PendingApplication, SimulatorApplied, CommittedInTransit, PendingUnload, SimulatorUnloaded, Completed, PendingAbandonment, Abandoned }
+public enum LoadManifestState { PendingApplication, SimulatorApplied, CommittedInTransit, PendingUnload, SimulatorUnloaded, Completed, PendingAbandonment, Abandoned, ResetAtOrigin }
 public enum SimulatorReconciliationState { NotChecked, MatchesManifest, CargoAppearsMissing, Indeterminate, RestoreAvailable, RestoreBlocked }
 public enum FuelReconciliationState { ContinuousLive, FrozenAfterDisconnect, AwaitingDecision, RestoredVerified, KeptSimulatorFuel, Blocked }
 
@@ -172,6 +172,27 @@ public sealed record AircraftLoadPlan(decimal CargoKilograms, IReadOnlyList<Plan
         return new(desiredTotal, planned, totalPayload, gross, plannedCgPercent, warnings);
     }
 
+    /// <summary>Clears only a failed, uncommitted Frontier intent. Managed stations return to their
+    /// recorded pre-intent baseline; stations Frontier did not manage retain the current MSFS value.</summary>
+    public static AircraftLoadPlan CreateUncommittedReset(AircraftLoadingSnapshot supplied, CargoLoadManifest manifest)
+    {
+        var snapshot=supplied.EnsureValid();manifest=manifest.EnsureValid();
+        if(manifest.State is not (LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied) ||
+            manifest.PriorCargoKilograms>.001m)
+            throw new InvalidOperationException("Only an uncommitted payload intent can be reset.");
+        var old=manifest.Stations.ToDictionary(x=>x.StationIndex);
+        var stations=snapshot.PayloadStations.Select(live=>
+        {
+            var prior=old.GetValueOrDefault(live.Index);
+            var target=prior is {FrontierCargoKilograms:>.001m}?prior.BaselineKilograms:live.CurrentWeightKilograms;
+            if(Math.Abs(target-live.CurrentWeightKilograms)>.001m&&!live.IsWritable)
+                throw new InvalidOperationException($"Payload station {live.Index} is not writable through the simulator adapter.");
+            return new PlannedPayloadStation(live.Index,target,0,target);
+        }).ToArray();
+        return new(0,stations,stations.Sum(x=>x.TargetKilograms),snapshot.Weights.CurrentGrossWeightKilograms,null,
+            ["Resetting an uncommitted Frontier payload intent; authoritative economy cargo remains reserved at the origin."]);
+    }
+
     public static List<string> EvaluateWarnings(AircraftWeightReading weights, decimal? gross, double? cg)
     {
         var warnings = new List<string>();
@@ -220,6 +241,8 @@ public sealed record CargoLoadManifest(string Id, string JobId, string ShipmentI
             throw new InvalidDataException("Manifest station data is invalid.");
         if (Mode == AircraftLoadingMode.SimulatedFrontierLoading && State is LoadManifestState.SimulatorApplied or LoadManifestState.SimulatorUnloaded)
             throw new InvalidDataException("Simulated loading cannot claim a simulator write state.");
+        if(State==LoadManifestState.ResetAtOrigin&&(CargoKilograms>.001m||CompletedUtc is null))
+            throw new InvalidDataException("A reset cargo manifest must record its completed reset and contain no Frontier cargo.");
         EconomyValidation.Text(VerificationResult, "manifest verification result", 512); LastValidPosition?.EnsureValid(); BoardedAuthorizationPosition?.EnsureValid(); return this;
     }
 }

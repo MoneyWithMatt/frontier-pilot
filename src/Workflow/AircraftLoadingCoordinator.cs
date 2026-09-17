@@ -218,7 +218,10 @@ public sealed class AircraftLoadingCoordinator
         var aboard=manifest?.CargoKilograms??job?.LoadedCargoKilograms??0;
         var maximum=job is not null&&location==job.OriginLocationId&&job.ShipmentState is ShipmentState.Reserved or ShipmentState.Loaded
             ? job.CargoMassKilograms-job.DeliveredCargoKilograms : aboard;
-        var plan=AircraftLoadPlan.CreateDesiredState(live,allocations,manifest,Math.Max(0,maximum),toleranceKilograms:options.PayloadToleranceKilograms);
+        var requested=allocations.Sum(x=>x.CargoKilograms);
+        var plan=CanResetUncommittedIntent(job,manifest)&&requested<=.001m
+            ? manifest!.CargoKilograms<=.001m ? PlanFromManifest(manifest) : AircraftLoadPlan.CreateUncommittedReset(live,manifest)
+            : AircraftLoadPlan.CreateDesiredState(live,allocations,manifest,Math.Max(0,maximum),toleranceKilograms:options.PayloadToleranceKilograms);
         Current=Current with {Plan=plan,Warnings=plan.Warnings,CanApplyCargo=CanApplyDesiredState(live,"Ready.")};Notify();return plan;
     }
 
@@ -236,7 +239,8 @@ public sealed class AircraftLoadingCoordinator
             var previouslyVerifiedSimulatorApplication=existing?.State==LoadManifestState.SimulatorApplied;
             var currentCargo=recoveringIntent?(job?.LoadedCargoKilograms??existing!.PriorCargoKilograms):(existing?.CargoKilograms??job?.LoadedCargoKilograms??0);
             var delta=plan.CargoKilograms-currentCargo;
-            if(Math.Abs(delta)<=.001m)throw new InvalidOperationException("The requested Frontier cargo already matches the persistent aircraft state.");
+            var resettingUncommitted=CanResetUncommittedIntent(job,existing)&&plan.CargoKilograms<=.001m;
+            if(Math.Abs(delta)<=.001m&&!resettingUncommitted)throw new InvalidOperationException("The requested Frontier cargo already matches the persistent aircraft state.");
             var location=job is null?null:CurrentLocation(job,live.Position);
             if(delta>0&&(job is null||location!=job.OriginLocationId||!flight.Current.CanLoadCargo))
                 throw new InvalidOperationException(job is null?"No reserved shipment cargo is available to add.":location!=job.OriginLocationId?"Reserved cargo can only be loaded at the shipment origin.":flight.Current.Reason);
@@ -253,7 +257,8 @@ public sealed class AircraftLoadingCoordinator
                 VerificationToleranceKilograms:options.PayloadToleranceKilograms,LastValidPosition:live.Position)
                 {ShipmentQuantityKilograms=job.CargoMassKilograms,DeliveredCargoKilograms=job.DeliveredCargoKilograms,IsDesiredStateManifest=true}) with
                 {Stations=plan.Stations,CargoKilograms=plan.CargoKilograms,PriorCargoKilograms=currentCargo,State=LoadManifestState.PendingApplication,
-                    LastTransferCommandId=commandId,VerificationResult=$"Desired-state intent persisted. Previous managed cargo {currentCargo:0.###} kg; requested {plan.CargoKilograms:0.###} kg."};
+                    LastTransferCommandId=commandId,SimulatorAppliedUtc=null,CompletedUtc=null,
+                    VerificationResult=$"Desired-state intent persisted. Previous managed cargo {currentCargo:0.###} kg; requested {plan.CargoKilograms:0.###} kg."};
             await store.SaveManifestAsync(manifest,token); // durable intent precedes external write
             var targets=manifest.Stations.ToDictionary(x=>x.StationIndex,x=>x.TargetKilograms);
             var verificationTargets=manifest.Stations.Where(x=>x.FrontierCargoKilograms>options.PayloadToleranceKilograms||
@@ -276,6 +281,19 @@ public sealed class AircraftLoadingCoordinator
                     CargoActionReason="MSFS did not retain the requested Frontier cargo. No shipment inventory was committed; review or retry explicitly."};
                 UpdateRestoreAvailability();Notify();
                 throw new IOException("MSFS accepted the payload write but did not retain it after the verification delay: "+mismatch);
+            }
+            if(resettingUncommitted)
+            {
+                await flight.ResetUncommittedCargoLoadAsync(token);
+                manifest=manifest with{Stations=stations,CargoKilograms=0,PriorCargoKilograms=0,State=LoadManifestState.ResetAtOrigin,
+                    CompletedUtc=utcNow(),BoardedAuthorizationUtc=null,BoardedAuthorizationPosition=null,
+                    BoardedBaselineGrossWeightKilograms=null,BoardedExpectedGrossWeightKilograms=null,
+                    Reconciliation=SimulatorReconciliationState.MatchesManifest,LastReconciledUtc=utcNow(),LastValidPosition=readBack.Position,
+                    VerificationResult="Uncommitted Frontier payload intent cleared and verified; shipment remains reserved at its origin."};
+                await store.SaveManifestAsync(manifest,token);
+                Current=Current with{Manifest=manifest,Live=readBack,Plan=null,CanApplyCargo=false,CanUnload=false,
+                    CargoActionReason="Aircraft cargo reset. The shipment remains reserved at the origin; complete loading qualification and load it again."};
+                Notify();return;
             }
             if(delta>options.PayloadToleranceKilograms&&!previouslyVerifiedSimulatorApplication&&options.RequirePostBoardingCargoVerification)
             {
@@ -300,6 +318,10 @@ public sealed class AircraftLoadingCoordinator
     }
 
     public Task ApplyCargoAsync(CancellationToken token)=>ApplyCargoAsync(false,token);
+
+    private static bool CanResetUncommittedIntent(CargoJobDisplay? job,CargoLoadManifest? manifest)=>
+        job is {ShipmentState:ShipmentState.Reserved,LoadedCargoKilograms:<=.001m}&&
+        manifest is {State:LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied,PriorCargoKilograms:<=.001m};
 
     private static AircraftLoadPlan PlanFromManifest(CargoLoadManifest manifest) => new(
         manifest.CargoKilograms, manifest.Stations, manifest.Stations.Sum(x => x.TargetKilograms), null, null,

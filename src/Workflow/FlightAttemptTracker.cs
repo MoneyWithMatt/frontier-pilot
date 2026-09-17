@@ -65,6 +65,8 @@ public interface IFlightAttemptTracker
     Task<string> ExportDeveloperDiagnosticAsync(CancellationToken cancellationToken = default);
     Task<string> CreateDiagnosticSummaryAsync(CancellationToken cancellationToken = default);
     Task ResetIncompletePrototypeProgressAsync(CancellationToken cancellationToken = default);
+    Task ResetUncommittedCargoLoadAsync(CancellationToken cancellationToken = default) =>
+        Task.FromException(new NotSupportedException("Uncommitted cargo-load reset is unavailable."));
     Task AbandonIncompletePrototypeShipmentAsync(string jobId, CancellationToken cancellationToken = default) =>
         Task.FromException(new NotSupportedException("Prototype shipment abandonment is unavailable."));
 }
@@ -534,6 +536,39 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             UpdateStatus();
         }
         finally { gate.Release(); }
+    }
+
+    public async Task ResetUncommittedCargoLoadAsync(CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if(world is null)throw new InvalidOperationException("No economy state is available to reset.");
+            if(attempt is null)
+            {
+                var active=ActiveJob(world);var reserved=active is null?null:world.Shipments.SingleOrDefault(x=>x.Id==active.ShipmentId);
+                if(active?.State==EconomyJobState.Accepted&&reserved?.State==ShipmentState.Reserved&&reserved.LoadedQuantity<=.001m)
+                {
+                    observationReason="Uncommitted aircraft load was already reset. Shipment remains reserved at the origin.";
+                    UpdateStatus();return;
+                }
+                throw new InvalidOperationException("No uncommitted flight attempt is available to reset.");
+            }
+            var job=world.Jobs.SingleOrDefault(x=>x.Id==attempt.JobId);
+            var shipment=world.Shipments.SingleOrDefault(x=>x.Id==attempt.ShipmentId);
+            if(job?.State!=EconomyJobState.Accepted||shipment?.State!=ShipmentState.Reserved||shipment.LoadedQuantity>.001m||
+                attempt.State!=FlightAttemptState.CargoLoaded||attempt.FirstAirborneUtc is not null||attempt.MovementObservedUtc is not null||
+                attempt.DeliveryProof is not null||attempt.DeliveredUtc is not null)
+                throw new InvalidOperationException("Only a reserved shipment with no committed aircraft cargo or flight evidence can reset its loading attempt.");
+            var resetAttempt=attempt;
+            await RecordAsync(FlightDiagnosticEventType.CargoLoadReset,utcNow(),"cargo-load-reset",cancellationToken,
+                ("reason","Uncommitted simulator payload intent cleared; shipment remains reserved at origin.")).ConfigureAwait(false);
+            await store.RemoveUncommittedAsync(resetAttempt.Id,cancellationToken).ConfigureAwait(false);
+            attempt=null;stationarySince=null;lastSampleUtc=null;
+            observationReason="Uncommitted aircraft load reset. Shipment remains reserved at the origin; qualify and load it again.";
+            UpdateStatus();
+        }
+        finally{gate.Release();}
     }
 
     public async Task AbandonIncompletePrototypeShipmentAsync(string jobId, CancellationToken cancellationToken = default)

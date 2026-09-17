@@ -17,7 +17,7 @@ public interface IAircraftLoadingStore
 
 public sealed class LocalAircraftLoadingStore : IAircraftLoadingStore
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
     private sealed record Document(int SchemaVersion, IReadOnlyList<CargoLoadManifest> Manifests,
         IReadOnlyList<PersistentAircraftFuelState> FuelStates);
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true,

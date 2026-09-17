@@ -14,6 +14,7 @@ public interface IFlightAttemptStore
     Task SaveAsync(FlightAttempt attempt, CancellationToken cancellationToken = default);
     Task AppendDiagnosticEventAsync(FlightDiagnosticEvent diagnosticEvent, CancellationToken cancellationToken = default);
     Task<FlightAttempt> ResetIncompleteProgressAsync(string attemptId, CancellationToken cancellationToken = default);
+    Task RemoveUncommittedAsync(string attemptId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Strict whole-document persistence using flushed same-directory replacement. Invalid files are preserved.</summary>
@@ -103,6 +104,23 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
             return reset;
         }
         finally { instanceGate.Release(); }
+    }
+
+    public async Task RemoveUncommittedAsync(string attemptId, CancellationToken cancellationToken = default)
+    {
+        if(string.IsNullOrWhiteSpace(attemptId))throw new ArgumentException("Flight-attempt ID is required.");
+        await instanceGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            using var lease=Lock();var document=await ReadUnlockedAsync(cancellationToken).ConfigureAwait(false);var attempts=document.Attempts.ToList();
+            var existing=attempts.SingleOrDefault(x=>x.Id==attemptId)??throw new InvalidOperationException("Flight attempt was not found.");
+            if(existing.State!=FlightAttemptState.CargoLoaded||existing.FirstAirborneUtc is not null||existing.MovementObservedUtc is not null||
+                existing.DeliveryProof is not null||existing.DeliveredUtc is not null)
+                throw new InvalidOperationException("Only a pre-departure attempt without delivery evidence can be removed.");
+            attempts.Remove(existing);
+            await WriteUnlockedAsync(attempts.OrderBy(x=>x.Id,StringComparer.Ordinal).ToArray(),document.DiagnosticTimeline??[],cancellationToken).ConfigureAwait(false);
+        }
+        finally{instanceGate.Release();}
     }
 
     private async Task<Document> ReadUnlockedAsync(CancellationToken cancellationToken)
@@ -228,5 +246,13 @@ public sealed class MemoryFlightAttemptStore : IFlightAttemptStore
         if (existing.State == FlightAttemptState.Delivered || existing.DeliveredUtc is not null)
             throw new InvalidOperationException("Completed delivery evidence cannot be reset.");
         var reset = LocalFlightAttemptStore.ResetProgress(existing).EnsureValid(); attempts[attemptId] = reset; return Task.FromResult(reset);
+    }
+    public Task RemoveUncommittedAsync(string attemptId,CancellationToken cancellationToken=default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if(!attempts.TryGetValue(attemptId,out var existing))throw new InvalidOperationException("Flight attempt was not found.");
+        if(existing.State!=FlightAttemptState.CargoLoaded||existing.FirstAirborneUtc is not null||existing.MovementObservedUtc is not null||existing.DeliveryProof is not null||existing.DeliveredUtc is not null)
+            throw new InvalidOperationException("Only a pre-departure attempt without delivery evidence can be removed.");
+        attempts.Remove(attemptId);return Task.CompletedTask;
     }
 }
