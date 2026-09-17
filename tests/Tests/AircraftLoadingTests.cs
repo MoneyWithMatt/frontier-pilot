@@ -19,7 +19,7 @@ public sealed class AircraftLoadingTests
     {var payload=new PayloadStationViewModel{Index=1,Name="Front",CurrentKilograms=10,AssignmentMaximumKilograms=120,AssignedKilograms=35};payload.AssignedKilogramsText="";Assert.Equal(35,payload.AssignedKilograms);payload.AssignedKilogramsText="12.5";Assert.Equal(12.5m,payload.AssignedKilograms);payload.ResetCommand.Execute(null);Assert.Equal(0,payload.AssignedKilograms);Assert.Equal("0",payload.AssignedKilogramsText);var fuel=new FuelTankViewModel{Id="left",Name="Left",CurrentGallons=20,CapacityGallons=50,PlannedGallons=20};fuel.PlannedGallonsText="7.25";Assert.Equal(7.25m,fuel.PlannedGallons);fuel.ResetCommand.Execute(null);Assert.Equal(0,fuel.PlannedGallons);Assert.Equal("0",fuel.PlannedGallonsText);}
 
     [Fact] public void Desktop_uses_explicit_manual_payload_and_fuel_controls_without_auto_balance()
-    {var document=XDocument.Load(Path.Combine(AppContext.BaseDirectory,"Desktop","MainWindow.xaml"));XNamespace p="http://schemas.microsoft.com/winfx/2006/xaml/presentation";var buttons=document.Descendants(p+"Button").Select(x=>x.Attribute("Content")?.Value).ToArray();Assert.DoesNotContain("Distribute evenly",buttons);Assert.Contains("0",buttons);var textBindings=document.Descendants(p+"TextBox").Select(x=>x.Attribute("Text")?.Value??"").ToArray();Assert.Contains(textBindings,x=>x.Contains("AssignedKilogramsText")&&x.Contains("Mode=TwoWay")&&x.Contains("UpdateSourceTrigger=PropertyChanged"));Assert.Contains(textBindings,x=>x.Contains("PlannedGallonsText")&&x.Contains("Mode=TwoWay")&&x.Contains("UpdateSourceTrigger=PropertyChanged"));Assert.DoesNotContain("Use simulated loading�",buttons);var labels=document.Descendants(p+"TextBlock").Select(x=>x.Attribute("Text")?.Value??"").ToArray();Assert.Contains("JOB CARGO",labels);Assert.Contains("Available here",labels);Assert.Contains("Shipment cargo",labels);Assert.Contains("Detected in MSFS",labels);Assert.Contains("Requested aboard",labels);Assert.Contains("Delivered",labels);var progress=Assert.Single(document.Descendants(p+"ProgressBar"),x=>(x.Attribute("Value")?.Value??"").Contains("AllocationProgressValue"));Assert.Contains("Mode=OneWay",progress.Attribute("Value")!.Value);Assert.Contains("Mode=OneWay",progress.Attribute("Maximum")!.Value);Assert.Contains(document.Descendants(p+"Path"),x=>(x.Attribute("Data")?.Value??"").StartsWith("M62,8"));Assert.Contains(document.Descendants(p+"Ellipse"),x=>(x.Attribute("Canvas.Top")?.Value??"").Contains("CurrentCgMarkerTop"));}
+    {var document=XDocument.Load(Path.Combine(AppContext.BaseDirectory,"Desktop","MainWindow.xaml"));XNamespace p="http://schemas.microsoft.com/winfx/2006/xaml/presentation";var buttons=document.Descendants(p+"Button").Select(x=>x.Attribute("Content")?.Value).ToArray();Assert.DoesNotContain("Distribute evenly",buttons);Assert.Contains("0",buttons);var textBindings=document.Descendants(p+"TextBox").Select(x=>x.Attribute("Text")?.Value??"").ToArray();Assert.Contains(textBindings,x=>x.Contains("AssignedKilogramsText")&&x.Contains("Mode=TwoWay")&&x.Contains("UpdateSourceTrigger=PropertyChanged"));Assert.Contains(textBindings,x=>x.Contains("PlannedGallonsText")&&x.Contains("Mode=TwoWay")&&x.Contains("UpdateSourceTrigger=PropertyChanged"));Assert.DoesNotContain("Use simulated loading�",buttons);var labels=document.Descendants(p+"TextBlock").Select(x=>x.Attribute("Text")?.Value??"").ToArray();Assert.Contains("JOB CARGO",labels);Assert.Contains("Available here",labels);Assert.Contains("Shipment cargo",labels);Assert.Contains("Detected in MSFS",labels);Assert.Contains("Requested aboard",labels);Assert.Contains("Delivered",labels);var progress=Assert.Single(document.Descendants(p+"ProgressBar"),x=>(x.Attribute("Value")?.Value??"").Contains("AllocationProgressValue"));Assert.Contains("Mode=OneWay",progress.Attribute("Value")!.Value);Assert.Contains("Mode=OneWay",progress.Attribute("Maximum")!.Value);Assert.Contains(document.Descendants(p+"Path"),x=>(x.Attribute("Data")?.Value??"").StartsWith("M170,10"));Assert.Contains(document.Descendants(p+"Ellipse"),x=>(x.Attribute("Canvas.Top")?.Value??"").Contains("CurrentCgMarkerTop"));}
 
     [Theory][InlineData(119)][InlineData(121)] public void Under_or_over_allocation_is_refused(decimal assigned)
     {Assert.Throws<InvalidOperationException>(()=>AircraftLoadPlan.Create(Snapshot(),120,[new(1,assigned)]));}
@@ -227,6 +227,48 @@ public sealed class AircraftLoadingTests
         row.AssignedKilogramsText="120";Assert.True(vm.ApplyCargoCommand.CanExecute(null));
         row.AssignedKilogramsText="";Assert.False(vm.ApplyCargoCommand.CanExecute(null));
         row.ResetCommand.Execute(null);Assert.Equal("0",row.AssignedKilogramsText);
+    }
+
+    [Fact] public async Task Weight_and_balance_diagnostics_expose_direct_dynamic_msfs_values()
+    {
+        var observed=new DateTimeOffset(2026,9,15,11,59,59,345,TimeSpan.Zero);
+        var weights=new AircraftWeightReading(2065,3175,2573.6123m,null,30.257,25,40);
+        var h=Harness(snapshot:Snapshot(observed,
+            [new(1,"Forward Baggage",12.345m),new(8,"Rear Baggage",118.14m)],weights:weights));
+        var vm=new AircraftLoadingViewModel(h.coordinator);await vm.InitializeAsync();await h.coordinator.RefreshAsync();
+
+        Assert.Equal(observed,vm.LiveObservedUtc);
+        Assert.Equal(2573.6123m,vm.LiveTotalWeightKilograms);
+        Assert.Equal(LoadingUnits.KilogramsToPounds(2573.6123m),vm.LiveTotalWeightPounds);
+        Assert.Equal(30.257,vm.LiveCgPercent);Assert.Equal(25,vm.LiveForwardCgLimitPercent);Assert.Equal(40,vm.LiveAftCgLimitPercent);
+        Assert.Equal("2573.612 kg  /  5673.84 lb",vm.LiveTotalWeightText);
+        Assert.Equal("30.257%",vm.LiveCgText);Assert.Equal("25.000%",vm.LiveForwardCgLimitText);Assert.Equal("40.000%",vm.LiveAftCgLimitText);
+        Assert.Collection(vm.LivePayloadStations,
+            station=>{Assert.Equal(1,station.Index);Assert.Equal("Forward Baggage",station.Name);Assert.Equal(12.345m,station.Kilograms);},
+            station=>{Assert.Equal(8,station.Index);Assert.Equal("Rear Baggage",station.Name);Assert.Equal(118.14m,station.Kilograms);});
+    }
+
+    [Fact] public async Task Live_station_diagnostics_do_not_subtract_frontier_manifest_cargo()
+    {
+        var h=Harness();var vm=new AircraftLoadingViewModel(h.coordinator);await vm.InitializeAsync();await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();
+
+        Assert.Equal(10,vm.PayloadStations.Single(x=>x.Index==1).CurrentKilograms);
+        Assert.Equal(80,vm.LivePayloadStations.Single(x=>x.Index==1).Kilograms);
+        Assert.Equal(20,vm.PayloadStations.Single(x=>x.Index==2).CurrentKilograms);
+        Assert.Equal(70,vm.LivePayloadStations.Single(x=>x.Index==2).Kilograms);
+    }
+
+    [Fact] public async Task Unavailable_live_weight_and_cg_values_are_reported_honestly()
+    {
+        var weights=new AircraftWeightReading(700,1300,null,null,null,null,null);
+        var h=Harness(snapshot:Snapshot(weights:weights));var vm=new AircraftLoadingViewModel(h.coordinator);
+        await vm.InitializeAsync();await h.coordinator.RefreshAsync();
+
+        Assert.Equal("Unavailable from aircraft",vm.LiveTotalWeightText);
+        Assert.Equal("Unavailable from aircraft",vm.LiveCgText);
+        Assert.Equal("Unavailable from aircraft",vm.LiveForwardCgLimitText);
+        Assert.Equal("Unavailable from aircraft",vm.LiveAftCgLimitText);
     }
     [Fact] public async Task Valid_manual_draft_can_be_submitted_while_live_qualification_is_pending()
     {

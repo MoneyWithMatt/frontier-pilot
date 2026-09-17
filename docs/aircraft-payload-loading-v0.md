@@ -10,6 +10,24 @@ The installed SDK at `C:\Users\mattr\Desktop\MSFS 2024 SDK` was inspected read-o
 
 Fuel uses reported tank quantity/capacity, `FUEL WEIGHT PER GALLON`, and indexed engine-combustion state. Writes use US gallons and require every detected engine to be off. Modern or third-party fuel systems may not enumerate through the eleven legacy named tank SimVars; unknown engine or tank data fails closed.
 
+## Live Weight & Balance diagnostics
+
+The Weight & Balance tab is a read-only diagnostic view of the current simulator state. **Refresh from MSFS** uses the existing loading adapter and shows the observation timestamp. It does not use the stock EFB planning cache, the cargo manifest, or Frontier Pilot's planned-load calculations for its primary values.
+
+The displayed values come directly from these SimVars:
+
+- `TOTAL WEIGHT` in pounds, converted to kilograms only for dual-unit display;
+- `CG PERCENT` in `percent over 100`;
+- `CG FWD LIMIT` in `percent over 100`;
+- `CG AFT LIMIT` in `percent over 100`;
+- `PAYLOAD STATION COUNT`, followed by `PAYLOAD STATION NAME:n` and `PAYLOAD STATION WEIGHT:n` in pounds for every reported one-based station index.
+
+The adapter converts the three CG fractions to displayed percentage points. These are direct simulator reports, not Frontier Pilot CG estimates. Unsupported values are shown as unavailable. Payload station diagnostics deliberately show raw MSFS station weights; unlike the editable Payload tab, they do not subtract Frontier-managed cargo to derive a non-Frontier baseline.
+
+The station model is aircraft-generic. Count, names, indices and weights are discovered on each read and writes address the supplied station indices. No PA-28 station number, name, baggage compartment or station limit is hard-coded in the runtime loading path. The SDK and current validation cap the station count/index range at 15. The existing legacy named-fuel-tank list is an aircraft compatibility limitation for fuel only. Station arms, structural limits and an authoritative maximum-payload value remain unavailable when an aircraft does not publish them.
+
+The Black Square Duke should therefore expose its own forward/rear stations and accept the same indexed payload writes if its add-on systems allow standard SimConnect payload changes to persist. That expectation still requires the forward-versus-rear live test; third-party aircraft can overwrite standard payload state or present a separate cached EFB model.
+
 ## Desired-state cargo architecture
 
 The Aircraft Loading page is a general aircraft state editor. A nonterminal accepted shipment can make reserved cargo available at its origin, but the mission does not own the station editor. Terminal Completed, Cancelled, Forfeited, or skipped jobs no longer present cargo as available. A nonterminal manifest can still show Frontier-managed cargo physically aboard after a job forfeiture.
