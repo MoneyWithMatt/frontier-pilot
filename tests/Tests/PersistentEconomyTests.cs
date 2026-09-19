@@ -45,8 +45,8 @@ public sealed class PersistentEconomyTests : TemporaryDirectoryTest
         var applied = await service.TransferPersistentInventoryAsync(request); Assert.True(applied.Changed);
         Assert.Equal(195, Inventory(applied.World, EmployedCargoPrototype.ErosId, OperationArchetypeCatalogue.RationsResourceId));
         Assert.Equal(65, Inventory(applied.World, site.LocationId, OperationArchetypeCatalogue.RationsResourceId));
-        Assert.Single(applied.World.InventoryLedger, x => x.Id == request.Id + "-out" && x.QuantityDelta == -5);
-        Assert.Single(applied.World.InventoryLedger, x => x.Id == request.Id + "-in" && x.QuantityDelta == 5);
+        Assert.Single(applied.World.InventoryLedger, x => x.Kind == InventoryTransactionKind.PersistentTransferOut && x.CommandId == request.CommandId && x.QuantityDelta == -5);
+        Assert.Single(applied.World.InventoryLedger, x => x.Kind == InventoryTransactionKind.PersistentTransferIn && x.CommandId == request.CommandId && x.QuantityDelta == 5);
         Assert.False((await service.TransferPersistentInventoryAsync(request)).Changed);
         var restarted = await new LocalEconomyStateStore(path).LoadAsync();
         Assert.NotNull(restarted); Assert.Equal(195, Inventory(restarted!, EmployedCargoPrototype.ErosId, OperationArchetypeCatalogue.RationsResourceId));
@@ -86,6 +86,31 @@ public sealed class PersistentEconomyTests : TemporaryDirectoryTest
         Assert.Contains("Player-created airport", operationMarker.Concepts); Assert.NotNull(operationMarker.OperationId);
         Assert.DoesNotContain(snapshot.MapLocations, x => x.Kind == OperationsMapLocationKind.PlayerAirport);
         Assert.Contains(operationMarker.Inventory, x => x.ResourceId == OperationArchetypeCatalogue.RationsResourceId);
+    }
+
+    [Fact]
+    public async Task DeveloperTransferAcceptsTheRealLongUiCommandAndRefreshesTheSnapshot()
+    {
+        var definition = Fixtures.Strip with { Identifier = "FPM1", Name = "Map Camp", Latitude = -22.5, Longitude = 14.5,
+            PlacedObjects = [new(1, SceneryAssets.PrototypeBaseLodgeId, 50, 50, 0)] };
+        var airport = new SavedAirport(1, Guid.ParseExact(AirportId, "N"), 1, T0, definition, null!, [], "not built", "not installed");
+        var world = PersistentEconomyKernel.EnsurePrototypeGatewayStock(FundedWorld(), new(), T0).World;
+        world = ProspectingCampKernel.Found(world, Candidate(), Presence(), "found-ui-transfer-camp", T0).World;
+        var operation = world.Operations.Single(); var site = world.Sites.Single();
+        world = ProspectingCampKernel.AdvanceDay(world, operation.Id, "ui-transfer-capacity", T0.AddDays(1)).World;
+        var store = new MemoryEconomyStateStore(); await store.InitializeAsync(world);
+        var service = new ProspectingOperationsService(store, new FakeAirportManagement([airport]), new FixedPresence(Presence()), () => T0.AddDays(1).AddMinutes(1));
+        var uiCommand = "dev-transfer-rations-" + operation.Id + "-" + Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee").ToString("N");
+
+        var result = await service.TransferPrototypeRationsAsync(operation.Id, uiCommand);
+
+        Assert.Equal(61, result.Operations.Single().Inventory.Single(x => x.ResourceId == OperationArchetypeCatalogue.RationsResourceId).Quantity);
+        var persisted = (await store.LoadAsync())!;
+        Assert.Equal(199, Inventory(persisted, EmployedCargoPrototype.ErosId, OperationArchetypeCatalogue.RationsResourceId));
+        Assert.Equal(61, Inventory(persisted, site.LocationId, OperationArchetypeCatalogue.RationsResourceId));
+        Assert.Equal(2, persisted.InventoryLedger.Count(x => x.Kind is InventoryTransactionKind.PersistentTransferOut or InventoryTransactionKind.PersistentTransferIn));
+        Assert.All(persisted.InventoryLedger.Where(x => x.Kind is InventoryTransactionKind.PersistentTransferOut or InventoryTransactionKind.PersistentTransferIn),
+            x => Assert.InRange(x.CommandId!.Length, 1, 64));
     }
 
     private static PersistentInventoryTransferRequest Request(string id, string origin, string destination, string resource, decimal quantity) =>

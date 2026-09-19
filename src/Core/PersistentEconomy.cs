@@ -22,6 +22,13 @@ public sealed record PersistentInventoryTransferRequest(string Id, string Comman
 /// transfers use the existing authoritative inventory audit ledger.</summary>
 public static class PersistentEconomyKernel
 {
+    public static PersistentInventoryTransferRequest CreateTransferRequest(string commandSeed,
+        string originLocationId, string destinationLocationId, string resourceId, decimal quantity,
+        DateTimeOffset occurredUtc, string details) => new(
+            EconomyIds.Derive("persistent-transfer-", commandSeed),
+            EconomyIds.Derive("persistent-command-", commandSeed), originLocationId,
+            destinationLocationId, resourceId, quantity, occurredUtc, details);
+
     public static EconomyTransition EnsurePrototypeGatewayStock(EconomyWorld source,
         PersistentEconomyPrototypeOptions? configured, DateTimeOffset occurredUtc)
     {
@@ -77,7 +84,8 @@ public static class PersistentEconomyKernel
         EconomyValidation.Text(request.Details, nameof(request.Details), 512);
         if (request.OccurredUtc == default) throw new InvalidDataException("Persistent transfer timestamp is missing.");
         if (request.OriginLocationId == request.DestinationLocationId) throw new InvalidOperationException("Persistent transfer origin and destination must differ.");
-        var debitId = request.Id + "-out"; var creditId = request.Id + "-in";
+        var debitId = EconomyIds.Derive("inventory-transfer-out-", request.Id);
+        var creditId = EconomyIds.Derive("inventory-transfer-in-", request.Id);
         var existingDebit = world.InventoryLedger.Any(x => x.Id == debitId);
         var existingCredit = world.InventoryLedger.Any(x => x.Id == creditId);
         if (existingDebit && existingCredit) return new(world, false);

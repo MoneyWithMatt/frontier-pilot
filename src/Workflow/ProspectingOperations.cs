@@ -150,7 +150,7 @@ public sealed class ProspectingOperationsService : IProspectingOperations
         var world = await EnsureWorldAsync(cancellationToken).ConfigureAwait(false);
         var operation = world.Operations.SingleOrDefault(x => x.Id == operationId) ?? throw new InvalidOperationException("Economic operation does not exist.");
         var site = world.Sites.Single(x => x.Id == operation.SiteId);
-        var request = new PersistentInventoryTransferRequest("prototype-transfer-" + commandId, commandId,
+        var request = PersistentEconomyKernel.CreateTransferRequest(commandId,
             EmployedCargoPrototype.ErosId, site.LocationId, OperationArchetypeCatalogue.RationsResourceId,
             1m, utcNow(), "DEVELOPER TEST ONLY: persistent 1 kg ration transfer from Eros to the selected operation.");
         _ = await economy.TransferPersistentInventoryAsync(request, cancellationToken).ConfigureAwait(false);
