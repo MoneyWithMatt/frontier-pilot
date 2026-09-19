@@ -11,7 +11,7 @@ public enum TransportRequirementState { Open, Reserved, Fulfilled, Cancelled }
 public enum EconomyJobState { Offered, Accepted, Completed, Cancelled, Forfeited }
 public enum ShipmentState { Available, Reserved, InTransit, Delivered, Consumed, Sold, Cancelled, Loaded, Forfeited }
 public enum FinancialTransactionKind { JobPayment, SiteFounding }
-public enum InventoryTransactionKind { LegacyOpeningBalance, SystemGatewaySupply, ShipmentReserved, DeliveryReceived, OperationInitialStock, OperationConsumption, OperationProduction, ShipmentReservationReleased, PartialDeliveryReceived }
+public enum InventoryTransactionKind { LegacyOpeningBalance, SystemGatewaySupply, ShipmentReserved, DeliveryReceived, OperationInitialStock, OperationConsumption, OperationProduction, ShipmentReservationReleased, PartialDeliveryReceived, PersistentGatewayOpeningStock, PersistentTransferOut, PersistentTransferIn }
 public enum ShipmentCargoTransferKind { LoadedToAircraft, UnloadedAtOrigin, UnloadedAtDestination, UnloadedAndForfeited }
 
 public sealed record EconomicLocation(string Id, string Name, EconomicLocationKind Kind, EconomicOwnerKind Owner,
@@ -287,13 +287,15 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
             if (x.OperationId is not null && !Operations.Any(operation => operation.Id == x.OperationId))
                 throw new InvalidDataException("Inventory transaction refers to an unknown operation.");
             if (x.CommandId is not null) EconomyValidation.Id(x.CommandId, "inventory transaction command");
-            if (x.Kind is InventoryTransactionKind.LegacyOpeningBalance or InventoryTransactionKind.SystemGatewaySupply or InventoryTransactionKind.OperationInitialStock && (x.QuantityDelta < 0 || x.JobId is not null) ||
+            if (x.Kind is InventoryTransactionKind.LegacyOpeningBalance or InventoryTransactionKind.SystemGatewaySupply or InventoryTransactionKind.OperationInitialStock or InventoryTransactionKind.PersistentGatewayOpeningStock && (x.QuantityDelta < 0 || x.JobId is not null) ||
                 x.Kind == InventoryTransactionKind.ShipmentReserved && (x.QuantityDelta > 0 || x.JobId is null) ||
                 x.Kind == InventoryTransactionKind.ShipmentReservationReleased && (x.QuantityDelta < 0 || x.JobId is null) ||
                 x.Kind == InventoryTransactionKind.DeliveryReceived && (x.QuantityDelta < 0 || x.JobId is null) ||
                 x.Kind == InventoryTransactionKind.OperationInitialStock && (x.OperationId is null || x.CommandId is null) ||
                 x.Kind == InventoryTransactionKind.OperationConsumption && (x.QuantityDelta > 0 || x.OperationId is null || x.CommandId is null) ||
-                x.Kind == InventoryTransactionKind.OperationProduction && (x.QuantityDelta < 0 || x.OperationId is null || x.CommandId is null))
+                x.Kind == InventoryTransactionKind.OperationProduction && (x.QuantityDelta < 0 || x.OperationId is null || x.CommandId is null) ||
+                x.Kind == InventoryTransactionKind.PersistentTransferOut && (x.QuantityDelta >= 0 || x.JobId is not null || x.CommandId is null) ||
+                x.Kind == InventoryTransactionKind.PersistentTransferIn && (x.QuantityDelta <= 0 || x.JobId is not null || x.CommandId is null))
                 throw new InvalidDataException("Inventory transaction kind, quantity and job reference disagree.");
         }
         foreach (var x in RecurringDemand)
@@ -336,6 +338,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
                 throw new InvalidDataException("Cancelled shipment and reservation-release audit records are inconsistent.");
         }
         ProspectingCampValidation.EnsureValid(this);
+        PersistentEconomyValidation.EnsureValid(this);
         return this;
     }
 }

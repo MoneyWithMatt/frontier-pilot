@@ -17,6 +17,8 @@ public partial class MainWindow : Window
         model = new(dryRun ? BuilderServices.CreateDesktopDryRun() : new BuilderServices(), Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.User) ?? Environment.GetEnvironmentVariable("MSFS2024_SDK") ?? "");
         DataContext = model;
         model.Tracking.DisplayChanged += TrackingDisplayChanged;
+        model.Operations.MapLocationsChanged += locations => Dispatcher.InvokeAsync(() => OperationsMap.Show(locations));
+        OperationsMap.LocationSelected += key => Dispatcher.InvokeAsync(() => model.Operations.SelectMapLocation(key));
         Closing += OnClosing;
         Loaded += async (_,_)=>
         {
@@ -65,6 +67,18 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(()=>TrackingMap.Show(aircraft,player,isLive));
     private void CenterAircraft(object sender,RoutedEventArgs e)=>TrackingMap.CenterOnAircraft();
     private void CenterPlayer(object sender,RoutedEventArgs e)=>TrackingMap.CenterOnPlayer();
+    private void OpenSelectedOperation(object sender,RoutedEventArgs e)
+    { if(model.Operations.SelectOperationFromMap())OperationsTabs.SelectedIndex=1; }
+    private void OpenSelectedOperationFromList(object sender,RoutedEventArgs e)
+    { if(model.Operations.SelectedOperation is not null)OperationsTabs.SelectedIndex=1; }
+    private void BackToOperationsMap(object sender,RoutedEventArgs e)
+    { OperationsTabs.SelectedIndex=0; OperationsMap.CenterOn(model.Operations.SelectedMapLocation); }
+    private async void TransferPrototypeRations(object sender,RoutedEventArgs e)
+    {
+        const string message="Developer test: move 1 kg of real persistent rations from Eros to this operation? The transfer is atomic, audited, and persists; it does not create a job, flight, or payment.";
+        if(MessageBox.Show(this,message,"Test persistent inventory transfer",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No)==MessageBoxResult.Yes)
+            await model.Operations.TransferPrototypeRationsAsync();
+    }
     private void CopyTrackingLog(object sender,RoutedEventArgs e)
     {
         try { Clipboard.SetText(model.Tracking.DiagnosticLog); }

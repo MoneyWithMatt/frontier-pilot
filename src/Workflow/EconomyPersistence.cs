@@ -203,6 +203,12 @@ public sealed class EconomyService(IEconomyStateStore store)
     public Task<EconomyTransition> AdvanceOperationDayAsync(string operationId, string commandId, DateTimeOffset occurredUtc,
         CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => ProspectingCampKernel.AdvanceDay(world, operationId, commandId, occurredUtc), cancellationToken);
+    public Task<EconomyTransition> EnsurePersistentGatewayStockAsync(PersistentEconomyPrototypeOptions options,
+        DateTimeOffset occurredUtc, CancellationToken cancellationToken = default) =>
+        store.ApplyAsync(world => PersistentEconomyKernel.EnsurePrototypeGatewayStock(world, options, occurredUtc), cancellationToken);
+    public Task<EconomyTransition> TransferPersistentInventoryAsync(PersistentInventoryTransferRequest request,
+        CancellationToken cancellationToken = default) =>
+        store.ApplyAsync(world => PersistentEconomyKernel.Transfer(world, request), cancellationToken);
     public Task<EconomyTransition> UpgradeRepeatableJobsAsync(EmployedCargoPrototypeOptions options, DateTimeOffset occurredUtc,
         CancellationToken cancellationToken = default) => store.ApplyAsync(world => EmployedCargoPrototype.UpgradeForRepeatableJobs(world, options, occurredUtc), cancellationToken);
 }
