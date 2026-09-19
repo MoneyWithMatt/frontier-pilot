@@ -189,3 +189,10 @@ At Matt's request, remove the UI action that starts a new simulated cargo load. 
 - Guarded avatar presence remains the authority for permitting ground handling. Every positive MSFS cargo load creates a short-lived post-boarding verification authorization because a third-party aircraft may accept an outside station value and then rebuild or discard it when cockpit control resumes.
 - Boarding never writes payload automatically. The player must invoke the separate seated action in the same aircraft, on the ground, stationary, within 1.5 NM and within five minutes of authorization.
 - A payload-station read-back is insufficient evidence of physical loading. If station and total weight survive boarding they are verified without another write; otherwise the seated compatibility path reapplies the authorized target. In either case, reported total aircraft weight must match the authorized result within 1 kg before any new economy cargo transfer is committed.
+
+## Player-operation logistics contracts — 2026-09-19
+
+- Player-created logistics contracts extend the normal requirement/job/shipment lifecycle. They do not form a parallel mission system.
+- Cargo and transport are distinct: real origin stock is reserved at publication, while pilot payout, gateway purchase/sale and road cost use separate financial concepts.
+- Until operation accounts exist, the local player's ledger funds their owned operation. Owner-flown pilot payout is a zero-net self-transfer so fulfillment cannot create money.
+- Road fallback uses a replaceable deterministic approximation and persisted event times. It is an economic fallback rather than teleportation or a road-network simulation.

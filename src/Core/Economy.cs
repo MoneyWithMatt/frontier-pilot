@@ -8,10 +8,10 @@ public enum EconomicOwnerKind { System, Player }
 public enum EconomicLocationKind { Gateway, Mine, Community, Lodge, OperationSite }
 public enum EconomicLocationStatus { PrototypeOnly, ResearchCandidate, MsfsVerified, ActiveCustomer, DormantCandidate, ActiveOperation }
 public enum TransportRequirementState { Open, Reserved, Fulfilled, Cancelled }
-public enum EconomyJobState { Offered, Accepted, Completed, Cancelled, Forfeited }
+public enum EconomyJobState { Offered, Accepted, RoadInTransit, Completed, Cancelled, Forfeited }
 public enum ShipmentState { Available, Reserved, InTransit, Delivered, Consumed, Sold, Cancelled, Loaded, Forfeited }
-public enum FinancialTransactionKind { JobPayment, SiteFounding }
-public enum InventoryTransactionKind { LegacyOpeningBalance, SystemGatewaySupply, ShipmentReserved, DeliveryReceived, OperationInitialStock, OperationConsumption, OperationProduction, ShipmentReservationReleased, PartialDeliveryReceived, PersistentGatewayOpeningStock, PersistentTransferOut, PersistentTransferIn }
+public enum FinancialTransactionKind { JobPayment, SiteFounding, LogisticsCargoPurchase, LogisticsSaleRevenue, RoadTransportCost }
+public enum InventoryTransactionKind { LegacyOpeningBalance, SystemGatewaySupply, ShipmentReserved, DeliveryReceived, OperationInitialStock, OperationConsumption, OperationProduction, ShipmentReservationReleased, PartialDeliveryReceived, PersistentGatewayOpeningStock, PersistentTransferOut, PersistentTransferIn, PlayerContractReserved, PlayerContractReleased, PlayerContractDelivered }
 public enum ShipmentCargoTransferKind { LoadedToAircraft, UnloadedAtOrigin, UnloadedAtDestination, UnloadedAndForfeited }
 
 public sealed record EconomicLocation(string Id, string Name, EconomicLocationKind Kind, EconomicOwnerKind Owner,
@@ -93,6 +93,8 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
     public IReadOnlyList<EconomicOperation> Operations { get; init; } = [];
     public IReadOnlyList<OperationTickRecord> OperationTicks { get; init; } = [];
     public IReadOnlyList<ShipmentCargoTransfer> CargoTransfers { get; init; } = [];
+    public IReadOnlyList<OperationLogisticsContract> LogisticsContracts { get; init; } = [];
+    public IReadOnlyList<FinancialReservation> FinancialReservations { get; init; } = [];
 
     public EconomyWorld EnsureValid()
     {
@@ -106,6 +108,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         EconomyValidation.Collection(InventoryLedger, nameof(InventoryLedger)); EconomyValidation.Collection(RecurringDemand, nameof(RecurringDemand));
         EconomyValidation.Collection(Sites, nameof(Sites)); EconomyValidation.Collection(Operations, nameof(Operations)); EconomyValidation.Collection(OperationTicks, nameof(OperationTicks));
         EconomyValidation.Collection(CargoTransfers, nameof(CargoTransfers));
+        EconomyValidation.Collection(LogisticsContracts, nameof(LogisticsContracts)); EconomyValidation.Collection(FinancialReservations, nameof(FinancialReservations));
 
         EconomyValidation.Unique(Locations.Select(x => x.Id), "location");
         EconomyValidation.Unique(Businesses.Select(x => x.Id), "business");
@@ -129,6 +132,8 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         EconomyValidation.Unique(OperationTicks.Select(x => x.CommandId), "operation tick command");
         EconomyValidation.Unique(CargoTransfers.Select(x => x.Id), "shipment cargo transfer");
         EconomyValidation.Unique(CargoTransfers.Select(x => x.CommandId), "shipment cargo transfer command");
+        EconomyValidation.Unique(LogisticsContracts.Select(x => x.Id), "logistics contract"); EconomyValidation.Unique(LogisticsContracts.Select(x => x.CommandId), "logistics contract command");
+        EconomyValidation.Unique(FinancialReservations.Select(x => x.Id), "financial reservation"); EconomyValidation.Unique(FinancialReservations.Select(x => x.ContractId), "financial reservation contract");
         EconomyValidation.Unique(Inventories.Select(x => x.LocationId + "\n" + x.ResourceId), "inventory position");
 
         var locations = Locations.ToDictionary(x => x.Id, StringComparer.Ordinal);
@@ -178,6 +183,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         }
         foreach (var x in Jobs)
         {
+            var contract = LogisticsContracts.SingleOrDefault(c => c.JobId == x.Id);
             EconomyValidation.Id(x.Id, "job ID"); EconomyValidation.Reference(requirements, x.RequirementId, "job requirement");
             EconomyValidation.Reference(businesses, x.EmployerBusinessId, "job employer"); EconomyValidation.Reference(players, x.PlayerId, "job player");
             EconomyValidation.Id(x.ShipmentId, "job shipment ID");
@@ -185,10 +191,12 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
                 throw new InvalidDataException("Offered job has accepted or shipment state.");
             if (x.State == EconomyJobState.Accepted && (x.AcceptedUtc == null || x.CompletedUtc != null || !shipments.ContainsKey(x.ShipmentId)))
                 throw new InvalidDataException("Accepted job state is incomplete.");
-            if (x.State == EconomyJobState.Completed && (x.AcceptedUtc == null || x.CompletedUtc == null || !shipments.ContainsKey(x.ShipmentId)))
+            if (x.State == EconomyJobState.RoadInTransit && (x.AcceptedUtc != null || x.CompletedUtc != null || !shipments.ContainsKey(x.ShipmentId)))
+                throw new InvalidDataException("Road job state is incomplete.");
+            if (x.State == EconomyJobState.Completed && (x.CompletedUtc == null || !shipments.ContainsKey(x.ShipmentId) || (x.AcceptedUtc == null && contract?.RoadStartedUtc is null)))
                 throw new InvalidDataException("Completed job state is incomplete.");
-            if (x.State == EconomyJobState.Cancelled && (x.AcceptedUtc == null || x.CompletedUtc != null || x.CancelledUtc is null ||
-                string.IsNullOrWhiteSpace(x.CancellationReason) || !shipments.ContainsKey(x.ShipmentId)))
+            if (x.State == EconomyJobState.Cancelled && (x.CompletedUtc != null || x.CancelledUtc is null ||
+                string.IsNullOrWhiteSpace(x.CancellationReason) || (contract is null && (x.AcceptedUtc == null || !shipments.ContainsKey(x.ShipmentId)))))
                 throw new InvalidDataException("Cancelled job state is incomplete.");
             if (x.State == EconomyJobState.Forfeited && (x.AcceptedUtc is null || x.CompletedUtc is not null || x.CancelledUtc is null ||
                 string.IsNullOrWhiteSpace(x.CancellationReason) || !shipments.ContainsKey(x.ShipmentId)))
@@ -198,12 +206,14 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
             var requirement = requirements[x.RequirementId];
             if (x.State == EconomyJobState.Offered && requirement.State != TransportRequirementState.Open ||
                 x.State == EconomyJobState.Accepted && requirement.State != TransportRequirementState.Reserved ||
+                x.State == EconomyJobState.RoadInTransit && requirement.State != TransportRequirementState.Reserved ||
                 x.State == EconomyJobState.Completed && requirement.State != TransportRequirementState.Fulfilled ||
                 x.State is (EconomyJobState.Cancelled or EconomyJobState.Forfeited) && requirement.State != TransportRequirementState.Cancelled)
                 throw new InvalidDataException("Job and transport requirement states disagree.");
             if (x.State == EconomyJobState.Accepted && shipments[x.ShipmentId].State is not (ShipmentState.Reserved or ShipmentState.Loaded or ShipmentState.InTransit) ||
+                x.State == EconomyJobState.RoadInTransit && shipments[x.ShipmentId].State != ShipmentState.InTransit ||
                 x.State == EconomyJobState.Completed && shipments[x.ShipmentId].State != ShipmentState.Delivered ||
-                x.State == EconomyJobState.Cancelled && shipments[x.ShipmentId].State != ShipmentState.Cancelled ||
+                x.State == EconomyJobState.Cancelled && contract is null && shipments[x.ShipmentId].State != ShipmentState.Cancelled ||
                 x.State == EconomyJobState.Forfeited && shipments[x.ShipmentId].State != ShipmentState.Forfeited)
                 throw new InvalidDataException("Job and shipment states disagree.");
         }
@@ -264,7 +274,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
             {
                 EconomyValidation.Reference(jobs, x.JobId!, "transaction job");
                 var paidJob = jobs[x.JobId!];
-                if (x.SiteId is not null || paidJob.State != EconomyJobState.Completed || !shipments.TryGetValue(paidJob.ShipmentId, out var paidShipment) ||
+                if ((x.SiteId is not null && !LogisticsContracts.Any(c => c.Id == x.SiteId)) || paidJob.State != EconomyJobState.Completed || !shipments.TryGetValue(paidJob.ShipmentId, out var paidShipment) ||
                     paidShipment.State != ShipmentState.Delivered || paidShipment.DeliveryEvidenceId != x.EvidenceId)
                     throw new InvalidDataException("Financial transaction exists without its completed delivery.");
             }
@@ -275,6 +285,8 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
                 if (!Sites.Any(site => site.Id == x.SiteId) || !Players.Any(player => player.Id == x.FromEntityId) || !Businesses.Any(business => business.Id == x.ToEntityId))
                     throw new InvalidDataException("A site-founding debit refers to an unknown site, player or system funding entity.");
             }
+            else if (!LogisticsContracts.Any(contract => contract.Id == x.SiteId))
+                throw new InvalidDataException("Logistics financial transaction refers to an unknown contract.");
         }
         foreach (var x in InventoryLedger)
         {
@@ -295,7 +307,10 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
                 x.Kind == InventoryTransactionKind.OperationConsumption && (x.QuantityDelta > 0 || x.OperationId is null || x.CommandId is null) ||
                 x.Kind == InventoryTransactionKind.OperationProduction && (x.QuantityDelta < 0 || x.OperationId is null || x.CommandId is null) ||
                 x.Kind == InventoryTransactionKind.PersistentTransferOut && (x.QuantityDelta >= 0 || x.JobId is not null || x.CommandId is null) ||
-                x.Kind == InventoryTransactionKind.PersistentTransferIn && (x.QuantityDelta <= 0 || x.JobId is not null || x.CommandId is null))
+                x.Kind == InventoryTransactionKind.PersistentTransferIn && (x.QuantityDelta <= 0 || x.JobId is not null || x.CommandId is null) ||
+                x.Kind == InventoryTransactionKind.PlayerContractReserved && (x.QuantityDelta >= 0 || x.JobId is null || x.CommandId is null) ||
+                x.Kind == InventoryTransactionKind.PlayerContractReleased && (x.QuantityDelta <= 0 || x.JobId is null || x.CommandId is null) ||
+                x.Kind == InventoryTransactionKind.PlayerContractDelivered && (x.QuantityDelta <= 0 || x.JobId is null || x.CommandId is null))
                 throw new InvalidDataException("Inventory transaction kind, quantity and job reference disagree.");
         }
         foreach (var x in RecurringDemand)
@@ -323,13 +338,15 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
             var shipment = shipments[job.ShipmentId];
             var requirement = requirements[job.RequirementId];
             var payments = FinancialLedger.Where(x => x.Kind == FinancialTransactionKind.JobPayment && x.JobId == job.Id).ToArray();
-            if (shipment.State != ShipmentState.Delivered || requirement.State != TransportRequirementState.Fulfilled || payments.Length != 1 ||
-                payments[0].EvidenceId != shipment.DeliveryEvidenceId || payments[0].FromEntityId != requirement.FundingBusinessId ||
+            var contract = LogisticsContracts.SingleOrDefault(x => x.JobId == job.Id);
+            var expectedPayments = contract?.RoadStartedUtc is not null && contract.AcceptedPilotId is null ? 0 : 1;
+            if (shipment.State != ShipmentState.Delivered || requirement.State != TransportRequirementState.Fulfilled || payments.Length != expectedPayments ||
+                (expectedPayments == 1 && (payments[0].EvidenceId != shipment.DeliveryEvidenceId || payments[0].FromEntityId != requirement.FundingBusinessId ||
                 payments[0].ToEntityId != job.PlayerId || payments[0].Amount != requirement.PaymentAmount ||
-                payments[0].CurrencyCode != requirement.CurrencyCode || payments[0].OccurredUtc != job.CompletedUtc || shipment.DeliveredUtc != job.CompletedUtc)
+                payments[0].CurrencyCode != requirement.CurrencyCode || payments[0].OccurredUtc != job.CompletedUtc)) || shipment.DeliveredUtc != job.CompletedUtc)
                 throw new InvalidDataException("Completed job cargo and payment records are inconsistent.");
         }
-        foreach (var job in Jobs.Where(x => x.State == EconomyJobState.Cancelled))
+        foreach (var job in Jobs.Where(x => x.State == EconomyJobState.Cancelled && !LogisticsContracts.Any(c => c.JobId == x.Id)))
         {
             var shipment = shipments[job.ShipmentId];
             var release = InventoryLedger.Where(x => x.Kind == InventoryTransactionKind.ShipmentReservationReleased && x.JobId == job.Id).ToArray();
@@ -339,6 +356,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         }
         ProspectingCampValidation.EnsureValid(this);
         PersistentEconomyValidation.EnsureValid(this);
+        PlayerLogisticsValidation.EnsureValid(this);
         return this;
     }
 }
@@ -389,6 +407,12 @@ public static class EconomyKernel
             throw new InvalidOperationException("The employed player already has an active shipment.");
         var requirement = world.Requirements.Single(x => x.Id == job.RequirementId);
         if (requirement.State != TransportRequirementState.Open) throw new InvalidOperationException("Transport requirement is no longer open.");
+        var playerContract = world.LogisticsContracts.SingleOrDefault(x => x.JobId == job.Id);
+        if (playerContract is not null)
+        {
+            var reserved = PlayerLogisticsKernel.AcceptReserved(world, playerContract, acceptedUtc);
+            return new((reserved with { Revision = world.Revision + 1 }).EnsureValid(), true);
+        }
         var inventoryIndex = world.Inventories.ToList().FindIndex(x => x.LocationId == requirement.OriginLocationId && x.ResourceId == requirement.ResourceId);
         if (inventoryIndex < 0 || world.Inventories[inventoryIndex].AvailableQuantity < requirement.Quantity)
             throw new InvalidOperationException("Origin inventory cannot reserve this shipment.");
@@ -526,11 +550,14 @@ public static class EconomyKernel
             var evidence = supplied.CompletionEvidence?.EnsureValid() ?? throw new InvalidOperationException("Complete physical delivery requires verified flight-attempt evidence.");
             if (evidence.JobId != job.Id || evidence.ShipmentId != shipment.Id || evidence.OriginLocationId != shipment.OriginLocationId || evidence.DestinationLocationId != shipment.DestinationLocationId)
                 throw new InvalidOperationException("Delivery evidence does not match the physical cargo transfer.");
-            var transactionId = EconomyIds.Derive("payment-", job.Id);
-            if (ledger.Any(x => x.Id == transactionId || x.JobId == job.Id)) throw new InvalidDataException("A payment already exists for this job.");
-            var transaction = new FinancialTransaction(transactionId, FinancialTransactionKind.JobPayment, job.Id, evidence.Id,
-                requirement.FundingBusinessId, job.PlayerId, requirement.PaymentAmount, requirement.CurrencyCode, evidence.VerifiedUtc);
-            ledger.Add(transaction);
+            var contract = world.LogisticsContracts.SingleOrDefault(x => x.JobId == job.Id);
+            if (contract is null)
+            {
+                var transactionId = EconomyIds.Derive("payment-", job.Id);
+                if (ledger.Any(x => x.Id == transactionId || x.JobId == job.Id)) throw new InvalidDataException("A payment already exists for this job.");
+                ledger.Add(new(transactionId, FinancialTransactionKind.JobPayment, job.Id, evidence.Id,
+                    requirement.FundingBusinessId, job.PlayerId, requirement.PaymentAmount, requirement.CurrencyCode, evidence.VerifiedUtc));
+            }
             jobs = jobs.Select(x => x.Id == job.Id ? x with { State = EconomyJobState.Completed, CompletedUtc = evidence.VerifiedUtc } : x).ToArray();
             requirements = requirements.Select(x => x.Id == requirement.Id ? x with { State = TransportRequirementState.Fulfilled } : x).ToArray();
             updatedShipment = updatedShipment with { State = ShipmentState.Delivered, CurrentLocationId = shipment.DestinationLocationId,
@@ -542,8 +569,15 @@ public static class EconomyKernel
         var changedWorld = world with { Inventories = inventories, InventoryLedger = inventoryLedger, Jobs = jobs,
             Requirements = requirements, Shipments = shipments, FinancialLedger = ledger, Players = players,
             CargoTransfers = [.. world.CargoTransfers, transfer] };
+        if (updatedShipment.State == ShipmentState.Forfeited && world.LogisticsContracts.SingleOrDefault(x => x.JobId == job.Id) is { } forfeitedContract)
+            changedWorld = PlayerLogisticsKernel.Forfeit(changedWorld, forfeitedContract.Id, supplied.OccurredUtc);
         if (updatedShipment.State == ShipmentState.Delivered)
-            changedWorld = EconomyJobBoard.Maintain(changedWorld, supplied.OccurredUtc, incrementRevision: false).World;
+        {
+            var contract = world.LogisticsContracts.SingleOrDefault(x => x.JobId == job.Id);
+            changedWorld = contract is null
+                ? EconomyJobBoard.Maintain(changedWorld, supplied.OccurredUtc, incrementRevision: false).World
+                : PlayerLogisticsKernel.SettleAir(changedWorld, contract.Id, updatedShipment.DeliveryEvidenceId!, supplied.OccurredUtc);
+        }
         return new((changedWorld with { Revision = world.Revision + 1 }).EnsureValid(), true);
     }
 
@@ -552,6 +586,8 @@ public static class EconomyKernel
         var world = source.EnsureValid(); EconomyValidation.Id(jobId, nameof(jobId));
         if (cancelledUtc == default) throw new ArgumentOutOfRangeException(nameof(cancelledUtc));
         var job = world.Jobs.SingleOrDefault(x => x.Id == jobId) ?? throw new InvalidOperationException("Job does not exist.");
+        if (world.LogisticsContracts.Any(x => x.JobId == job.Id))
+            throw new InvalidOperationException("An accepted player-operation contract cannot be skipped; pilot abandonment and disputes are not implemented in V0.");
         if (job.State == EconomyJobState.Cancelled) return new(world, false);
         if (job.State != EconomyJobState.Accepted) throw new InvalidOperationException("Only the active incomplete prototype shipment can be skipped.");
         if (world.FinancialLedger.Any(x => x.JobId == job.Id)) throw new InvalidOperationException("A paid or completed job cannot be skipped.");
@@ -604,8 +640,9 @@ public static class EconomyKernel
             throw new InvalidOperationException("Delivery evidence names the wrong route.");
         var player = world.Players.Single(x => x.Id == job.PlayerId);
         if (player.CurrencyCode != requirement.CurrencyCode) throw new InvalidDataException("Job payment currency does not match the player account.");
+        var contract = world.LogisticsContracts.SingleOrDefault(x => x.JobId == job.Id);
         var transactionId = EconomyIds.Derive("payment-", job.Id);
-        if (world.FinancialLedger.Any(x => x.Id == transactionId || x.JobId == job.Id))
+        if (contract is null && world.FinancialLedger.Any(x => x.Id == transactionId || x.JobId == job.Id))
             throw new InvalidDataException("A payment already exists for this job.");
 
         var inventories = world.Inventories.ToList();
@@ -614,9 +651,8 @@ public static class EconomyKernel
         if (remainingDelivery <= 0) throw new InvalidDataException("Shipment inventory was already fully received without completion.");
         if (destinationIndex < 0) inventories.Add(new(shipment.DestinationLocationId, shipment.ResourceId, remainingDelivery));
         else inventories[destinationIndex] = inventories[destinationIndex] with { AvailableQuantity = inventories[destinationIndex].AvailableQuantity + remainingDelivery };
-        var transaction = new FinancialTransaction(transactionId, FinancialTransactionKind.JobPayment, job.Id, evidence.Id,
-            requirement.FundingBusinessId, job.PlayerId, requirement.PaymentAmount, requirement.CurrencyCode, evidence.VerifiedUtc);
-        var ledger = world.FinancialLedger.Append(transaction).ToArray();
+        var ledger = contract is null ? world.FinancialLedger.Append(new FinancialTransaction(transactionId, FinancialTransactionKind.JobPayment, job.Id, evidence.Id,
+            requirement.FundingBusinessId, job.PlayerId, requirement.PaymentAmount, requirement.CurrencyCode, evidence.VerifiedUtc)).ToArray() : world.FinancialLedger.ToArray();
         var jobs = world.Jobs.Select(x => x.Id == job.Id ? x with { State = EconomyJobState.Completed, CompletedUtc = evidence.VerifiedUtc } : x).ToArray();
         var requirements = world.Requirements.Select(x => x.Id == requirement.Id ? x with { State = TransportRequirementState.Fulfilled } : x).ToArray();
         var shipments = world.Shipments.Select(x => x.Id == shipment.Id ? x with
@@ -628,8 +664,9 @@ public static class EconomyKernel
             shipment.DestinationLocationId, shipment.ResourceId, remainingDelivery, job.Id, evidence.VerifiedUtc, "Verified shipment received into customer inventory.");
         var deliveredWorld = world with { Inventories = inventories, Requirements = requirements, Jobs = jobs,
             Shipments = shipments, FinancialLedger = ledger, Players = players, InventoryLedger = [.. world.InventoryLedger, inventoryTransaction] };
-        var maintained = EconomyJobBoard.Maintain(deliveredWorld, evidence.VerifiedUtc, incrementRevision: false);
-        var next = maintained.World with { Revision = world.Revision + 1 };
+        deliveredWorld = contract is null ? EconomyJobBoard.Maintain(deliveredWorld, evidence.VerifiedUtc, incrementRevision: false).World
+            : PlayerLogisticsKernel.SettleAir(deliveredWorld, contract.Id, evidence.Id, evidence.VerifiedUtc);
+        var next = deliveredWorld with { Revision = world.Revision + 1 };
         return new(next.EnsureValid(), true);
     }
 }

@@ -63,6 +63,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
             world = await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ?? throw new IOException("Economy upgrade produced no state.");
         }
         _ = await economy.MaintainJobBoardAsync(utcNow(), cancellationToken).ConfigureAwait(false);
+        _ = await economy.ProcessRoadLogisticsAsync(utcNow(), cancellationToken).ConfigureAwait(false);
         world = await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ?? throw new IOException("Economy board maintenance produced no state.");
         return Present(RequirePrototype(world));
     }
@@ -108,6 +109,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
         var operationNeedIds = world.Operations.SelectMany(x => new[] { ProspectingCampKernel.InboundNeed(x.Id), ProspectingCampKernel.OutboundNeed(x.Id) }).ToHashSet(StringComparer.Ordinal);
         var offers = world.Jobs.Where(x => x.State == EconomyJobState.Offered)
             .Where(x => { var requirement = world.Requirements.Single(r => r.Id == x.RequirementId);
+                if (world.LogisticsContracts.Any(c => c.JobId == x.Id && c.State == OperationLogisticsContractState.Published)) return true;
                 if (operationNeedIds.Contains(requirement.NeedId)) return true;
                 return catalogue.Locations.SingleOrDefault(c => c.StableId == requirement.DestinationLocationId)?.CanGenerateOrdinaryLiveJobs == true; })
             .OrderBy(x => x.Id, StringComparer.Ordinal).Select(Display).ToArray();

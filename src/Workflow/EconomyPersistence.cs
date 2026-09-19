@@ -18,7 +18,7 @@ public interface IEconomyStateStore
 /// inventory and ledger changes cannot become independently visible.</summary>
 public sealed class LocalEconomyStateStore : IEconomyStateStore
 {
-    public const int CurrentSchemaVersion = 5;
+    public const int CurrentSchemaVersion = 6;
     private sealed record Document(int SchemaVersion, EconomyWorld World);
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -120,6 +120,8 @@ public sealed class LocalEconomyStateStore : IEconomyStateStore
                     CargoTransfers = world.CargoTransfers ?? []
                 };
             }
+            if (document.SchemaVersion < 6)
+                world = world with { LogisticsContracts = world.LogisticsContracts ?? [], FinancialReservations = world.FinancialReservations ?? [] };
             world = world.EnsureValid();
             if (document.SchemaVersion < CurrentSchemaVersion)
             {
@@ -209,6 +211,16 @@ public sealed class EconomyService(IEconomyStateStore store)
     public Task<EconomyTransition> TransferPersistentInventoryAsync(PersistentInventoryTransferRequest request,
         CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => PersistentEconomyKernel.Transfer(world, request), cancellationToken);
+    public Task<EconomyTransition> PublishOperationLogisticsAsync(PublishOperationLogisticsRequest request,
+        CancellationToken cancellationToken = default) => store.ApplyAsync(world => PlayerLogisticsKernel.Publish(world, request), cancellationToken);
+    public Task<EconomyTransition> EditOperationLogisticsPayoutAsync(string contractId, decimal payout, DateTimeOffset occurredUtc,
+        CancellationToken cancellationToken = default) => store.ApplyAsync(world => PlayerLogisticsKernel.EditPayout(world, contractId, payout, occurredUtc), cancellationToken);
+    public Task<EconomyTransition> EditOperationLogisticsTermsAsync(string contractId, decimal payout, int? fallbackMinutes, DateTimeOffset occurredUtc,
+        CancellationToken cancellationToken = default) => store.ApplyAsync(world => PlayerLogisticsKernel.EditPublishedTerms(world, contractId, payout, fallbackMinutes, occurredUtc), cancellationToken);
+    public Task<EconomyTransition> CancelOperationLogisticsAsync(string contractId, DateTimeOffset occurredUtc,
+        CancellationToken cancellationToken = default) => store.ApplyAsync(world => PlayerLogisticsKernel.Cancel(world, contractId, occurredUtc), cancellationToken);
+    public Task<EconomyTransition> ProcessRoadLogisticsAsync(DateTimeOffset occurredUtc,
+        CancellationToken cancellationToken = default) => store.ApplyAsync(world => PlayerLogisticsKernel.ProcessRoad(world, occurredUtc), cancellationToken);
     public Task<EconomyTransition> UpgradeRepeatableJobsAsync(EmployedCargoPrototypeOptions options, DateTimeOffset occurredUtc,
         CancellationToken cancellationToken = default) => store.ApplyAsync(world => EmployedCargoPrototype.UpgradeForRepeatableJobs(world, options, occurredUtc), cancellationToken);
 }
