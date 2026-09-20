@@ -87,7 +87,11 @@ public sealed record OperationDisplay(string OperationId, string SiteName, strin
     IReadOnlyList<string> PendingLogistics, bool AirportDefinitionAvailable, string ArchetypeName,
     string LocationId, double Latitude, double Longitude, IReadOnlyList<EconomicInventoryDisplay> Inventory,
     string ProductionSummary, string ConsumptionSummary, string ConstraintSummary)
-{ public IReadOnlyList<OperationLogisticsDisplay> LogisticsJobs { get; init; } = []; }
+{
+    public IReadOnlyList<OperationLogisticsDisplay> LogisticsJobs { get; init; } = [];
+    public string ImportAvailability { get; init; } = "Import availability unavailable.";
+    public string ExportAvailability { get; init; } = "Export availability unavailable.";
+}
 public sealed record OperationsSnapshot(IReadOnlyList<OperationAirportDisplay> Airports,
     IReadOnlyList<OperationDisplay> Operations, decimal PlayerBalance, string CurrencyCode, string StoragePath,
     IReadOnlyList<string> Warnings, IReadOnlyList<OperationsMapLocation> MapLocations);
@@ -263,6 +267,14 @@ public sealed class ProspectingOperationsService : IProspectingOperations
                     x.PilotPayout, x.CargoValue, world.FinancialReservations.Single(r => r.ContractId == x.Id).Amount,
                     x.State.ToString(), x.RoadFallbackDelayMinutes is null ? "No road fallback" : x.State == OperationLogisticsContractState.RoadInTransit ? $"Road ETA {x.RoadEtaUtc:u}" : $"Road after {x.RoadFallbackDelayMinutes} min",
                     x.CreatedUtc.ToString("u", CultureInfo.InvariantCulture), x.RoadFallbackDelayMinutes)).ToArray();
+            var rationStorage = a.Storage.Single(x => x.ResourceId == OperationArchetypeCatalogue.RationsResourceId);
+            var reservedRationsAtCamp = world.LogisticsContracts.Where(x => x.OriginLocationId == site.LocationId && x.ResourceId == OperationArchetypeCatalogue.RationsResourceId &&
+                x.State is OperationLogisticsContractState.Published or OperationLogisticsContractState.Accepted).Sum(x => x.Quantity);
+            var incomingRations = world.LogisticsContracts.Where(x => x.DestinationLocationId == site.LocationId && x.ResourceId == OperationArchetypeCatalogue.RationsResourceId &&
+                x.State is OperationLogisticsContractState.Published or OperationLogisticsContractState.Accepted or OperationLogisticsContractState.RoadInTransit).Sum(x => x.Quantity);
+            var gatewayRations = world.Inventories.SingleOrDefault(x => x.LocationId == EmployedCargoPrototype.ErosId && x.ResourceId == OperationArchetypeCatalogue.RationsResourceId)?.AvailableQuantity ?? 0;
+            var maxImport = Math.Max(0, Math.Min(gatewayRations, rationStorage.Capacity - rations.AvailableQuantity - reservedRationsAtCamp - incomingRations));
+            var maxExport = Math.Max(0, minerals.AvailableQuantity);
             return new OperationDisplay(operation.Id, site.Name, site.AirportIdentifier, operation.Status, operation.PrototypeDay,
                 $"{rations.AvailableQuantity:0.##} / {a.Storage.Single(x => x.ResourceId == rations.ResourceId).Capacity:0.##} kg",
                 $"{minerals.AvailableQuantity:0.##} / {a.Storage.Single(x => x.ResourceId == minerals.ResourceId).Capacity:0.##} kg",
@@ -270,7 +282,12 @@ public sealed class ProspectingOperationsService : IProspectingOperations
                 site.Latitude, site.Longitude, inventory,
                 $"{a.Process.OutputPerTick:0.##} kg {world.Resources.Single(x => x.Id == a.Process.OutputResourceId).Name} per supplied prototype day",
                 $"{a.Process.InputPerTick:0.##} kg {world.Resources.Single(x => x.Id == a.Process.InputResourceId).Name} per prototype day",
-                operation.LastConstraint) { LogisticsJobs = logistics };
+                operation.LastConstraint)
+            {
+                LogisticsJobs = logistics,
+                ImportAvailability = $"Manual Rations import: up to {maxImport:0.##} kg now (camp storage and Eros available stock).",
+                ExportAvailability = $"Manual Raw Minerals export: up to {maxExport:0.##} kg currently unreserved."
+            };
         }).ToArray();
         var player = world.Players.Single(x => x.Id == EmployedCargoPrototype.PlayerId);
         var warnings = library.Warnings.Concat(world.Sites.Where(x => !definitions.ContainsKey(x.AirportDefinitionId))
@@ -382,6 +399,8 @@ public sealed class ProspectingOperationsViewModel : INotifyPropertyChanged
     public string OperationProduction => SelectedOperation?.ProductionSummary ?? "—";
     public string OperationConsumption => SelectedOperation?.ConsumptionSummary ?? "—";
     public string OperationConstraint => SelectedOperation?.ConstraintSummary ?? "—";
+    public string ImportAvailability => SelectedOperation?.ImportAvailability ?? "Select an operation.";
+    public string ExportAvailability => SelectedOperation?.ExportAvailability ?? "Select an operation.";
     public IReadOnlyList<OperationLogisticsDisplay> OperationLogistics => SelectedOperation?.LogisticsJobs ?? [];
     public IReadOnlyList<string> LogisticsDirections { get; } = ["Import", "Export"];
     public IReadOnlyList<string> RoadFallbackOptions { get; } = ["None", "1 minute (development)", "12 hours"];
@@ -453,7 +472,7 @@ public sealed class ProspectingOperationsViewModel : INotifyPropertyChanged
         MapLocationsChanged?.Invoke(MapLocations);
         Changed(nameof(Balance)); if (snapshot.Warnings.Count > 0) error = string.Join(" ", snapshot.Warnings);
     }
-    private void NotifyOperation() { Changed(nameof(OperationTitle)); Changed(nameof(OperationStatus)); Changed(nameof(PrototypeDay)); Changed(nameof(Rations)); Changed(nameof(RawMinerals)); Changed(nameof(LastTickResult)); Changed(nameof(PendingLogistics)); Changed(nameof(OperationInventory)); Changed(nameof(OperationLogistics)); Changed(nameof(OperationArchetype)); Changed(nameof(OperationProduction)); Changed(nameof(OperationConsumption)); Changed(nameof(OperationConstraint)); TransferPrototypeRationsCommand.Refresh(); PublishLogisticsCommand.Refresh(); }
+    private void NotifyOperation() { Changed(nameof(OperationTitle)); Changed(nameof(OperationStatus)); Changed(nameof(PrototypeDay)); Changed(nameof(Rations)); Changed(nameof(RawMinerals)); Changed(nameof(LastTickResult)); Changed(nameof(PendingLogistics)); Changed(nameof(OperationInventory)); Changed(nameof(OperationLogistics)); Changed(nameof(ImportAvailability)); Changed(nameof(ExportAvailability)); Changed(nameof(OperationArchetype)); Changed(nameof(OperationProduction)); Changed(nameof(OperationConsumption)); Changed(nameof(OperationConstraint)); TransferPrototypeRationsCommand.Refresh(); PublishLogisticsCommand.Refresh(); }
     private void RefreshCommands() { RefreshCommand.Refresh(); FoundCommand.Refresh(); AdvanceDayCommand.Refresh(); TransferPrototypeRationsCommand.Refresh(); PublishLogisticsCommand.Refresh(); EditLogisticsPayoutCommand.Refresh(); CancelLogisticsCommand.Refresh(); ProcessNextRoadEventCommand.Refresh(); }
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
 }

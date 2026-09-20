@@ -19,6 +19,8 @@ public sealed class PlayerLogisticsTests
         Assert.Equal(25, Assert.Single(published.FinancialReservations).Amount);
         Assert.Equal(EconomyJobState.Offered, published.Jobs.Single(x => x.Id == published.LogisticsContracts.Single().JobId).State);
         Assert.False(PlayerLogisticsKernel.Publish(published, request).Changed);
+        Assert.Throws<InvalidOperationException>(() => PlayerLogisticsKernel.Publish(published, Request("capacity", operation.Id,
+            OperationLogisticsDirection.Import, OperationArchetypeCatalogue.RationsResourceId, 1, 1, null)));
         Assert.Throws<InvalidOperationException>(() => PlayerLogisticsKernel.Publish(published, Request("too-much", operation.Id,
             OperationLogisticsDirection.Import, OperationArchetypeCatalogue.RationsResourceId, 500, 1, null)));
         Assert.Throws<InvalidOperationException>(() => PlayerLogisticsKernel.Publish(published, Request("overspend", operation.Id,

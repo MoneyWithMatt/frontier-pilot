@@ -84,9 +84,12 @@ public static class PlayerLogisticsKernel
             throw new InvalidOperationException("The origin does not contain enough unreserved inventory.");
         var destinationCapacity = Capacity(world, destination, request.ResourceId);
         var destinationQuantity = world.Inventories.SingleOrDefault(x => x.LocationId == destination && x.ResourceId == request.ResourceId)?.AvailableQuantity ?? 0;
+        // Reserved outbound goods remain physically at their origin until transport begins, so they still occupy storage.
+        var physicallyReservedAtDestination = world.LogisticsContracts.Where(x => x.OriginLocationId == destination && x.ResourceId == request.ResourceId &&
+            x.State is OperationLogisticsContractState.Published or OperationLogisticsContractState.Accepted).Sum(x => x.Quantity);
         var incoming = world.LogisticsContracts.Where(x => x.DestinationLocationId == destination && x.ResourceId == request.ResourceId &&
             x.State is OperationLogisticsContractState.Published or OperationLogisticsContractState.Accepted or OperationLogisticsContractState.RoadInTransit).Sum(x => x.Quantity);
-        if (destinationCapacity is not null && destinationQuantity + incoming + request.Quantity > destinationCapacity)
+        if (destinationCapacity is not null && destinationQuantity + physicallyReservedAtDestination + incoming + request.Quantity > destinationCapacity)
             throw new InvalidOperationException("The destination does not have enough storage capacity.");
 
         var cargoValue = Math.Round(request.Quantity * unitPrice, 2);
