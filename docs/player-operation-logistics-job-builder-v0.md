@@ -24,6 +24,8 @@ Optional road fallback uses a deliberately isolated approximation: 1.35 times st
 
 Economy schema 6 adds `LogisticsContracts` and `FinancialReservations`. Schema 1–5 documents migrate by adding empty collections while preserving all authoritative jobs, cargo, ledger, sites and inventories. The established lock, validation, flushed temporary write and atomic replacement still protect every mutation. Future schemas and corrupt/inconsistent state remain untouched.
 
+Each publication receives a bounded hash-derived command ID before entering the economy kernel. The operation ID and a fresh publication nonce are inputs to the hash, so long operation identifiers cannot exceed the economy identifier limit while separate publication commands remain unique.
+
 ## Deferred decisions
 
 V0 supports only configured Eros prices and the current local owner/pilot identity. Dynamic pricing, operation accounts, bidding, private contracts, disputes, real road routing, recurring player contracts, multiplayer identity and aviation businesses remain separate milestones.

@@ -5,6 +5,8 @@ namespace FrontierAirportBuilder.Tests;
 
 public sealed class ProspectingOperationsViewModelTests
 {
+    private static readonly DateTimeOffset T0 = new(2026, 9, 20, 12, 0, 0, TimeSpan.Zero);
+
     [Theory]
     [InlineData("Import", OperationLogisticsDirection.Import, "rations")]
     [InlineData("Export", OperationLogisticsDirection.Export, "raw-minerals")]
@@ -33,6 +35,53 @@ public sealed class ProspectingOperationsViewModelTests
 
         Assert.Equal("The destination does not have enough storage capacity.", model.Error);
         Assert.Contains("refused", model.Status, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RealOperationsServiceGeneratesValidPublicationIdentifiers()
+    {
+        var world = FundedCampWorld(); var store = new MemoryEconomyStateStore(); await store.InitializeAsync(world);
+        var service = new ProspectingOperationsService(store, new EmptyAirportManagement(), new NoPresence(), () => T0);
+        var operation = world.Operations.Single();
+
+        await service.PublishLogisticsAsync(operation.Id, OperationLogisticsDirection.Import,
+            OperationArchetypeCatalogue.RationsResourceId, 10, 20, null);
+        await service.PublishLogisticsAsync(operation.Id, OperationLogisticsDirection.Export,
+            OperationArchetypeCatalogue.RawMineralsResourceId, 10, 20, null);
+
+        var saved = (await store.LoadAsync())!;
+        Assert.Equal(2, saved.LogisticsContracts.Count);
+        Assert.All(saved.LogisticsContracts, contract => Assert.StartsWith("publish-", contract.CommandId));
+    }
+
+    private static EconomyWorld FundedCampWorld()
+    {
+        var world = EmployedCargoPrototype.Create(NamibiaLocationCatalogue.Load());
+        world = EconomyKernel.AcceptJob(world, "job-uis-supplies-v0", T0.AddHours(-3)).World;
+        world = EconomyKernel.MarkShipmentInTransit(world, "job-uis-supplies-v0").World;
+        world = EconomyKernel.CompleteDelivery(world, new("evidence-operations-service", "test", "job-uis-supplies-v0", "shipment-uis-supplies-v0",
+            EmployedCargoPrototype.ErosId, EmployedCargoPrototype.UisId, T0.AddHours(-2), "TEST verified delivery.")).World;
+        var candidate = new AirportSiteCandidate("83f20e8a145a44afacb8b8db3a124081", "FPLC", "Service Camp", -22.5, 17.1, true,
+            [ConstructionCapability.BaseLodge]);
+        var presence = new VerifiedSitePresenceEvidence("presence-operations-service", "test", candidate.AirportDefinitionId, 1,
+            candidate.Latitude, candidate.Longitude, 0, 250, T0.AddHours(-1), T0.AddHours(-1));
+        world = ProspectingCampKernel.Found(world, candidate, presence, "found-operations-service", T0.AddHours(-1)).World;
+        world = ProspectingCampKernel.AdvanceDay(world, world.Operations.Single().Id, "day-operations-service", T0.AddMinutes(-30)).World;
+        return PersistentEconomyKernel.EnsurePrototypeGatewayStock(world, new(), T0).World;
+    }
+
+    private sealed class NoPresence : ISitePresenceEvidenceProvider
+    { public SitePresenceAssessment Assess(SavedAirport airport, DateTimeOffset now) => new(null, "Not required by this test."); }
+
+    private sealed class EmptyAirportManagement : IAirportManagement
+    {
+        public Guid? ActiveAirportId => null; public string LibraryDirectory => "memory";
+        public Task<AirportList> ListAirportsAsync(CancellationToken token) => Task.FromResult(new AirportList([], []));
+        public Task<SavedAirport> SaveAirportAsync(AirstripDefinition definition, CancellationToken token) => throw new NotSupportedException();
+        public Task<SavedAirport> LoadAirportAsync(Guid id, CancellationToken token) => throw new NotSupportedException();
+        public Task<AirportDeletionPlan> PrepareDeleteAsync(Guid id, CancellationToken token) => throw new NotSupportedException();
+        public Task<string> DeleteAirportAsync(AirportDeletionPlan plan, bool confirmed, CancellationToken token) => throw new NotSupportedException();
+        public void NewAirport() { }
     }
 
     private sealed class RecordingOperations : IProspectingOperations

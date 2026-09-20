@@ -187,7 +187,9 @@ public sealed class ProspectingOperationsService : IProspectingOperations
         var eros = NamibiaLocationCatalogue.Load().Locations.Single(x => x.StableId == EmployedCargoPrototype.ErosId).ApproximateCoordinates
             ?? throw new InvalidDataException("Gateway coordinates are unavailable.");
         var km = WorldTracking.DistanceMeters(site.Latitude, site.Longitude, eros.Latitude, eros.Longitude) / 1000d;
-        var road = RoadLogisticsPrototype.Quote(km); var command = $"publish-{operationId}-{Guid.NewGuid():N}";
+        var road = RoadLogisticsPrototype.Quote(km);
+        var commandSource = operationId + "|" + Guid.NewGuid().ToString("N");
+        var command = "publish-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(commandSource))).ToLowerInvariant()[..40];
         _ = await economy.PublishOperationLogisticsAsync(new(command, operationId, direction, EmployedCargoPrototype.ErosId,
             resourceId, quantity, pilotPayout, fallbackMinutes, road.Cost, road.DurationMinutes, utcNow()), cancellationToken).ConfigureAwait(false);
         return await PresentAsync((await economy.LoadAsync(cancellationToken).ConfigureAwait(false))!, cancellationToken).ConfigureAwait(false);
