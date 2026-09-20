@@ -73,6 +73,10 @@ public partial class MainWindow : Window
     { if(model.Operations.SelectedOperation is not null)OperationsTabs.SelectedIndex=1; }
     private void BackToOperationsMap(object sender,RoutedEventArgs e)
     { OperationsTabs.SelectedIndex=0; OperationsMap.CenterOn(model.Operations.SelectedMapLocation); }
+    private void OpenCreateLogisticsJob(object sender,RoutedEventArgs e)
+    { if(model.Operations.SelectedOperation is not null)OperationsTabs.SelectedIndex=2; }
+    private void BackToOperationDetail(object sender,RoutedEventArgs e)
+    { OperationsTabs.SelectedIndex=1; }
     private async void TransferPrototypeRations(object sender,RoutedEventArgs e)
     {
         const string message="Developer test: move 1 kg of real persistent rations from Eros to this operation? The transfer is atomic, audited, and persists; it does not create a job, flight, or payment.";
