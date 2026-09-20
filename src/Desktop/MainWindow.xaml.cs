@@ -75,6 +75,8 @@ public partial class MainWindow : Window
     { OperationsTabs.SelectedIndex=0; OperationsMap.CenterOn(model.Operations.SelectedMapLocation); }
     private void OpenCreateLogisticsJob(object sender,RoutedEventArgs e)
     { if(model.Operations.SelectedOperation is not null)OperationsTabs.SelectedIndex=2; }
+    private async void PublishOperationLogistics(object sender,RoutedEventArgs e)
+    { await model.Operations.PublishLogisticsAsync(); }
     private void BackToOperationDetail(object sender,RoutedEventArgs e)
     { OperationsTabs.SelectedIndex=1; }
     private async void TransferPrototypeRations(object sender,RoutedEventArgs e)

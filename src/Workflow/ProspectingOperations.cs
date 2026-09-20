@@ -434,10 +434,15 @@ public sealed class ProspectingOperationsViewModel : INotifyPropertyChanged
     }
     public async Task PublishLogisticsAsync(CancellationToken token = default)
     {
-        var operation = SelectedOperation; if (operation is null) return;
-        if (!decimal.TryParse(LogisticsQuantity, NumberStyles.Number, CultureInfo.CurrentCulture, out var quantity) || !decimal.TryParse(LogisticsPayout, NumberStyles.Number, CultureInfo.CurrentCulture, out var payout)) { Error = "Enter valid quantity and payout values."; return; }
+        var operation = SelectedOperation;
+        if (operation is null) { Status = "Job was not published."; Error = "Select an owned operation before creating a logistics job."; return; }
+        if (!TryNumber(LogisticsQuantity, out var quantity) || !TryNumber(LogisticsPayout, out var payout))
+        { Status = "Job was not published."; Error = "Enter valid numeric quantity and payout values."; return; }
+        if (quantity <= 0) { Status = "Job was not published."; Error = "Quantity must be greater than zero."; return; }
+        if (payout < 0) { Status = "Job was not published."; Error = "Pilot payout cannot be negative."; return; }
         var direction = LogisticsDirection == "Export" ? OperationLogisticsDirection.Export : OperationLogisticsDirection.Import;
         var resource = direction == OperationLogisticsDirection.Export ? OperationArchetypeCatalogue.RawMineralsResourceId : OperationArchetypeCatalogue.RationsResourceId;
+        Status = $"Publishing {direction.ToString().ToLowerInvariant()} contract…";
         await RunAsync(() => service.PublishLogisticsAsync(operation.OperationId, direction, resource, quantity, payout, fallbackMinutes < 0 ? null : fallbackMinutes, token), "Logistics contract published with cargo and funds reserved.");
     }
     public async Task EditLogisticsAsync(CancellationToken token = default)
@@ -474,5 +479,8 @@ public sealed class ProspectingOperationsViewModel : INotifyPropertyChanged
     }
     private void NotifyOperation() { Changed(nameof(OperationTitle)); Changed(nameof(OperationStatus)); Changed(nameof(PrototypeDay)); Changed(nameof(Rations)); Changed(nameof(RawMinerals)); Changed(nameof(LastTickResult)); Changed(nameof(PendingLogistics)); Changed(nameof(OperationInventory)); Changed(nameof(OperationLogistics)); Changed(nameof(ImportAvailability)); Changed(nameof(ExportAvailability)); Changed(nameof(OperationArchetype)); Changed(nameof(OperationProduction)); Changed(nameof(OperationConsumption)); Changed(nameof(OperationConstraint)); TransferPrototypeRationsCommand.Refresh(); PublishLogisticsCommand.Refresh(); }
     private void RefreshCommands() { RefreshCommand.Refresh(); FoundCommand.Refresh(); AdvanceDayCommand.Refresh(); TransferPrototypeRationsCommand.Refresh(); PublishLogisticsCommand.Refresh(); EditLogisticsPayoutCommand.Refresh(); CancelLogisticsCommand.Refresh(); ProcessNextRoadEventCommand.Refresh(); }
+    private static bool TryNumber(string value, out decimal result) =>
+        decimal.TryParse(value, NumberStyles.Number, CultureInfo.CurrentCulture, out result) ||
+        decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out result);
     private void Changed([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
 }
