@@ -1,5 +1,11 @@
 # Technical status — 2026-09-07
 
+## PA-28 exit-time payload reset at grouped destination — 2026-09-21
+
+The first live two-contract flight proved that both 10 kg shipments, their separate attempts and arrival evidence reached `ReadyToUnload`. The PA-28 then reset its managed Station 5 payload to the recorded zero baseline when the player exited. The economy correctly kept 20 kg aboard, but choosing restoration changed reconciliation from `CargoAppearsMissing` to `RestoreAvailable`; the load UI consequently prioritized the post-boarding restoration command and misclassified an explicit zero-cargo draft as another restoration.
+
+A changed player cargo draft now takes priority over restoration actions. For a committed manifest whose payload is physically missing, both `CargoAppearsMissing` and an authorized `RestoreAvailable` state use the observed baseline when constructing a zero/partial unload plan. Setting cargo to zero at a verified destination therefore verifies that MSFS is already at baseline and commits the preserved delivery evidence, inventory transfer and separate shipment settlements without first re-adding payload. The authoritative manifest and economy cargo remain unchanged until that explicit action. Release verification: 556 tests pass, the WPF loading-control smoke test passes, and the Release build has zero warnings and errors.
+
 ## Player-contract manifest identifier fix — 2026-09-21
 
 The first live grouped load exposed an identifier composition defect before any MSFS write: player-created jobs and shipments legitimately use the full 64-character economy ID limit, while aircraft loading prefixed the derived 64-character flight-attempt ID with `manifest-` and produced an invalid 73-character identifier. Manifest IDs now use the same bounded deterministic derivation as the economy domain. Existing manifest IDs and saved gameplay state are unchanged. A regression using maximum-length player-contract job and shipment IDs verifies that the pending manifest persists before the simulator write. Release verification: 554 tests pass, the WPF loading-control smoke test passes, and the Release build has zero warnings and errors.

@@ -120,13 +120,14 @@ public sealed class AircraftLoadingCoordinator
 
     private string CargoReason(string access)
     {
+        if(Current.Plan is { } changedPlan && Current.Manifest is { } changedManifest &&
+            Math.Abs(changedPlan.CargoKilograms-changedManifest.CargoKilograms)>.001m && access=="Ready.")
+            return changedPlan.CargoKilograms>changedManifest.CargoKilograms?"Ready to add reserved cargo and verify the requested aircraft state.":"Ready to remove Frontier cargo and verify the requested aircraft state.";
         if(Current.Manifest is {Reconciliation:SimulatorReconciliationState.RestoreAvailable} authorized)
             return BoardedApplicationReason(Current.Live!,authorized)=="Ready."
                 ? "Outside loading checks passed. Apply the authorized cargo now while seated in the same stationary aircraft."
                 : AuthorizedBoardedCargoReason;
         if(access!="Ready.")return access;
-        if(Current.Plan is { } plan && Current.Manifest is { } manifest && Math.Abs(plan.CargoKilograms-manifest.CargoKilograms)>.001m)
-            return plan.CargoKilograms>manifest.CargoKilograms?"Ready to add reserved cargo and verify the requested aircraft state.":"Ready to remove Frontier cargo and verify the requested aircraft state.";
         if(activeJob() is not null&&(Current.Manifest?.CargoKilograms??0)<=.001m&&!flight.Current.CanLoadCargo)
             return flight.Current.Reason;
         if(Current.Manifest is {State:LoadManifestState.CommittedInTransit} saved)

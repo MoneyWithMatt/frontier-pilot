@@ -199,6 +199,37 @@ public sealed class AircraftLoadingTests
         Assert.Equal(0,h.sim.Value.PayloadStations.Single().CurrentWeightKilograms);Assert.Equal(0,h.coordinator.Current.Manifest!.CargoKilograms);
     }
 
+    [Fact] public void Authorized_restoration_of_missing_committed_cargo_still_allows_a_zero_unload_plan()
+    {
+        var live=Snapshot(stations:[new(5,"Baggage",0)]);var t=live.ObservedUtc;
+        var manifest=new CargoLoadManifest("manifest-test","job-test","shipment-test","flight-test",live.Aircraft,
+            AircraftLoadingMode.MsfsPayloadIntegration,[new(5,0,20,20,20)],20,LoadManifestState.CommittedInTransit,t,
+            SimulatorAppliedUtc:t,CommittedUtc:t,Reconciliation:SimulatorReconciliationState.RestoreAvailable)
+            {ShipmentQuantityKilograms=20,IsDesiredStateManifest=true,BoardedAuthorizationUtc=t,
+                BoardedAuthorizationPosition=live.Position,BoardedBaselineGrossWeightKilograms=900,BoardedExpectedGrossWeightKilograms=920};
+
+        var plan=AircraftLoadPlan.CreateDesiredState(live,[new(5,0)],manifest,20);
+
+        Assert.Equal(0,plan.CargoKilograms);Assert.Equal(0,plan.Stations.Single().TargetKilograms);
+    }
+
+    [Fact] public async Task Explicit_zero_draft_overrides_PA28_missing_cargo_restoration_and_commits_unload()
+    {
+        var h=Harness(requireBoarded:true);await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();
+        h.setWorld(World(seated:true));await h.coordinator.RefreshAsync();await h.coordinator.ApplyAuthorizedCargoAfterBoardingAsync();
+        h.sim.Value=Snapshot();h.setWorld(World());await h.coordinator.RefreshAsync();
+        Assert.Equal(SimulatorReconciliationState.CargoAppearsMissing,h.coordinator.Current.Manifest!.Reconciliation);
+        await h.coordinator.RestoreCargoAsync();Assert.Equal(SimulatorReconciliationState.RestoreAvailable,h.coordinator.Current.Manifest!.Reconciliation);
+        var vm=new AircraftLoadingViewModel(h.coordinator);await vm.InitializeAsync();await h.coordinator.RefreshAsync();
+
+        vm.ClearAllocationCommand.Execute(null);
+
+        Assert.Equal("Confirm unloading plan",vm.PrimaryCargoActionText);Assert.True(vm.CanUsePrimaryCargoAction);
+        await vm.ApplyPrimaryCargoAsync(false);
+        Assert.Equal(0,h.coordinator.Current.Manifest!.CargoKilograms);Assert.Equal(1,h.tracker.Unloads);
+    }
+
     [Fact] public async Task Terminal_manifest_does_not_present_stale_job_cargo_as_available()
     {
         var h=Harness(noActiveJob:true);var t=DateTimeOffset.Parse("2026-09-16T12:00:00Z");

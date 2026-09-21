@@ -36,7 +36,7 @@ V0 supports only configured Eros prices and the current local owner/pilot identi
 
 ## Verification
 
-The focused logistics tests cover real cargo and financial reservation, multiple reservation, grouped same-route flight settlement, maximum-length player-contract identifiers, over-allocation and overspending refusal, payout edits, cancellation release, ordinary marketplace acceptance, owner-flown import and export settlement, wrong-location forfeiture, road activation/arrival, restart reconciliation and idempotent replay. The complete Release suite passes 554 tests, the Release solution build has zero warnings and zero errors, and the production WPF loading-control smoke test passes. Live MSFS behavior remains a manual acceptance item.
+The focused logistics tests cover real cargo and financial reservation, multiple reservation, grouped same-route flight settlement, maximum-length player-contract identifiers, PA-28 missing-payload unload reconciliation, over-allocation and overspending refusal, payout edits, cancellation release, ordinary marketplace acceptance, owner-flown import and export settlement, wrong-location forfeiture, road activation/arrival, restart reconciliation and idempotent replay. The complete Release suite passes 556 tests, the Release solution build has zero warnings and zero errors, and the production WPF loading-control smoke test passes. Live MSFS behavior remains a manual acceptance item.
 
 ## Manual acceptance
 

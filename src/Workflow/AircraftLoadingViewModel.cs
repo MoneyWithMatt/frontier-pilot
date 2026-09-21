@@ -127,8 +127,11 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     private bool AuthorizationExpired=>service.Current.Manifest?.Reconciliation==SimulatorReconciliationState.RestoreAvailable&&
         service.AuthorizedBoardedCargoReason.StartsWith("The outside cargo authorization expired",StringComparison.Ordinal);
     private bool NeedsRestoreAuthorization=>service.Current.Manifest?.Reconciliation==SimulatorReconciliationState.CargoAppearsMissing||AuthorizationExpired;
-    public bool CanUsePrimaryCargoAction=>CanApplyAuthorizedCargo||CanApplyCargo||(!busy&&service.Current.CanRestoreCargo&&NeedsRestoreAuthorization);
-    public string PrimaryCargoActionText=>CanApplyAuthorizedCargo?"Apply cargo to aircraft":
+    private bool HasChangedCargoDraft=>cargoDraftDirty&&Math.Abs(AssignedCargo-(service.Current.Manifest?.CargoKilograms??0))>.001m;
+    public bool CanUsePrimaryCargoAction=>HasChangedCargoDraft?CanApplyCargo:CanApplyAuthorizedCargo||CanApplyCargo||(!busy&&service.Current.CanRestoreCargo&&NeedsRestoreAuthorization);
+    public string PrimaryCargoActionText=>HasChangedCargoDraft
+        ? CanApplyCargo?(AssignedCargo<(service.Current.Manifest?.CargoKilograms??0)?"Confirm unloading plan":"Confirm loading plan"):"Cargo change unavailable"
+        : CanApplyAuthorizedCargo?"Apply cargo to aircraft":
         service.Current.Manifest?.Reconciliation==SimulatorReconciliationState.RestoreAvailable
             ? AuthorizationExpired?"Renew loading authorization":"Board aircraft to continue":
         service.Current.Manifest?.Reconciliation==SimulatorReconciliationState.CargoAppearsMissing?"Authorize cargo restoration":
@@ -193,6 +196,8 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     }
     public async Task ApplyPrimaryCargoAsync(bool confirmForfeit,CancellationToken token=default)
     {
+        if(HasChangedCargoDraft)
+        {await ApplyDesiredCargoAsync(confirmForfeit,token);return;}
         if(CanApplyAuthorizedCargo)
         {await Run(service.ApplyAuthorizedCargoAfterBoardingAsync,"Cargo applied to the seated aircraft, verified in MSFS and committed.");return;}
         if(service.Current.CanRestoreCargo&&NeedsRestoreAuthorization)

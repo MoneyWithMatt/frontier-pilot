@@ -145,13 +145,18 @@ public sealed record AircraftLoadPlan(decimal CargoKilograms, IReadOnlyList<Plan
         if (desiredTotal > maximumAvailableCargoKilograms + .001m)
             throw new InvalidOperationException($"Requested Frontier cargo is {desiredTotal:0.###} kg, but only {maximumAvailableCargoKilograms:0.###} kg exists for this aircraft and location.");
         var oldStations = currentManifest?.Stations.ToDictionary(x => x.StationIndex) ?? [];
+        var committedCargoIsPhysicallyMissing = currentManifest is
+        {
+            State: LoadManifestState.CommittedInTransit or LoadManifestState.PendingUnload,
+            Reconciliation: SimulatorReconciliationState.CargoAppearsMissing or SimulatorReconciliationState.RestoreAvailable
+        };
         var planned = new List<PlannedPayloadStation>();
         decimal currentManagedTotal = 0;
         foreach (var station in snapshot.PayloadStations)
         {
             var desired = allocations.SingleOrDefault(x => x.StationIndex == station.Index)?.CargoKilograms ?? 0;
             var priorManaged = oldStations.TryGetValue(station.Index, out var old) ? old.FrontierCargoKilograms : 0;
-            var physicalManaged = currentManifest?.Reconciliation == SimulatorReconciliationState.CargoAppearsMissing ? 0 : priorManaged;
+            var physicalManaged = committedCargoIsPhysicallyMissing ? 0 : priorManaged;
             var baseline = station.CurrentWeightKilograms - physicalManaged;
             if (baseline < -toleranceKilograms)
                 throw new InvalidOperationException($"Station {station.Index} ({station.Name}) mismatch: live {station.CurrentWeightKilograms:0.###} kg, persisted Frontier cargo {priorManaged:0.###} kg, inferred non-Frontier baseline {baseline:0.###} kg. Reconcile the manifest before applying changes.");
