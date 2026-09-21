@@ -1,5 +1,13 @@
 # Technical status — 2026-09-07
 
+## Player-contract physical-unload settlement correction — 2026-09-21
+
+Replaying copies of the live two-contract save through the real economy/attempt/loading stores reproduced destination failure: `Completed job cargo and payment records are inconsistent.` The earlier UI changes did not resolve this economic rejection. Physical delivery completed the job/shipment at the persisted flight proof's ReadyUtc, but SettleAir posted the contract payment at the later unload-command time. The immutable completion consistency check correctly rejected the entire transaction. Air settlement now uses the shipment's authoritative DeliveredUtc; the cargo/inventory audit retains the actual unload-command timestamp. No validation was weakened, no schema changed and no live save was edited. The same copied-save replay then succeeded.
+
+Returning an InTransit shipment to origin also exposed a missing confirmation boundary: the domain requires forfeiture after departure, but the coordinator exempted origin from its warning. The coordinator now asks for confirmation before any manifest/simulator mutation in that case, preserving the existing domain policy. Pre-departure origin returns remain unchanged. Regression tests cover delayed grouped import/export physical delivery, local-store restart and replay, self-fulfilment balance, and confirmation before origin-return mutation. Live MSFS retest remains required.
+
+Verification: 77 focused loading/logistics tests and all 560 solution tests passed. Release build: zero warnings/errors. Self-contained Windows application republished and Desktop shortcut refreshed.
+
 ## PA-28 exit-time payload reset at grouped destination — 2026-09-21
 
 The first live two-contract flight proved that both 10 kg shipments, their separate attempts and arrival evidence reached `ReadyToUnload`. The PA-28 then reset its managed Station 5 payload to the recorded zero baseline when the player exited. The economy correctly kept 20 kg aboard, but choosing restoration changed reconciliation from `CargoAppearsMissing` to `RestoreAvailable`; the load UI consequently prioritized the post-boarding restoration command and misclassified an explicit zero-cargo draft as another restoration.

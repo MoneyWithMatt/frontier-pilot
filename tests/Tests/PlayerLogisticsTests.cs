@@ -147,6 +147,44 @@ public sealed class PlayerLogisticsTests
         Assert.DoesNotContain(world.FinancialLedger, x => x.JobId == c.JobId);
     }
 
+    [Theory]
+    [InlineData(OperationLogisticsDirection.Import)]
+    [InlineData(OperationLogisticsDirection.Export)]
+    public async Task GroupedPhysicalUnloadAfterArrivalSettlesOnceAcrossRestart(OperationLogisticsDirection direction)
+    {
+        var world=World();var operation=world.Operations.Single();
+        var resource=direction==OperationLogisticsDirection.Import?OperationArchetypeCatalogue.RationsResourceId:OperationArchetypeCatalogue.RawMineralsResourceId;
+        for(var i=0;i<2;i++)world=PlayerLogisticsKernel.Publish(world,Request("delayed-"+i,operation.Id,direction,resource,5,10,null)).World;
+        var contracts=world.LogisticsContracts.ToArray();
+        foreach(var c in contracts)
+        {
+            world=EconomyKernel.AcceptJob(world,c.JobId,T0.AddMinutes(1)).World;
+            world=EconomyKernel.ApplyCargoTransfer(world,new("load-"+c.Id,"load-"+c.Id,c.JobId,5,c.OriginLocationId,-22.5,15,T0.AddMinutes(2))).World;
+            world=EconomyKernel.MarkShipmentInTransit(world,c.JobId).World;
+        }
+        var beforeInventory=Inventory(world,contracts[0].DestinationLocationId,resource);
+        var beforeMoney=EconomyLedger.Balance(world,EmployedCargoPrototype.PlayerId,EmployedCargoPrototype.Currency);
+        var requests=contracts.Select((c,i)=>new ShipmentCargoTransferRequest("unload-"+i,"unload-command-"+i,c.JobId,0,c.DestinationLocationId,-22.5,15,T0.AddHours(2),
+            CompletionEvidence:new VerifiedDeliveryEvidence("proof-"+i,"test",c.JobId,c.ShipmentId,c.OriginLocationId,c.DestinationLocationId,T0.AddHours(1),"TEST arrival before unload."))).ToArray();
+        var root=Path.Combine(Path.GetTempPath(),"frontier-delayed-unload-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+        try
+        {
+            var path=Path.Combine(root,"economy-state.json");var store=new LocalEconomyStateStore(path);await store.InitializeAsync(world);
+            await new EconomyService(store).ApplyCargoTransfersAsync(requests);
+            var reopened=new LocalEconomyStateStore(path);var result=(await reopened.LoadAsync())!;
+            Assert.Equal(beforeInventory+10,Inventory(result,contracts[0].DestinationLocationId,resource));
+            Assert.Equal(beforeMoney+(direction==OperationLogisticsDirection.Import?-1:1)*contracts.Sum(x=>x.CargoValue),EconomyLedger.Balance(result,EmployedCargoPrototype.PlayerId,EmployedCargoPrototype.Currency));
+            foreach(var c in contracts)
+            {
+                Assert.Equal(EconomyJobState.Completed,result.Jobs.Single(x=>x.Id==c.JobId).State);
+                Assert.Equal(T0.AddHours(1),Assert.Single(result.FinancialLedger,x=>x.JobId==c.JobId&&x.Kind==FinancialTransactionKind.JobPayment).OccurredUtc);
+                Assert.Equal(T0.AddHours(2),Assert.Single(result.CargoTransfers,x=>x.JobId==c.JobId&&x.Kind==ShipmentCargoTransferKind.UnloadedAtDestination).OccurredUtc);
+            }
+            Assert.False((await new EconomyService(reopened).ApplyCargoTransfersAsync(requests)).Changed);
+        }
+        finally{Directory.Delete(root,true);}
+    }
+
     private static PublishOperationLogisticsRequest Request(string id, string operation, OperationLogisticsDirection direction,
         string resource, decimal quantity, decimal payout, int? fallback) => new("contract-command-" + id, operation, direction,
             EmployedCargoPrototype.ErosId, resource, quantity, payout, fallback, 12, 30, T0);

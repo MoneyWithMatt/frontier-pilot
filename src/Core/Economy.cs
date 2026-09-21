@@ -600,7 +600,7 @@ public static class EconomyKernel
             var contract = world.LogisticsContracts.SingleOrDefault(x => x.JobId == job.Id);
             changedWorld = contract is null
                 ? EconomyJobBoard.Maintain(changedWorld, supplied.OccurredUtc, incrementRevision: false).World
-                : PlayerLogisticsKernel.SettleAir(changedWorld, contract.Id, updatedShipment.DeliveryEvidenceId!, supplied.OccurredUtc);
+                : PlayerLogisticsKernel.SettleAir(changedWorld, contract.Id, updatedShipment.DeliveryEvidenceId!, updatedShipment.DeliveredUtc!.Value);
         }
         return new((changedWorld with { Revision = world.Revision + 1 }).EnsureValid(), true);
     }

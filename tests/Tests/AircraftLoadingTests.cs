@@ -573,6 +573,24 @@ public sealed class AircraftLoadingTests
         Assert.Equal(writes,h.sim.PayloadWrites);Assert.Equal(1,h.tracker.Abandons);
     }
 
+    [Fact] public async Task Returning_departed_cargo_to_origin_requests_forfeit_confirmation_before_any_mutation()
+    {
+        var h=Harness();await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();
+        h.sim.Value=Snapshot();
+        var job=new CargoJobDisplay("job-test","Employer","Origin","Destination","Purpose","General Supplies",120,240,"TPC","Test",
+            "shipment-test",ShipmentState.InTransit,"origin-test","destination-test",-22.5,15,-21,15,120);
+        var c=new AircraftLoadingCoordinator(h.store,h.sim,h.tracker,()=>"sdk",()=>World(),()=>job,
+            new(RequirePostBoardingCargoVerification:false),()=>Snapshot().ObservedUtc,(_,_)=>Task.CompletedTask);
+        await c.InitializeAsync();await c.RefreshAsync();c.CreatePlan([new(1,0),new(2,0)]);
+        var writes=h.sim.PayloadWrites;var persisted=h.store.ManifestWrites;
+        await Assert.ThrowsAsync<CargoForfeitConfirmationRequiredException>(()=>c.ApplyCargoAsync());
+        Assert.Equal(writes,h.sim.PayloadWrites);Assert.Equal(persisted,h.store.ManifestWrites);
+        Assert.Equal(120,c.Current.Manifest!.CargoKilograms);
+        await c.ApplyCargoAsync(true);
+        Assert.Equal(0,c.Current.Manifest!.CargoKilograms);
+    }
+
     private static EconomyWorld AcceptedWorld(DateTimeOffset now,out EconomyJob job,out Shipment shipment)
     {
         var world=EmployedCargoPrototype.Create(NamibiaLocationCatalogue.Load());var offered=world.Jobs.First(x=>x.State==EconomyJobState.Offered);

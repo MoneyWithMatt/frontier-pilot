@@ -253,7 +253,8 @@ public sealed class AircraftLoadingCoordinator
             var location=job is null?null:CurrentLocation(job,live.Position);
             if(delta>0&&(job is null||location!=job.OriginLocationId||!flight.Current.CanLoadCargo))
                 throw new InvalidOperationException(job is null?"No reserved shipment cargo is available to add.":location!=job.OriginLocationId?"Reserved cargo can only be loaded at the shipment origin.":flight.Current.Reason);
-            if(delta<0&&job is not null&&location!=job.OriginLocationId&&location!=job.DestinationLocationId&&!confirmForfeit)
+            if(delta<0&&job is not null&&location!=job.DestinationLocationId&&
+                (location!=job.OriginLocationId||jobs.Any(x=>x.ShipmentState==ShipmentState.InTransit))&&!confirmForfeit)
                 throw new CargoForfeitConfirmationRequiredException("This cargo belongs to an active delivery. Unloading it here will forfeit the job and you will not receive payment.");
             if(delta<0&&job is not null&&location==job.DestinationLocationId&&!flight.Current.CanUnloadCargo)
                 throw new InvalidOperationException(flight.Current.Reason);
