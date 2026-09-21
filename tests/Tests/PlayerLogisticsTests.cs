@@ -124,7 +124,7 @@ public sealed class PlayerLogisticsTests
         var contract = world.LogisticsContracts.Single(); var store = new MemoryEconomyStateStore(); await store.InitializeAsync(world);
         var service = new EmployedCargoJobsService(store, utcNow: () => T0.AddMinutes(2));
         var board = await service.LoadAsync(); Assert.Contains(board.Offers, x => x.JobId == contract.JobId);
-        var accepted = await service.AcceptAsync(contract.JobId); Assert.Equal(contract.JobId, accepted.ActiveJob!.JobId);
+        var accepted = await service.AcceptAsync(contract.JobId); Assert.Contains(accepted.ReservedJobs, x => x.JobId == contract.JobId);
         Assert.Equal(OperationLogisticsContractState.Accepted, (await store.LoadAsync())!.LogisticsContracts.Single().State);
     }
 

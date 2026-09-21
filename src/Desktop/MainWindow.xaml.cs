@@ -36,6 +36,12 @@ public partial class MainWindow : Window
             _=model.Tracking.ConnectAsync();
     }
     private void OpenAircraftLoading(object sender,RoutedEventArgs e)=>MainTabs.SelectedIndex=2;
+    private async void PrepareReservedJobs(object sender,RoutedEventArgs e)
+    {
+        var selected=ReservedJobsList.SelectedItems.Cast<CargoJobDisplay>().ToArray();
+        await model.Jobs.PrepareReservedJobsAsync(selected);
+        if(string.IsNullOrEmpty(model.Jobs.Error))MainTabs.SelectedIndex=2;
+    }
     private void SelectAllNumericText(object sender,KeyboardFocusChangedEventArgs e)
     { if(sender is TextBox textBox)textBox.SelectAll(); }
     private void FocusNumericText(object sender,MouseButtonEventArgs e)

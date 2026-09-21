@@ -215,6 +215,7 @@ public sealed record CargoLoadManifest(string Id, string JobId, string ShipmentI
     string VerificationResult = "Pending", FlightPosition? LastValidPosition = null,
     DateTimeOffset? LastReconciledUtc = null, SimulatorReconciliationState Reconciliation = SimulatorReconciliationState.NotChecked)
 {
+    public IReadOnlyList<ManifestShipmentCargo> Shipments { get; init; } = [];
     public decimal ShipmentQuantityKilograms { get; init; }
     public decimal DeliveredCargoKilograms { get; init; }
     public decimal PriorCargoKilograms { get; init; }
@@ -243,7 +244,28 @@ public sealed record CargoLoadManifest(string Id, string JobId, string ShipmentI
             throw new InvalidDataException("Simulated loading cannot claim a simulator write state.");
         if(State==LoadManifestState.ResetAtOrigin&&(CargoKilograms>.001m||CompletedUtc is null))
             throw new InvalidDataException("A reset cargo manifest must record its completed reset and contain no Frontier cargo.");
+        if (Shipments is null) throw new InvalidDataException("Manifest shipment allocation is missing.");
+        foreach (var shipment in Shipments) shipment.EnsureValid();
+        EconomyValidation.Unique(Shipments.Select(x => x.JobId), "manifest shipment job");
+        EconomyValidation.Unique(Shipments.Select(x => x.ShipmentId), "manifest shipment");
+        if (Shipments.Count > 0 && (Shipments[0].JobId != JobId || Shipments[0].ShipmentId != ShipmentId ||
+            Math.Abs(Shipments.Sum(x => x.QuantityKilograms) - ShipmentQuantityKilograms) > .001m ||
+            State is not (LoadManifestState.Completed or LoadManifestState.Abandoned or LoadManifestState.ResetAtOrigin) &&
+            Math.Abs(Shipments.Sum(x => x.LoadedKilograms) - CargoKilograms) > .001m))
+            throw new InvalidDataException("Manifest shipment allocation does not match its aggregate cargo.");
         EconomyValidation.Text(VerificationResult, "manifest verification result", 512); LastValidPosition?.EnsureValid(); BoardedAuthorizationPosition?.EnsureValid(); return this;
+    }
+}
+
+public sealed record ManifestShipmentCargo(string JobId, string ShipmentId, decimal QuantityKilograms,
+    decimal LoadedKilograms, decimal DeliveredKilograms = 0)
+{
+    public ManifestShipmentCargo EnsureValid()
+    {
+        EconomyValidation.Id(JobId, nameof(JobId)); EconomyValidation.Id(ShipmentId, nameof(ShipmentId));
+        if (QuantityKilograms <= 0 || LoadedKilograms < 0 || DeliveredKilograms < 0 || LoadedKilograms + DeliveredKilograms > QuantityKilograms + .001m)
+            throw new InvalidDataException("Manifest shipment quantity is invalid.");
+        return this;
     }
 }
 

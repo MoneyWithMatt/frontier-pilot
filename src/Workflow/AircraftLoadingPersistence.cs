@@ -17,7 +17,7 @@ public interface IAircraftLoadingStore
 
 public sealed class LocalAircraftLoadingStore : IAircraftLoadingStore
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
     private sealed record Document(int SchemaVersion, IReadOnlyList<CargoLoadManifest> Manifests,
         IReadOnlyList<PersistentAircraftFuelState> FuelStates);
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true,
@@ -75,6 +75,12 @@ public sealed class LocalAircraftLoadingStore : IAircraftLoadingStore
                 ShipmentQuantityKilograms = x.CargoKilograms,
                 DeliveredCargoKilograms = x.State == LoadManifestState.Completed ? x.CargoKilograms : 0,
                 IsDesiredStateManifest = x.State is not (LoadManifestState.Completed or LoadManifestState.Abandoned)
+            } : x).Select(x => document.SchemaVersion < 5 && x.Shipments.Count == 0 ? x with
+            {
+                Shipments = [new ManifestShipmentCargo(x.JobId, x.ShipmentId,
+                    x.ShipmentQuantityKilograms > 0 ? x.ShipmentQuantityKilograms : x.CargoKilograms,
+                    x.State is LoadManifestState.Completed or LoadManifestState.Abandoned or LoadManifestState.ResetAtOrigin ? 0 : x.CargoKilograms,
+                    x.DeliveredCargoKilograms)]
             } : x).Select(x => x.EnsureValid()).ToArray(); var fuels = document.FuelStates.Select(x => x.EnsureValid()).ToArray();
             if (manifests.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != manifests.Length || fuels.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != fuels.Length)
                 throw new InvalidDataException("Aircraft-loading document contains duplicate records.");
@@ -103,6 +109,7 @@ public sealed class LocalAircraftLoadingStore : IAircraftLoadingStore
         if (old.JobId != next.JobId || old.ShipmentId != next.ShipmentId || old.FlightAttemptId != next.FlightAttemptId || old.Aircraft != next.Aircraft ||
             old.Mode != next.Mode || old.CreatedUtc != next.CreatedUtc || old.IsDesiredStateManifest != next.IsDesiredStateManifest ||
             old.ShipmentQuantityKilograms != next.ShipmentQuantityKilograms ||
+            old.Shipments.Select(x => (x.JobId, x.ShipmentId, x.QuantityKilograms)).SequenceEqual(next.Shipments.Select(x => (x.JobId, x.ShipmentId, x.QuantityKilograms))) == false ||
             (!old.IsDesiredStateManifest && (allocationChanged || old.CargoKilograms != next.CargoKilograms || next.State < old.State)))
             throw new InvalidDataException("Cargo manifest identity, allocation or progress cannot be rewritten.");
     }

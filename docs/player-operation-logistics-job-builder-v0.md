@@ -18,11 +18,15 @@ The local operation owner is also the only pilot identity in V0. When the owner 
 
 Accepted aviation contracts create the ordinary reserved shipment without reserving the already-reserved cargo again. The existing load manager and flight tracker provide physical loading and verified delivery. On delivery, destination inventory, shipment/job/requirement completion, cargo purchase or sale, pilot payment, escrow closure, and cached ledger balance are committed in the same economy aggregate transaction. Replay is idempotent.
 
+Acceptance is now a reservation step rather than an exclusive active-flight slot. The player may reserve several jobs, including work for the return journey. The Jobs page separates **Available jobs**, **Reserved jobs**, and **History**. In Reserved jobs the player explicitly selects one or more contracts to prepare; a combined load requires the same origin and destination. Unselected contracts remain reserved and cannot be taken by another pilot.
+
+Compatible selected contracts share one physical aircraft load and one observed flight, while retaining separate requirements, shipments, flight attempts, evidence identifiers, escrow and settlement. The aircraft manifest records an aggregate station allocation plus immutable per-shipment quantities. Departure moves every loaded shipment in that route group to InTransit atomically, and verified unloading settles every included shipment exactly once. A restart reconstructs the loaded route group from persisted shipments and the manifest.
+
 Optional road fallback uses a deliberately isolated approximation: 1.35 times straight-line distance, 55 km/h, 0.18 TPC/km, with minimum distance/duration guards. When its persisted deadline passes, an unaccepted offer leaves the aviation marketplace, its normal shipment enters `RoadInTransit`, and road cost is recorded. Destination inventory changes only at the persisted ETA. Startup and page refresh reconcile due events exactly once. The Operations developer action advances to the next saved road event for testing; it does not advance the operation day.
 
 ## Persistence
 
-Economy schema 6 adds `LogisticsContracts` and `FinancialReservations`. Schema 1–5 documents migrate by adding empty collections while preserving all authoritative jobs, cargo, ledger, sites and inventories. The established lock, validation, flushed temporary write and atomic replacement still protect every mutation. Future schemas and corrupt/inconsistent state remain untouched.
+Economy schema 6 adds `LogisticsContracts` and `FinancialReservations`. Schema 1–5 documents migrate by adding empty collections while preserving all authoritative jobs, cargo, ledger, sites and inventories. Aircraft-loading schema 5 adds the manifest's per-shipment cargo legs; older manifests migrate to a single leg without changing their cargo, station allocation or recovery state. The established lock, validation, flushed temporary write and atomic replacement still protect every mutation. Future schemas and corrupt/inconsistent state remain untouched.
 
 Each publication receives a bounded hash-derived command ID before entering the economy kernel. The operation ID and a fresh publication nonce are inputs to the hash, so long operation identifiers cannot exceed the economy identifier limit while separate publication commands remain unique.
 
@@ -32,7 +36,7 @@ V0 supports only configured Eros prices and the current local owner/pilot identi
 
 ## Verification
 
-The focused logistics tests cover real cargo and financial reservation, over-allocation and overspending refusal, payout edits, cancellation release, ordinary marketplace acceptance, owner-flown import and export settlement, wrong-location forfeiture, road activation/arrival, restart reconciliation and idempotent replay. The complete Release suite passes 547 tests, the Release solution build has zero warnings and zero errors, and the production WPF loading-control smoke test passes. Live MSFS behavior remains a manual acceptance item.
+The focused logistics tests cover real cargo and financial reservation, multiple reservation, grouped same-route flight settlement, over-allocation and overspending refusal, payout edits, cancellation release, ordinary marketplace acceptance, owner-flown import and export settlement, wrong-location forfeiture, road activation/arrival, restart reconciliation and idempotent replay. The complete Release suite passes 553 tests, the Release solution build has zero warnings and zero errors, and the production WPF loading-control smoke test passes. Live MSFS behavior remains a manual acceptance item.
 
 ## Manual acceptance
 

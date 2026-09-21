@@ -432,6 +432,50 @@ public sealed class FlightAttemptTrackerTests
             method.GetParameters().Any(parameter => parameter.ParameterType == typeof(VerifiedDeliveryEvidence)) || method.ReturnType == typeof(VerifiedDeliveryEvidence));
     }
 
+    [Fact]
+    public async Task TwoReservedJobsOnTheSameRouteShareOneFlightAndSettleIndependently()
+    {
+        var initial=EmployedCargoPrototype.Create(NamibiaLocationCatalogue.Load());
+        var firstJob=initial.Jobs.Single(x=>x.Id=="job-uis-supplies-v0");
+        var firstRequirement=initial.Requirements.Single(x=>x.Id==firstJob.RequirementId) with{Quantity=60,PaymentAmount=120};
+        var secondRequirement=firstRequirement with{Id="requirement-uis-batch-test"};
+        var secondJob=firstJob with{Id="job-uis-batch-test",RequirementId=secondRequirement.Id,ShipmentId="shipment-uis-batch-test"};
+        var seeded=(initial with{Requirements=[..initial.Requirements.Where(x=>x.Id!=firstRequirement.Id),firstRequirement,secondRequirement],
+            Jobs=[..initial.Jobs,secondJob]}).EnsureValid();
+        var economy=new MemoryEconomyStateStore();await economy.InitializeAsync(seeded);var service=new EconomyService(economy);
+        await service.AcceptJobAsync(firstJob.Id,Start);await service.AcceptJobAsync(secondJob.Id,Start.AddSeconds(1));
+        var attempts=new MemoryFlightAttemptStore();var tracker=new FlightAttemptTracker(economy,attempts);await tracker.InitializeAsync();
+        await tracker.SelectJobsAsync([firstJob.Id,secondJob.Id]);var atOrigin=At(EmployedCargoPrototype.ErosId,Start);
+        await ObserveSeconds(tracker,atOrigin,10);Assert.True(tracker.Current.CanLoadCargo);
+        await tracker.ApplyCargoTransfersAsync("batch-load","batch-load-command",new Dictionary<string,decimal>{{firstJob.Id,60},{secondJob.Id,60}},
+            EmployedCargoPrototype.ErosId,atOrigin.Latitude,atOrigin.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
+        var loaded=(await economy.LoadAsync())!;Assert.Equal(2,loaded.Shipments.Count(x=>x.State==ShipmentState.Loaded));Assert.Equal(2,(await attempts.LoadAsync()).Count);
+        var harness=new Harness(economy,attempts,tracker,EmployedCargoPrototype.UisId);await CompleteFlightEvidence(harness);
+        Assert.All(await attempts.LoadAsync(),x=>Assert.NotNull(x.DeliveryProof));
+        var arrival=At(EmployedCargoPrototype.UisId,Start.AddMinutes(2));
+        await tracker.ApplyCargoTransfersAsync("batch-unload","batch-unload-command",new Dictionary<string,decimal>{{firstJob.Id,0},{secondJob.Id,0}},
+            EmployedCargoPrototype.UisId,arrival.Latitude,arrival.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
+        var delivered=(await economy.LoadAsync())!;Assert.Equal(2,delivered.Jobs.Count(x=>(x.Id is "job-uis-supplies-v0" or "job-uis-batch-test")&&x.State==EconomyJobState.Completed));
+        Assert.Equal(2,delivered.FinancialLedger.Count(x=>x.JobId is "job-uis-supplies-v0" or "job-uis-batch-test"));
+        Assert.All((await attempts.LoadAsync()).Where(x=>x.JobId is "job-uis-supplies-v0" or "job-uis-batch-test"),x=>Assert.Equal(FlightAttemptState.Delivered,x.State));
+    }
+
+    [Fact]
+    public async Task DifferentRouteCanStayReservedButCannotBeMixedIntoThePreparedLoad()
+    {
+        var economy=new MemoryEconomyStateStore();
+        await economy.InitializeAsync(EmployedCargoPrototype.Create(NamibiaLocationCatalogue.Load()));
+        var service=new EconomyService(economy);
+        await service.AcceptJobAsync("job-uis-supplies-v0",Start);
+        await service.AcceptJobAsync("job-arandis-supplies-v0",Start.AddSeconds(1));
+        var tracker=new FlightAttemptTracker(economy,new MemoryFlightAttemptStore());await tracker.InitializeAsync();
+
+        var error=await Assert.ThrowsAsync<InvalidOperationException>(()=>tracker.SelectJobsAsync(["job-uis-supplies-v0","job-arandis-supplies-v0"]));
+
+        Assert.Contains("same origin and destination",error.Message,StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2,(await economy.LoadAsync())!.Jobs.Count(x=>x.State==EconomyJobState.Accepted));
+    }
+
     private static async Task<Harness> Loaded(string destinationId = EmployedCargoPrototype.UisId)
     {
         var h = await Harness.Create(destinationId); await ObserveSeconds(h.Tracker, At(EmployedCargoPrototype.ErosId, Start), 10); await h.Tracker.LoadCargoAsync(); return h;

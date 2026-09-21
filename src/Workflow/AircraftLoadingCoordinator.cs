@@ -30,20 +30,22 @@ public sealed class AircraftLoadingCoordinator
     private const double MetresPerNauticalMile = 1852;
     private readonly IAircraftLoadingStore store; private readonly IAircraftLoadingSimulator simulator;
     private readonly IFlightAttemptTracker flight; private readonly Func<string> sdkRoot;
-    private readonly Func<TrackingWorldState?> tracking; private readonly Func<CargoJobDisplay?> activeJob;
+    private readonly Func<TrackingWorldState?> tracking; private readonly Func<IReadOnlyList<CargoJobDisplay>> selectedJobs;
     private readonly Func<DateTimeOffset> utcNow; private readonly Func<TimeSpan,CancellationToken,Task> delay;
     private readonly AircraftLoadingOptions options; private readonly SemaphoreSlim gate = new(1,1);
     private bool continuouslyConnected; private DateTimeOffset? lastFuelCheckpoint;
     public AircraftLoadingStatus Current { get; private set; } = AircraftLoadingStatus.Empty;
     public event Action<AircraftLoadingStatus>? Changed;
     public string StoragePath => store.StoragePath;
+    private IReadOnlyList<CargoJobDisplay> ActiveJobs()=>selectedJobs();
+    private CargoJobDisplay? activeJob()=>ActiveJobs().FirstOrDefault();
     public string? ActiveShipmentId=>activeJob()?.ShipmentId;
-    public decimal JobCargoKilograms=>activeJob()?.CargoMassKilograms??Current.Manifest?.ShipmentQuantityKilograms??0;
+    public decimal JobCargoKilograms=>ActiveJobs().Count>0?ActiveJobs().Sum(x=>x.CargoMassKilograms):Current.Manifest?.ShipmentQuantityKilograms??0;
     public decimal LoadedCargoKilograms=>Current.Manifest switch
     {
         {State:LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied} pending => pending.PriorCargoKilograms,
         { } committed => committed.CargoKilograms,
-        _ => activeJob()?.LoadedCargoKilograms??0
+        _ => ActiveJobs().Sum(x=>x.LoadedCargoKilograms)
     };
     public decimal? SimulatorDetectedCargoKilograms=>Current.Manifest switch
     {
@@ -55,17 +57,17 @@ public sealed class AircraftLoadingCoordinator
             DetectedCargo(manifest,live),
         _ => null
     };
-    public decimal DeliveredCargoKilograms=>activeJob()?.DeliveredCargoKilograms??Current.Manifest?.DeliveredCargoKilograms??0;
+    public decimal DeliveredCargoKilograms=>ActiveJobs().Count>0?ActiveJobs().Sum(x=>x.DeliveredCargoKilograms):Current.Manifest?.DeliveredCargoKilograms??0;
     public decimal CargoAvailableAtCurrentLocation
     {
         get
         {
-            var job=activeJob();var live=Current.Live;
-            if(job is null||live is null||job.ShipmentState is not (ShipmentState.Reserved or ShipmentState.Loaded)||CurrentLocation(job,live.Position)!=job.OriginLocationId)return 0;
-            return Math.Max(0,job.CargoMassKilograms-job.DeliveredCargoKilograms-LoadedCargoKilograms);
+            var jobs=ActiveJobs();var live=Current.Live;
+            if(jobs.Count==0||live is null||jobs.Any(job=>job.ShipmentState is not (ShipmentState.Reserved or ShipmentState.Loaded)||CurrentLocation(job,live.Position)!=job.OriginLocationId))return 0;
+            return Math.Max(0,jobs.Sum(job=>job.CargoMassKilograms-job.DeliveredCargoKilograms)-LoadedCargoKilograms);
         }
     }
-    public decimal ActiveCargoKilograms => activeJob() is { } job ? Math.Max(0, job.CargoMassKilograms - job.DeliveredCargoKilograms) :
+    public decimal ActiveCargoKilograms => ActiveJobs().Count>0 ? Math.Max(0, ActiveJobs().Sum(job=>job.CargoMassKilograms-job.DeliveredCargoKilograms)) :
         Current.Manifest is { State: not (LoadManifestState.Completed or LoadManifestState.Abandoned) } manifest ? manifest.CargoKilograms : 0;
     public bool CanAbandonPrototypeMission => Current.Manifest?.State is LoadManifestState.CommittedInTransit or LoadManifestState.PendingAbandonment;
     public bool CanApplyAuthorizedCargoAfterBoarding=>Current.Live is { } live&&Current.Manifest is { } manifest&&BoardedApplicationReason(live,manifest)=="Ready.";
@@ -94,7 +96,13 @@ public sealed class AircraftLoadingCoordinator
         Func<string> sdkRoot, Func<TrackingWorldState?> tracking, Func<CargoJobDisplay?> activeJob,
         AircraftLoadingOptions? options = null, Func<DateTimeOffset>? utcNow = null,
         Func<TimeSpan,CancellationToken,Task>? delay = null)
-    { this.store=store;this.simulator=simulator;this.flight=flight;this.sdkRoot=sdkRoot;this.tracking=tracking;this.activeJob=activeJob;
+        : this(store,simulator,flight,sdkRoot,tracking,()=>activeJob() is { } job?[job]:[],options,utcNow,delay) { }
+
+    public AircraftLoadingCoordinator(IAircraftLoadingStore store, IAircraftLoadingSimulator simulator, IFlightAttemptTracker flight,
+        Func<string> sdkRoot, Func<TrackingWorldState?> tracking, Func<IReadOnlyList<CargoJobDisplay>> selectedJobs,
+        AircraftLoadingOptions? options = null, Func<DateTimeOffset>? utcNow = null,
+        Func<TimeSpan,CancellationToken,Task>? delay = null)
+    { this.store=store;this.simulator=simulator;this.flight=flight;this.sdkRoot=sdkRoot;this.tracking=tracking;this.selectedJobs=selectedJobs;
       this.options=options??new();this.utcNow=utcNow??(()=>DateTimeOffset.UtcNow);this.delay=delay??Task.Delay;
       flight.Changed+=_=>RefreshEligibility(); }
 
@@ -212,12 +220,12 @@ public sealed class AircraftLoadingCoordinator
     public AircraftLoadPlan CreatePlan(IReadOnlyList<CargoStationAllocation> allocations)
     {
         var live=Current.Live??throw new InvalidOperationException("Read live aircraft loading data first.");
-        var job=activeJob(); var manifest=Current.Manifest;
+        var jobs=ActiveJobs();var job=jobs.FirstOrDefault(); var manifest=Current.Manifest;
         if(job is null&&manifest is null)throw new InvalidOperationException("No Frontier-managed cargo is aboard or available at this location.");
         var location=job is null?null:CurrentLocation(job,live.Position);
         var aboard=manifest?.CargoKilograms??job?.LoadedCargoKilograms??0;
-        var maximum=job is not null&&location==job.OriginLocationId&&job.ShipmentState is ShipmentState.Reserved or ShipmentState.Loaded
-            ? job.CargoMassKilograms-job.DeliveredCargoKilograms : aboard;
+        var maximum=jobs.Count>0&&location==job!.OriginLocationId&&jobs.All(x=>x.ShipmentState is ShipmentState.Reserved or ShipmentState.Loaded)
+            ? jobs.Sum(x=>x.CargoMassKilograms-x.DeliveredCargoKilograms) : aboard;
         var requested=allocations.Sum(x=>x.CargoKilograms);
         var plan=CanResetUncommittedIntent(job,manifest)&&requested<=.001m
             ? manifest!.CargoKilograms<=.001m ? PlanFromManifest(manifest) : AircraftLoadPlan.CreateUncommittedReset(live,manifest)
@@ -231,13 +239,13 @@ public sealed class AircraftLoadingCoordinator
         {
             var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();
             var access=Access(live,false);if(access!="Ready.")throw new InvalidOperationException(access);
-            var job=activeJob();var existing=Current.Manifest;
+            var jobs=ActiveJobs();var job=jobs.FirstOrDefault();var existing=Current.Manifest;
             var plan=Current.Plan??(existing is {State:LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied}
                 ? PlanFromManifest(existing) : throw new InvalidOperationException("Choose the desired Frontier cargo in each station before applying."));
             if(existing is null&&job?.ShipmentId is null)throw new InvalidOperationException("No active shipment cargo is available to load.");
             var recoveringIntent=existing?.State is LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied;
             var previouslyVerifiedSimulatorApplication=existing?.State==LoadManifestState.SimulatorApplied;
-            var currentCargo=recoveringIntent?(job?.LoadedCargoKilograms??existing!.PriorCargoKilograms):(existing?.CargoKilograms??job?.LoadedCargoKilograms??0);
+            var currentCargo=recoveringIntent?(jobs.Count>0?jobs.Sum(x=>x.LoadedCargoKilograms):existing!.PriorCargoKilograms):(existing?.CargoKilograms??jobs.Sum(x=>x.LoadedCargoKilograms));
             var delta=plan.CargoKilograms-currentCargo;
             var resettingUncommitted=CanResetUncommittedIntent(job,existing)&&plan.CargoKilograms<=.001m;
             if(Math.Abs(delta)<=.001m&&!resettingUncommitted)throw new InvalidOperationException("The requested Frontier cargo already matches the persistent aircraft state.");
@@ -252,12 +260,14 @@ public sealed class AircraftLoadingCoordinator
             var id=existing?.Id??"manifest-"+attemptId;
             var commandId=existing?.State is (LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied)&&existing.LastTransferCommandId is not null
                 ? existing.LastTransferCommandId : "cargo-transfer-"+Guid.NewGuid().ToString("N");
+            var shipmentLoads=AllocateShipmentLoads(existing,jobs,plan.CargoKilograms,location==job?.DestinationLocationId);
             var manifest=(existing??new CargoLoadManifest(id,job!.JobId,job.ShipmentId!,attemptId,LoadingIdentityExtensions.FromSnapshot(live),
                 AircraftLoadingMode.MsfsPayloadIntegration,plan.Stations,plan.CargoKilograms,LoadManifestState.PendingApplication,utcNow(),
                 VerificationToleranceKilograms:options.PayloadToleranceKilograms,LastValidPosition:live.Position)
-                {ShipmentQuantityKilograms=job.CargoMassKilograms,DeliveredCargoKilograms=job.DeliveredCargoKilograms,IsDesiredStateManifest=true}) with
+                {ShipmentQuantityKilograms=jobs.Sum(x=>x.CargoMassKilograms),DeliveredCargoKilograms=jobs.Sum(x=>x.DeliveredCargoKilograms),
+                    Shipments=shipmentLoads,IsDesiredStateManifest=true}) with
                 {Stations=plan.Stations,CargoKilograms=plan.CargoKilograms,PriorCargoKilograms=currentCargo,State=LoadManifestState.PendingApplication,
-                    LastTransferCommandId=commandId,SimulatorAppliedUtc=null,CompletedUtc=null,
+                    Shipments=shipmentLoads,LastTransferCommandId=commandId,SimulatorAppliedUtc=null,CompletedUtc=null,
                     VerificationResult=$"Desired-state intent persisted. Previous managed cargo {currentCargo:0.###} kg; requested {plan.CargoKilograms:0.###} kg."};
             await store.SaveManifestAsync(manifest,token); // durable intent precedes external write
             // The outside step proves access and durably records the exact plan. The physical
@@ -308,8 +318,8 @@ public sealed class AircraftLoadingCoordinator
             }
             manifest=manifest with {Stations=stations,State=LoadManifestState.SimulatorApplied,SimulatorAppliedUtc=utcNow(),VerificationResult=$"MSFS desired station weights remained present after {options.RetentionDelay.TotalSeconds:0.#} seconds; persistent cargo transfer pending.",LastReconciledUtc=utcNow(),Reconciliation=SimulatorReconciliationState.MatchesManifest};await store.SaveManifestAsync(manifest,token);
             if(job is not null)
-                await flight.ApplyCargoTransferAsync("transfer-"+commandId,commandId,plan.CargoKilograms,location,live.Position.Latitude,live.Position.Longitude,confirmForfeit,AircraftLoadingMode.MsfsPayloadIntegration,token);
-            var delivered=manifest.DeliveredCargoKilograms+(delta<0&&job is not null&&location==job.DestinationLocationId?-delta:0);
+                await flight.ApplyCargoTransfersAsync("transfer-"+commandId,commandId,shipmentLoads.ToDictionary(x=>x.JobId,x=>x.LoadedKilograms),location,live.Position.Latitude,live.Position.Longitude,confirmForfeit,AircraftLoadingMode.MsfsPayloadIntegration,token);
+            var delivered=shipmentLoads.Sum(x=>x.DeliveredKilograms);
             manifest=manifest with {State=flight.Current.Attempt?.State==FlightAttemptState.Delivered?LoadManifestState.Completed:LoadManifestState.CommittedInTransit,
                 CommittedUtc=utcNow(),CompletedUtc=flight.Current.Attempt?.State==FlightAttemptState.Delivered?utcNow():null,
                 DeliveredCargoKilograms=delivered,VerificationResult=$"Desired aircraft state verified and committed. Frontier cargo aboard: {plan.CargoKilograms:0.###} kg.",
@@ -328,6 +338,24 @@ public sealed class AircraftLoadingCoordinator
     private static AircraftLoadPlan PlanFromManifest(CargoLoadManifest manifest) => new(
         manifest.CargoKilograms, manifest.Stations, manifest.Stations.Sum(x => x.TargetKilograms), null, null,
         ["Recovered the exact persisted desired-state intent; MSFS read-back will be verified before persistent cargo changes are committed."]);
+
+    private static IReadOnlyList<ManifestShipmentCargo> AllocateShipmentLoads(CargoLoadManifest? existing,
+        IReadOnlyList<CargoJobDisplay> jobs,decimal requestedTotal,bool delivering)
+    {
+        var source=existing?.Shipments.Count>0?existing.Shipments:
+            jobs.Select(x=>new ManifestShipmentCargo(x.JobId,x.ShipmentId!,x.CargoMassKilograms,x.LoadedCargoKilograms,x.DeliveredCargoKilograms)).ToArray();
+        if(source.Count==0)throw new InvalidOperationException("No selected shipment cargo is available.");
+        var remaining=Math.Max(0,requestedTotal);var result=new List<ManifestShipmentCargo>();
+        foreach(var item in source)
+        {
+            var capacity=item.QuantityKilograms-item.DeliveredKilograms;
+            var loaded=Math.Min(capacity,remaining);remaining-=loaded;
+            var delivered=item.DeliveredKilograms+(delivering?Math.Max(0,item.LoadedKilograms-loaded):0);
+            result.Add(item with{LoadedKilograms=loaded,DeliveredKilograms=delivered});
+        }
+        if(remaining>.001m)throw new InvalidOperationException("Requested cargo exceeds the selected reserved shipments.");
+        return result;
+    }
 
     public async Task ApplySimulatedCargoAsync(CancellationToken token=default)
     {
@@ -451,7 +479,9 @@ public sealed class AircraftLoadingCoordinator
                 var job=activeJob()??throw new InvalidOperationException("The authorized shipment is no longer active; persistent intent was preserved.");
                 var commandId=manifest.LastTransferCommandId??throw new InvalidOperationException("The authorized load is missing its persistent transfer command ID.");
                 var location=CurrentLocation(job,read.Position);
-                await flight.ApplyCargoTransferAsync("transfer-"+commandId,commandId,manifest.CargoKilograms,location,read.Position.Latitude,read.Position.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration,token);
+                var shipmentLoads=manifest.Shipments.Count>0?manifest.Shipments:
+                    [new ManifestShipmentCargo(manifest.JobId,manifest.ShipmentId,manifest.ShipmentQuantityKilograms,manifest.CargoKilograms,manifest.DeliveredCargoKilograms)];
+                await flight.ApplyCargoTransfersAsync("transfer-"+commandId,commandId,shipmentLoads.ToDictionary(x=>x.JobId,x=>x.LoadedKilograms),location,read.Position.Latitude,read.Position.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration,token);
             }
             manifest=manifest with{Stations=stations,State=LoadManifestState.CommittedInTransit,SimulatorAppliedUtc=utcNow(),CommittedUtc=manifest.CommittedUtc??utcNow(),
                 Reconciliation=SimulatorReconciliationState.MatchesManifest,LastReconciledUtc=utcNow(),LastValidPosition=read.Position,

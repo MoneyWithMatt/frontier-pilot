@@ -1,5 +1,11 @@
 # Technical status — 2026-09-07
 
+## Reserved multi-job cargo flights — 2026-09-21
+
+Job acceptance now reserves contracts without immediately selecting a single active flight. The Jobs page separates Available, Reserved and History views. Several reserved jobs with identical origin and destination can be selected for one aircraft load; a return contract remains reserved until deliberately selected at its origin.
+
+The economy keeps each requirement, job, shipment, financial reservation and settlement independent. The loading manifest schema is version 5 and stores an aggregate physical station allocation with immutable per-shipment cargo legs. The flight tracker creates one persisted attempt and delivery proof per shipment, synchronizes their observations across the shared flight, and commits grouped departure and delivery changes atomically. Existing single-job manifests migrate to one leg. Release verification: 553 tests pass, the WPF loading-control smoke test passes, and the Release solution builds with zero warnings and errors. Live MSFS grouped-loading acceptance remains outstanding.
+
 ## Proven pipeline
 SDK 1.2.4: C:\Users\mattr\Desktop\MSFS 2024 SDK; Package Tool: Tools\bin\fspackagetool.exe. User MSFS2024_SDK points to this root; old machine-level SDK configuration is unsuitable. PackageBuilder supplies the verified root to child processes. Installed SimpleAirport remains untouched. See sample-build-report.md and toolchain-diagnosis.md.
 

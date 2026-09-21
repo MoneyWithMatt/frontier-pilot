@@ -403,8 +403,6 @@ public static class EconomyKernel
         if (acceptedUtc == default) throw new ArgumentOutOfRangeException(nameof(acceptedUtc));
         var job = world.Jobs.SingleOrDefault(x => x.Id == jobId) ?? throw new InvalidOperationException("Job does not exist.");
         if (job.State is EconomyJobState.Accepted or EconomyJobState.Completed) return new(world, false);
-        if (world.Jobs.Any(x => x.PlayerId == job.PlayerId && x.State == EconomyJobState.Accepted))
-            throw new InvalidOperationException("The employed player already has an active shipment.");
         var requirement = world.Requirements.Single(x => x.Id == job.RequirementId);
         if (requirement.State != TransportRequirementState.Open) throw new InvalidOperationException("Transport requirement is no longer open.");
         var playerContract = world.LogisticsContracts.SingleOrDefault(x => x.JobId == job.Id);
@@ -456,6 +454,32 @@ public static class EconomyKernel
             ? x with { State = ShipmentState.InTransit, CurrentLocationId = null, LoadedQuantity = loadedQuantity }
             : x).ToArray();
         return new((world with { Revision = world.Revision + 1, Shipments = shipments }).EnsureValid(), true);
+    }
+
+    public static EconomyTransition MarkShipmentsInTransit(EconomyWorld source, IReadOnlyList<string> jobIds)
+    {
+        if (jobIds is null || jobIds.Count == 0) throw new ArgumentException("At least one job is required.", nameof(jobIds));
+        if (jobIds.Distinct(StringComparer.Ordinal).Count() != jobIds.Count) throw new ArgumentException("Batch job IDs must be unique.", nameof(jobIds));
+        var current = source.EnsureValid(); var changed = false;
+        foreach (var jobId in jobIds)
+        {
+            var result = MarkShipmentInTransit(current, jobId); current = result.World; changed |= result.Changed;
+        }
+        return changed ? new((current with { Revision = source.Revision + 1 }).EnsureValid(), true) : new(source, false);
+    }
+
+    public static EconomyTransition ApplyCargoTransfers(EconomyWorld source, IReadOnlyList<ShipmentCargoTransferRequest> requests)
+    {
+        if (requests is null || requests.Count == 0) throw new ArgumentException("At least one cargo transfer is required.", nameof(requests));
+        if (requests.Select(x => x.JobId).Distinct(StringComparer.Ordinal).Count() != requests.Count ||
+            requests.Select(x => x.CommandId).Distinct(StringComparer.Ordinal).Count() != requests.Count)
+            throw new ArgumentException("Batch cargo transfers must name unique jobs and commands.", nameof(requests));
+        var current = source.EnsureValid(); var changed = false;
+        foreach (var request in requests)
+        {
+            var result = ApplyCargoTransfer(current, request); current = result.World; changed |= result.Changed;
+        }
+        return changed ? new((current with { Revision = source.Revision + 1 }).EnsureValid(), true) : new(source, false);
     }
 
     public static EconomyTransition ApplyCargoTransfer(EconomyWorld source, ShipmentCargoTransferRequest supplied)

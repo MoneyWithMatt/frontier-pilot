@@ -74,7 +74,7 @@ public sealed class EmployedCargoJobCycleTests : TemporaryDirectoryTest
         Assert.Null(snapshot.ActiveJob); Assert.Contains(snapshot.RecentCompletedJobs, x => x.JobId == "job-arandis-supplies-v0");
         Assert.Contains(snapshot.Offers, x => x.JobId == "job-arandis-supplies-v0-000002");
         var accepted = await reopened.AcceptAsync("job-uis-supplies-v0");
-        Assert.Equal("job-uis-supplies-v0", accepted.ActiveJob!.JobId);
+        Assert.Contains(accepted.ReservedJobs, x => x.JobId == "job-uis-supplies-v0");
     }
 
     [Fact]

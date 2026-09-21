@@ -102,7 +102,7 @@
 - **Implemented:** record manual MSFS inspection evidence independently from published coordinate provenance. A simulator verification flag does not claim that published coordinates were measured in MSFS.
 - **Implemented:** activate only Uis and Arandis; Eros stays the locked system gateway. Eligibility remains a catalogue lifecycle decision and contains no aircraft or weather judgment.
 - **Prototype only:** seed one configurable General Supplies offer per active destination with temporary kilogram and TPC values. No recurring need or mineral output exists.
-- **Implemented:** keep the employee UI behind a load/accept-only boundary. Acceptance uses Economy Core's atomic reservation and one-active-shipment guard. Delivery, customer inventory and ledger payment remain unreachable without later verified evidence.
+- **Implemented, superseded in part:** keep the employee UI behind a load/accept-only boundary. Acceptance uses Economy Core's atomic reservation. As of 2026-09-21, several jobs may be reserved; only explicitly selected same-route shipments share an aircraft load and verified flight. Delivery, customer inventory and ledger payment remain unreachable without tracker-created evidence.
 - **Superseded by Flight Attempt V0:** the flight-attempt and InTransit portions were deferred here; cancellation/release, expiry and permanent balance remain deferred.
 
 ## Flight Attempt V0 — 2026-09-10

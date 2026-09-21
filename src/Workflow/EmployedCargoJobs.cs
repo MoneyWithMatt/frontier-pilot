@@ -19,7 +19,7 @@ public sealed record CargoJobDisplay(string JobId, string Employer, string Origi
 }
 
 public sealed record EmployedCargoJobsSnapshot(IReadOnlyList<CargoJobDisplay> Offers, CargoJobDisplay? ActiveJob,
-    IReadOnlyList<CargoJobDisplay> RecentCompletedJobs,
+    IReadOnlyList<CargoJobDisplay> ReservedJobs, IReadOnlyList<CargoJobDisplay> RecentCompletedJobs,
     string StoragePath, int EconomyRevision, decimal PlayerBalance, string CurrencyCode);
 public sealed record FlightDiagnosticEventDisplay(string Utc, string Event, string Details);
 
@@ -72,9 +72,6 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
     {
         var current = RequirePrototype(await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ??
             throw new IOException("Economy state has not been initialized."));
-        var active = current.Jobs.SingleOrDefault(x => x.State == EconomyJobState.Accepted);
-        if (active is not null && active.Id != jobId)
-            throw new InvalidOperationException("Finish the active shipment before accepting another employed-cargo job.");
         _ = await economy.AcceptJobAsync(jobId, utcNow(), cancellationToken).ConfigureAwait(false);
         return Present(RequirePrototype(await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ??
             throw new IOException("Accepted economy state could not be reloaded.")));
@@ -85,8 +82,6 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
         world.EnsureValid();
         if (world.Id != EmployedCargoPrototype.WorldId)
             throw new IOException("Existing economy state belongs to another or unsupported economy world. File preserved.");
-        if (world.Jobs.Count(x => x.State == EconomyJobState.Accepted) > 1)
-            throw new IOException("Economy state contains multiple active employed shipments. File preserved.");
         return world;
     }
 
@@ -113,11 +108,14 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
                 if (operationNeedIds.Contains(requirement.NeedId)) return true;
                 return catalogue.Locations.SingleOrDefault(c => c.StableId == requirement.DestinationLocationId)?.CanGenerateOrdinaryLiveJobs == true; })
             .OrderBy(x => x.Id, StringComparer.Ordinal).Select(Display).ToArray();
-        var currentJob = world.Jobs.SingleOrDefault(x => x.State == EconomyJobState.Accepted);
+        var reserved = world.Jobs.Where(x => x.State == EconomyJobState.Accepted).Select(Display)
+            .OrderByDescending(x => x.ShipmentState is ShipmentState.Loaded or ShipmentState.InTransit)
+            .ThenBy(x => x.JobId, StringComparer.Ordinal).ToArray();
+        var currentJob = reserved.FirstOrDefault(x => x.ShipmentState is ShipmentState.Loaded or ShipmentState.InTransit);
         var completed = world.Jobs.Where(x => x.State == EconomyJobState.Completed).OrderByDescending(x => x.CompletedUtc)
             .ThenBy(x => x.Id, StringComparer.Ordinal).Take(12).Select(Display).ToArray();
         var player = world.Players.Single(x => x.Id == EmployedCargoPrototype.PlayerId);
-        return new(offers, currentJob is null ? null : Display(currentJob), completed, StoragePath, world.Revision, player.CachedBalance, player.CurrencyCode);
+        return new(offers, currentJob, reserved, completed, StoragePath, world.Revision, player.CachedBalance, player.CurrencyCode);
 
         (string Display, string Purpose, string Known, double Latitude, double Longitude) Place(string id)
         {
@@ -170,7 +168,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     private bool busy;
     private string status = "Loading employed cargo jobs…", error = "";
     private IReadOnlyList<CargoJobDisplay> offers = [];
-    private IReadOnlyList<CargoJobDisplay> completedJobs = [];
+    private IReadOnlyList<CargoJobDisplay> reservedJobs = [], completedJobs = [], loadingJobs = [];
     private CargoJobDisplay? selectedOffer, activeJob;
     private decimal playerBalance;
     private string balanceCurrency = EmployedCargoPrototype.Currency;
@@ -184,15 +182,20 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     {
         this.jobs = jobs; this.flight = flight; context = SynchronizationContext.Current; flight.Changed += FlightChanged;
         RefreshCommand = new(() => _ = InitializeAsync(), () => !busy);
-        AcceptCommand = new(() => _ = AcceptSelectedAsync(), () => !busy && selectedOffer is not null && !HasActiveJob);
+        AcceptCommand = new(() => _ = AcceptSelectedAsync(), () => !busy && selectedOffer is not null);
         LoadCargoCommand = new(() => _ = LoadCargoAsync(), () => !busy && flight.Current.CanLoadCargo);
         UnloadCargoCommand = new(() => _ = UnloadCargoAsync(), () => !busy && flight.Current.CanUnloadCargo);
     }
     public IReadOnlyList<CargoJobDisplay> Offers { get => offers; private set { offers = value; Changed(); } }
+    public IReadOnlyList<CargoJobDisplay> ReservedJobs { get => reservedJobs; private set { reservedJobs = value; Changed(); Changed(nameof(ReservedSummary)); } }
+    public IReadOnlyList<CargoJobDisplay> LoadingJobs { get => loadingJobs; private set { loadingJobs = value; Changed(); Changed(nameof(LoadingSelectionSummary)); } }
     public IReadOnlyList<CargoJobDisplay> CompletedJobs { get => completedJobs; private set { completedJobs = value; Changed(); } }
     public CargoJobDisplay? SelectedOffer { get => selectedOffer; set { selectedOffer = value; Changed(); Changed(nameof(SelectedPurpose)); Changed(nameof(SelectedDestinationInformation)); AcceptCommand.Refresh(); } }
     public CargoJobDisplay? ActiveJob { get => activeJob; private set { activeJob = value; Changed(); Changed(nameof(ActiveRoute)); Changed(nameof(ActiveCargo)); Changed(nameof(ActiveShipment)); AcceptCommand.Refresh(); } }
     public bool HasActiveJob => ActiveJob?.ShipmentState is ShipmentState.Reserved or ShipmentState.Loaded or ShipmentState.InTransit;
+    public string ReservedSummary => ReservedJobs.Count == 0 ? "No accepted jobs are reserved." : $"{ReservedJobs.Count} accepted job{(ReservedJobs.Count == 1 ? "" : "s")} reserved.";
+    public string LoadingSelectionSummary => LoadingJobs.Count == 0 ? "Select one or more reserved jobs with the same route." :
+        $"Preparing {LoadingJobs.Count} job{(LoadingJobs.Count == 1 ? "" : "s")} · {LoadingJobs.Sum(x => x.CargoMassKilograms - x.DeliveredCargoKilograms):0.##} kg · {LoadingJobs[0].Route}";
     public bool IsBusy { get => busy; private set { busy = value; Changed(); RefreshCommands(); } }
     public string Status { get => status; private set { status = value; Changed(); } }
     public string Error { get => error; private set { error = value; Changed(); } }
@@ -234,9 +237,27 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     }
     public async Task AcceptSelectedAsync(CancellationToken cancellationToken = default)
     {
-        var selected = SelectedOffer; if (selected is null || HasActiveJob) return;
-        await RunAsync(() => jobs.AcceptAsync(selected.JobId, cancellationToken), $"Shipment reserved. Travel to {selected.Origin} for simulated loading.");
+        var selected = SelectedOffer; if (selected is null) return;
+        await RunAsync(() => jobs.AcceptAsync(selected.JobId, cancellationToken), $"Shipment reserved. It is now available on Reserved jobs.");
         if (Error == "") try { await flight.RefreshEconomyAsync(cancellationToken); } catch (Exception error) { ReportFlightError(error); }
+    }
+    public async Task PrepareReservedJobsAsync(IReadOnlyList<CargoJobDisplay> selected, CancellationToken cancellationToken = default)
+    {
+        if (IsBusy) return;
+        Error = "";
+        try
+        {
+            var jobs = selected.DistinctBy(x => x.JobId).ToArray();
+            if (jobs.Length == 0) throw new InvalidOperationException("Select at least one reserved job to prepare.");
+            if (jobs.Any(x => x.ShipmentState is not (ShipmentState.Reserved or ShipmentState.Loaded)))
+                throw new InvalidOperationException("Only reserved or pre-departure loaded jobs can be prepared.");
+            if (jobs.Select(x => (x.OriginLocationId, x.DestinationLocationId)).Distinct().Count() != 1)
+                throw new InvalidOperationException("Jobs loaded on the same flight must have the same origin and destination.");
+            LoadingJobs = jobs;
+            await flight.SelectJobsAsync(jobs.Select(x => x.JobId).ToArray(), cancellationToken);
+            Status = LoadingSelectionSummary;
+        }
+        catch (Exception error) { ReportFlightError(error); }
     }
     public async Task ObserveTelemetryAsync(AircraftTelemetry? telemetry, CancellationToken cancellationToken = default)
     { try { await flight.ObserveAsync(telemetry, cancellationToken); } catch (Exception error) { ReportFlightError(error); } }
@@ -261,7 +282,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
         {
             await action(); await ApplySnapshotAsync(await jobs.LoadAsync(cancellationToken));
             Status = flight.Current.Stage == "Delivered and paid" ? "Delivery completed and payment recorded. A replacement offer is available." :
-                HasActiveJob ? "One employed shipment is active. Further acceptance is locked." : "Choose one employed cargo offer.";
+                ReservedJobs.Count > 0 ? "Accepted jobs are reserved. Choose them on Reserved jobs when you are ready to load." : "Choose an employed cargo offer.";
         }
         catch (Exception error) { ReportFlightError(error); }
         finally { IsBusy = false; }
@@ -272,7 +293,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
         try
         {
             var snapshot = await action(); await ApplySnapshotAsync(snapshot);
-            Status = HasActiveJob ? "One employed shipment is active. Further acceptance is locked." : success;
+            Status = ReservedJobs.Count > 0 ? "Accepted jobs are reserved. You may accept more or prepare compatible jobs for loading." : success;
             Changed(nameof(HasActiveJob)); Changed(nameof(ActiveRoute)); Changed(nameof(ActiveCargo)); Changed(nameof(ActiveShipment));
         }
         catch (Exception exception) { Error = exception.Message; Status = "Jobs could not be loaded or changed. Existing economy data was preserved."; }
@@ -280,7 +301,14 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     }
     private Task ApplySnapshotAsync(EmployedCargoJobsSnapshot snapshot)
     {
-        Offers = snapshot.Offers; ActiveJob = snapshot.ActiveJob; CompletedJobs = snapshot.RecentCompletedJobs;
+        Offers = snapshot.Offers; ActiveJob = snapshot.ActiveJob; ReservedJobs = snapshot.ReservedJobs; CompletedJobs = snapshot.RecentCompletedJobs;
+        if (LoadingJobs.Count > 0) LoadingJobs = LoadingJobs.Select(x => ReservedJobs.SingleOrDefault(r => r.JobId == x.JobId)).Where(x => x is not null).Cast<CargoJobDisplay>().ToArray();
+        if (LoadingJobs.Count == 0)
+        {
+            var aboard = ReservedJobs.Where(x => x.ShipmentState is ShipmentState.Loaded or ShipmentState.InTransit).ToArray();
+            if (aboard.Length > 0)
+                LoadingJobs = aboard.Where(x => x.OriginLocationId == aboard[0].OriginLocationId && x.DestinationLocationId == aboard[0].DestinationLocationId).ToArray();
+        }
         playerBalance = snapshot.PlayerBalance; balanceCurrency = snapshot.CurrencyCode; Changed(nameof(Balance));
         if (SelectedOffer is not null) SelectedOffer = Offers.SingleOrDefault(x => x.JobId == SelectedOffer.JobId);
         return Task.CompletedTask;

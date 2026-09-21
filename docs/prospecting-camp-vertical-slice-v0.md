@@ -24,7 +24,7 @@ For schema-3 worlds containing sites, every cached inventory position must equal
 
 ## Logistics and flight lifecycle
 
-Operation maintenance is part of the same idempotent board-maintenance path used by employed cargo. At 30 kg rations or below it creates at most one outstanding Eros-to-camp ration requirement and introduces only the exact required Eros stock through audited System Gateway Supply. At 40 kg unreserved Raw Minerals or more it creates at most one outstanding camp-to-Eros shipment. Acceptance uses the existing global one-active-shipment rule.
+Operation maintenance is part of the same idempotent board-maintenance path used by employed cargo. At 30 kg rations or below it creates at most one outstanding Eros-to-camp ration requirement and introduces only the exact required Eros stock through audited System Gateway Supply. At 40 kg unreserved Raw Minerals or more it creates at most one outstanding camp-to-Eros shipment. The original global one-active-shipment rule was superseded on 2026-09-21: acceptance now reserves jobs, and only explicitly selected same-route shipments share an aircraft load and flight.
 
 The Flight Attempt thresholds and evidence rules are unchanged: 1.5 NM origin/destination radius, at most 5 kt for ten continuous seconds, trustworthy aircraft identity, persisted airborne observation, post-departure movement, 10 NM maximum origin distance and explicit unload. Coordinate resolution now accepts either an authored Namibia catalogue location or the persisted anchor of a player-created economic site. It no longer assumes Eros is every job origin. `FlightAttemptTracker` remains the only delivery-evidence producer.
 

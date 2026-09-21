@@ -146,22 +146,25 @@ public sealed class ProspectingCampKernelTests : TemporaryDirectoryTest
     }
 
     [Fact]
-    public void ExistingErosOffersAndSingleActiveShipmentRuleRemain()
+    public void ExistingErosOffersCanBeReservedTogether()
     {
         var world = Founded(); Assert.Contains(world.Jobs, x => x.Id == "job-uis-supplies-v0"); Assert.Contains(world.Jobs, x => x.Id == "job-arandis-supplies-v0");
         world = EconomyKernel.AcceptJob(world, "job-arandis-supplies-v0", T0.AddHours(1)).World;
         var other = world.Jobs.Single(x => x.Id == "job-uis-supplies-v0-000002");
-        Assert.Throws<InvalidOperationException>(() => EconomyKernel.AcceptJob(world, other.Id, T0.AddHours(2)));
+        world = EconomyKernel.AcceptJob(world, other.Id, T0.AddHours(2)).World;
+        Assert.Equal(2, world.Jobs.Count(x => x.State == EconomyJobState.Accepted));
     }
 
     [Fact]
-    public void AcceptingAnOperationJobLocksEveryOtherOffer()
+    public void OperationAndSystemJobsCanBeReservedTogether()
     {
         var world = Founded(); var operation = world.Operations.Single();
         for (var day = 1; day <= 2; day++) world = ProspectingCampKernel.AdvanceDay(world, operation.Id, "lock-day-" + day, T0.AddDays(day)).World;
         var operationJob = JobForNeed(world, ProspectingCampKernel.OutboundNeed(operation.Id));
         world = EconomyKernel.AcceptJob(world, operationJob.Id, T0.AddDays(3)).World;
-        Assert.Throws<InvalidOperationException>(() => EconomyKernel.AcceptJob(world, "job-arandis-supplies-v0", T0.AddDays(3).AddMinutes(1)));
+        world = EconomyKernel.AcceptJob(world, "job-arandis-supplies-v0", T0.AddDays(3).AddMinutes(1)).World;
+        Assert.Contains(world.Jobs, x => x.Id == operationJob.Id && x.State == EconomyJobState.Accepted);
+        Assert.Contains(world.Jobs, x => x.Id == "job-arandis-supplies-v0" && x.State == EconomyJobState.Accepted);
     }
 
     [Fact]

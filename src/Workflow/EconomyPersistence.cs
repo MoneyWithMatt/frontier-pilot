@@ -189,10 +189,14 @@ public sealed class EconomyService(IEconomyStateStore store)
         store.ApplyAsync(world => EconomyKernel.AcceptJob(world, jobId, acceptedUtc), cancellationToken);
     public Task<EconomyTransition> MarkShipmentInTransitAsync(string jobId, CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => EconomyKernel.MarkShipmentInTransit(world, jobId), cancellationToken);
+    public Task<EconomyTransition> MarkShipmentsInTransitAsync(IReadOnlyList<string> jobIds, CancellationToken cancellationToken = default) =>
+        store.ApplyAsync(world => EconomyKernel.MarkShipmentsInTransit(world, jobIds), cancellationToken);
     public Task<EconomyTransition> MarkShipmentLoadedAsync(string jobId, CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => EconomyKernel.MarkShipmentLoaded(world, jobId), cancellationToken);
     public Task<EconomyTransition> ApplyCargoTransferAsync(ShipmentCargoTransferRequest request, CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => EconomyKernel.ApplyCargoTransfer(world, request), cancellationToken);
+    public Task<EconomyTransition> ApplyCargoTransfersAsync(IReadOnlyList<ShipmentCargoTransferRequest> requests, CancellationToken cancellationToken = default) =>
+        store.ApplyAsync(world => EconomyKernel.ApplyCargoTransfers(world, requests), cancellationToken);
     public Task<EconomyTransition> AbandonIncompletePrototypeShipmentAsync(string jobId, DateTimeOffset cancelledUtc, CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => EconomyKernel.AbandonIncompletePrototypeShipment(world, jobId, cancelledUtc), cancellationToken);
     public Task<EconomyTransition> CompleteDeliveryAsync(VerifiedDeliveryEvidence evidence, CancellationToken cancellationToken = default) =>

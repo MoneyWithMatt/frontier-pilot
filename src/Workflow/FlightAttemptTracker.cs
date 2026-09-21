@@ -54,6 +54,7 @@ public interface IFlightAttemptTracker
     event Action<FlightAttemptStatus>? Changed;
     Task InitializeAsync(CancellationToken cancellationToken = default);
     Task RefreshEconomyAsync(CancellationToken cancellationToken = default);
+    Task SelectJobsAsync(IReadOnlyList<string> jobIds, CancellationToken cancellationToken = default) => Task.CompletedTask;
     Task ObserveAsync(AircraftTelemetry? telemetry, CancellationToken cancellationToken = default);
     Task LoadCargoAsync(CancellationToken cancellationToken = default);
     Task LoadCargoAsync(AircraftLoadingMode mode, CancellationToken cancellationToken = default) => LoadCargoAsync(cancellationToken);
@@ -62,6 +63,12 @@ public interface IFlightAttemptTracker
         string? currentLocationId, double latitude, double longitude, bool confirmForfeit,
         AircraftLoadingMode mode, CancellationToken cancellationToken = default) =>
         desiredLoadedKilograms > 0 ? LoadCargoAsync(mode, cancellationToken) : UnloadCargoAsync(cancellationToken);
+    Task ApplyCargoTransfersAsync(string transferId, string commandId, IReadOnlyDictionary<string, decimal> desiredLoadedByJob,
+        string? currentLocationId, double latitude, double longitude, bool confirmForfeit,
+        AircraftLoadingMode mode, CancellationToken cancellationToken = default) =>
+        desiredLoadedByJob.Count == 1
+            ? ApplyCargoTransferAsync(transferId, commandId, desiredLoadedByJob.Single().Value, currentLocationId, latitude, longitude, confirmForfeit, mode, cancellationToken)
+            : Task.FromException(new NotSupportedException("Batch cargo transfer is unavailable."));
     Task<string> ExportDeveloperDiagnosticAsync(CancellationToken cancellationToken = default);
     Task<string> CreateDiagnosticSummaryAsync(CancellationToken cancellationToken = default);
     Task ResetIncompletePrototypeProgressAsync(CancellationToken cancellationToken = default);
@@ -89,6 +96,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
     private IReadOnlyList<FlightDiagnosticEvent> timeline = [];
     private string diagnosticWarning = "";
     private string observationReason = "SimConnect is disconnected.";
+    private IReadOnlyList<string> selectedJobIds = [];
     public string StoragePath => store.StoragePath;
     public FlightAttemptStatus Current { get; private set; } = FlightAttemptStatus.Empty();
     public event Action<FlightAttemptStatus>? Changed;
@@ -109,6 +117,28 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default) => await RefreshEconomyAsync(cancellationToken);
+
+    public async Task SelectJobsAsync(IReadOnlyList<string> jobIds, CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (world is null) world = await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ?? throw new IOException("Economy state is unavailable.");
+            var distinct = jobIds.Distinct(StringComparer.Ordinal).ToArray();
+            if (distinct.Length == 0) throw new InvalidOperationException("Select at least one reserved job.");
+            var jobs = distinct.Select(id => world.Jobs.SingleOrDefault(x => x.Id == id) ?? throw new InvalidOperationException("Selected job does not exist.")).ToArray();
+            if (jobs.Any(x => x.State != EconomyJobState.Accepted)) throw new InvalidOperationException("Selected jobs must be accepted and reserved.");
+            var routes = jobs.Select(x => world.Requirements.Single(r => r.Id == x.RequirementId)).Select(x => (x.OriginLocationId, x.DestinationLocationId)).Distinct().ToArray();
+            if (routes.Length != 1) throw new InvalidOperationException("Jobs prepared together must have the same origin and destination.");
+            var stored = await store.LoadAsync(cancellationToken).ConfigureAwait(false);
+            var underway = stored.Where(x => world.Jobs.SingleOrDefault(j => j.Id == x.JobId)?.State == EconomyJobState.Accepted &&
+                world.Shipments.Single(s => s.Id == x.ShipmentId).State is ShipmentState.Loaded or ShipmentState.InTransit).ToArray();
+            if (underway.Length > 0 && underway.Any(x => x.OriginLocationId != routes[0].OriginLocationId || x.DestinationLocationId != routes[0].DestinationLocationId))
+                throw new InvalidOperationException("Finish the cargo already aboard before preparing a different route.");
+            selectedJobIds = distinct; attempt = SelectAttempt(world, stored); stationarySince = null; UpdateStatus();
+        }
+        finally { gate.Release(); }
+    }
 
     public async Task RefreshEconomyAsync(CancellationToken cancellationToken = default)
     {
@@ -285,13 +315,17 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 else observationReason = $"Stopped near destination for {(sample.ObservedUtc - stationarySince.Value).TotalSeconds:F1} of {options.RequiredStationaryDuration.TotalSeconds:F0} seconds.";
             }
             else if (attempt.DeliveryProof is null) await InterruptQualificationAsync("Required persisted flight evidence is incomplete.", sample.ObservedUtc, cancellationToken).ConfigureAwait(false);
-            if (persist) await store.SaveAsync(attempt, cancellationToken).ConfigureAwait(false);
+            if (persist) await SaveBatchProgressAsync(attempt, cancellationToken).ConfigureAwait(false);
             if (attempt.TransitBeginsAtDeparture && attempt.OriginDepartedUtc is { } departureUtc &&
                 world.Shipments.Single(x => x.Id == attempt.ShipmentId).State == ShipmentState.Loaded)
             {
-                world = (await economy.MarkShipmentInTransitAsync(attempt.JobId, cancellationToken).ConfigureAwait(false)).World;
+                var batchJobs = (await BatchAttemptsAsync(cancellationToken).ConfigureAwait(false))
+                    .Where(x => world.Jobs.Single(j => j.Id == x.JobId).State == EconomyJobState.Accepted &&
+                        world.Shipments.Single(s => s.Id == x.ShipmentId).State == ShipmentState.Loaded)
+                    .Select(x => x.JobId).ToArray();
+                world = (await economy.MarkShipmentsInTransitAsync(batchJobs, cancellationToken).ConfigureAwait(false)).World;
                 await RecordAsync(FlightDiagnosticEventType.ShipmentEnteredInTransit, departureUtc, "in-transit", cancellationToken,
-                    ("reason", "Airborne outside the origin airport radius.")).ConfigureAwait(false);
+                    ("reason", $"Airborne outside the origin airport radius; {batchJobs.Length} shipment(s) entered transit.")).ConfigureAwait(false);
             }
             if (recordedAirborne) await RecordAsync(FlightDiagnosticEventType.AirborneEvidenceRecorded, sample.ObservedUtc, "airborne", cancellationToken,
                 ("onGround", "false")).ConfigureAwait(false);
@@ -419,6 +453,84 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 _ when updatedShipment.DeliveredQuantity > 0 => $"Partial delivery recorded: {updatedShipment.DeliveredQuantity:0.###} of {updatedShipment.Quantity:0.###} kg.",
                 _ => $"Aircraft now carries {updatedShipment.LoadedQuantity:0.###} kg of this reserved shipment."
             };
+            UpdateStatus();
+        }
+        finally { gate.Release(); }
+    }
+
+    public async Task ApplyCargoTransfersAsync(string transferId, string commandId, IReadOnlyDictionary<string, decimal> desiredLoadedByJob,
+        string? currentLocationId, double latitude, double longitude, bool confirmForfeit,
+        AircraftLoadingMode mode, CancellationToken cancellationToken = default)
+    {
+        if (desiredLoadedByJob.Count == 1)
+        {
+            var pair = desiredLoadedByJob.Single();
+            await SelectJobsAsync([pair.Key], cancellationToken).ConfigureAwait(false);
+            await ApplyCargoTransferAsync(transferId, commandId, pair.Value, currentLocationId, latitude, longitude, confirmForfeit, mode, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (world is null) throw new InvalidOperationException("Economy state is unavailable.");
+            var jobs = desiredLoadedByJob.Keys.Select(id => world.Jobs.SingleOrDefault(x => x.Id == id) ?? throw new InvalidOperationException("Selected cargo job does not exist.")).ToArray();
+            if (jobs.Any(x => x.State != EconomyJobState.Accepted)) throw new InvalidOperationException("Every batch shipment must remain accepted.");
+            var requirements = jobs.Select(x => world.Requirements.Single(r => r.Id == x.RequirementId)).ToArray();
+            if (requirements.Select(x => (x.OriginLocationId, x.DestinationLocationId)).Distinct().Count() != 1)
+                throw new InvalidOperationException("Cargo sharing one flight must have the same origin and destination.");
+            var shipments = jobs.Select(x => world.Shipments.Single(s => s.Id == x.ShipmentId)).ToArray();
+            var loading = jobs.Select((job, index) => desiredLoadedByJob[job.Id] > shipments[index].LoadedQuantity + .001m).Any(x => x);
+            var stored = await store.LoadAsync(cancellationToken).ConfigureAwait(false);
+            var primary = attempt;
+            if (loading)
+            {
+                UpdateStatus(); if (!Current.CanLoadCargo || latest is null) throw new InvalidOperationException(Current.Reason);
+                var identity = FlightAircraftIdentity.From(latest); var loadedPosition = FlightPosition.From(latest);
+                var origin = Coordinates(requirements[0].OriginLocationId); var destination = Coordinates(requirements[0].DestinationLocationId);
+                var directNm = WorldTracking.DistanceMeters(origin.Latitude, origin.Longitude, destination.Latitude, destination.Longitude) / MetersPerNauticalMile;
+                foreach (var job in jobs.Where(x => desiredLoadedByJob[x.Id] > .001m))
+                {
+                    var existingAttempt = stored.SingleOrDefault(x => x.JobId == job.Id);
+                    if (existingAttempt is null)
+                    {
+                        existingAttempt = new FlightAttempt(FlightAttemptIds.Attempt(job.ShipmentId), job.Id, job.ShipmentId,
+                            requirements[Array.IndexOf(jobs, job)].OriginLocationId, requirements[Array.IndexOf(jobs, job)].DestinationLocationId,
+                            FlightAttemptState.CargoLoaded, primary?.LoadedUtc ?? latest.ObservedUtc, identity,
+                            primary?.LoadedPosition ?? loadedPosition, RequiredMaximumDistanceNauticalMiles: primary?.RequiredMaximumDistanceNauticalMiles ?? RequiredDistanceForRoute(directNm),
+                            TransitBeginsAtDeparture: true).EnsureValid();
+                        await store.SaveAsync(existingAttempt, cancellationToken).ConfigureAwait(false);
+                    }
+                    primary ??= existingAttempt;
+                }
+                attempt = primary;
+            }
+            var attempts = await store.LoadAsync(cancellationToken).ConfigureAwait(false);
+            var requests = jobs.Select((job, index) =>
+            {
+                var batchAttempt = attempts.SingleOrDefault(x => x.JobId == job.Id);
+                VerifiedDeliveryEvidence? evidence = null;
+                if (batchAttempt?.DeliveryProof is { } proof)
+                    evidence = new VerifiedDeliveryEvidence(proof.EvidenceId, "frontier-flight-attempt-v0", job.Id, job.ShipmentId,
+                        batchAttempt.OriginLocationId, batchAttempt.DestinationLocationId, proof.ReadyUtc,
+                        $"Persisted shared-flight proof: airborne {proof.FirstAirborneUtc:O}; movement {proof.MovementObservedUtc:O}; maximum origin distance {proof.MaximumDistanceFromOriginNauticalMiles:F2} NM.").EnsureValid();
+                return new ShipmentCargoTransferRequest(transferId + "-" + index, commandId + "-" + index, job.Id,
+                    desiredLoadedByJob[job.Id], currentLocationId, latitude, longitude, utcNow(), confirmForfeit, evidence);
+            }).ToArray();
+            var transition = await economy.ApplyCargoTransfersAsync(requests, cancellationToken).ConfigureAwait(false); world = transition.World;
+            foreach (var batchAttempt in attempts.Where(x => desiredLoadedByJob.ContainsKey(x.JobId)))
+            {
+                var updatedJob = world.Jobs.Single(x => x.Id == batchAttempt.JobId);
+                if (updatedJob.State == EconomyJobState.Completed && batchAttempt.State != FlightAttemptState.Delivered)
+                {
+                    var deliveredAttempt=batchAttempt with { State = FlightAttemptState.Delivered, DeliveredUtc = batchAttempt.DeliveryProof!.ReadyUtc };
+                    await store.SaveAsync(deliveredAttempt, cancellationToken).ConfigureAwait(false);
+                    if(attempt?.Id==deliveredAttempt.Id)attempt=deliveredAttempt;
+                }
+            }
+            var remaining = jobs.Sum(x => world.Shipments.Single(s => s.Id == x.ShipmentId).LoadedQuantity);
+            observationReason = jobs.All(x => world.Jobs.Single(j => j.Id == x.Id).State == EconomyJobState.Completed)
+                ? $"{jobs.Length} shipments delivered and settled exactly once."
+                : $"Aircraft now carries {remaining:0.###} kg across {jobs.Length} reserved shipments.";
             UpdateStatus();
         }
         finally { gate.Release(); }
@@ -676,10 +788,14 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         SetStatus(new(stage, reason, connected, canLoadMore, false, originDistance, destinationDistance, attempt, balance, currency));
     }
 
-    private static FlightAttempt? SelectAttempt(EconomyWorld? world, IReadOnlyList<FlightAttempt> attempts)
+    private FlightAttempt? SelectAttempt(EconomyWorld? world, IReadOnlyList<FlightAttempt> attempts)
     {
         if (world is null) return null;
-        var current = world.Jobs.Where(x => x.State == EconomyJobState.Accepted).SingleOrDefault() ??
+        var accepted = world.Jobs.Where(x => x.State == EconomyJobState.Accepted).ToArray();
+        var current = selectedJobIds.Select(id => accepted.SingleOrDefault(x => x.Id == id)).FirstOrDefault(x => x is not null) ??
+            accepted.Where(x => world.Shipments.Single(s => s.Id == x.ShipmentId).State is ShipmentState.Loaded or ShipmentState.InTransit)
+                .OrderBy(x => x.AcceptedUtc).ThenBy(x => x.Id, StringComparer.Ordinal).FirstOrDefault() ??
+            (accepted.Length == 1 ? accepted[0] : null) ??
             world.Jobs.Where(x => x.State == EconomyJobState.Completed).OrderByDescending(x => x.CompletedUtc).FirstOrDefault();
         if (current is null) return null;
         var byJob = attempts.SingleOrDefault(x => x.JobId == current.Id);
@@ -688,7 +804,42 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             throw new IOException("Flight-attempt job and shipment identity are inconsistent. File preserved.");
         return byJob;
     }
-    private static EconomyJob? ActiveJob(EconomyWorld world) => world.Jobs.SingleOrDefault(x => x.State == EconomyJobState.Accepted);
+    private EconomyJob? ActiveJob(EconomyWorld world)
+    {
+        if (attempt is not null)
+        {
+            var attemptJob = world.Jobs.SingleOrDefault(x => x.Id == attempt.JobId);
+            if (attemptJob is not null) return attemptJob;
+        }
+        var accepted = world.Jobs.Where(x => x.State == EconomyJobState.Accepted).ToArray();
+        return selectedJobIds.Select(id => accepted.SingleOrDefault(x => x.Id == id)).FirstOrDefault(x => x is not null) ??
+            accepted.Where(x => world.Shipments.Single(s => s.Id == x.ShipmentId).State is ShipmentState.Loaded or ShipmentState.InTransit)
+                .OrderBy(x => x.AcceptedUtc).ThenBy(x => x.Id, StringComparer.Ordinal).FirstOrDefault() ??
+            (accepted.Length == 1 ? accepted[0] : null);
+    }
+    private async Task<IReadOnlyList<FlightAttempt>> BatchAttemptsAsync(CancellationToken cancellationToken)
+    {
+        if (attempt is null) return [];
+        var all = await store.LoadAsync(cancellationToken).ConfigureAwait(false);
+        return all.Where(x => x.LoadedUtc == attempt.LoadedUtc && x.OriginLocationId == attempt.OriginLocationId &&
+            x.DestinationLocationId == attempt.DestinationLocationId && x.Aircraft == attempt.Aircraft).OrderBy(x => x.JobId, StringComparer.Ordinal).ToArray();
+    }
+    private async Task SaveBatchProgressAsync(FlightAttempt primary, CancellationToken cancellationToken)
+    {
+        attempt = primary;
+        var batch = await BatchAttemptsAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var item in batch)
+        {
+            var proof = primary.DeliveryProof is null ? null : new FlightDeliveryProof(FlightAttemptIds.DeliveryEvidence(item.ShipmentId),
+                primary.DeliveryProof.ReadyUtc, primary.DeliveryProof.ArrivalPosition, primary.DeliveryProof.FirstAirborneUtc,
+                primary.DeliveryProof.MovementObservedUtc, primary.DeliveryProof.MaximumDistanceFromOriginNauticalMiles).EnsureValid();
+            var synchronized = item with { State = primary.State, FirstAirborneUtc = primary.FirstAirborneUtc,
+                MovementObservedUtc = primary.MovementObservedUtc, MaximumDistanceFromOriginNauticalMiles = primary.MaximumDistanceFromOriginNauticalMiles,
+                MaximumDistanceObservedUtc = primary.MaximumDistanceObservedUtc, DeliveryProof = proof,
+                OriginDepartedUtc = primary.OriginDepartedUtc };
+            await store.SaveAsync(synchronized, cancellationToken).ConfigureAwait(false);
+        }
+    }
     private static bool TryIdentity(AircraftTelemetry sample, out FlightAircraftIdentity? identity, out string error)
     {
         try { identity = FlightAircraftIdentity.From(sample); error = ""; return true; }
