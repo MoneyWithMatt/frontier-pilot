@@ -164,7 +164,9 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
                 var manifestStation=value.Manifest?.Stations.SingleOrDefault(x=>x.StationIndex==p.Index);
                 var cargoIsPresent=value.Manifest?.Reconciliation==SimulatorReconciliationState.MatchesManifest&&
                     value.Manifest.State is (LoadManifestState.CommittedInTransit or LoadManifestState.PendingUnload or LoadManifestState.PendingAbandonment);
-                var displayedCurrent=cargoIsPresent&&manifestStation is not null?Math.Max(0,p.CurrentWeightKilograms-manifestStation.FrontierCargoKilograms):p.CurrentWeightKilograms;
+                var pendingCargoPresent=value.Manifest?.State is LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied &&
+                    manifestStation is not null&&Math.Abs(p.CurrentWeightKilograms-manifestStation.TargetKilograms)<=value.Manifest.VerificationToleranceKilograms;
+                var displayedCurrent=(cargoIsPresent||pendingCargoPresent)&&manifestStation is not null?Math.Max(0,p.CurrentWeightKilograms-manifestStation.FrontierCargoKilograms):p.CurrentWeightKilograms;
                 var displayedReading=p with{CurrentWeightKilograms=displayedCurrent};
                 var maximum=Math.Max(0,Math.Min(ActiveCargo,p.AuthoritativeMaximumKilograms is { } limit?limit-displayedCurrent:ActiveCargo));
                 var row=PayloadStations.SingleOrDefault(x=>x.Index==p.Index);

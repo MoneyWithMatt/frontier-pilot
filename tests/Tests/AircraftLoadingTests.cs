@@ -591,6 +591,35 @@ public sealed class AircraftLoadingTests
         Assert.Equal(0,c.Current.Manifest!.CargoKilograms);
     }
 
+    [Fact] public async Task Boarded_retry_reverifies_existing_payload_after_unrelated_pilot_weight_change()
+    {
+        var h=Harness(requireBoarded:true);await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,0),new(2,120)]);await h.coordinator.ApplyCargoAsync();
+        h.setWorld(World(seated:true));await h.coordinator.RefreshAsync();h.tracker.FailNextTransfer=true;
+        await Assert.ThrowsAsync<IOException>(()=>h.coordinator.ApplyAuthorizedCargoAfterBoardingAsync());
+        h.sim.Value=h.sim.Value with{PayloadStations=[new(1,"Pilot",96),new(2,"Rear",140)],Weights=h.sim.Value.Weights with{CurrentGrossWeightKilograms=1106}};
+        await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
+        var vm=new AircraftLoadingViewModel(h.coordinator);await h.coordinator.RefreshAsync();
+        Assert.Equal(20,vm.PayloadStations.Single(x=>x.Index==2).CurrentKilograms);
+        Assert.Equal(140,vm.PayloadStations.Single(x=>x.Index==2).PlannedKilograms);
+        var writes=h.sim.PayloadWrites;
+        await h.coordinator.ApplyAuthorizedCargoAfterBoardingAsync();
+        Assert.Equal(writes+2,h.sim.PayloadWrites);Assert.Equal(1106,h.sim.Value.Weights.CurrentGrossWeightKilograms);
+        Assert.Equal(96,h.sim.Value.PayloadStations[0].CurrentWeightKilograms);
+        Assert.Equal(140,h.sim.Value.PayloadStations[1].CurrentWeightKilograms);
+        Assert.Equal(1,h.tracker.Loads);Assert.Equal(LoadManifestState.CommittedInTransit,h.coordinator.Current.Manifest!.State);
+    }
+
+    [Fact] public async Task Boarded_retry_still_refuses_station_changes_without_gross_weight_response()
+    {
+        var h=Harness(requireBoarded:true);await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,0),new(2,120)]);await h.coordinator.ApplyCargoAsync();
+        h.setWorld(World(seated:true));await h.coordinator.RefreshAsync();h.sim.UpdateGrossOnPayloadWrite=false;
+        await Assert.ThrowsAsync<IOException>(()=>h.coordinator.ApplyAuthorizedCargoAfterBoardingAsync());
+        await Assert.ThrowsAsync<IOException>(()=>h.coordinator.ApplyAuthorizedCargoAfterBoardingAsync());
+        Assert.Equal(0,h.tracker.Loads);Assert.Equal(LoadManifestState.PendingApplication,h.coordinator.Current.Manifest!.State);
+    }
+
     private static EconomyWorld AcceptedWorld(DateTimeOffset now,out EconomyJob job,out Shipment shipment)
     {
         var world=EmployedCargoPrototype.Create(NamibiaLocationCatalogue.Load());var offered=world.Jobs.First(x=>x.State==EconomyJobState.Offered);

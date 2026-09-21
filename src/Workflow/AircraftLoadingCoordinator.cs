@@ -454,13 +454,28 @@ public sealed class AircraftLoadingCoordinator
             var manifest=Current.Manifest??throw new InvalidOperationException("No outside cargo authorization exists.");
             var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();
             var reason=BoardedApplicationReason(live,manifest);if(reason!="Ready.")throw new InvalidOperationException(reason);
-            var physicalDelta=manifest.State is LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied
-                ? Math.Max(0,manifest.CargoKilograms-manifest.PriorCargoKilograms)
-                : manifest.CargoKilograms;
-            if(physicalDelta<=options.PayloadToleranceKilograms)throw new InvalidOperationException("The authorized cargo application has no positive aircraft-weight change to verify.");
+            if(manifest.CargoKilograms<=options.PayloadToleranceKilograms)throw new InvalidOperationException("The authorized cargo application has no positive aircraft-weight change to verify.");
             var baselineGross=live.Weights.CurrentGrossWeightKilograms??throw new InvalidOperationException("MSFS did not report current total aircraft weight; boarded cargo application cannot be verified.");
             var targets=ManagedTargets(manifest);if(targets.Count==0)throw new InvalidOperationException("The authorized manifest contains no positive Frontier cargo allocation.");
             var retainedAcrossBoarding=PayloadMatches(live,targets,options.PayloadToleranceKilograms)&&manifest.BoardedExpectedGrossWeightKilograms is { } outsideExpected&&Math.Abs(baselineGross-outsideExpected)<=options.GrossWeightToleranceKilograms;
+            if(!retainedAcrossBoarding&&PayloadMatches(live,targets,options.PayloadToleranceKilograms))
+            {
+                // A previous write may have succeeded before verification/commit failed. Never
+                // expect another cargo-sized increase from writing identical station weights.
+                // Re-establish a measured baseline using only this authorized allocation.
+                var baselineTargets=manifest.Stations.Where(x=>targets.ContainsKey(x.StationIndex)).ToDictionary(x=>x.StationIndex,x=>x.BaselineKilograms);
+                manifest=manifest with{VerificationResult="Authorized retry: verify managed station baseline and gross-weight removal before reapplying the persisted targets."};
+                await store.SaveManifestAsync(manifest,token);
+                await simulator.WritePayloadAsync(sdkRoot(),baselineTargets,token);await delay(options.RetentionDelay,token);
+                var cleared=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();
+                if(!PayloadMatches(cleared,baselineTargets,options.PayloadToleranceKilograms)||
+                    !GrossChangedBy(live,cleared,-manifest.CargoKilograms,out _))
+                    throw new IOException("Retry could not verify removal of the authorized allocation in station and total weight readings. Shipment remains pending; refresh and retry.");
+                live=cleared;baselineGross=live.Weights.CurrentGrossWeightKilograms!.Value;
+            }
+            var physicalDelta=targets.Sum(x=>x.Value-live.PayloadStations.Single(p=>p.Index==x.Key).CurrentWeightKilograms);
+            if(!retainedAcrossBoarding&&physicalDelta<=options.PayloadToleranceKilograms)
+                throw new InvalidOperationException("Live managed station weights do not provide a positive cargo delta; reconcile the aircraft before retrying.");
             var expectedGross=retainedAcrossBoarding?baselineGross:baselineGross+physicalDelta;
             manifest=manifest with{BoardedBaselineGrossWeightKilograms=baselineGross,BoardedExpectedGrossWeightKilograms=expectedGross,
                 VerificationResult=retainedAcrossBoarding?$"Post-boarding verification intent persisted; MSFS still reports the authorized station and total weight {baselineGross:0.###} kg.":$"Boarded apply intent persisted. Expected total aircraft weight change: +{physicalDelta:0.###} kg, from {baselineGross:0.###} to {expectedGross:0.###} kg."};

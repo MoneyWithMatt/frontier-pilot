@@ -1,5 +1,11 @@
 # Technical status — 2026-09-07
 
+## Return-leg boarded loading retry — 2026-09-21
+
+The return import remained PendingApplication with 10 kg already reported in its baggage station. Each retry took the already-loaded gross weight as a fresh baseline and expected another 10 kg increase from writing the same target. Authorized boarded application now calculates its physical delta from live managed-station weights. When targets already match but the recorded gross expectation does not, the explicit retry persists its intent, removes only the authorized managed allocation to its recorded baseline, verifies both station and gross removal, then reapplies and verifies the target. Unrelated seats are preserved. No automatic restoration or economic mutation occurs on refresh; failed weight verification still prevents commitment. Pending target weights no longer appear as additional Other payload in the editor.
+
+Verification: 69 focused loading tests and all 562 solution tests passed. Regressions cover restart after an applied-but-uncommitted load, changed unrelated pilot weight, and refusal when station writes do not affect gross weight. Live PA-28 retest remains required.
+
 ## Player-contract physical-unload settlement correction — 2026-09-21
 
 Replaying copies of the live two-contract save through the real economy/attempt/loading stores reproduced destination failure: `Completed job cargo and payment records are inconsistent.` The earlier UI changes did not resolve this economic rejection. Physical delivery completed the job/shipment at the persisted flight proof's ReadyUtc, but SettleAir posted the contract payment at the later unload-command time. The immutable completion consistency check correctly rejected the entire transaction. Air settlement now uses the shipment's authoritative DeliveredUtc; the cargo/inventory audit retains the actual unload-command timestamp. No validation was weakened, no schema changed and no live save was edited. The same copied-save replay then succeeded.
