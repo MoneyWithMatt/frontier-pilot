@@ -225,9 +225,25 @@ public sealed class AircraftLoadingTests
 
         vm.ClearAllocationCommand.Execute(null);
 
+        Assert.Equal(0,h.coordinator.Current.Plan!.CargoKilograms);
         Assert.Equal("Confirm unloading plan",vm.PrimaryCargoActionText);Assert.True(vm.CanUsePrimaryCargoAction);
         await vm.ApplyPrimaryCargoAsync(false);
         Assert.Equal(0,h.coordinator.Current.Manifest!.CargoKilograms);Assert.Equal(1,h.tracker.Unloads);
+    }
+
+    [Fact] public async Task Typed_cargo_edit_updates_authoritative_plan_before_primary_button_is_clicked()
+    {
+        var h=Harness(requireBoarded:true);await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,70),new(2,50)]);await h.coordinator.ApplyCargoAsync();
+        h.setWorld(World(seated:true));await h.coordinator.RefreshAsync();await h.coordinator.ApplyAuthorizedCargoAfterBoardingAsync();
+        h.sim.Value=Snapshot();h.setWorld(World());await h.coordinator.RefreshAsync();
+        var vm=new AircraftLoadingViewModel(h.coordinator);await vm.InitializeAsync();await h.coordinator.RefreshAsync();
+
+        foreach(var row in vm.PayloadStations)row.AssignedKilogramsText="0";
+
+        Assert.Equal(0,h.coordinator.Current.Plan!.CargoKilograms);
+        Assert.True(vm.CanUsePrimaryCargoAction);
+        Assert.Equal("Confirm unloading plan",vm.PrimaryCargoActionText);
     }
 
     [Fact] public async Task Terminal_manifest_does_not_present_stale_job_cargo_as_available()

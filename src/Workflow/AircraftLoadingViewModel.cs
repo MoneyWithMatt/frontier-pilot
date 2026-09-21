@@ -57,7 +57,14 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     public ActionCommand RefreshCommand{get;}public ActionCommand ClearAllocationCommand{get;}public ActionCommand ApplyCargoCommand{get;}public ActionCommand ApplyAuthorizedCargoCommand{get;}public ActionCommand ApplyFuelCommand{get;}public ActionCommand KeepFuelCommand{get;}public ActionCommand RestoreFuelCommand{get;}public ActionCommand RestoreCargoCommand{get;}public ActionCommand UnloadCommand{get;}
     public AircraftLoadingViewModel(AircraftLoadingCoordinator service, Action? ensureTracking = null)
     {this.service=service;var context=SynchronizationContext.Current;service.Changed+=value=>{if(context is not null&&SynchronizationContext.Current!=context)context.Post(_=>Apply(value),null);else Apply(value);};RefreshCommand=new(()=>{ensureTracking?.Invoke();_=Run(service.RefreshAsync,"Live aircraft loading data refreshed.");},()=>!busy);
-     ClearAllocationCommand=new(()=>{cargoDraftDirty=true;foreach(var x in PayloadStations)x.AssignedKilograms=0;},()=>!busy&&CanEditCargo&&PayloadStations.Count>0);
+     ClearAllocationCommand=new(()=>
+     {
+         refreshingRows=true;
+         try{foreach(var x in PayloadStations)x.AssignedKilograms=0;}
+         finally{refreshingRows=false;}
+         cargoDraftDirty=true;
+         UpdatePlan();
+     },()=>!busy&&CanEditCargo&&PayloadStations.Count>0);
      ApplyCargoCommand=new(()=>_=ApplyDesiredCargoAsync(false),()=>CanApplyCargo);
      ApplyAuthorizedCargoCommand=new(()=>_=Run(service.ApplyAuthorizedCargoAfterBoardingAsync,"Authorized cargo applied while seated; station values and total aircraft weight were verified."),()=>!busy&&service.CanApplyAuthorizedCargoAfterBoarding);
      ApplyFuelCommand=new(()=>_=Run(t=>service.ApplyFuelAsync(FuelTanks.ToDictionary(x=>x.Id,x=>x.PlannedGallons),t),"Fuel applied and read back from MSFS."),()=>!busy&&service.Current.CanApplyFuel&&FuelTanks.Count>0&&FuelTanks.All(x=>x.IsInputValid));
@@ -127,7 +134,7 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
     private bool AuthorizationExpired=>service.Current.Manifest?.Reconciliation==SimulatorReconciliationState.RestoreAvailable&&
         service.AuthorizedBoardedCargoReason.StartsWith("The outside cargo authorization expired",StringComparison.Ordinal);
     private bool NeedsRestoreAuthorization=>service.Current.Manifest?.Reconciliation==SimulatorReconciliationState.CargoAppearsMissing||AuthorizationExpired;
-    private bool HasChangedCargoDraft=>cargoDraftDirty&&Math.Abs(AssignedCargo-(service.Current.Manifest?.CargoKilograms??0))>.001m;
+    private bool HasChangedCargoDraft=>cargoDraftDirty&&CargoDraftDiffersFromManifest();
     public bool CanUsePrimaryCargoAction=>HasChangedCargoDraft?CanApplyCargo:CanApplyAuthorizedCargo||CanApplyCargo||(!busy&&service.Current.CanRestoreCargo&&NeedsRestoreAuthorization);
     public string PrimaryCargoActionText=>HasChangedCargoDraft
         ? CanApplyCargo?(AssignedCargo<(service.Current.Manifest?.CargoKilograms??0)?"Confirm unloading plan":"Confirm loading plan"):"Cargo change unavailable"
@@ -184,7 +191,18 @@ public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
         NotifyAll();
     }
     private void PayloadRowChanged(object? sender,PropertyChangedEventArgs e)
-    {if(!refreshingRows&&e.PropertyName is nameof(PayloadStationViewModel.AssignedKilograms) or nameof(PayloadStationViewModel.AssignedKilogramsText))cargoDraftDirty=true;NotifyAll();}
+    {
+        if(refreshingRows||e.PropertyName is not (nameof(PayloadStationViewModel.AssignedKilograms) or nameof(PayloadStationViewModel.AssignedKilogramsText)))return;
+        cargoDraftDirty=true;
+        if(PayloadStations.All(x=>x.IsInputValid))UpdatePlan();
+        else NotifyAll();
+    }
+    private bool CargoDraftDiffersFromManifest()
+    {
+        var manifest=service.Current.Manifest;
+        if(manifest is null)return AssignedCargo>.001m;
+        return PayloadStations.Any(row=>Math.Abs(row.AssignedKilograms-(manifest.Stations.SingleOrDefault(x=>x.StationIndex==row.Index)?.FrontierCargoKilograms??0))>.001m);
+    }
     private void UpdatePlan(){try{service.CreatePlan(PayloadStations.Select(x=>new CargoStationAllocation(x.Index,x.AssignedKilograms)).ToArray());Error="";}catch(Exception e){Error=e.Message;}NotifyAll();}
     public async Task ApplyDesiredCargoAsync(bool confirmForfeit,CancellationToken token=default)
     {
