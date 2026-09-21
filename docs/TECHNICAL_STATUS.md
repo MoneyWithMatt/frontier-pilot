@@ -1,10 +1,14 @@
 # Technical status — 2026-09-07
 
+## Player-contract manifest identifier fix — 2026-09-21
+
+The first live grouped load exposed an identifier composition defect before any MSFS write: player-created jobs and shipments legitimately use the full 64-character economy ID limit, while aircraft loading prefixed the derived 64-character flight-attempt ID with `manifest-` and produced an invalid 73-character identifier. Manifest IDs now use the same bounded deterministic derivation as the economy domain. Existing manifest IDs and saved gameplay state are unchanged. A regression using maximum-length player-contract job and shipment IDs verifies that the pending manifest persists before the simulator write. Release verification: 554 tests pass, the WPF loading-control smoke test passes, and the Release build has zero warnings and errors.
+
 ## Reserved multi-job cargo flights — 2026-09-21
 
 Job acceptance now reserves contracts without immediately selecting a single active flight. The Jobs page separates Available, Reserved and History views. Several reserved jobs with identical origin and destination can be selected for one aircraft load; a return contract remains reserved until deliberately selected at its origin.
 
-The economy keeps each requirement, job, shipment, financial reservation and settlement independent. The loading manifest schema is version 5 and stores an aggregate physical station allocation with immutable per-shipment cargo legs. The flight tracker creates one persisted attempt and delivery proof per shipment, synchronizes their observations across the shared flight, and commits grouped departure and delivery changes atomically. Existing single-job manifests migrate to one leg. Release verification: 553 tests pass, the WPF loading-control smoke test passes, and the Release solution builds with zero warnings and errors. Live MSFS grouped-loading acceptance remains outstanding.
+The economy keeps each requirement, job, shipment, financial reservation and settlement independent. The loading manifest schema is version 5 and stores an aggregate physical station allocation with immutable per-shipment cargo legs. The flight tracker creates one persisted attempt and delivery proof per shipment, synchronizes their observations across the shared flight, and commits grouped departure and delivery changes atomically. Existing single-job manifests migrate to one leg. Release verification was subsequently superseded by the manifest identifier fix above. Live MSFS grouped-loading acceptance remains outstanding.
 
 ## Proven pipeline
 SDK 1.2.4: C:\Users\mattr\Desktop\MSFS 2024 SDK; Package Tool: Tools\bin\fspackagetool.exe. User MSFS2024_SDK points to this root; old machine-level SDK configuration is unsuitable. PackageBuilder supplies the verified root to child processes. Installed SimpleAirport remains untouched. See sample-build-report.md and toolchain-diagnosis.md.

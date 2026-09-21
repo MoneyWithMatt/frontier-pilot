@@ -146,7 +146,7 @@ public sealed class AircraftLoadingCoordinator
         var manifest=recoverable;
         if(manifest is null&&attempt is {State:not FlightAttemptState.Delivered}&&activeJob() is {ShipmentId:not null} legacy)
         {
-            manifest=new CargoLoadManifest("manifest-"+attempt.Id,legacy.JobId,legacy.ShipmentId!,attempt.Id,attempt.Aircraft,
+            manifest=new CargoLoadManifest(AircraftLoadingIds.Manifest(attempt.Id),legacy.JobId,legacy.ShipmentId!,attempt.Id,attempt.Aircraft,
                 AircraftLoadingMode.SimulatedFrontierLoading,[],legacy.CargoMassKilograms,LoadManifestState.CommittedInTransit,
                 attempt.LoadedUtc,CommittedUtc:attempt.LoadedUtc,VerificationResult:"Migrated existing simulated-loading shipment; MSFS payload was not changed.",LastValidPosition:attempt.LoadedPosition);
             await store.SaveManifestAsync(manifest,token);
@@ -257,7 +257,7 @@ public sealed class AircraftLoadingCoordinator
             if(delta<0&&job is not null&&location==job.DestinationLocationId&&!flight.Current.CanUnloadCargo)
                 throw new InvalidOperationException(flight.Current.Reason);
             var attemptId=existing?.FlightAttemptId??FlightAttemptIds.Attempt(job!.ShipmentId!);
-            var id=existing?.Id??"manifest-"+attemptId;
+            var id=existing?.Id??AircraftLoadingIds.Manifest(attemptId);
             var commandId=existing?.State is (LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied)&&existing.LastTransferCommandId is not null
                 ? existing.LastTransferCommandId : "cargo-transfer-"+Guid.NewGuid().ToString("N");
             var shipmentLoads=AllocateShipmentLoads(existing,jobs,plan.CargoKilograms,location==job?.DestinationLocationId);
@@ -363,7 +363,7 @@ public sealed class AircraftLoadingCoordinator
         {
             var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();
             if(Access(live,false)!="Ready."||!flight.Current.CanLoadCargo)throw new InvalidOperationException(Access(live,false)=="Ready."?flight.Current.Reason:Access(live,false));
-            var job=activeJob()!;var attemptId=FlightAttemptIds.Attempt(job.ShipmentId!);var id="manifest-"+attemptId;
+            var job=activeJob()!;var attemptId=FlightAttemptIds.Attempt(job.ShipmentId!);var id=AircraftLoadingIds.Manifest(attemptId);
             var manifest=(await store.LoadManifestsAsync(token)).SingleOrDefault(x=>x.Id==id)??new CargoLoadManifest(id,job.JobId,job.ShipmentId!,attemptId,
                 LoadingIdentityExtensions.FromSnapshot(live),AircraftLoadingMode.SimulatedFrontierLoading,[],job.CargoMassKilograms,LoadManifestState.PendingApplication,utcNow(),LastValidPosition:live.Position,VerificationResult:"Player explicitly selected simulated Frontier loading; MSFS payload unchanged.");
             await store.SaveManifestAsync(manifest,token);await flight.LoadCargoAsync(AircraftLoadingMode.SimulatedFrontierLoading,token);

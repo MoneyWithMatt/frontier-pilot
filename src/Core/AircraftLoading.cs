@@ -15,6 +15,11 @@ public enum LoadManifestState { PendingApplication, SimulatorApplied, CommittedI
 public enum SimulatorReconciliationState { NotChecked, MatchesManifest, CargoAppearsMissing, Indeterminate, RestoreAvailable, RestoreBlocked }
 public enum FuelReconciliationState { ContinuousLive, FrozenAfterDisconnect, AwaitingDecision, RestoredVerified, KeptSimulatorFuel, Blocked }
 
+public static class AircraftLoadingIds
+{
+    public static string Manifest(string flightAttemptId) => EconomyIds.Derive("manifest-", flightAttemptId);
+}
+
 public sealed record AircraftStationPosition(double LongitudinalFeet, double LateralFeet, double VerticalFeet);
 public sealed record PayloadStationReading(int Index, string Name, decimal CurrentWeightKilograms,
     AircraftStationPosition? Position = null, decimal? AuthoritativeMaximumKilograms = null, bool IsWritable = true)
