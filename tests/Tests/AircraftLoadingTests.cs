@@ -620,6 +620,44 @@ public sealed class AircraftLoadingTests
         Assert.Equal(0,h.tracker.Loads);Assert.Equal(LoadManifestState.PendingApplication,h.coordinator.Current.Manifest!.State);
     }
 
+    [Fact] public async Task Seated_single_shipment_load_commits_through_real_flight_tracker_and_survives_restart()
+    {
+        var now = new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);
+        var world = AcceptedWorld(now, out var job, out var shipment);
+        var requirement = world.Requirements.Single(x => x.Id == job.RequirementId);
+        var catalogue = NamibiaLocationCatalogue.Load();
+        var origin = catalogue.Get(requirement.OriginLocationId).ApproximateCoordinates!;
+        var destination = catalogue.Get(requirement.DestinationLocationId).ApproximateCoordinates!;
+        var economy = new MemoryEconomyStateStore(); await economy.InitializeAsync(world);
+        var attempts = new MemoryFlightAttemptStore();
+        var tracker = new FlightAttemptTracker(economy, attempts); await tracker.InitializeAsync();
+        await tracker.SelectJobsAsync([job.Id]);
+        var aircraft = new AircraftTelemetry(now,"Piper PA28","PA28",origin.Latitude,origin.Longitude,100,90,0,true);
+        for (var i=0;i<=10;i++) await tracker.ObserveAsync(aircraft with { ObservedUtc=now.AddSeconds(i) });
+        now=now.AddSeconds(10); aircraft=aircraft with { ObservedUtc=now };
+        var tracking = new TrackingWorldState(aircraft,1,2,2,PlayerControlMode.OnFoot,
+            new PlayerTelemetry(now,2,origin.Latitude,origin.Longitude,100,90,true),"verified").EnsureValid();
+        var sim = new FakeSimulator(Snapshot(now:now) with { Position=FlightPosition.From(aircraft) });
+        var store = new MemoryAircraftLoadingStore();
+        var display = new CargoJobDisplay(job.Id,"Employer","Origin","Destination","Purpose","Cargo",shipment.Quantity,0,"TPC","Test",
+            shipment.Id,ShipmentState.Reserved,requirement.OriginLocationId,requirement.DestinationLocationId,
+            origin.Latitude,origin.Longitude,destination.Latitude,destination.Longitude);
+        var coordinator = new AircraftLoadingCoordinator(store,sim,tracker,()=>"sdk",()=>tracking,()=>display,
+            new(RequirePostBoardingCargoVerification:true),()=>now,(_,_)=>Task.CompletedTask);
+        await coordinator.InitializeAsync(); await coordinator.RefreshAsync();
+        coordinator.CreatePlan([new(1,0),new(2,10)]); await coordinator.ApplyCargoAsync();
+        Assert.Equal(0,sim.PayloadWrites);
+        tracking=new TrackingWorldState(aircraft,1,1,2,PlayerControlMode.InAircraft,null,"verified").EnsureValid();
+        await coordinator.RefreshAsync(); await coordinator.ApplyAuthorizedCargoAfterBoardingAsync();
+        Assert.Equal(910,sim.Value.Weights.CurrentGrossWeightKilograms);
+        Assert.Equal(10,(await economy.LoadAsync())!.Shipments.Single().LoadedQuantity);
+        Assert.Equal(LoadManifestState.CommittedInTransit,coordinator.Current.Manifest!.State);
+        var writes=sim.PayloadWrites;
+        await coordinator.InitializeAsync(); await coordinator.RefreshAsync();
+        Assert.Equal(writes,sim.PayloadWrites);
+        Assert.Equal(10,coordinator.LoadedCargoKilograms);
+    }
+
     private static EconomyWorld AcceptedWorld(DateTimeOffset now,out EconomyJob job,out Shipment shipment)
     {
         var world=EmployedCargoPrototype.Create(NamibiaLocationCatalogue.Load());var offered=world.Jobs.First(x=>x.State==EconomyJobState.Offered);

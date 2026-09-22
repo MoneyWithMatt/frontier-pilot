@@ -432,6 +432,43 @@ public sealed class FlightAttemptTrackerTests
             method.GetParameters().Any(parameter => parameter.ParameterType == typeof(VerifiedDeliveryEvidence)) || method.ReturnType == typeof(VerifiedDeliveryEvidence));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Single_job_manifest_transfer_preserves_qualification_and_commits_once(bool explicitlySelected)
+    {
+        var h = await Harness.Create();
+        if (explicitlySelected) await h.Tracker.SelectJobsAsync(["job-uis-supplies-v0"]);
+        var origin = At(EmployedCargoPrototype.ErosId, Start);
+        await ObserveSeconds(h.Tracker, origin, 10);
+        Assert.True(h.Tracker.Current.CanLoadCargo);
+        var loads = new Dictionary<string, decimal> { ["job-uis-supplies-v0"] = 10 };
+        await h.Tracker.ApplyCargoTransfersAsync("single-transfer", "single-command", loads,
+            EmployedCargoPrototype.ErosId, origin.Latitude, origin.Longitude, false, AircraftLoadingMode.MsfsPayloadIntegration);
+        var committed = (await h.Economy.LoadAsync())!;
+        Assert.Equal(10, committed.Shipments.Single().LoadedQuantity);
+        Assert.Single(await h.Attempts.LoadAsync());
+        await h.Tracker.ApplyCargoTransfersAsync("single-transfer", "single-command", loads,
+            EmployedCargoPrototype.ErosId, origin.Latitude, origin.Longitude, false, AircraftLoadingMode.MsfsPayloadIntegration);
+        Assert.Equal(committed.Revision, (await h.Economy.LoadAsync())!.Revision);
+    }
+
+    [Fact]
+    public async Task Reselecting_same_job_preserves_qualification_but_different_job_requires_fresh_observations()
+    {
+        var h = await Harness.Create();
+        await new EconomyService(h.Economy).AcceptJobAsync("job-arandis-supplies-v0", Start);
+        await h.Tracker.RefreshEconomyAsync();
+        await h.Tracker.SelectJobsAsync(["job-uis-supplies-v0"]);
+        await ObserveSeconds(h.Tracker, At(EmployedCargoPrototype.ErosId, Start), 10);
+        await h.Tracker.SelectJobsAsync(["job-uis-supplies-v0"]);
+        Assert.True(h.Tracker.Current.CanLoadCargo);
+        await h.Tracker.SelectJobsAsync(["job-arandis-supplies-v0"]);
+        Assert.False(h.Tracker.Current.CanLoadCargo);
+        await ObserveSeconds(h.Tracker, At(EmployedCargoPrototype.ErosId, Start.AddSeconds(11)), 10);
+        Assert.True(h.Tracker.Current.CanLoadCargo);
+    }
+
     [Fact]
     public async Task TwoReservedJobsOnTheSameRouteShareOneFlightAndSettleIndependently()
     {

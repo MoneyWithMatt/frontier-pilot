@@ -135,7 +135,14 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 world.Shipments.Single(s => s.Id == x.ShipmentId).State is ShipmentState.Loaded or ShipmentState.InTransit).ToArray();
             if (underway.Length > 0 && underway.Any(x => x.OriginLocationId != routes[0].OriginLocationId || x.DestinationLocationId != routes[0].DestinationLocationId))
                 throw new InvalidOperationException("Finish the cargo already aboard before preparing a different route.");
-            selectedJobIds = distinct; attempt = SelectAttempt(world, stored); stationarySince = null; UpdateStatus();
+            // The manifest commit selects its job again after simulator verification.
+            // Reselecting that same context must not erase the origin observation
+            // that authorized the load. A genuinely different selection still resets it.
+            var sameSelection = selectedJobIds.SequenceEqual(distinct, StringComparer.Ordinal) ||
+                (selectedJobIds.Count == 0 && distinct.Length == 1 && ActiveJob(world)?.Id == distinct[0]);
+            selectedJobIds = distinct; attempt = SelectAttempt(world, stored);
+            if (!sameSelection) stationarySince = null;
+            UpdateStatus();
         }
         finally { gate.Release(); }
     }

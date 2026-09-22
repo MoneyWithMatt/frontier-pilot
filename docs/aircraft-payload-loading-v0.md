@@ -72,6 +72,12 @@ Sandy Dirt emits the visible native `DIRT` fallback rather than `SAND`. It remai
 
 ## Manual MSFS test
 
+### Single-job commit qualification regression — 2026-09-22
+
+The pending 10 kg return-leg manifest remained uncommitted after the previous weight-verification repair. The saved timeline contained repeated origin qualification starts and no attempt for that return job. Reproduction with the real tracker found that `ApplyCargoTransfersAsync` reselected its sole job, and `SelectJobsAsync` unconditionally cleared the qualified stationary timer immediately before the load commit. The resulting refusal could even repeat the previous “ready” observation text. Earlier loading tests used a tracker double and missed this integration boundary.
+
+Reselecting the same explicit job context (or the same single implicitly active job) now retains its observation timer. A different selection still clears it, and all existing movement, disconnect and freshness guards remain in place. Regression coverage includes the coordinator's outside authorization, seated simulator write/read-back, real tracker/economy commit and manifest reload; single-job transfer replay does not duplicate inventory. No user save was edited. Automated verification: 107 focused tests and 566 complete solution tests passed. Live PA28 return-leg acceptance remains pending.
+
 1. Start MSFS with the previously proven Piper PA28 and launch Frontier Pilot from the Desktop shortcut. Accept an Eros job, park within 1.5 NM of its origin, remain at or below 5 kt for ten seconds, exit into walkaround, and stay within 100 m.
 2. Open **Aircraft Loading**, select **Refresh from MSFS**, and note the non-Frontier station weights. Enter 60 kg total and select **Confirm loading plan**. Confirm MSFS payload has not changed while outside. Board the aircraft, then select **Apply cargo to aircraft**. Wait for retained-state verification and confirm **Shipment cargo**, **Detected in MSFS**, payload and gross weight all reflect the 60 kg.
 3. Add the remaining shipment cargo without changing the original 60 kg unintentionally. Apply and confirm the total managed cargo equals the shipment quantity. Restart Frontier Pilot and confirm the manifest returns without another payload write.
