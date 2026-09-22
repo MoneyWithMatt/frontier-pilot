@@ -722,9 +722,18 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         if (requirement.OriginLocationId != attempt.OriginLocationId || requirement.DestinationLocationId != attempt.DestinationLocationId)
             throw new IOException("Flight attempt route does not match its job. File preserved.");
         var shipment = world.Shipments.Single(x => x.Id == attempt.ShipmentId);
+        // Returning all cargo at origin leaves the observation attempt available
+        // for reloading. It does not imply departure or a new economy load.
+        var reservedBeforeDeparture = shipment.State == ShipmentState.Reserved &&
+            shipment.CurrentLocationId == attempt.OriginLocationId && shipment.LoadedQuantity == 0 &&
+            shipment.DeliveredQuantity == 0 && shipment.ForfeitedQuantity == 0 &&
+            attempt.TransitBeginsAtDeparture && attempt.State == FlightAttemptState.CargoLoaded &&
+            attempt.OriginDepartedUtc is null && attempt.FirstAirborneUtc is null &&
+            attempt.MovementObservedUtc is null && attempt.MaximumDistanceFromOriginNauticalMiles == 0 &&
+            attempt.MaximumDistanceObservedUtc is null && attempt.DeliveryProof is null && attempt.DeliveredUtc is null;
         if (job.State == EconomyJobState.Accepted && shipment.State == ShipmentState.Reserved && !attempt.TransitBeginsAtDeparture)
             world = (await economy.MarkShipmentInTransitAsync(job.Id, cancellationToken).ConfigureAwait(false)).World;
-        else if (job.State == EconomyJobState.Accepted && shipment.State is not (ShipmentState.Loaded or ShipmentState.InTransit))
+        else if (job.State == EconomyJobState.Accepted && shipment.State is not (ShipmentState.Loaded or ShipmentState.InTransit) && !reservedBeforeDeparture)
             throw new IOException("Flight attempt shipment state is inconsistent. Files preserved.");
         if (job.State == EconomyJobState.Accepted && attempt.TransitBeginsAtDeparture && attempt.OriginDepartedUtc is not null)
             world = (await economy.MarkShipmentInTransitAsync(job.Id, cancellationToken).ConfigureAwait(false)).World;

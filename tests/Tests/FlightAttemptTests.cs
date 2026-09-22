@@ -57,6 +57,50 @@ public sealed class FlightAttemptTrackerTests
     }
 
     [Fact]
+    public async Task Origin_unload_can_refresh_restart_and_reload_without_recreating_cargo()
+    {
+        var h=await Harness.Create();var origin=At(EmployedCargoPrototype.ErosId,Start);
+        await ObserveSeconds(h.Tracker,origin,10);
+        await h.Tracker.ApplyCargoTransferAsync("load-first","load-first-command",10,EmployedCargoPrototype.ErosId,
+            origin.Latitude,origin.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
+        await h.Tracker.ApplyCargoTransferAsync("return-first","return-first-command",0,EmployedCargoPrototype.ErosId,
+            origin.Latitude,origin.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
+        var returned=(await h.Economy.LoadAsync())!;
+        var saved=Assert.Single(await h.Attempts.LoadAsync());
+        await h.Tracker.RefreshEconomyAsync();
+        var restarted=new FlightAttemptTracker(h.Economy,h.Attempts);await restarted.InitializeAsync();
+        Assert.Equal(returned.Revision,(await h.Economy.LoadAsync())!.Revision);
+        Assert.Equal(saved,Assert.Single(await h.Attempts.LoadAsync()));
+        Assert.False(restarted.Current.CanLoadCargo);
+        await ObserveSeconds(restarted,origin with {ObservedUtc=Start.AddMinutes(1)},10);
+        await restarted.ApplyCargoTransfersAsync("reload","reload-command",new Dictionary<string,decimal>{{saved.JobId,10}},
+            EmployedCargoPrototype.ErosId,origin.Latitude,origin.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
+        var reloaded=(await h.Economy.LoadAsync())!;
+        Assert.Equal(10,reloaded.Shipments.Single().LoadedQuantity);
+        Assert.Equal(ShipmentState.Loaded,reloaded.Shipments.Single().State);
+        Assert.Equal(returned.FinancialLedger.Count,reloaded.FinancialLedger.Count);
+        Assert.Single(await h.Attempts.LoadAsync());
+    }
+
+    [Fact]
+    public async Task Reserved_shipment_with_departure_evidence_is_still_rejected_without_economy_changes()
+    {
+        var h=await Harness.Create();var origin=At(EmployedCargoPrototype.ErosId,Start);
+        await ObserveSeconds(h.Tracker,origin,10);
+        await h.Tracker.ApplyCargoTransferAsync("load","load-command",10,EmployedCargoPrototype.ErosId,
+            origin.Latitude,origin.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
+        await h.Tracker.ApplyCargoTransferAsync("return","return-command",0,EmployedCargoPrototype.ErosId,
+            origin.Latitude,origin.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
+        var attempt=Assert.Single(await h.Attempts.LoadAsync());
+        var inconsistent=attempt with { State=FlightAttemptState.Departed,FirstAirborneUtc=Start.AddMinutes(1),OriginDepartedUtc=Start.AddMinutes(1) };
+        await h.Attempts.SaveAsync(inconsistent);
+        var before=(await h.Economy.LoadAsync())!;
+        await Assert.ThrowsAsync<IOException>(()=>new FlightAttemptTracker(h.Economy,h.Attempts).InitializeAsync());
+        Assert.Equal(before.Revision,(await h.Economy.LoadAsync())!.Revision);
+        Assert.Equal(inconsistent,Assert.Single(await h.Attempts.LoadAsync()));
+    }
+
+    [Fact]
     public async Task Resetting_an_uncommitted_zero_load_removes_stale_attempt_without_changing_economy()
     {
         var h=await Harness.Create();var atEros=At(EmployedCargoPrototype.ErosId,Start);await ObserveSeconds(h.Tracker,atEros,10);
