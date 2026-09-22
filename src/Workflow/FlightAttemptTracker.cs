@@ -10,7 +10,8 @@ namespace FrontierAirportBuilder.Workflow;
 public sealed record FlightAttemptTrackerOptions(double AirportRadiusNauticalMiles = 1.5,
     double MaximumGroundSpeedKnots = 5, TimeSpan? StationaryDuration = null,
     double MeaningfulMovementNauticalMiles = 2,
-    TimeSpan? MaximumContinuousSampleGap = null)
+    TimeSpan? MaximumContinuousSampleGap = null,
+    double MaximumContinuousDisplacementNauticalMiles = 500)
 {
     public TimeSpan RequiredStationaryDuration => StationaryDuration ?? TimeSpan.FromSeconds(10);
     public TimeSpan MaximumSampleGap => MaximumContinuousSampleGap ?? TimeSpan.FromSeconds(2);
@@ -19,6 +20,7 @@ public sealed record FlightAttemptTrackerOptions(double AirportRadiusNauticalMil
         if (!double.IsFinite(AirportRadiusNauticalMiles) || AirportRadiusNauticalMiles <= 0 ||
             !double.IsFinite(MaximumGroundSpeedKnots) || MaximumGroundSpeedKnots < 0 ||
             !double.IsFinite(MeaningfulMovementNauticalMiles) || MeaningfulMovementNauticalMiles <= 0 ||
+            !double.IsFinite(MaximumContinuousDisplacementNauticalMiles) || MaximumContinuousDisplacementNauticalMiles <= 0 ||
             RequiredStationaryDuration <= TimeSpan.Zero || MaximumSampleGap <= TimeSpan.Zero)
             throw new InvalidDataException("Flight-attempt tracker options are invalid.");
         return this;
@@ -91,6 +93,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
     public Func<object?>? AircraftLoadingDiagnosticProvider { get; set; }
     private FlightAttempt? attempt;
     private AircraftTelemetry? latest;
+    private AircraftTelemetry? continuityAnchor;
     private DateTimeOffset? stationarySince, lastSampleUtc, lastValidSampleUtc;
     private bool connected;
     private IReadOnlyList<FlightDiagnosticEvent> timeline = [];
@@ -171,6 +174,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         {
             if (telemetry is null)
             {
+                if (attempt is not null && latest is not null) continuityAnchor ??= latest;
                 await InterruptQualificationAsync("SimConnect disconnected.", utcNow(), cancellationToken).ConfigureAwait(false);
                 var disconnectedUtc = utcNow();
                 if (connected) await RecordAsync(FlightDiagnosticEventType.SimConnectDisconnected, disconnectedUtc, "disconnect-" + disconnectedUtc.UtcTicks, cancellationToken,
@@ -181,6 +185,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             try { sample = telemetry.EnsureValid(); }
             catch (Exception error) when (error is InvalidDataException or ArgumentException)
             {
+                if (attempt is not null && latest is not null) continuityAnchor ??= latest;
                 var reason = "Aircraft telemetry is invalid: " + error.Message;
                 await InterruptQualificationAsync(reason, utcNow(), cancellationToken).ConfigureAwait(false);
                 var invalidUtc = utcNow();
@@ -189,6 +194,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 Pause(reason); UpdateStatus(); return;
             }
 
+            var previousLiveSample = latest;
             bool continuous = lastSampleUtc is { } previous && sample.ObservedUtc > previous && sample.ObservedUtc - previous <= options.MaximumSampleGap;
             if (!continuous && stationarySince is not null)
                 await InterruptQualificationAsync("Telemetry continuity gap exceeded the configured maximum.", sample.ObservedUtc, cancellationToken).ConfigureAwait(false);
@@ -199,8 +205,52 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                     "nonadvancing-" + sample.ObservedUtc.UtcTicks, cancellationToken, ("reason", "Aircraft telemetry time did not advance.")).ConfigureAwait(false);
                 Pause("Aircraft telemetry time did not advance."); UpdateStatus(); return;
             }
+
+            if (attempt is not null && continuityAnchor is { } anchor)
+            {
+                var anchorDistance = DistanceNm(sample, anchor);
+                if (!TryIdentity(sample, out var resumedIdentity, out var resumedIdentityError))
+                {
+                    SetLiveSample(sample);
+                    observationReason = resumedIdentityError;
+                    UpdateStatus(); return;
+                }
+                if (attempt.Aircraft.ClearlyDiffersFrom(resumedIdentity!))
+                {
+                    SetLiveSample(sample);
+                    observationReason = $"Aircraft identity differs from the loaded aircraft ({attempt.Aircraft.Title} / {attempt.Aircraft.Type}).";
+                    await RecordAsync(FlightDiagnosticEventType.AircraftIdentityMismatchObserved, sample.ObservedUtc, "identity-mismatch", cancellationToken,
+                        ("recorded", attempt.Aircraft.Title + " / " + attempt.Aircraft.Type), ("observed", resumedIdentity!.Title + " / " + resumedIdentity.Type)).ConfigureAwait(false);
+                    UpdateStatus(); return;
+                }
+                if (anchorDistance > options.MaximumContinuousDisplacementNauticalMiles)
+                {
+                    SetLiveSample(sample);
+                    observationReason = $"MSFS telemetry resumed {anchorDistance:F1} NM from the last validated aircraft position. Flight evidence is paused until the loaded aircraft returns or its cargo is reconciled.";
+                    UpdateStatus(); return;
+                }
+                continuityAnchor = null;
+            }
+
+            if (attempt is not null && continuous && previousLiveSample is not null)
+            {
+                var displacement = DistanceNm(sample, previousLiveSample);
+                if (displacement > options.MaximumContinuousDisplacementNauticalMiles)
+                {
+                    continuityAnchor = previousLiveSample;
+                    await InterruptQualificationAsync("MSFS telemetry position changed discontinuously.", sample.ObservedUtc, cancellationToken).ConfigureAwait(false);
+                    SetLiveSample(sample);
+                    observationReason = $"MSFS telemetry jumped {displacement:F1} NM during an aircraft/session change. No flight evidence was recorded.";
+                    await RecordAsync(FlightDiagnosticEventType.TelemetryDiscontinuityObserved, sample.ObservedUtc,
+                        "telemetry-discontinuity-" + sample.ObservedUtc.UtcTicks, cancellationToken,
+                        ("distanceNm", displacement.ToString("F3")),
+                        ("recordedAircraft", attempt.Aircraft.Title + " / " + attempt.Aircraft.Type),
+                        ("observedAircraft", sample.AircraftTitle + " / " + sample.AircraftType)).ConfigureAwait(false);
+                    UpdateStatus(); return;
+                }
+            }
             var wasConnected = connected;
-            connected = true; latest = sample; lastSampleUtc = sample.ObservedUtc; lastValidSampleUtc = sample.ObservedUtc; observationReason = "Live aircraft telemetry received.";
+            SetLiveSample(sample); observationReason = "Live aircraft telemetry received.";
             if (!wasConnected) await RecordAsync(FlightDiagnosticEventType.SimConnectConnected, sample.ObservedUtc, "connect-" + sample.ObservedUtc.UtcTicks,
                 cancellationToken, ("aircraftTitle", sample.AircraftTitle), ("aircraftType", sample.AircraftType)).ConfigureAwait(false);
             if (world is null) { UpdateStatus(); return; }
@@ -226,11 +276,21 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 UpdateStatus(); return;
             }
 
+            if (!TryIdentity(sample, out var identity, out var identityError))
+            { await InterruptQualificationAsync(identityError, sample.ObservedUtc, cancellationToken).ConfigureAwait(false); observationReason = identityError; UpdateStatus(); return; }
+            if (attempt.Aircraft.ClearlyDiffersFrom(identity!))
+            {
+                await InterruptQualificationAsync("Aircraft identity differs from the loaded aircraft.", sample.ObservedUtc, cancellationToken).ConfigureAwait(false);
+                observationReason = $"Aircraft identity differs from the loaded aircraft ({attempt.Aircraft.Title} / {attempt.Aircraft.Type}).";
+                await RecordAsync(FlightDiagnosticEventType.AircraftIdentityMismatchObserved, sample.ObservedUtc, "identity-mismatch", cancellationToken,
+                    ("recorded", attempt.Aircraft.Title + " / " + attempt.Aircraft.Type), ("observed", identity!.Title + " / " + identity.Type)).ConfigureAwait(false);
+                UpdateStatus(); return;
+            }
+
             var activeShipmentBeforeDeparture = world.Shipments.Single(x => x.Id == active.ShipmentId);
-            // A player may unload part or all of a shipment back at its origin before
-            // departure. A full return correctly changes the shipment back to Reserved,
-            // while the recoverable attempt remains. Both states must therefore be able
-            // to qualify for a subsequent physical load.
+            // A partial origin unload keeps the recoverable attempt available for the
+            // remaining cargo. A full return is handled transactionally by the transfer
+            // path, which removes the attempt and releases its aircraft identity.
             if (attempt.FirstAirborneUtc is null && activeShipmentBeforeDeparture.State is (ShipmentState.Reserved or ShipmentState.Loaded) && sample.IsOnGround)
             {
                 var before = stationarySince; EvaluateOriginStationary(active);
@@ -243,16 +303,6 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 UpdateStatus(); return;
             }
 
-            if (!TryIdentity(sample, out var identity, out var identityError))
-            { await InterruptQualificationAsync(identityError, sample.ObservedUtc, cancellationToken).ConfigureAwait(false); observationReason = identityError; UpdateStatus(); return; }
-            if (attempt.Aircraft.ClearlyDiffersFrom(identity!))
-            {
-                await InterruptQualificationAsync("Aircraft identity differs from the loaded aircraft.", sample.ObservedUtc, cancellationToken).ConfigureAwait(false);
-                observationReason = $"Aircraft identity differs from the loaded aircraft ({attempt.Aircraft.Title} / {attempt.Aircraft.Type}).";
-                await RecordAsync(FlightDiagnosticEventType.AircraftIdentityMismatchObserved, sample.ObservedUtc, "identity-mismatch", cancellationToken,
-                    ("recorded", attempt.Aircraft.Title + " / " + attempt.Aircraft.Type), ("observed", identity!.Title + " / " + identity.Type)).ConfigureAwait(false);
-                UpdateStatus(); return;
-            }
             if (attempt.DeliveryProof is not null)
             { observationReason = "Verified arrival is persisted. Unload cargo when ready."; UpdateStatus(); return; }
 
@@ -452,6 +502,14 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 await RecordAsync(FlightDiagnosticEventType.DeliveryCommitted, attempt.DeliveredUtc!.Value, "delivery-committed", cancellationToken,
                     ("economyChanged", transition.Changed.ToString()), ("evidenceId", evidence?.Id ?? "unavailable")).ConfigureAwait(false);
             }
+            if (attempt is { } returnedAttempt && ReturnedCompletelyToOrigin(updatedJob, updatedShipment, returnedAttempt))
+            {
+                await RecordAsync(FlightDiagnosticEventType.CargoLoadReset, request.OccurredUtc,
+                    "cargo-returned-origin-" + commandId, cancellationToken,
+                    ("reason", "All cargo returned to origin before departure; aircraft identity released.")).ConfigureAwait(false);
+                await RemoveReturnedAttemptAsync(returnedAttempt, cancellationToken).ConfigureAwait(false);
+                attempt = null; stationarySince = null; continuityAnchor = null;
+            }
             if (currentLocationId != attempt?.OriginLocationId && attempt?.DeliveryProof is null) stationarySince = null;
             observationReason = updatedJob.State switch
             {
@@ -527,13 +585,23 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             foreach (var batchAttempt in attempts.Where(x => desiredLoadedByJob.ContainsKey(x.JobId)))
             {
                 var updatedJob = world.Jobs.Single(x => x.Id == batchAttempt.JobId);
+                var updatedShipment = world.Shipments.Single(x => x.Id == batchAttempt.ShipmentId);
                 if (updatedJob.State == EconomyJobState.Completed && batchAttempt.State != FlightAttemptState.Delivered)
                 {
                     var deliveredAttempt=batchAttempt with { State = FlightAttemptState.Delivered, DeliveredUtc = batchAttempt.DeliveryProof!.ReadyUtc };
                     await store.SaveAsync(deliveredAttempt, cancellationToken).ConfigureAwait(false);
                     if(attempt?.Id==deliveredAttempt.Id)attempt=deliveredAttempt;
                 }
+                else if (ReturnedCompletelyToOrigin(updatedJob, updatedShipment, batchAttempt))
+                {
+                    await RecordAsync(FlightDiagnosticEventType.CargoLoadReset, utcNow(),
+                        "cargo-returned-origin-" + commandId + "-" + batchAttempt.ShipmentId, cancellationToken,
+                        ("reason", "All cargo returned to origin before departure; aircraft identity released.")).ConfigureAwait(false);
+                    await RemoveReturnedAttemptAsync(batchAttempt, cancellationToken).ConfigureAwait(false);
+                    if (attempt?.Id == batchAttempt.Id) { attempt = null; continuityAnchor = null; }
+                }
             }
+            if (attempt is null) attempt = SelectAttempt(world, await store.LoadAsync(cancellationToken).ConfigureAwait(false));
             var remaining = jobs.Sum(x => world.Shipments.Single(s => s.Id == x.ShipmentId).LoadedQuantity);
             observationReason = jobs.All(x => world.Jobs.Single(j => j.Id == x.Id).State == EconomyJobState.Completed)
                 ? $"{jobs.Length} shipments delivered and settled exactly once."
@@ -722,18 +790,19 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         if (requirement.OriginLocationId != attempt.OriginLocationId || requirement.DestinationLocationId != attempt.DestinationLocationId)
             throw new IOException("Flight attempt route does not match its job. File preserved.");
         var shipment = world.Shipments.Single(x => x.Id == attempt.ShipmentId);
-        // Returning all cargo at origin leaves the observation attempt available
-        // for reloading. It does not imply departure or a new economy load.
-        var reservedBeforeDeparture = shipment.State == ShipmentState.Reserved &&
-            shipment.CurrentLocationId == attempt.OriginLocationId && shipment.LoadedQuantity == 0 &&
-            shipment.DeliveredQuantity == 0 && shipment.ForfeitedQuantity == 0 &&
-            attempt.TransitBeginsAtDeparture && attempt.State == FlightAttemptState.CargoLoaded &&
-            attempt.OriginDepartedUtc is null && attempt.FirstAirborneUtc is null &&
-            attempt.MovementObservedUtc is null && attempt.MaximumDistanceFromOriginNauticalMiles == 0 &&
-            attempt.MaximumDistanceObservedUtc is null && attempt.DeliveryProof is null && attempt.DeliveredUtc is null;
+        if (ReturnedCompletelyToOrigin(job, shipment, attempt))
+        {
+            await RecordAsync(FlightDiagnosticEventType.CargoLoadReset, utcNow(), "recovery-cargo-returned-origin",
+                cancellationToken, ("reason", "Recovered full origin return; stale aircraft identity released.")).ConfigureAwait(false);
+            await RemoveReturnedAttemptAsync(attempt, cancellationToken).ConfigureAwait(false);
+            attempt = SelectAttempt(world, await store.LoadAsync(cancellationToken).ConfigureAwait(false));
+            stationarySince = null; continuityAnchor = null;
+            observationReason = "Cargo is reserved at its origin and is not tied to an aircraft.";
+            return;
+        }
         if (job.State == EconomyJobState.Accepted && shipment.State == ShipmentState.Reserved && !attempt.TransitBeginsAtDeparture)
             world = (await economy.MarkShipmentInTransitAsync(job.Id, cancellationToken).ConfigureAwait(false)).World;
-        else if (job.State == EconomyJobState.Accepted && shipment.State is not (ShipmentState.Loaded or ShipmentState.InTransit) && !reservedBeforeDeparture)
+        else if (job.State == EconomyJobState.Accepted && shipment.State is not (ShipmentState.Loaded or ShipmentState.InTransit))
             throw new IOException("Flight attempt shipment state is inconsistent. Files preserved.");
         if (job.State == EconomyJobState.Accepted && attempt.TransitBeginsAtDeparture && attempt.OriginDepartedUtc is not null)
             world = (await economy.MarkShipmentInTransitAsync(job.Id, cancellationToken).ConfigureAwait(false)).World;
@@ -744,6 +813,20 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             await RecordAsync(FlightDiagnosticEventType.DeliveryCommitted, attempt.DeliveryProof.ReadyUtc, "delivery-committed", cancellationToken,
                 ("economyChanged", "false"), ("evidenceId", attempt.DeliveryProof.EvidenceId), ("reconciled", "true")).ConfigureAwait(false);
         }
+    }
+
+    private static bool ReturnedCompletelyToOrigin(EconomyJob job, Shipment shipment, FlightAttempt attempt) =>
+        job.State == EconomyJobState.Accepted && shipment.State == ShipmentState.Reserved &&
+        shipment.CurrentLocationId == attempt.OriginLocationId && shipment.LoadedQuantity == 0 &&
+        shipment.DeliveredQuantity == 0 && shipment.ForfeitedQuantity == 0;
+
+    private async Task RemoveReturnedAttemptAsync(FlightAttempt returnedAttempt, CancellationToken cancellationToken)
+    {
+        if (returnedAttempt.State != FlightAttemptState.CargoLoaded || returnedAttempt.FirstAirborneUtc is not null ||
+            returnedAttempt.MovementObservedUtc is not null || returnedAttempt.DeliveryProof is not null ||
+            returnedAttempt.DeliveredUtc is not null)
+            _ = await store.ResetIncompleteProgressAsync(returnedAttempt.Id, cancellationToken).ConfigureAwait(false);
+        await store.RemoveUncommittedAsync(returnedAttempt.Id, cancellationToken).ConfigureAwait(false);
     }
 
     private void EvaluateOriginStationary(EconomyJob? active)
@@ -863,6 +946,12 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
     }
     private static double DistanceNm(AircraftTelemetry sample, ApproximateCoordinates target) =>
         WorldTracking.DistanceMeters(sample.Latitude, sample.Longitude, target.Latitude, target.Longitude) / MetersPerNauticalMile;
+    private static double DistanceNm(AircraftTelemetry first, AircraftTelemetry second) =>
+        WorldTracking.DistanceMeters(first.Latitude, first.Longitude, second.Latitude, second.Longitude) / MetersPerNauticalMile;
+    private void SetLiveSample(AircraftTelemetry sample)
+    {
+        connected = true; latest = sample; lastSampleUtc = sample.ObservedUtc; lastValidSampleUtc = sample.ObservedUtc;
+    }
     private void Pause(string reason) { connected = false; latest = null; stationarySince = null; lastSampleUtc = null; observationReason = reason; }
     private double CurrentDistanceToActiveOrigin()
     {

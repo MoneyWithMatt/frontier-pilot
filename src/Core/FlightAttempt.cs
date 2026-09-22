@@ -9,7 +9,8 @@ public enum FlightDiagnosticEventType
     PostDepartureMovementRecorded, RequiredMaximumDistanceReached,
     ArrivalQualificationStarted, ArrivalQualificationInterrupted, ReadyToUnload,
     UnloadRequested, DeliveryCommitted, DeliveryRefused, ApplicationRecovery,
-    AircraftIdentityMismatchObserved, ShipmentLoaded, CargoLoadReset
+    AircraftIdentityMismatchObserved, ShipmentLoaded, CargoLoadReset,
+    TelemetryDiscontinuityObserved
 }
 
 /// <summary>Read-only diagnostic history. Events describe observations and never qualify a delivery.</summary>

@@ -38,7 +38,7 @@ public sealed class FlightAttemptTrackerTests
     }
 
     [Fact]
-    public async Task Qualified_origin_remains_available_for_repeated_partial_load_and_unload_changes()
+    public async Task Partial_changes_keep_qualification_but_full_origin_return_releases_aircraft_and_requalifies()
     {
         var h=await Harness.Create();var atEros=At(EmployedCargoPrototype.ErosId,Start);await ObserveSeconds(h.Tracker,atEros,10);
         Assert.True(h.Tracker.Current.CanLoadCargo);
@@ -47,8 +47,9 @@ public sealed class FlightAttemptTrackerTests
         Assert.True(h.Tracker.Current.CanLoadCargo);Assert.Equal(60,(await h.Economy.LoadAsync())!.Shipments.Single().LoadedQuantity);
         await h.Tracker.ApplyCargoTransferAsync("transfer-unload-60","command-unload-60",0,EmployedCargoPrototype.ErosId,
             atEros.Latitude,atEros.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
-        Assert.True(h.Tracker.Current.CanLoadCargo);Assert.Equal(ShipmentState.Reserved,(await h.Economy.LoadAsync())!.Shipments.Single().State);
-        await h.Tracker.ObserveAsync(atEros with { ObservedUtc = Start.AddSeconds(11) });
+        Assert.False(h.Tracker.Current.CanLoadCargo);Assert.Equal(ShipmentState.Reserved,(await h.Economy.LoadAsync())!.Shipments.Single().State);
+        Assert.Empty(await h.Attempts.LoadAsync());
+        await ObserveSeconds(h.Tracker,atEros with { ObservedUtc = Start.AddMinutes(1) },10);
         Assert.True(h.Tracker.Current.CanLoadCargo);
         Assert.Contains("ready",h.Tracker.Current.Reason,StringComparison.OrdinalIgnoreCase);
         await h.Tracker.ApplyCargoTransferAsync("transfer-load-120","command-load-120",120,EmployedCargoPrototype.ErosId,
@@ -66,42 +67,49 @@ public sealed class FlightAttemptTrackerTests
         await h.Tracker.ApplyCargoTransferAsync("return-first","return-first-command",0,EmployedCargoPrototype.ErosId,
             origin.Latitude,origin.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
         var returned=(await h.Economy.LoadAsync())!;
-        var saved=Assert.Single(await h.Attempts.LoadAsync());
+        Assert.Empty(await h.Attempts.LoadAsync());
+        await h.Tracker.ObserveAsync(new AircraftTelemetry(Start.AddSeconds(30),"Different aircraft","OTHER",0,0,5000,0,120,false));
+        Assert.Empty(await h.Attempts.LoadAsync());
+        Assert.DoesNotContain(await h.Attempts.LoadDiagnosticTimelineAsync(),x=>x.Type is FlightDiagnosticEventType.AirborneEvidenceRecorded or FlightDiagnosticEventType.PostDepartureMovementRecorded);
         await h.Tracker.RefreshEconomyAsync();
         var restarted=new FlightAttemptTracker(h.Economy,h.Attempts);await restarted.InitializeAsync();
         Assert.Equal(returned.Revision,(await h.Economy.LoadAsync())!.Revision);
-        Assert.Equal(saved,Assert.Single(await h.Attempts.LoadAsync()));
+        Assert.Empty(await h.Attempts.LoadAsync());
         Assert.False(restarted.Current.CanLoadCargo);
-        await ObserveSeconds(restarted,origin with {ObservedUtc=Start.AddMinutes(1)},10);
-        await restarted.ApplyCargoTransfersAsync("reload","reload-command",new Dictionary<string,decimal>{{saved.JobId,10}},
+        var replacement=origin with {ObservedUtc=Start.AddMinutes(1),AircraftTitle="Beechcraft Duke"};
+        await ObserveSeconds(restarted,replacement,10);
+        await restarted.ApplyCargoTransfersAsync("reload","reload-command",new Dictionary<string,decimal>{{"job-uis-supplies-v0",10}},
             EmployedCargoPrototype.ErosId,origin.Latitude,origin.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
         var reloaded=(await h.Economy.LoadAsync())!;
         Assert.Equal(10,reloaded.Shipments.Single().LoadedQuantity);
         Assert.Equal(ShipmentState.Loaded,reloaded.Shipments.Single().State);
         Assert.Equal(returned.FinancialLedger.Count,reloaded.FinancialLedger.Count);
-        Assert.Single(await h.Attempts.LoadAsync());
+        var fresh=Assert.Single(await h.Attempts.LoadAsync());
+        Assert.Equal("Beechcraft Duke",fresh.Aircraft.Title);
     }
 
     [Fact]
-    public async Task Reserved_shipment_with_departure_evidence_is_still_rejected_without_economy_changes()
+    public async Task Reserved_shipment_at_origin_releases_stale_departure_evidence_without_economy_changes()
     {
         var h=await Harness.Create();var origin=At(EmployedCargoPrototype.ErosId,Start);
         await ObserveSeconds(h.Tracker,origin,10);
         await h.Tracker.ApplyCargoTransferAsync("load","load-command",10,EmployedCargoPrototype.ErosId,
             origin.Latitude,origin.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
+        var attempt=Assert.Single(await h.Attempts.LoadAsync());
         await h.Tracker.ApplyCargoTransferAsync("return","return-command",0,EmployedCargoPrototype.ErosId,
             origin.Latitude,origin.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
-        var attempt=Assert.Single(await h.Attempts.LoadAsync());
         var inconsistent=attempt with { State=FlightAttemptState.Departed,FirstAirborneUtc=Start.AddMinutes(1),OriginDepartedUtc=Start.AddMinutes(1) };
         await h.Attempts.SaveAsync(inconsistent);
         var before=(await h.Economy.LoadAsync())!;
-        await Assert.ThrowsAsync<IOException>(()=>new FlightAttemptTracker(h.Economy,h.Attempts).InitializeAsync());
+        var recovered=new FlightAttemptTracker(h.Economy,h.Attempts);await recovered.InitializeAsync();
         Assert.Equal(before.Revision,(await h.Economy.LoadAsync())!.Revision);
-        Assert.Equal(inconsistent,Assert.Single(await h.Attempts.LoadAsync()));
+        Assert.Empty(await h.Attempts.LoadAsync());
+        Assert.Null(recovered.Current.Attempt);
+        Assert.StartsWith("Reserved",recovered.Current.Stage,StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task Resetting_an_uncommitted_zero_load_removes_stale_attempt_without_changing_economy()
+    public async Task Full_origin_return_automatically_removes_attempt_and_explicit_reset_remains_idempotent()
     {
         var h=await Harness.Create();var atEros=At(EmployedCargoPrototype.ErosId,Start);await ObserveSeconds(h.Tracker,atEros,10);
         await h.Tracker.ApplyCargoTransferAsync("transfer-load-60","command-load-60",60,EmployedCargoPrototype.ErosId,
@@ -110,7 +118,7 @@ public sealed class FlightAttemptTrackerTests
             atEros.Latitude,atEros.Longitude,false,AircraftLoadingMode.MsfsPayloadIntegration);
         var before=await h.Economy.LoadAsync();
         Assert.Equal(ShipmentState.Reserved,before!.Shipments.Single().State);Assert.Equal(0,before.Shipments.Single().LoadedQuantity);
-        Assert.NotNull(h.Tracker.Current.Attempt);
+        Assert.Null(h.Tracker.Current.Attempt);
 
         await h.Tracker.ResetUncommittedCargoLoadAsync();
         await h.Tracker.ResetUncommittedCargoLoadAsync();
@@ -144,6 +152,42 @@ public sealed class FlightAttemptTrackerTests
         await ObserveSeconds(h.Tracker, At(h.DestinationId, Start.AddMinutes(1)), 20);
         Assert.Null(h.Tracker.Current.Attempt!.FirstAirborneUtc); Assert.Null(h.Tracker.Current.Attempt.DeliveryProof);
         Assert.False(h.Tracker.Current.CanUnloadCargo); Assert.Equal("Cargo loaded", h.Tracker.Current.Stage);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Aircraft_session_change_cannot_turn_a_stale_identity_position_jump_into_flight_evidence(bool disconnectFirst)
+    {
+        var h = await Loaded();
+        if (disconnectFirst) await h.Tracker.ObserveAsync(null);
+        var switchedPosition = At(EmployedCargoPrototype.ErosId, Start.AddSeconds(11), onGround: false) with
+        {
+            Latitude = 0,
+            Longitude = 0,
+            AltitudeFeet = 5000,
+            GroundSpeedKnots = 120
+        };
+
+        // MSFS can publish the new session position before TITLE/ATC MODEL change.
+        await h.Tracker.ObserveAsync(switchedPosition);
+        await h.Tracker.ObserveAsync(switchedPosition with
+        {
+            ObservedUtc = Start.AddSeconds(12),
+            AircraftTitle = "Cessna 172 Skyhawk",
+            AircraftType = "C172"
+        });
+
+        var saved = Assert.Single(await h.Attempts.LoadAsync());
+        Assert.Equal(FlightAttemptState.CargoLoaded, saved.State);
+        Assert.Null(saved.FirstAirborneUtc);
+        Assert.Null(saved.MovementObservedUtc);
+        Assert.Equal(0, saved.MaximumDistanceFromOriginNauticalMiles);
+        Assert.Equal(ShipmentState.Loaded, (await h.Economy.LoadAsync())!.Shipments.Single().State);
+        Assert.DoesNotContain(await h.Attempts.LoadDiagnosticTimelineAsync(), x => x.Type is
+            FlightDiagnosticEventType.AirborneEvidenceRecorded or FlightDiagnosticEventType.PostDepartureMovementRecorded or
+            FlightDiagnosticEventType.RequiredMaximumDistanceReached or FlightDiagnosticEventType.ShipmentEnteredInTransit);
+        Assert.Contains("differs", h.Tracker.Current.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
