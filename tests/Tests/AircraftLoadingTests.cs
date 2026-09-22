@@ -620,7 +620,10 @@ public sealed class AircraftLoadingTests
         Assert.Equal(0,h.tracker.Loads);Assert.Equal(LoadManifestState.PendingApplication,h.coordinator.Current.Manifest!.State);
     }
 
-    [Fact] public async Task Seated_single_shipment_load_commits_through_real_flight_tracker_and_survives_restart()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Seated_single_shipment_load_commits_through_real_flight_tracker_and_survives_restart(bool restartPending)
     {
         var now = new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);
         var world = AcceptedWorld(now, out var job, out var shipment);
@@ -642,11 +645,27 @@ public sealed class AircraftLoadingTests
         var display = new CargoJobDisplay(job.Id,"Employer","Origin","Destination","Purpose","Cargo",shipment.Quantity,0,"TPC","Test",
             shipment.Id,ShipmentState.Reserved,requirement.OriginLocationId,requirement.DestinationLocationId,
             origin.Latitude,origin.Longitude,destination.Latitude,destination.Longitude);
-        var coordinator = new AircraftLoadingCoordinator(store,sim,tracker,()=>"sdk",()=>tracking,()=>display,
-            new(RequirePostBoardingCargoVerification:true),()=>now,(_,_)=>Task.CompletedTask);
+        var jobs = new EmployedCargoJobsViewModel(new EmployedCargoJobsService(economy,utcNow:()=>now),tracker);
+        await jobs.InitializeAsync(); await jobs.PrepareReservedJobsAsync([display]);
+        AircraftLoadingCoordinator CreateCoordinator() => new(store,sim,tracker,()=>"sdk",()=>tracking,()=>jobs.LoadingJobs,
+            new(RequirePostBoardingCargoVerification:true),()=>now,(_,_)=>Task.CompletedTask)
+            { RecoverManifestJobsAsync=jobs.RecoverManifestJobsAsync };
+        var coordinator = CreateCoordinator();
         await coordinator.InitializeAsync(); await coordinator.RefreshAsync();
         coordinator.CreatePlan([new(1,0),new(2,10)]); await coordinator.ApplyCargoAsync();
         Assert.Equal(0,sim.PayloadWrites);
+        if (restartPending)
+        {
+            tracker=new FlightAttemptTracker(economy,attempts);
+            jobs=new EmployedCargoJobsViewModel(new EmployedCargoJobsService(economy,utcNow:()=>now),tracker);
+            await jobs.InitializeAsync(); Assert.Empty(jobs.LoadingJobs);
+            coordinator=CreateCoordinator(); await coordinator.InitializeAsync();
+            Assert.Equal(job.Id,Assert.Single(jobs.LoadingJobs).JobId);
+            Assert.Equal(0,sim.PayloadWrites);
+            for (var i=0;i<=10;i++) await tracker.ObserveAsync(aircraft with { ObservedUtc=now.AddSeconds(i) });
+            now=now.AddSeconds(10); aircraft=aircraft with { ObservedUtc=now };
+            sim.Value=sim.Value with { ObservedUtc=now,Position=FlightPosition.From(aircraft) };
+        }
         tracking=new TrackingWorldState(aircraft,1,1,2,PlayerControlMode.InAircraft,null,"verified").EnsureValid();
         await coordinator.RefreshAsync(); await coordinator.ApplyAuthorizedCargoAfterBoardingAsync();
         Assert.Equal(910,sim.Value.Weights.CurrentGrossWeightKilograms);
@@ -656,6 +675,20 @@ public sealed class AircraftLoadingTests
         await coordinator.InitializeAsync(); await coordinator.RefreshAsync();
         Assert.Equal(writes,sim.PayloadWrites);
         Assert.Equal(10,coordinator.LoadedCargoKilograms);
+    }
+
+    [Fact] public async Task Pending_application_refuses_lost_job_selection_before_any_simulator_write()
+    {
+        var h=Harness(requireBoarded:true);await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,0),new(2,120)]);await h.coordinator.ApplyCargoAsync();
+        var now=h.sim.Value.ObservedUtc;
+        var restarted=new AircraftLoadingCoordinator(h.store,h.sim,h.tracker,()=>"sdk",()=>World(seated:true),
+            ()=>(CargoJobDisplay?)null,new(RequirePostBoardingCargoVerification:true),()=>now,(_,_)=>Task.CompletedTask);
+        await restarted.InitializeAsync();await restarted.RefreshAsync();
+        var error=await Assert.ThrowsAsync<InvalidOperationException>(()=>restarted.ApplyAuthorizedCargoAfterBoardingAsync());
+        Assert.Contains("not selected",error.Message);
+        Assert.Equal(0,h.sim.PayloadWrites);Assert.Equal(0,h.tracker.Loads);
+        Assert.Equal(LoadManifestState.PendingApplication,Assert.Single(await h.store.LoadManifestsAsync()).State);
     }
 
     private static EconomyWorld AcceptedWorld(DateTimeOffset now,out EconomyJob job,out Shipment shipment)

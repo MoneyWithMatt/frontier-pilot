@@ -259,6 +259,20 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
         }
         catch (Exception error) { ReportFlightError(error); }
     }
+    public async Task RecoverManifestJobsAsync(CargoLoadManifest manifest, CancellationToken cancellationToken = default)
+    {
+        var snapshot = await jobs.LoadAsync(cancellationToken);
+        var identities = manifest.Shipments.Count > 0
+            ? manifest.Shipments.Select(x => (x.JobId, x.ShipmentId)).ToArray()
+            : [(manifest.JobId, manifest.ShipmentId)];
+        var restored = identities.Select(id => snapshot.ReservedJobs.SingleOrDefault(x =>
+            x.JobId == id.JobId && x.ShipmentId == id.ShipmentId)
+            ?? throw new InvalidOperationException("A shipment in the pending cargo manifest is no longer accepted. The saved intent was preserved; no simulator write was made.")).ToArray();
+        await flight.RefreshEconomyAsync(cancellationToken);
+        await flight.SelectJobsAsync(restored.Select(x => x.JobId).ToArray(), cancellationToken);
+        await ApplySnapshotAsync(snapshot);
+        LoadingJobs = restored;
+    }
     public async Task ObserveTelemetryAsync(AircraftTelemetry? telemetry, CancellationToken cancellationToken = default)
     { try { await flight.ObserveAsync(telemetry, cancellationToken); } catch (Exception error) { ReportFlightError(error); } }
     public async Task LoadCargoAsync(CancellationToken cancellationToken = default)

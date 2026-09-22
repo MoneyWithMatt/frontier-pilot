@@ -90,3 +90,11 @@ Reselecting the same explicit job context (or the same single implicitly active 
 10. Recovery regression: while a Reserved shipment shows zero authoritative loaded quantity but a failed/pending manifest still claims cargo, set every Frontier station to zero and apply. Confirm the affected MSFS stations return to their recorded baselines, unrelated EFB payload is preserved, the shipment stays Reserved, and a fresh ten-second origin qualification permits loading it again.
 
 Do not claim the desired-state unload path or third-party-aircraft behavior is accepted in MSFS until these checks are completed.
+
+### Pending manifest selection recovery — 2026-09-22
+
+The next live refusal reported that the authorized shipment was no longer active, although its economy job was still Accepted. Startup restored the pending manifest but Jobs rebuilt its loading selection only from Loaded/InTransit shipments. A Reserved shipment with a pending intent was therefore absent from the selection; the boarded write and physical verification could succeed before the coordinator discovered the missing UI context.
+
+Pending-manifest initialization now resolves every saved job/shipment identity against the current accepted jobs and restores that exact loading selection. Boarded application repeats this validation before simulator writes and captures the matching job for its commit. Missing or terminal jobs fail without a write; recovery never accepts a different shipment as a substitute. This uses the existing Jobs service and flight tracker, with no save migration or manual modification of player state.
+
+Tests include a fresh Jobs view model and tracker after pending authorization, restoring selection without payload writes, subsequent seated application through the real economy, and refusal before writes when selection cannot be recovered. Verification: 127 focused tests, 568 complete solution tests, Release build with zero warnings/errors. Live PA28 acceptance remains pending.

@@ -33,6 +33,7 @@ public sealed class AircraftLoadingCoordinator
     private readonly Func<TrackingWorldState?> tracking; private readonly Func<IReadOnlyList<CargoJobDisplay>> selectedJobs;
     private readonly Func<DateTimeOffset> utcNow; private readonly Func<TimeSpan,CancellationToken,Task> delay;
     private readonly AircraftLoadingOptions options; private readonly SemaphoreSlim gate = new(1,1);
+    public Func<CargoLoadManifest, CancellationToken, Task>? RecoverManifestJobsAsync { get; init; }
     private bool continuouslyConnected; private DateTimeOffset? lastFuelCheckpoint;
     public AircraftLoadingStatus Current { get; private set; } = AircraftLoadingStatus.Empty;
     public event Action<AircraftLoadingStatus>? Changed;
@@ -145,6 +146,8 @@ public sealed class AircraftLoadingCoordinator
         var attempt=flight.Current.Attempt;
         var recoverable=manifests.Where(x=>x.State is not (LoadManifestState.Completed or LoadManifestState.Abandoned)).OrderByDescending(x=>x.CreatedUtc).FirstOrDefault();
         var manifest=recoverable;
+        if (manifest is { State: LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied } && RecoverManifestJobsAsync is { } recover)
+            await recover(manifest, token);
         if(manifest is null&&attempt is {State:not FlightAttemptState.Delivered}&&activeJob() is {ShipmentId:not null} legacy)
         {
             manifest=new CargoLoadManifest(AircraftLoadingIds.Manifest(attempt.Id),legacy.JobId,legacy.ShipmentId!,attempt.Id,attempt.Aircraft,
@@ -452,6 +455,13 @@ public sealed class AircraftLoadingCoordinator
         await gate.WaitAsync(token);try
         {
             var manifest=Current.Manifest??throw new InvalidOperationException("No outside cargo authorization exists.");
+            CargoJobDisplay? authorizedJob = null;
+            if (manifest.State is LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied)
+            {
+                if (RecoverManifestJobsAsync is { } recover) await recover(manifest, token);
+                authorizedJob = ActiveJobs().SingleOrDefault(x => x.JobId == manifest.JobId && x.ShipmentId == manifest.ShipmentId)
+                    ?? throw new InvalidOperationException("The authorized shipment is not selected or is no longer accepted. Select its reserved job before retrying; no simulator write was made.");
+            }
             var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();
             var reason=BoardedApplicationReason(live,manifest);if(reason!="Ready.")throw new InvalidOperationException(reason);
             if(manifest.CargoKilograms<=options.PayloadToleranceKilograms)throw new InvalidOperationException("The authorized cargo application has no positive aircraft-weight change to verify.");
@@ -493,7 +503,7 @@ public sealed class AircraftLoadingCoordinator
             var stations=manifest.Stations.Select(x=>x with{ReadBackKilograms=read.PayloadStations.Single(p=>p.Index==x.StationIndex).CurrentWeightKilograms}).ToArray();
             if(manifest.State is LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied)
             {
-                var job=activeJob()??throw new InvalidOperationException("The authorized shipment is no longer active; persistent intent was preserved.");
+                var job=authorizedJob!;
                 var commandId=manifest.LastTransferCommandId??throw new InvalidOperationException("The authorized load is missing its persistent transfer command ID.");
                 var location=CurrentLocation(job,read.Position);
                 var shipmentLoads=manifest.Shipments.Count>0?manifest.Shipments:
