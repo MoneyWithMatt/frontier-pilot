@@ -89,7 +89,14 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         Tracking.TelemetryChanged += sample => { _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft); _ = AircraftLoading.ObserveAsync(sample); };
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading));
         Layout.Edited += (_,_)=>Invalidate();
-        AddParkingCommand = new(()=>AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading)),()=>CanLayout&&hasRunway&&!Layout.IsDrawingTaxiway&&Layout.Stands.Count<8);
+        AddParkingCommand = new(()=>
+        {
+            // TaxiwayParking cannot compile without an MSFS Airport, and an Airport requires a
+            // runway. Adding the first real parking spawn therefore enables that infrastructure
+            // on the same operation site instead of inventing a non-functional scenery marker.
+            if(!hasRunway)HasRunway=true;
+            AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading));
+        },()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Stands.Count<8);
         AddObjectCommand = new(()=>Layout.AddObject(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+45,Layout.Objects.Count*40,LayoutRunwayHeading),LayoutRunwayHeading,SceneryAssets.PrototypeBaseLodgeId),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Objects.Count<64);
         RemoveParkingCommand = new(Layout.Delete,()=>CanLayout&&(Layout.Selected!=null||Layout.SelectedTaxiway!=null||Layout.SelectedObject!=null));
         UndoLayoutCommand = new(Layout.Undo,()=>Layout.CanUndo);

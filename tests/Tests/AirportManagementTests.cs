@@ -39,9 +39,9 @@ public sealed class AirportManagementTests
         await vm.SaveAirportAsync();var saved=Assert.Single(vm.Airports);
         Assert.False(saved.Definition.HasRunway);Assert.Contains("airfield not built",saved.Access);
         var reopened=new BuilderViewModel(service.ReopenDryRun(),"");await reopened.LoadAirportAsync(saved.Id);
-        Assert.False(reopened.HasRunway);Assert.False(reopened.AddParkingCommand.CanExecute(null));
+        Assert.False(reopened.HasRunway);Assert.True(reopened.AddParkingCommand.CanExecute(null));
         Assert.Single(reopened.Layout.Objects);
-        reopened.HasRunway=true;reopened.AddParkingAt(new(20,60));await reopened.SaveAirportAsync();
+        reopened.AddParkingCommand.Execute(null);Assert.True(reopened.HasRunway);await reopened.SaveAirportAsync();
         var upgraded=Assert.Single(reopened.Airports);Assert.Equal(saved.Id,upgraded.Id);Assert.True(upgraded.Definition.HasRunway);
         Assert.Single(upgraded.Definition.ParkingStands);Assert.Contains("Runway + parking",upgraded.Access);
     }

@@ -10,7 +10,7 @@ All V0 values are temporary test fixtures: 150 TPC founding; 70 kg ration capaci
 
 ## Founding and presence
 
-The Operations page lists only saved Frontier Pilot airport definitions. Its service reloads the selected definition and derives its capabilities from `ConstructionObjectCatalogue`; display text is never inspected. The current `prototype-base-lodge-v0` stock-hangar placeholder resolves through the catalogue to the stable `BaseLodge` capability.
+The Operations page lists only saved Frontier Pilot site definitions. Its service reloads the selected definition and derives its capabilities from `ConstructionObjectCatalogue`; display text is never inspected. The current `prototype-base-lodge-v0` field-cabin placeholder resolves through the catalogue to the stable `BaseLodge` capability.
 
 `GuardedAvatarSitePresence` is the sole production constructor of `VerifiedSitePresenceEvidence`. It accepts only a valid `TrackingWorldState` in `OnFoot` mode whose current object is the explicit avatar, whose avatar differs from the aircraft, is on ground, is no more than three seconds old, and lies within the configured 250 m prototype radius of the saved airport anchor. Aircraft, camera, disconnected, last-known and refused avatar positions cannot produce evidence. The full evidence, object ID, coordinates, timestamps, radius, distance, provider and MSFS integration details are stored with the founded site.
 
@@ -38,7 +38,7 @@ Airport deletion consults the current economy aggregate before preview and again
 
 ## Manual MSFS test
 
-1. Use Airport / Site Builder at a suitable test location. Capture the walking-avatar survey, add **Compact Base Lodge**, then save, build and install the operation site. Leave **Build runway now** clear to establish the operation before constructing an airfield; the site will not yet appear as an MSFS airport or spawn.
+1. Open **My Sites**, choose **Create new site**, capture the walking-avatar survey, add **Small Base Lodge**, then save, build and install the operation site. Leave **Build runway now** clear to establish the operation before constructing an airfield; the site will not yet appear as an MSFS airport or spawn. Adding a parking stand later also enables the runway/airport infrastructure required for a real MSFS parking spawn.
 2. Complete at least one employed cargo delivery so the ledger-derived balance is 150 TPC or more. The already accepted Arandis delivery provides 200 TPC.
 3. Load MSFS at the created airport. Open Frontier Pilot **Tracking**, confirm LIVE tracking, exit the aircraft and stand within 250 m of the airport anchor.
 4. Open **Operations**, wait for tracking to connect, and click **Refresh operations**. Select the airport. Confirm the founding check mentions a fresh guarded walking avatar and enables **Found prospecting camp**.

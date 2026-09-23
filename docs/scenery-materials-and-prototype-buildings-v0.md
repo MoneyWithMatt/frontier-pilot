@@ -18,7 +18,7 @@ The surface catalogue uses stable Frontier preset IDs and explicit availability.
 
 Existing definitions with no preset ID retain their prior generated appearance byte-for-byte: the legacy `Dirt` enum selects the procedural dirt material and legacy `Asphalt` selects the sample-derived asphalt material. Newly edited definitions save a stable preset ID.
 
-The construction catalogue contains the eight requested stable categories. Only **Prototype Base Lodge placeholder** is placeable in V0. It deliberately reuses the proven `Gen_Hangar56` library reference and measured footprint to exercise placement, persistence, compilation, installation, scale and orientation. Its hangar appearance is not proposed lodge artwork. The other categories remain explicitly unavailable until a reliable asset reference or Frontier-owned model exists.
+The construction catalogue contains the eight requested stable categories. Only **Prototype Base Lodge placeholder** is placeable in V0. It now references the installed generic `MICROSOFT_ASSET_FieldCabins_01` model at normal scale so its temporary visual reads as a small house/cabin rather than a hangar. The 8 × 6 m authoring footprint is provisional until live model bounds are measured. The other categories remain explicitly unavailable until a reliable asset reference or Frontier-owned model exists.
 
 ## Visual acceptance still required
 

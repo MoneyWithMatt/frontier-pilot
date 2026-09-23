@@ -31,7 +31,7 @@ public partial class MainWindow : Window
     private void MainTabsChanged(object sender,SelectionChangedEventArgs e)
     {
         if(!IsInitialized || !ReferenceEquals(e.Source,MainTabs))return;
-        BuilderFooter.Visibility=MainTabs.SelectedIndex==0?Visibility.Visible:Visibility.Collapsed;
+        BuilderFooter.Visibility=ReferenceEquals(MainTabs.SelectedItem,BuilderTab)?Visibility.Visible:Visibility.Collapsed;
         if(MainTabs.SelectedIndex is 1 or 2 or 3 or 4 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
             _=model.Tracking.ConnectAsync();
     }
@@ -153,10 +153,13 @@ public partial class MainWindow : Window
     }
     private bool MayDiscardEdits()=>!model.HasUnsavedAirport || MessageBox.Show(this,"This site has unsaved edits. Continue without saving them? Use Save site to keep them.","Unsaved site",MessageBoxButton.YesNo,MessageBoxImage.Warning,MessageBoxResult.No)==MessageBoxResult.Yes;
     private void NewAirport(object sender,RoutedEventArgs e){if(MayDiscardEdits())model.NewAirport();}
+    private void CreateSiteFromLibrary(object sender,RoutedEventArgs e)
+    { if(MayDiscardEdits()){model.NewAirport();MainTabs.SelectedItem=BuilderTab;} }
+    private void BackToMySites(object sender,RoutedEventArgs e)=>MainTabs.SelectedIndex=5;
     private async void OpenAirport(object sender,RoutedEventArgs e)
     {
         if(model.SelectedAirport is not {} airport||!MayDiscardEdits())return;
-        await model.LoadAirportAsync(airport.Id);if(model.State==WorkflowState.SurveyCaptured)MainTabs.SelectedIndex=0;
+        await model.LoadAirportAsync(airport.Id);if(model.State==WorkflowState.SurveyCaptured)MainTabs.SelectedItem=BuilderTab;
     }
     private async void DeleteAirport(object sender,RoutedEventArgs e)
     {

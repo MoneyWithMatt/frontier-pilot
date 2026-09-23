@@ -42,9 +42,9 @@ public static class ConstructionObjectCatalogue
 
     public static IReadOnlyList<ConstructionObjectDefinition> All { get; } =
     [
-        new ConstructionObjectDefinition(BaseLodgeId, ConstructionObjectCategory.BaseLodge, "Compact Base Lodge",
+        new ConstructionObjectDefinition(BaseLodgeId, ConstructionObjectCategory.BaseLodge, "Small Base Lodge",
             ConstructionObjectAvailability.PrototypePlaceholder, SceneryAssets.PrototypeBaseLodgeId,
-            "Uses a compact scaled stock-model shell as a temporary lodge visual; dedicated lodge artwork remains future work.") { Capabilities = [ConstructionCapability.BaseLodge] },
+            "Uses a small stock field cabin as a temporary lodge visual; dedicated lodge artwork remains future work.") { Capabilities = [ConstructionCapability.BaseLodge] },
         Unavailable(StorageShedId, ConstructionObjectCategory.StorageShed, "Storage Shed"),
         Unavailable(StaffAccommodationId, ConstructionObjectCategory.StaffAccommodation, "Staff Accommodation"),
         Unavailable(WarehouseId, ConstructionObjectCategory.Warehouse, "Warehouse"),

@@ -104,7 +104,7 @@ public sealed class SceneryObjectTests : TemporaryDirectoryTest
         Assert.Empty(xml.Descendants("Runway"));
         Assert.Empty(xml.Descendants("TaxiwayParking"));
         var scenery = Assert.Single(xml.Root.Elements("SceneryObject"));
-        Assert.Equal("0.18", scenery.Element("LibraryObject")!.Attribute("scale")!.Value);
+        Assert.Equal("1", scenery.Element("LibraryObject")!.Attribute("scale")!.Value);
     }
 
     [Fact]

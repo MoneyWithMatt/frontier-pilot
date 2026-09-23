@@ -57,16 +57,16 @@ public static class SceneryAssets
     public const string PrototypeBaseLodgeId = "prototype-base-lodge-v0";
     public static readonly SceneryAsset PrototypeBaseLodge = new(
         PrototypeBaseLodgeId,
-        "Compact Base Lodge (temporary stock-model fallback)",
-        GenericHangar56.LibraryGuid,
-        new(-4.581672386132813,3.731209624054893,-8.884450942382813,8.108399399414061),
+        "Small Base Lodge (temporary field-cabin fallback)",
+        new Guid("7C24C83A-0588-4208-9B89-6F01B7D9B82F"),
+        new(-4,4,-3,3),
         new(1.2,4),
-        GenericHangar56.DimensionsProvenance + "; rendered at 0.18 scale for a compact 8.3 x 17.0 m lodge shell")
+        "Temporary 8 x 6 m authoring footprint for installed MICROSOFT_ASSET_FieldCabins_01; live model bounds remain to be measured")
         {
             ConstructionCategory = ConstructionObjectCategory.BaseLodge,
             IsPrototypePlaceholder = true,
-            Scale = 0.18,
-            Dependency = "MSFS package fs24-asobo-modellib-airport-generic; temporary compact stock-model fallback pending dedicated lodge artwork"
+            Scale = 1,
+            Dependency = "MSFS package microsoft-modellib-assets; temporary FieldCabins_01 fallback pending dedicated lodge artwork"
         };
 
     public static IReadOnlyList<SceneryAsset> All { get; } = [GenericHangar56, PrototypeBaseLodge];
