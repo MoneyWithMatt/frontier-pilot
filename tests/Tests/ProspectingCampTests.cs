@@ -34,9 +34,9 @@ public sealed class ProspectingCampKernelTests : TemporaryDirectoryTest
     }
 
     [Fact]
-    public void WildernessSiteWithLodgeCanBeFoundedWithoutRunway()
+    public void OperationSiteWithLodgeCanBeFoundedBeforeRunwayConstruction()
     {
-        var founded = ProspectingCampKernel.Found(EarnedWorld(), Candidate(runway: false), Presence(), "found-wilderness", T0);
+        var founded = ProspectingCampKernel.Found(EarnedWorld(), Candidate(runway: false), Presence(), "found-site-before-airfield", T0);
         Assert.True(founded.Changed);
         Assert.Single(founded.World.Operations);
     }

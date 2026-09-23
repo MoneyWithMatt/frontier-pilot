@@ -60,7 +60,7 @@ public sealed record SavedAirport(int SchemaVersion,Guid Id,int Revision,DateTim
     [JsonIgnore] public string Name=>Definition.Name;
     [JsonIgnore] public string Identifier=>Definition.Identifier;
     [JsonIgnore] public string Location=>string.Create(CultureInfo.InvariantCulture,$"{Definition.Latitude:F5}, {Definition.Longitude:F5}");
-    [JsonIgnore] public string Access=>Definition.HasRunway ? "Airfield · spawn available when parking is present" : "Wilderness · no runway or spawn";
+    [JsonIgnore] public string Access=>!Definition.HasRunway ? "Operation site · airfield not built" : Definition.ParkingStands.Count == 0 ? "Runway access · no parking spawn" : "Runway + parking access";
     [JsonIgnore] public string Status=>$"Build: {LastBuild}; install: {LastInstall} (history only)";
     public override string ToString()=>$"{Name} ({Identifier})";
 }

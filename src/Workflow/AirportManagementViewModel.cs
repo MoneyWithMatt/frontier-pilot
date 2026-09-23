@@ -23,7 +23,7 @@ public sealed partial class BuilderViewModel
             catch{return true;}
         }
     }
-    public string SaveStatus=>Survey==null?"Create a survey or open an airport from My Airports.":HasUnsavedAirport?"Unsaved airport changes. Save airport, or build to save automatically.":"Airport definition saved. Old build/install status is historical.";
+    public string SaveStatus=>Survey==null?"Create a survey or open a site from My Sites.":HasUnsavedAirport?"Unsaved site changes. Save the site, or build to save automatically.":"Site definition saved. Old build/install status is historical.";
     public ActionCommand SaveAirportCommand {get;private set;}=null!;
     public ActionCommand RefreshAirportsCommand {get;private set;}=null!;
     private void InitializeManagement()
@@ -55,12 +55,12 @@ public sealed partial class BuilderViewModel
     public Task SaveAirportAsync()
     {
         if(!CanManageAirports||Survey==null)return Task.CompletedTask;
-        return Run("Save airport",async token=>
+        return Run("Save site",async token=>
         {
             if(Layout.HasPendingProperties)throw new IOException("Finish/cancel drawing and apply properties before saving.");
             var definition=Definition();definition.EnsureValid();
             await Management!.SaveAirportAsync(definition,token);await SynchronizeSavedAsync(token);
-            status="Airport saved to My Airports. Its identifier is now fixed; use New airport for a different airport.";
+            status="Site saved to My Sites. Its identifier is now fixed; use New site for a different location.";
         });
     }
     public async Task LoadAirportAsync(Guid id)
@@ -70,7 +70,7 @@ public sealed partial class BuilderViewModel
         await Run("Load saved airport",async token=>{loaded=await Management!.LoadAirportAsync(id,token);});
         if(loaded==null)return;
         checkedReady=false;Survey=loaded.Survey.Point;airportName=loaded.Name;identifier=loaded.Identifier;
-        hasRunway=loaded.Definition.HasRunway;Changed(nameof(HasRunway));Changed(nameof(IsWildernessSite));Changed(nameof(AccessDescription));
+        hasRunway=loaded.Definition.HasRunway;Changed(nameof(HasRunway));Changed(nameof(AccessDescription));
         length=loaded.Definition.LengthMeters.ToString("R",System.Globalization.CultureInfo.InvariantCulture);
         width=loaded.Definition.WidthMeters.ToString("R",System.Globalization.CultureInfo.InvariantCulture);surface=loaded.Definition.Surface;surfacePresetId=loaded.Definition.SurfacePresetId;Changed(nameof(SelectedSurfacePreset));Changed(nameof(SurfacePresetDetail));siteConfirmed=false;
         Layout.Reset();Layout.Replace(loaded.Definition.ParkingStands,loaded.Definition.Taxiways,loaded.Definition.PlacedObjects);Layout.MarkSaved(Layout.Stands,Layout.Objects);
@@ -80,8 +80,8 @@ public sealed partial class BuilderViewModel
     public void NewAirport()
     {
         if(busy)return;
-        Management?.NewAirport();savedDefinition="";Survey=null;checkedReady=false;airportName="";identifier="";length="200";width="20";hasRunway=true;surface=RunwaySurface.Dirt;surfacePresetId=RunwaySurfacePresets.CompactedDirtId;Changed(nameof(HasRunway));Changed(nameof(IsWildernessSite));Changed(nameof(AccessDescription));Changed(nameof(SelectedSurfacePreset));Changed(nameof(SurfacePresetDetail));siteConfirmed=false;
-        Layout.Reset();Invalidate();status="New airport. Check and connect, then capture its runway centre.";Refresh();
+        Management?.NewAirport();savedDefinition="";Survey=null;checkedReady=false;airportName="";identifier="";length="200";width="20";hasRunway=false;surface=RunwaySurface.Dirt;surfacePresetId=RunwaySurfacePresets.CompactedDirtId;Changed(nameof(HasRunway));Changed(nameof(AccessDescription));Changed(nameof(SelectedSurfacePreset));Changed(nameof(SurfacePresetDetail));siteConfirmed=false;
+        Layout.Reset();Invalidate();status="New operation site. Check and connect, then capture its site anchor.";Refresh();
     }
     public async Task<AirportDeletionPlan?> PrepareDeleteAirportAsync(Guid id)
     {

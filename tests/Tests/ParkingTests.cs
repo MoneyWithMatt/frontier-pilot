@@ -58,7 +58,7 @@ public sealed class ParkingWorkflowTests
     {
         var service=BuilderServices.CreateDryRun();var vm=new BuilderViewModel(service,"");
         Assert.False(vm.AddParkingCommand.CanExecute(null));
-        await vm.CheckAsync();await vm.CaptureAsync();vm.AirportName="Parking test";vm.Identifier="FPSTAND";vm.SiteConfirmed=true;
+        await vm.CheckAsync();await vm.CaptureAsync();vm.AirportName="Parking test";vm.Identifier="FPSTAND";vm.SiteConfirmed=true;vm.HasRunway=true;
         vm.AddParkingCommand.Execute(null);Assert.Single(vm.Layout.Stands);
         vm.Layout.Heading="180";vm.Layout.Apply();await vm.ValidateAsync();await vm.BuildAsync();
         Assert.Equal(WorkflowState.Built,vm.State);Assert.Single(vm.Built!.Definition.ParkingStands);
@@ -72,7 +72,7 @@ public sealed class ParkingWorkflowTests
     }
     [Fact] public async Task RecaptureClearsStandsAndBadEditorTextNeverBuilds()
     {
-        var service=BuilderServices.CreateDryRun();var vm=new BuilderViewModel(service,"");await vm.CheckAsync();await vm.CaptureAsync();
+        var service=BuilderServices.CreateDryRun();var vm=new BuilderViewModel(service,"");await vm.CheckAsync();await vm.CaptureAsync();vm.HasRunway=true;
         vm.AddParkingCommand.Execute(null);vm.Layout.Radius="oops";vm.Layout.Apply();Assert.Contains("finite",vm.Layout.Message);
         await vm.CaptureAsync();Assert.Empty(vm.Layout.Stands);
     }

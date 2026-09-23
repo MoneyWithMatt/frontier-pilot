@@ -119,7 +119,7 @@ public sealed class TaxiwayWorkflowTests : TemporaryDirectoryTest
     [Fact] public async Task FullDryRunContainsDrawnTaxiwayAndEveryEditInvalidates()
     {
         var vm=new BuilderViewModel(BuilderServices.CreateDryRun(),"");await vm.CheckAsync();await vm.CaptureAsync();
-        vm.AirportName="Taxiway test";vm.Identifier="FPTAXI2";vm.SiteConfirmed=true;vm.AddParkingAt(new(1000,300));
+        vm.AirportName="Taxiway test";vm.Identifier="FPTAXI2";vm.SiteConfirmed=true;vm.HasRunway=true;vm.AddParkingAt(new(1000,300));
         vm.Layout.BeginTaxiway();vm.Layout.AddTaxiwayPoint(new(0,0));vm.Layout.AddTaxiwayPoint(new(100,100));vm.Layout.AddTaxiwayPoint(new(1000,300));
         Assert.False(vm.ValidateCommand.CanExecute(null));vm.Layout.FinishTaxiway();
         await vm.ValidateAsync();Assert.Equal(WorkflowState.Validated,vm.State);await vm.BuildAsync();Assert.Equal(WorkflowState.Built,vm.State);

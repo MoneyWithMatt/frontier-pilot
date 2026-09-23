@@ -16,7 +16,7 @@ public sealed class OfflineWorkflowTests
         Assert.False(vm.CaptureCommand.CanExecute(null));
         await vm.CheckAsync(); Assert.Equal(WorkflowState.ReadyToSurvey,vm.State);
         await vm.CaptureAsync(); Assert.Equal(WorkflowState.SurveyCaptured,vm.State);
-        vm.AirportName="Offline Test"; vm.Identifier="FPDRY01"; vm.SiteConfirmed=true;
+        vm.AirportName="Offline Test"; vm.Identifier="FPDRY01"; vm.SiteConfirmed=true; vm.HasRunway=true;
         return (service,vm);
     }
     [Fact] public async Task RecordedSurveyThroughGenerationBuildAndSafeReinstall()

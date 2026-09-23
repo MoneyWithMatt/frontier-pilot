@@ -83,7 +83,7 @@ public sealed class PersistentEconomyTests : TemporaryDirectoryTest
         Assert.Equal("FYWE", eros.Identifier); Assert.Contains(eros.Inventory, x => x.ResourceId == OperationArchetypeCatalogue.RationsResourceId && x.Quantity == 200);
         Assert.Contains(snapshot.MapLocations, x => x.Kind == OperationsMapLocationKind.SystemLocation && x.Identifier == "FYUS");
         var operationMarker = Assert.Single(snapshot.MapLocations, x => x.Kind == OperationsMapLocationKind.PlayerOperation);
-        Assert.Contains("Player-created airport", operationMarker.Concepts); Assert.NotNull(operationMarker.OperationId);
+        Assert.Contains("Player-created site", operationMarker.Concepts); Assert.NotNull(operationMarker.OperationId);
         Assert.DoesNotContain(snapshot.MapLocations, x => x.Kind == OperationsMapLocationKind.PlayerAirport);
         Assert.Contains(operationMarker.Inventory, x => x.ResourceId == OperationArchetypeCatalogue.RationsResourceId);
     }

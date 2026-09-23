@@ -151,7 +151,7 @@ public partial class MainWindow : Window
         var dialog=new Microsoft.Win32.OpenFileDialog {Filter="Layout JSON|*.json"};
         if(dialog.ShowDialog(this)==true)await model.LoadLayoutAsync(dialog.FileName);
     }
-    private bool MayDiscardEdits()=>!model.HasUnsavedAirport || MessageBox.Show(this,"This airport has unsaved edits. Continue without saving them? Use Save airport to keep them.","Unsaved airport",MessageBoxButton.YesNo,MessageBoxImage.Warning,MessageBoxResult.No)==MessageBoxResult.Yes;
+    private bool MayDiscardEdits()=>!model.HasUnsavedAirport || MessageBox.Show(this,"This site has unsaved edits. Continue without saving them? Use Save site to keep them.","Unsaved site",MessageBoxButton.YesNo,MessageBoxImage.Warning,MessageBoxResult.No)==MessageBoxResult.Yes;
     private void NewAirport(object sender,RoutedEventArgs e){if(MayDiscardEdits())model.NewAirport();}
     private async void OpenAirport(object sender,RoutedEventArgs e)
     {

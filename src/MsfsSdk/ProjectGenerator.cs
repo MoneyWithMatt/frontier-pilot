@@ -153,7 +153,7 @@ public static class ProjectGenerator
                     new XAttribute("scale", Number(asset.Scale)))));
         }
         // MSFS does not permit a runwayless Airport, and TaxiwayParking cannot exist without
-        // an Airport. A wilderness operation is therefore compiled as scenery-only content.
+        // an Airport. A site without airfield infrastructure is therefore compiled as scenery-only content.
         if (!definition.HasRunway) airport.Remove();
         XDocument? material = null;
         if (preset is null && definition.HasRunway)

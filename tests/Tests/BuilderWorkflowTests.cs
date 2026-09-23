@@ -16,7 +16,7 @@ public class BuilderViewModelTests
         public Task<string> InstallAsync(BuiltAirport b, IProgress<string> p, CancellationToken t) { Installs++; if(Fail) throw new IOException("MSFS running"); return Task.FromResult("installed"); }
         public void OpenPath(string p) { }
     }
-    private static async Task<BuilderViewModel> Ready(Fake f) { var v=new BuilderViewModel(f,"sdk"); await v.CheckAsync(); await v.CaptureAsync(); v.AirportName="Test";v.Identifier="FPNEW";v.SiteConfirmed=true;await v.ValidateAsync();return v; }
+    private static async Task<BuilderViewModel> Ready(Fake f) { var v=new BuilderViewModel(f,"sdk"); await v.CheckAsync(); await v.CaptureAsync(); v.AirportName="Test";v.Identifier="FPNEW";v.SiteConfirmed=true;v.HasRunway=true;await v.ValidateAsync();return v; }
     [Fact] public async Task InvalidInputNeverBuilds() { var f=new Fake(); var v=new BuilderViewModel(f,"sdk"); await v.BuildAsync();Assert.Equal(0,f.Builds);Assert.NotEmpty(v.Error); }
     [Fact] public async Task CompleteFlowAndEditsInvalidatePackage() { var f=new Fake();var v=await Ready(f);Assert.Equal("09 / 27",v.Designators);await v.BuildAsync();Assert.True(v.InstallCommand.CanExecute(null));await v.InstallAsync();Assert.Contains("Restart",v.Status);Assert.Equal(1,f.Installs);v.Length="250";Assert.Null(v.Built);Assert.False(v.InstallCommand.CanExecute(null)); }
     [Theory] [InlineData("NaN")] [InlineData("-1")] [InlineData("abc")] public async Task InvalidDimensionsRefuse(string value) {var f=new Fake();var v=await Ready(f);v.Length=value;await v.BuildAsync();Assert.Equal(0,f.Builds);}

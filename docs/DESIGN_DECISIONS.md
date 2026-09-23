@@ -197,9 +197,9 @@ At Matt's request, remove the UI action that starts a new simulated cargo load. 
 - Until operation accounts exist, the local player's ledger funds their owned operation. Owner-flown pilot payout is a zero-net self-transfer so fulfillment cannot create money.
 - Road fallback uses a replaceable deterministic approximation and persisted event times. It is an economic fallback rather than teleportation or a road-network simulation.
 
-## Wilderness operation access — 2026-09-23
+## Operation-site infrastructure progression — 2026-09-23
 
-- **Implemented:** a saved Frontier site may be an airfield or a scenery-only wilderness site. Prospecting Camp founding requires the Base Lodge and guarded walking-avatar presence, but no longer requires a runway.
-- **MSFS constraint:** `TaxiwayParking` belongs to an `Airport`, and an MSFS airport requires at least one runway. Wilderness sites therefore deliberately have no parking spawn. They are reached by landing on suitable terrain and approaching on foot; parking/spawn access requires an airfield site.
-- **Implemented:** wilderness generation omits `Airport`, `Runway`, taxiway and parking XML while retaining terrain-snapped scenery objects. Switching an editable site to wilderness clears incompatible parking and taxiways.
+- **Implemented:** a new Frontier operation begins as a saved site with its operation building; a runway is optional infrastructure on that same site, not a separate site or operation category. Prospecting Camp founding requires the Base Lodge and guarded walking-avatar presence, but does not require a runway.
+- **Jobs versus spawn:** economic jobs use the site's location and do not require a runway or parking. `TaxiwayParking` belongs to an MSFS `Airport`, and an MSFS airport requires at least one runway. Before the runway is built there is no normal MSFS spawn. A runway adds runway-start spawning; parking adds a ramp/parking spawn.
+- **Implemented:** generation before airfield construction omits `Airport`, `Runway`, taxiway and parking XML while retaining terrain-snapped scenery objects. Enabling the runway later and rebuilding upgrades the same saved site. Disabling an existing runway clears incompatible parking and taxiways after the player chooses that change.
 - **Prototype visual:** the Base Lodge keeps the proven stock model dependency but renders at 0.18 scale with an approximately 8.3 × 17.0 m footprint. This is a compact temporary shell pending dedicated Frontier lodge artwork.

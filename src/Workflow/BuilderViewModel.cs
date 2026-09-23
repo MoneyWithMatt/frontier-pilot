@@ -24,7 +24,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
 {
     private readonly IBuilderServices services;
     private CancellationTokenSource? cancellation;
-    private bool busy, checkedReady, siteConfirmed, hasRunway = true;
+    private bool busy, checkedReady, siteConfirmed, hasRunway;
     private string sdkRoot, airportName = "", identifier = "", length = "200", width = "20", status = "Check prerequisites to begin.", error = "", activity = "";
     private RunwaySurface surface = RunwaySurface.Dirt;
     private string? surfacePresetId = RunwaySurfacePresets.CompactedDirtId;
@@ -108,7 +108,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         OpenPackageCommand = new(() => Open(Built?.PackageDirectory ?? ""), () => !IsBusy && Built != null);
         OpenLogCommand = new(() => Open(services.LogPath), () => !IsBusy && services.LogPath != "");
         OpenEvidenceCommand = new(() => Open(services.EvidenceDirectory), () => !IsBusy && services.EvidenceDirectory != "");
-        Layout.PropertyChanged += (_,_)=> { Changed(nameof(Layout)); Changed(nameof(ValidationMessage)); BuildCommand.Refresh(); InstallCommand.Refresh(); ValidateCommand.Refresh(); RefreshManagement(); foreach(var c in new[]{AddParkingCommand,AddObjectCommand,RemoveParkingCommand,UndoLayoutCommand,RedoLayoutCommand,RotateLeftCommand,RotateRightCommand,ApplyParkingCommand,ApplyObjectCommand})c.Refresh(); };
+        Layout.PropertyChanged += (_,_)=> { Changed(nameof(Layout)); Changed(nameof(ValidationMessage)); Changed(nameof(AccessDescription)); BuildCommand.Refresh(); InstallCommand.Refresh(); ValidateCommand.Refresh(); RefreshManagement(); foreach(var c in new[]{AddParkingCommand,AddObjectCommand,RemoveParkingCommand,UndoLayoutCommand,RedoLayoutCommand,RotateLeftCommand,RotateRightCommand,ApplyParkingCommand,ApplyObjectCommand})c.Refresh(); };
         InitializeManagement();
         Append(ModeDescription);
     }
@@ -158,15 +158,16 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             hasRunway = value;
             if (!hasRunway && (Layout.Stands.Count > 0 || Layout.Taxiways.Count > 0))
                 Layout.Replace([], [], Layout.Objects.ToArray());
-            Changed(); Changed(nameof(IsWildernessSite)); Changed(nameof(AccessDescription)); Changed(nameof(CanEditRunwayLayout)); Changed(nameof(CaptureInstructions));
+            Changed(); Changed(nameof(AccessDescription)); Changed(nameof(CanEditRunwayLayout)); Changed(nameof(CaptureInstructions));
             Changed(nameof(AfterCaptureInstructions)); Changed(nameof(Designators)); Changed(nameof(SuccessInstructions));
             Invalidate();
         }
     }
-    public bool IsWildernessSite { get => !hasRunway; set => HasRunway = !value; }
-    public string AccessDescription => hasRunway
-        ? "Airfield access: MSFS airport, runway and optional parking spawn."
-        : "Wilderness access: scenery only. No runway or parking spawn; land on suitable terrain and reach the lodge on foot.";
+    public string AccessDescription => !hasRunway
+        ? "Operation established · airfield infrastructure not built. Jobs can use this location, but MSFS cannot spawn here."
+        : Layout.Stands.Count == 0
+            ? "Runway built · runway-start spawning is available. Add parking for a ramp or parking spawn."
+            : "Airfield access built · runway-start and parking spawns are available.";
     public RunwaySurface Surface { get => surface; set { if (!busy && (value != surface || surfacePresetId is not null)) { surface = value; surfacePresetId = null; Changed(nameof(SelectedSurfacePreset)); Changed(nameof(SurfacePresetDetail)); Invalidate(); } } }
     public RunwaySurfaceChoice SelectedSurfacePreset
     {
@@ -188,7 +189,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         {
             var errors = new List<string>();
             if(Layout.HasPendingProperties)errors.Add("Finish or cancel the taxiway and apply property edits before validating or building.");
-            if (Survey is null) errors.Add("Capture your runway centre first.");
+            if (Survey is null) errors.Add(hasRunway ? "Capture your runway centre first." : "Capture the operation site anchor first.");
             else if (SurveyCapture.ValidatePoint(Survey) is { } problem) errors.Add(problem);
             try { var d = Definition(); errors.AddRange(d.Validate().Select(e => e.StartsWith("Name must") ? "Enter an airport name of 1–48 characters without leading or trailing spaces; emoji are not supported." : e)); if (d.Identifier is "FPT1" or "FPSC") errors.Add("FPT1 and FPSC are preserved. Choose a new identifier."); }
             catch (ArgumentException e) { errors.Add(e.Message); }
@@ -201,7 +202,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public double PreviewWidth { get { if (double.TryParse(width, NumberStyles.Float, CultureInfo.InvariantCulture, out var w) && double.TryParse(length, NumberStyles.Float, CultureInfo.InvariantCulture, out var l) && double.IsFinite(w) && double.IsFinite(l) && l > 0) return Math.Clamp(180 * w / l, 4, 100); return 18; } }
     public string SuccessInstructions => InstalledPath == "" ? "" : IsDryRun ? $"Dry run completed. Synthetic test package installed only in:\n{InstalledPath}\nIt is not flyable scenery. Do not copy it to MSFS." : hasRunway
         ? $"Installed {Built!.Definition.Identifier}. Launch or restart MSFS, search {Built.Definition.Identifier} in Free Flight, and test both runway starts ({Designators}). Inspect surface, rocks and terrain edges.\n{InstalledPath}"
-        : $"Installed wilderness site {Built!.Definition.Identifier}. It is scenery-only and will not appear as an MSFS airport or spawn. Fly or bush-land nearby and approach the lodge on foot.\n{InstalledPath}";
+        : $"Installed operation site {Built!.Definition.Identifier}. Airfield infrastructure has not been built, so it will not appear as an MSFS airport or spawn. Fly or bush-land nearby and approach the lodge on foot.\n{InstalledPath}";
     private AirstripDefinition Definition()
     {
         if (!double.TryParse(length, NumberStyles.Float, CultureInfo.InvariantCulture, out var l) || !double.TryParse(width, NumberStyles.Float, CultureInfo.InvariantCulture, out var w))

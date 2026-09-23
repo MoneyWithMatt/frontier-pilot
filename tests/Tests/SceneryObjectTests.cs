@@ -94,11 +94,11 @@ public sealed class SceneryObjectTests : TemporaryDirectoryTest
     }
 
     [Fact]
-    public void WildernessSiteGeneratesLodgeSceneryWithoutAirportRunwayOrParking()
+    public void SiteBeforeAirfieldConstructionGeneratesLodgeWithoutAirportRunwayOrParking()
     {
         var lodge = new PlacedSceneryObject(1, SceneryAssets.PrototypeBaseLodgeId, 12, 18, 35);
         var definition = Fixtures.Strip with { HasRunway = false, ParkingStands = [], Taxiways = [], PlacedObjects = [lodge] };
-        var generated = ProjectGenerator.Generate(definition, Path.Combine(Root, "wilderness"));
+        var generated = ProjectGenerator.Generate(definition, Path.Combine(Root, "site-before-airfield"));
         var xml = XDocument.Load(Path.Combine(generated.Directory, "PackageSources", "data", "airport.xml"));
         Assert.Empty(xml.Root!.Elements("Airport"));
         Assert.Empty(xml.Descendants("Runway"));
@@ -108,7 +108,7 @@ public sealed class SceneryObjectTests : TemporaryDirectoryTest
     }
 
     [Fact]
-    public void WildernessSiteRefusesParkingAndTaxiways()
+    public void SiteWithoutRunwayRefusesParkingAndTaxiways()
     {
         var definition = Fixtures.Strip with { HasRunway = false, ParkingStands = [new(1, 50, 0, 0, 8)] };
         Assert.Contains(definition.Validate(), x => x.Contains("cannot contain parking", StringComparison.OrdinalIgnoreCase));

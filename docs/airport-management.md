@@ -12,7 +12,7 @@ Deletion removes only the selected airport's saved JSON, registered generated pr
 
 1. Start `scripts/Start-Desktop.ps1 -DryRun`.
 2. Check, capture, enter a unique identifier, add parking and a taxiway, confirm the site, validate and build.
-3. Select **Save airport** if it has not already been saved by build.
+3. Select **Save site** if it has not already been saved by build.
 4. Close Frontier Pilot, start the same dry-run command again, and open **My Airports**.
 5. Select the airport and choose **Open airport**. Confirm its runway, parking and taxiway layout is restored and Build remains disabled until site confirmation and validation.
 6. Create a second disposable airport. In My Airports choose **Delete Airport**, inspect the exact preview and cancel once. Repeat and confirm. Verify the other airport remains.

@@ -10,7 +10,7 @@ public sealed class AirportManagementTests
     private static async Task<(BuilderServices Service,BuilderViewModel Vm)> Ready(string id="FPMAN01",bool failBuild=false)
     {
         var service=BuilderServices.CreateDryRun(failCompilation:failBuild);var vm=new BuilderViewModel(service,"");
-        await vm.CheckAsync();await vm.CaptureAsync();vm.AirportName="Persistent test";vm.Identifier=id;vm.SiteConfirmed=true;
+        await vm.CheckAsync();await vm.CaptureAsync();vm.AirportName="Persistent test";vm.Identifier=id;vm.SiteConfirmed=true;vm.HasRunway=true;
         vm.AddParkingAt(new(1200,200));vm.Layout.BeginTaxiway();vm.Layout.AddTaxiwayPoint(new(0,0));vm.Layout.AddTaxiwayPoint(new(100,100));vm.Layout.AddTaxiwayPoint(new(1200,200));vm.Layout.FinishTaxiway();
         return (service,vm);
     }
@@ -29,18 +29,27 @@ public sealed class AirportManagementTests
         var evidence=Environment.GetEnvironmentVariable("FRONTIER_MANAGEMENT_EVIDENCE");
         if(evidence!=null)File.Copy(FileFor(s,first.Id),Path.Combine(evidence,"saved-airport-example.json"),true);
     }
-    [Fact] public async Task WildernessSiteClearsAirfieldInfrastructureAndPersistsAccessMode()
+    [Fact] public async Task SiteCanProgressFromNoAirfieldToRunwayAndParkingWithoutChangingIdentity()
     {
         var (service,vm)=await Ready();
         Assert.NotEmpty(vm.Layout.Stands);Assert.NotEmpty(vm.Layout.Taxiways);
-        vm.IsWildernessSite=true;
+        vm.HasRunway=false;
         Assert.False(vm.HasRunway);Assert.Empty(vm.Layout.Stands);Assert.Empty(vm.Layout.Taxiways);
         vm.Layout.AddObject(new(20,30),vm.LayoutRunwayHeading,SceneryAssets.PrototypeBaseLodgeId);
         await vm.SaveAirportAsync();var saved=Assert.Single(vm.Airports);
-        Assert.False(saved.Definition.HasRunway);Assert.Contains("Wilderness",saved.Access);
+        Assert.False(saved.Definition.HasRunway);Assert.Contains("airfield not built",saved.Access);
         var reopened=new BuilderViewModel(service.ReopenDryRun(),"");await reopened.LoadAirportAsync(saved.Id);
-        Assert.True(reopened.IsWildernessSite);Assert.False(reopened.AddParkingCommand.CanExecute(null));
+        Assert.False(reopened.HasRunway);Assert.False(reopened.AddParkingCommand.CanExecute(null));
         Assert.Single(reopened.Layout.Objects);
+        reopened.HasRunway=true;reopened.AddParkingAt(new(20,60));await reopened.SaveAirportAsync();
+        var upgraded=Assert.Single(reopened.Airports);Assert.Equal(saved.Id,upgraded.Id);Assert.True(upgraded.Definition.HasRunway);
+        Assert.Single(upgraded.Definition.ParkingStands);Assert.Contains("Runway + parking",upgraded.Access);
+    }
+
+    [Fact] public void NewSiteStartsBeforeAirfieldInfrastructure()
+    {
+        var service=BuilderServices.CreateDryRun();var vm=new BuilderViewModel(service,"");
+        Assert.False(vm.HasRunway);Assert.Contains("airfield infrastructure not built",vm.AccessDescription);
     }
     [Fact] public async Task BuildAutomaticallySavesAndLoadedEditsRequireSavingAndRebuilding()
     {

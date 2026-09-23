@@ -78,7 +78,7 @@ public sealed class LayoutWorkflowTests : TemporaryDirectoryTest
     private static async Task<BuilderViewModel> Ready()
     {
         var vm=new BuilderViewModel(BuilderServices.CreateDryRun(),"");
-        await vm.CheckAsync();await vm.CaptureAsync();vm.AirportName="Layout test";vm.Identifier="FPLAY01";vm.SiteConfirmed=true;
+        await vm.CheckAsync();await vm.CaptureAsync();vm.AirportName="Layout test";vm.Identifier="FPLAY01";vm.SiteConfirmed=true;vm.HasRunway=true;
         vm.AddParkingCommand.Execute(null);return vm;
     }
     [Fact] public async Task VisuallyPlacedCoordinatesReachXmlAndSaveLoadUndoInvalidateBuilds()

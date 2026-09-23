@@ -345,15 +345,16 @@ public sealed class ProspectingOperationsService : IProspectingOperations
         foreach (var airport in savedAirports)
         {
             var operation = operations.SingleOrDefault(x => world.Sites.Any(site => site.AirportDefinitionId == airport.Id.ToString("N") && site.LocationId == x.LocationId));
-            var access = airport.Definition.HasRunway ? "Player-created airport" : "Wilderness operation site";
-            var accessConcept = airport.Definition.HasRunway ? "Runway access" : "Bush access · no spawn";
+            var access = "Player-created site";
+            var accessConcept = !airport.Definition.HasRunway ? "Airfield not built · no spawn"
+                : airport.Definition.ParkingStands.Count == 0 ? "Runway access · no parking spawn" : "Runway + parking access";
             if (operation is null)
                 result.Add(new("airport:" + airport.Id.ToString("N"), airport.Name, airport.Identifier,
                     OperationsMapLocationKind.PlayerAirport, access, "Player", airport.Definition.Latitude,
-                    airport.Definition.Longitude, airport.Definition.HasRunway ? "Saved Frontier Pilot airport definition." : "Saved scenery-only Frontier Pilot site.", [access, accessConcept], [], null));
+                    airport.Definition.Longitude, "Saved Frontier Pilot operation site.", [access, accessConcept], [], null));
             else
                 result.Add(new("operation:" + operation.OperationId, operation.SiteName, operation.AirportIdentifier,
-                    OperationsMapLocationKind.PlayerOperation, airport.Definition.HasRunway ? "Player airfield + operation" : "Wilderness player operation", "Player-owned",
+                    OperationsMapLocationKind.PlayerOperation, "Player operation", "Player-owned",
                     operation.Latitude, operation.Longitude, operation.ArchetypeName,
                     [access, accessConcept, operation.ArchetypeName], operation.Inventory, operation.OperationId));
         }
