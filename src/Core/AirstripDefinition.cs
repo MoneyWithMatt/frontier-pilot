@@ -7,6 +7,9 @@ public enum RunwaySurface { Asphalt, Dirt }
 
 public sealed record AirstripDefinition
 {
+    /// <summary>False creates a scenery-only wilderness site. MSFS parking belongs to an
+    /// Airport and an Airport requires a runway, so wilderness sites deliberately have no spawn.</summary>
+    public bool HasRunway { get; init; } = true;
     public required string Name { get; init; }
     public required string Identifier { get; init; }
     public required double Latitude { get; init; }
@@ -48,8 +51,13 @@ public sealed record AirstripDefinition
             else if (!preset.CanGenerate) errors.Add($"Runway surface preset '{preset.DisplayName}' is unavailable.");
             else if (preset.PhysicalSurface != Surface) errors.Add("Runway surface preset does not agree with its physical surface type.");
         }
-        errors.AddRange(ParkingGeometry.Validate(ParkingStands, LengthMeters, WidthMeters, TrueHeadingDegrees));
-        errors.AddRange(TaxiwayGeometry.Validate(Taxiways, ParkingStands ?? [], new(LengthMeters,WidthMeters,TrueHeadingDegrees)));
+        if (!HasRunway && (ParkingStands?.Count > 0 || Taxiways?.Count > 0))
+            errors.Add("A wilderness site cannot contain parking stands or taxiways. MSFS parking requires an airport with a runway.");
+        else if (HasRunway)
+        {
+            errors.AddRange(ParkingGeometry.Validate(ParkingStands, LengthMeters, WidthMeters, TrueHeadingDegrees));
+            errors.AddRange(TaxiwayGeometry.Validate(Taxiways, ParkingStands ?? [], new(LengthMeters,WidthMeters,TrueHeadingDegrees)));
+        }
         errors.AddRange(SceneryObjectGeometry.Validate(PlacedObjects, new(LengthMeters,WidthMeters,TrueHeadingDegrees)));
         return errors;
     }

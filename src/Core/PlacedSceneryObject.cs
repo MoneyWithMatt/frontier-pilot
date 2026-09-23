@@ -36,6 +36,7 @@ public sealed record SceneryAsset(string Id,string DisplayName,Guid LibraryGuid,
     public ConstructionObjectCategory? ConstructionCategory { get; init; }
     public bool IsPrototypePlaceholder { get; init; }
     public string Dependency { get; init; } = "";
+    public double Scale { get; init; } = 1;
     public double SiteRadiusMeters=>Footprint.FurthestCornerMeters+(Foundation?.MarginMeters??0)+(Foundation?.FalloffMeters??0);
 }
 
@@ -56,15 +57,16 @@ public static class SceneryAssets
     public const string PrototypeBaseLodgeId = "prototype-base-lodge-v0";
     public static readonly SceneryAsset PrototypeBaseLodge = new(
         PrototypeBaseLodgeId,
-        "Prototype Base Lodge placeholder (Gen_Hangar56)",
+        "Compact Base Lodge (temporary stock-model fallback)",
         GenericHangar56.LibraryGuid,
-        GenericHangar56.Footprint,
-        GenericHangar56.Foundation,
-        GenericHangar56.DimensionsProvenance)
+        new(-4.581672386132813,3.731209624054893,-8.884450942382813,8.108399399414061),
+        new(1.2,4),
+        GenericHangar56.DimensionsProvenance + "; rendered at 0.18 scale for a compact 8.3 x 17.0 m lodge shell")
         {
             ConstructionCategory = ConstructionObjectCategory.BaseLodge,
             IsPrototypePlaceholder = true,
-            Dependency = "MSFS package fs24-asobo-modellib-airport-generic; placeholder appearance is a hangar, not lodge artwork"
+            Scale = 0.18,
+            Dependency = "MSFS package fs24-asobo-modellib-airport-generic; temporary compact stock-model fallback pending dedicated lodge artwork"
         };
 
     public static IReadOnlyList<SceneryAsset> All { get; } = [GenericHangar56, PrototypeBaseLodge];

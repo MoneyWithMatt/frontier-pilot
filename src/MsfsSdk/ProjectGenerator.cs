@@ -36,7 +36,7 @@ public static class ProjectGenerator
         groups.Single(g => g.Element("Type")!.Value == "Copy").Element("AssetDir")!.Value = $"PackageDefinitions\\{packageName}\\ContentInfo\\";
         groups.Single(g => g.Element("Type")!.Value == "Copy").Element("OutputDir")!.Value = $"ContentInfo\\{packageName}\\";
         groups.Single(g => g.Element("Type")!.Value == "MaterialLib").Element("OutputDir")!.Value = $"MaterialLibs\\{packageName}\\";
-        if (preset is not null)
+        if (preset is not null || !definition.HasRunway)
             groups.Single(g => g.Element("Type")!.Value == "MaterialLib").Remove();
         var airportXml = LoadXml("PackageSources.data.airport.xml");
         var airport = airportXml.Root!.Element("Airport")!;
@@ -150,10 +150,13 @@ public static class ProjectGenerator
                 new XAttribute("snapToNormal", "FALSE"),
                 new XElement("LibraryObject",
                     new XAttribute("name", asset.LibraryGuid.ToString("B").ToUpperInvariant()),
-                    new XAttribute("scale", "1"))));
+                    new XAttribute("scale", Number(asset.Scale)))));
         }
+        // MSFS does not permit a runwayless Airport, and TaxiwayParking cannot exist without
+        // an Airport. A wilderness operation is therefore compiled as scenery-only content.
+        if (!definition.HasRunway) airport.Remove();
         XDocument? material = null;
-        if (preset is null)
+        if (preset is null && definition.HasRunway)
         {
             material = LoadXml("PackageSources.materials.frontier-asphalt.material");
             material.Root!.SetAttributeValue("Name", materialName);

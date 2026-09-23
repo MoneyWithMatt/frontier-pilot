@@ -248,7 +248,6 @@ public sealed class ProspectingOperationsService : IProspectingOperations
             {
                 var candidate = Candidate(airport);
                 if (linked) { can = false; reason = "This airport is already linked to an economic site."; }
-                else if (!candidate.HasRunway) { can = false; reason = "A runway is required."; }
                 else if (!candidate.Capabilities.Contains(ConstructionCapability.BaseLodge)) { can = false; reason = "Save a placed object with the Base Lodge capability first."; }
                 else if (EconomyLedger.Balance(world, EmployedCargoPrototype.PlayerId, EmployedCargoPrototype.Currency) < OperationArchetypeCatalogue.ProspectingCamp.FoundingCost)
                 { can = false; reason = "The ledger-derived balance is below the temporary 150 TPC founding cost."; }
@@ -346,15 +345,17 @@ public sealed class ProspectingOperationsService : IProspectingOperations
         foreach (var airport in savedAirports)
         {
             var operation = operations.SingleOrDefault(x => world.Sites.Any(site => site.AirportDefinitionId == airport.Id.ToString("N") && site.LocationId == x.LocationId));
+            var access = airport.Definition.HasRunway ? "Player-created airport" : "Wilderness operation site";
+            var accessConcept = airport.Definition.HasRunway ? "Runway access" : "Bush access · no spawn";
             if (operation is null)
                 result.Add(new("airport:" + airport.Id.ToString("N"), airport.Name, airport.Identifier,
-                    OperationsMapLocationKind.PlayerAirport, "Player-created airport", "Player", airport.Definition.Latitude,
-                    airport.Definition.Longitude, "Saved Frontier Pilot airport definition.", ["Player-created airport"], [], null));
+                    OperationsMapLocationKind.PlayerAirport, access, "Player", airport.Definition.Latitude,
+                    airport.Definition.Longitude, airport.Definition.HasRunway ? "Saved Frontier Pilot airport definition." : "Saved scenery-only Frontier Pilot site.", [access, accessConcept], [], null));
             else
                 result.Add(new("operation:" + operation.OperationId, operation.SiteName, operation.AirportIdentifier,
-                    OperationsMapLocationKind.PlayerOperation, "Player airport + operation", "Player-owned",
+                    OperationsMapLocationKind.PlayerOperation, airport.Definition.HasRunway ? "Player airfield + operation" : "Wilderness player operation", "Player-owned",
                     operation.Latitude, operation.Longitude, operation.ArchetypeName,
-                    ["Player-created airport", operation.ArchetypeName], operation.Inventory, operation.OperationId));
+                    [access, accessConcept, operation.ArchetypeName], operation.Inventory, operation.OperationId));
         }
         // Preserve an operation marker even when its editable airport definition needs attention.
         foreach (var operation in operations.Where(x => !savedAirports.Any(a => a.Id.ToString("N") == world.Sites.Single(s => s.LocationId == x.LocationId).AirportDefinitionId)))
@@ -382,7 +383,7 @@ public sealed class ProspectingOperationsService : IProspectingOperations
                 .Where(c => c.SceneryAssetId == x.AssetId).SelectMany(c => c.Capabilities))
             .Distinct().ToArray();
         return new AirportSiteCandidate(airport.Id.ToString("N"), airport.Identifier, airport.Name,
-            airport.Definition.Latitude, airport.Definition.Longitude, airport.Definition.LengthMeters > 0, capabilities).EnsureValid();
+            airport.Definition.Latitude, airport.Definition.Longitude, airport.Definition.HasRunway, capabilities).EnsureValid();
     }
 }
 

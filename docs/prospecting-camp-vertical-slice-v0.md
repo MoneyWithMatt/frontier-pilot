@@ -14,7 +14,7 @@ The Operations page lists only saved Frontier Pilot airport definitions. Its ser
 
 `GuardedAvatarSitePresence` is the sole production constructor of `VerifiedSitePresenceEvidence`. It accepts only a valid `TrackingWorldState` in `OnFoot` mode whose current object is the explicit avatar, whose avatar differs from the aircraft, is on ground, is no more than three seconds old, and lies within the configured 250 m prototype radius of the saved airport anchor. Aircraft, camera, disconnected, last-known and refused avatar positions cannot produce evidence. The full evidence, object ID, coordinates, timestamps, radius, distance, provider and MSFS integration details are stored with the founded site.
 
-The single atomic economy mutation revalidates the airport snapshot, runway flag, `BaseLodge` capability, presence proof and authoritative ledger balance. It creates deterministic site/location/operation IDs, adds Rations and Raw Minerals, establishes audited opening rations, records the 150 TPC debit, updates the ledger-derived cached balance and runs idempotent logistics maintenance. Repeating founding for the same airport returns the existing world and cannot charge again. A failure before atomic replacement leaves the previous complete aggregate.
+The single atomic economy mutation revalidates the saved site snapshot, `BaseLodge` capability, presence proof and authoritative ledger balance. A runway is optional: airfield sites may provide an MSFS spawn through runway/parking infrastructure, while wilderness sites are scenery-only and require bush access. The mutation creates deterministic site/location/operation IDs, adds Rations and Raw Minerals, establishes audited opening rations, records the 150 TPC debit, updates the ledger-derived cached balance and runs idempotent logistics maintenance. Repeating founding for the same site returns the existing world and cannot charge again. A failure before atomic replacement leaves the previous complete aggregate.
 
 ## Prototype day
 
@@ -38,7 +38,7 @@ Airport deletion consults the current economy aggregate before preview and again
 
 ## Manual MSFS test
 
-1. Use Airport Builder at a flat test location. Capture the walking-avatar survey, define a runway, add **Prototype Base Lodge**, then save, build and install the airport normally.
+1. Use Airport / Site Builder at a suitable test location. Choose either an airfield or **Wilderness operation**, capture the walking-avatar survey, add **Compact Base Lodge**, then save, build and install the site. Wilderness sites do not appear as an MSFS airport or spawn.
 2. Complete at least one employed cargo delivery so the ledger-derived balance is 150 TPC or more. The already accepted Arandis delivery provides 200 TPC.
 3. Load MSFS at the created airport. Open Frontier Pilot **Tracking**, confirm LIVE tracking, exit the aircraft and stand within 250 m of the airport anchor.
 4. Open **Operations**, wait for tracking to connect, and click **Refresh operations**. Select the airport. Confirm the founding check mentions a fresh guarded walking avatar and enables **Found prospecting camp**.

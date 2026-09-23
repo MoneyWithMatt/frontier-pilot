@@ -95,7 +95,6 @@ public static class ProspectingCampKernel
         if (occurredUtc == default) throw new ArgumentOutOfRangeException(nameof(occurredUtc));
         var existing = world.Sites.SingleOrDefault(x => x.AirportDefinitionId == candidate.AirportDefinitionId);
         if (existing is not null) return new(world, false);
-        if (!candidate.HasRunway) throw new InvalidOperationException("The saved player-created airport requires a runway before a prospecting camp can be founded.");
         if (!candidate.Capabilities.Contains(OperationArchetypeCatalogue.ProspectingCamp.RequiredCapability))
             throw new InvalidOperationException("Place and save a construction object with the Base Lodge capability before founding.");
         var evidence = suppliedEvidence.EnsureValid();

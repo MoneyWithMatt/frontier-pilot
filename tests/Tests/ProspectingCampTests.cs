@@ -33,13 +33,21 @@ public sealed class ProspectingCampKernelTests : TemporaryDirectoryTest
         Assert.False(replay.Changed); Assert.Single(replay.World.Sites); Assert.Single(replay.World.FinancialLedger, x => x.Kind == FinancialTransactionKind.SiteFounding);
     }
 
-    [Theory]
-    [InlineData(false, true, "runway")]
-    [InlineData(true, false, "Base Lodge")]
-    public void MissingAirportInfrastructureIsRefused(bool runway, bool lodge, string expected)
+    [Fact]
+    public void WildernessSiteWithLodgeCanBeFoundedWithoutRunway()
     {
-        var error = Assert.Throws<InvalidOperationException>(() => ProspectingCampKernel.Found(EarnedWorld(), Candidate(runway, lodge), Presence(), "found-camp", T0));
-        Assert.Contains(expected, error.Message, StringComparison.OrdinalIgnoreCase);
+        var founded = ProspectingCampKernel.Found(EarnedWorld(), Candidate(runway: false), Presence(), "found-wilderness", T0);
+        Assert.True(founded.Changed);
+        Assert.Single(founded.World.Operations);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void MissingBaseLodgeIsRefusedWithOrWithoutRunway(bool runway)
+    {
+        var error = Assert.Throws<InvalidOperationException>(() => ProspectingCampKernel.Found(EarnedWorld(), Candidate(runway, lodge: false), Presence(), "found-camp", T0));
+        Assert.Contains("Base Lodge", error.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

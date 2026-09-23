@@ -24,7 +24,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
 {
     private readonly IBuilderServices services;
     private CancellationTokenSource? cancellation;
-    private bool busy, checkedReady, siteConfirmed;
+    private bool busy, checkedReady, siteConfirmed, hasRunway = true;
     private string sdkRoot, airportName = "", identifier = "", length = "200", width = "20", status = "Check prerequisites to begin.", error = "", activity = "";
     private RunwaySurface surface = RunwaySurface.Dirt;
     private string? surfacePresetId = RunwaySurfacePresets.CompactedDirtId;
@@ -46,6 +46,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public double LayoutRunwayLength => double.TryParse(length,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 200;
     public double LayoutRunwayWidth => double.TryParse(width,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 20;
     public bool CanLayout => !busy && Survey!=null;
+    public bool CanEditRunwayLayout => CanLayout && hasRunway;
     public SurveyPoint? Survey { get; private set; }
     public BuiltAirport? Built { get; private set; }
     public string InstalledPath { get; private set; } = "";
@@ -88,7 +89,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         Tracking.TelemetryChanged += sample => { _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft); _ = AircraftLoading.ObserveAsync(sample); };
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading));
         Layout.Edited += (_,_)=>Invalidate();
-        AddParkingCommand = new(()=>AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading)),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Stands.Count<8);
+        AddParkingCommand = new(()=>AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading)),()=>CanLayout&&hasRunway&&!Layout.IsDrawingTaxiway&&Layout.Stands.Count<8);
         AddObjectCommand = new(()=>Layout.AddObject(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+45,Layout.Objects.Count*40,LayoutRunwayHeading),LayoutRunwayHeading,SceneryAssets.PrototypeBaseLodgeId),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Objects.Count<64);
         RemoveParkingCommand = new(Layout.Delete,()=>CanLayout&&(Layout.Selected!=null||Layout.SelectedTaxiway!=null||Layout.SelectedObject!=null));
         UndoLayoutCommand = new(Layout.Undo,()=>Layout.CanUndo);
@@ -126,8 +127,10 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public bool CanEditSdk => CanEdit && !IsDryRun;
     public string CheckInstructions => IsDryRun ? "Check and connect prepares a disposable offline sandbox. No SDK or simulator is needed." : "Load a flight in MSFS 2024 with your aircraft parked, then check the supported simulator and SDK.";
     public string SiteCheckText => IsDryRun ? "I confirm this is a simulated site check using recorded data." : "I checked the world map: this identifier is unused and the site is flat, empty and away from existing airports.";
-    public string CaptureInstructions => IsDryRun ? "Capture survey replays the recorded Namibia frames through the same Core safeguards. No simulator is needed." : "Exit the aircraft. Stand upright at the runway centre, face along the runway and remain still for five seconds. Leave the aircraft parked.";
-    public string AfterCaptureInstructions => IsDryRun ? "Continue with Validate, Generate and compile, then Install airport. All output stays in the test sandbox." : "After capture, close MSFS before compiling or installing. Your survey stays in this window.";
+    public string CaptureInstructions => IsDryRun ? "Capture survey replays the recorded Namibia frames through the same Core safeguards. No simulator is needed." : hasRunway
+        ? "Exit the aircraft. Stand upright at the runway centre, face along the runway and remain still for five seconds. Leave the aircraft parked."
+        : "Exit the aircraft. Stand at the intended operation anchor, face along the desired lodge/layout axis and remain still for five seconds.";
+    public string AfterCaptureInstructions => IsDryRun ? "Continue with Validate, Generate and compile, then install the test package. All output stays in the test sandbox." : "After capture, close MSFS before compiling or installing. Your survey stays in this window.";
     public IReadOnlyList<RunwaySurfaceChoice> SurfacePresets { get; } =
     [
         new(null, RunwaySurface.Dirt, "Legacy Dirt · existing airports", "Preserves the original Frontier procedural dirt appearance."),
@@ -146,6 +149,24 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public string Identifier { get => identifier; set { if (CanEditIdentifier && value.ToUpperInvariant() != identifier) { identifier = value.ToUpperInvariant(); Invalidate(); } } }
     public string Length { get => length; set { if (!busy && value != length) { length = value; Invalidate(); } } }
     public string Width { get => width; set { if (!busy && value != width) { width = value; Invalidate(); } } }
+    public bool HasRunway
+    {
+        get => hasRunway;
+        set
+        {
+            if (busy || value == hasRunway) return;
+            hasRunway = value;
+            if (!hasRunway && (Layout.Stands.Count > 0 || Layout.Taxiways.Count > 0))
+                Layout.Replace([], [], Layout.Objects.ToArray());
+            Changed(); Changed(nameof(IsWildernessSite)); Changed(nameof(AccessDescription)); Changed(nameof(CanEditRunwayLayout)); Changed(nameof(CaptureInstructions));
+            Changed(nameof(AfterCaptureInstructions)); Changed(nameof(Designators)); Changed(nameof(SuccessInstructions));
+            Invalidate();
+        }
+    }
+    public bool IsWildernessSite { get => !hasRunway; set => HasRunway = !value; }
+    public string AccessDescription => hasRunway
+        ? "Airfield access: MSFS airport, runway and optional parking spawn."
+        : "Wilderness access: scenery only. No runway or parking spawn; land on suitable terrain and reach the lodge on foot.";
     public RunwaySurface Surface { get => surface; set { if (!busy && (value != surface || surfacePresetId is not null)) { surface = value; surfacePresetId = null; Changed(nameof(SelectedSurfacePreset)); Changed(nameof(SurfacePresetDetail)); Invalidate(); } } }
     public RunwaySurfaceChoice SelectedSurfacePreset
     {
@@ -175,19 +196,21 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             return string.Join("\n", errors);
         }
     }
-    public string Designators { get { try { var g = RunwayGeometry.Calculate(Definition()); return $"{g.Primary.Number:00} / {g.Secondary.Number:00}"; } catch { return "— / —"; } } }
+    public string Designators { get { if (!hasRunway) return "NO RUNWAY"; try { var g = RunwayGeometry.Calculate(Definition()); return $"{g.Primary.Number:00} / {g.Secondary.Number:00}"; } catch { return "— / —"; } } }
     public double PreviewHeading => Survey?.TrueHeadingDegrees ?? 0;
     public double PreviewWidth { get { if (double.TryParse(width, NumberStyles.Float, CultureInfo.InvariantCulture, out var w) && double.TryParse(length, NumberStyles.Float, CultureInfo.InvariantCulture, out var l) && double.IsFinite(w) && double.IsFinite(l) && l > 0) return Math.Clamp(180 * w / l, 4, 100); return 18; } }
-    public string SuccessInstructions => InstalledPath == "" ? "" : IsDryRun ? $"Dry run completed. Synthetic test package installed only in:\n{InstalledPath}\nIt is not flyable scenery. Do not copy it to MSFS." : $"Installed {Built!.Definition.Identifier}. Launch or restart MSFS, search {Built.Definition.Identifier} in Free Flight, and test both runway starts ({Designators}). Inspect surface, rocks and terrain edges.\n{InstalledPath}";
+    public string SuccessInstructions => InstalledPath == "" ? "" : IsDryRun ? $"Dry run completed. Synthetic test package installed only in:\n{InstalledPath}\nIt is not flyable scenery. Do not copy it to MSFS." : hasRunway
+        ? $"Installed {Built!.Definition.Identifier}. Launch or restart MSFS, search {Built.Definition.Identifier} in Free Flight, and test both runway starts ({Designators}). Inspect surface, rocks and terrain edges.\n{InstalledPath}"
+        : $"Installed wilderness site {Built!.Definition.Identifier}. It is scenery-only and will not appear as an MSFS airport or spawn. Fly or bush-land nearby and approach the lodge on foot.\n{InstalledPath}";
     private AirstripDefinition Definition()
     {
         if (!double.TryParse(length, NumberStyles.Float, CultureInfo.InvariantCulture, out var l) || !double.TryParse(width, NumberStyles.Float, CultureInfo.InvariantCulture, out var w))
             throw new ArgumentException("Enter length and width in metres using numbers (for example 200 and 20).");
-        return new() { Name = airportName, Identifier = identifier, Latitude = Survey?.Latitude ?? 0, Longitude = Survey?.Longitude ?? 0,
+        return new() { HasRunway = hasRunway, Name = airportName, Identifier = identifier, Latitude = Survey?.Latitude ?? 0, Longitude = Survey?.Longitude ?? 0,
             AltitudeMeters = Survey?.AltitudeMeters ?? 0, TrueHeadingDegrees = Survey?.TrueHeadingDegrees ?? 0,
             MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface, SurfacePresetId = surfacePresetId, ParkingStands = Layout.Stands.ToArray(), Taxiways = Layout.Taxiways.ToArray(), PlacedObjects = Layout.Objects.ToArray() };
     }
-    public void AddParkingAt(LocalPoint point) { if(CanLayout)Layout.Add(point,LayoutRunwayHeading); }
+    public void AddParkingAt(LocalPoint point) { if(CanLayout && hasRunway)Layout.Add(point,LayoutRunwayHeading); }
     private void ClearParking() => Layout.Reset();
     public async Task SaveLayoutAsync(string path)
     {

@@ -103,7 +103,9 @@ public sealed class SceneryMaterialsTests : TemporaryDirectoryTest
         var asset = SceneryAssets.Find(lodge.SceneryAssetId);
         Assert.NotNull(asset); Assert.True(asset!.IsPrototypePlaceholder);
         Assert.Equal(SceneryAssets.GenericHangar56.LibraryGuid, asset.LibraryGuid);
-        Assert.Equal(SceneryAssets.GenericHangar56.Footprint, asset.Footprint);
+        Assert.Equal(0.18, asset.Scale);
+        Assert.InRange(asset.Footprint.WidthMeters, 8, 9);
+        Assert.InRange(asset.Footprint.DepthMeters, 16, 18);
     }
 
     [Fact]

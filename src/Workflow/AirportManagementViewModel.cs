@@ -70,6 +70,7 @@ public sealed partial class BuilderViewModel
         await Run("Load saved airport",async token=>{loaded=await Management!.LoadAirportAsync(id,token);});
         if(loaded==null)return;
         checkedReady=false;Survey=loaded.Survey.Point;airportName=loaded.Name;identifier=loaded.Identifier;
+        hasRunway=loaded.Definition.HasRunway;Changed(nameof(HasRunway));Changed(nameof(IsWildernessSite));Changed(nameof(AccessDescription));
         length=loaded.Definition.LengthMeters.ToString("R",System.Globalization.CultureInfo.InvariantCulture);
         width=loaded.Definition.WidthMeters.ToString("R",System.Globalization.CultureInfo.InvariantCulture);surface=loaded.Definition.Surface;surfacePresetId=loaded.Definition.SurfacePresetId;Changed(nameof(SelectedSurfacePreset));Changed(nameof(SurfacePresetDetail));siteConfirmed=false;
         Layout.Reset();Layout.Replace(loaded.Definition.ParkingStands,loaded.Definition.Taxiways,loaded.Definition.PlacedObjects);Layout.MarkSaved(Layout.Stands,Layout.Objects);
@@ -79,7 +80,7 @@ public sealed partial class BuilderViewModel
     public void NewAirport()
     {
         if(busy)return;
-        Management?.NewAirport();savedDefinition="";Survey=null;checkedReady=false;airportName="";identifier="";length="200";width="20";surface=RunwaySurface.Dirt;surfacePresetId=RunwaySurfacePresets.CompactedDirtId;Changed(nameof(SelectedSurfacePreset));Changed(nameof(SurfacePresetDetail));siteConfirmed=false;
+        Management?.NewAirport();savedDefinition="";Survey=null;checkedReady=false;airportName="";identifier="";length="200";width="20";hasRunway=true;surface=RunwaySurface.Dirt;surfacePresetId=RunwaySurfacePresets.CompactedDirtId;Changed(nameof(HasRunway));Changed(nameof(IsWildernessSite));Changed(nameof(AccessDescription));Changed(nameof(SelectedSurfacePreset));Changed(nameof(SurfacePresetDetail));siteConfirmed=false;
         Layout.Reset();Invalidate();status="New airport. Check and connect, then capture its runway centre.";Refresh();
     }
     public async Task<AirportDeletionPlan?> PrepareDeleteAirportAsync(Guid id)

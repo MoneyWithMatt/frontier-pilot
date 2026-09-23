@@ -42,9 +42,9 @@ public static class ConstructionObjectCatalogue
 
     public static IReadOnlyList<ConstructionObjectDefinition> All { get; } =
     [
-        new ConstructionObjectDefinition(BaseLodgeId, ConstructionObjectCategory.BaseLodge, "Prototype Base Lodge placeholder",
+        new ConstructionObjectDefinition(BaseLodgeId, ConstructionObjectCategory.BaseLodge, "Compact Base Lodge",
             ConstructionObjectAvailability.PrototypePlaceholder, SceneryAssets.PrototypeBaseLodgeId,
-            "Uses stock Gen_Hangar56 only as a technical placeholder; no lodge gameplay or final artwork.") { Capabilities = [ConstructionCapability.BaseLodge] },
+            "Uses a compact scaled stock-model shell as a temporary lodge visual; dedicated lodge artwork remains future work.") { Capabilities = [ConstructionCapability.BaseLodge] },
         Unavailable(StorageShedId, ConstructionObjectCategory.StorageShed, "Storage Shed"),
         Unavailable(StaffAccommodationId, ConstructionObjectCategory.StaffAccommodation, "Staff Accommodation"),
         Unavailable(WarehouseId, ConstructionObjectCategory.Warehouse, "Warehouse"),
