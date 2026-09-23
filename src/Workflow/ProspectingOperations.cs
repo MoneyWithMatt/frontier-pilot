@@ -73,7 +73,12 @@ public sealed record EconomicInventoryDisplay(string ResourceId, string Resource
 public sealed record OperationLogisticsDisplay(string ContractId, string Direction, string Resource, decimal Quantity,
     string Origin, string Destination, decimal PilotPayout, decimal CargoValue, decimal ReservedFunds,
     string Status, string RoadFallback, string Created, int? RoadFallbackMinutes)
-{ public string Summary => $"{Direction} · {Resource} {Quantity:0.##} kg · {Origin} → {Destination} · {Status}"; }
+{ public string Summary => $"{Resource} {Quantity:0.##} kg · {Origin} → {Destination} · {Status}"; }
+public sealed record LogisticsLocationOption(string LocationId, string Name, string TypeLabel, bool IsGateway,
+    double Latitude, double Longitude, IReadOnlyList<EconomicInventoryDisplay> Inventory)
+{ public override string ToString() => $"{Name} · {TypeLabel}"; }
+public sealed record LogisticsCargoOption(string ResourceId, string Name, string UnitName)
+{ public override string ToString() => Name; }
 public sealed record OperationsMapLocation(string Key, string Name, string Identifier, OperationsMapLocationKind Kind,
     string TypeLabel, string OwnershipLabel, double Latitude, double Longitude, string Description,
     IReadOnlyList<string> Concepts, IReadOnlyList<EconomicInventoryDisplay> Inventory, string? OperationId)
@@ -89,6 +94,8 @@ public sealed record OperationDisplay(string OperationId, string SiteName, strin
     string ProductionSummary, string ConsumptionSummary, string ConstraintSummary)
 {
     public IReadOnlyList<OperationLogisticsDisplay> LogisticsJobs { get; init; } = [];
+    public IReadOnlyList<LogisticsLocationOption> LogisticsLocations { get; init; } = [];
+    public IReadOnlyList<LogisticsCargoOption> LogisticsCargo { get; init; } = [];
     public string ImportAvailability { get; init; } = "Import availability unavailable.";
     public string ExportAvailability { get; init; } = "Export availability unavailable.";
 }
@@ -103,7 +110,7 @@ public interface IProspectingOperations
     Task<OperationsSnapshot> FoundAsync(Guid airportId, string commandId, CancellationToken cancellationToken = default);
     Task<OperationsSnapshot> AdvanceDayAsync(string operationId, string commandId, CancellationToken cancellationToken = default);
     Task<OperationsSnapshot> TransferPrototypeRationsAsync(string operationId, string commandId, CancellationToken cancellationToken = default);
-    Task<OperationsSnapshot> PublishLogisticsAsync(string operationId, OperationLogisticsDirection direction, string resourceId,
+    Task<OperationsSnapshot> PublishLogisticsAsync(string operationId, string originLocationId, string destinationLocationId, string resourceId,
         decimal quantity, decimal pilotPayout, int? fallbackMinutes, CancellationToken cancellationToken = default);
     Task<OperationsSnapshot> EditLogisticsPayoutAsync(string contractId, decimal payout, int? fallbackMinutes, CancellationToken cancellationToken = default);
     Task<OperationsSnapshot> CancelLogisticsAsync(string contractId, CancellationToken cancellationToken = default);
@@ -118,7 +125,7 @@ internal sealed class UnavailableProspectingOperations : IProspectingOperations
     public Task<OperationsSnapshot> FoundAsync(Guid airportId, string commandId, CancellationToken cancellationToken = default) => Task.FromException<OperationsSnapshot>(Error());
     public Task<OperationsSnapshot> AdvanceDayAsync(string operationId, string commandId, CancellationToken cancellationToken = default) => Task.FromException<OperationsSnapshot>(Error());
     public Task<OperationsSnapshot> TransferPrototypeRationsAsync(string operationId, string commandId, CancellationToken cancellationToken = default) => Task.FromException<OperationsSnapshot>(Error());
-    public Task<OperationsSnapshot> PublishLogisticsAsync(string operationId, OperationLogisticsDirection direction, string resourceId, decimal quantity, decimal pilotPayout, int? fallbackMinutes, CancellationToken cancellationToken = default) => Task.FromException<OperationsSnapshot>(Error());
+    public Task<OperationsSnapshot> PublishLogisticsAsync(string operationId, string originLocationId, string destinationLocationId, string resourceId, decimal quantity, decimal pilotPayout, int? fallbackMinutes, CancellationToken cancellationToken = default) => Task.FromException<OperationsSnapshot>(Error());
     public Task<OperationsSnapshot> EditLogisticsPayoutAsync(string contractId, decimal payout, int? fallbackMinutes, CancellationToken cancellationToken = default) => Task.FromException<OperationsSnapshot>(Error());
     public Task<OperationsSnapshot> CancelLogisticsAsync(string contractId, CancellationToken cancellationToken = default) => Task.FromException<OperationsSnapshot>(Error());
     public Task<OperationsSnapshot> ProcessNextRoadEventAsync(CancellationToken cancellationToken = default) => Task.FromException<OperationsSnapshot>(Error());
@@ -179,20 +186,27 @@ public sealed class ProspectingOperationsService : IProspectingOperations
         return await PresentAsync(world, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<OperationsSnapshot> PublishLogisticsAsync(string operationId, OperationLogisticsDirection direction,
-        string resourceId, decimal quantity, decimal pilotPayout, int? fallbackMinutes, CancellationToken cancellationToken = default)
+    public async Task<OperationsSnapshot> PublishLogisticsAsync(string operationId, string originLocationId,
+        string destinationLocationId, string resourceId, decimal quantity, decimal pilotPayout, int? fallbackMinutes, CancellationToken cancellationToken = default)
     {
         var world = await EnsureWorldAsync(cancellationToken).ConfigureAwait(false);
-        var operation = world.Operations.Single(x => x.Id == operationId); var site = world.Sites.Single(x => x.Id == operation.SiteId);
-        var eros = NamibiaLocationCatalogue.Load().Locations.Single(x => x.StableId == EmployedCargoPrototype.ErosId).ApproximateCoordinates
-            ?? throw new InvalidDataException("Gateway coordinates are unavailable.");
-        var km = WorldTracking.DistanceMeters(site.Latitude, site.Longitude, eros.Latitude, eros.Longitude) / 1000d;
+        _ = world.Operations.Single(x => x.Id == operationId);
+        var origin = LocationCoordinates(world, originLocationId); var destination = LocationCoordinates(world, destinationLocationId);
+        var km = WorldTracking.DistanceMeters(origin.Latitude, origin.Longitude, destination.Latitude, destination.Longitude) / 1000d;
         var road = RoadLogisticsPrototype.Quote(km);
         var commandSource = operationId + "|" + Guid.NewGuid().ToString("N");
         var command = "publish-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(commandSource))).ToLowerInvariant()[..40];
-        _ = await economy.PublishOperationLogisticsAsync(new(command, operationId, direction, EmployedCargoPrototype.ErosId,
+        _ = await economy.PublishOperationLogisticsAsync(new(command, operationId, originLocationId, destinationLocationId,
             resourceId, quantity, pilotPayout, fallbackMinutes, road.Cost, road.DurationMinutes, utcNow()), cancellationToken).ConfigureAwait(false);
         return await PresentAsync((await economy.LoadAsync(cancellationToken).ConfigureAwait(false))!, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static ApproximateCoordinates LocationCoordinates(EconomyWorld world, string locationId)
+    {
+        var site = world.Sites.SingleOrDefault(x => x.LocationId == locationId);
+        if (site is not null) return new(site.Latitude, site.Longitude);
+        return NamibiaLocationCatalogue.Load().Locations.SingleOrDefault(x => x.StableId == locationId)?.ApproximateCoordinates
+            ?? throw new InvalidOperationException("The selected logistics location has no usable coordinates.");
     }
 
     public async Task<OperationsSnapshot> EditLogisticsPayoutAsync(string contractId, decimal payout, int? fallbackMinutes, CancellationToken cancellationToken = default)
@@ -277,6 +291,19 @@ public sealed class ProspectingOperationsService : IProspectingOperations
             var gatewayRations = world.Inventories.SingleOrDefault(x => x.LocationId == EmployedCargoPrototype.ErosId && x.ResourceId == OperationArchetypeCatalogue.RationsResourceId)?.AvailableQuantity ?? 0;
             var maxImport = Math.Max(0, Math.Min(gatewayRations, rationStorage.Capacity - rations.AvailableQuantity - reservedRationsAtCamp - incomingRations));
             var maxExport = Math.Max(0, minerals.AvailableQuantity);
+            var logisticsLocations = new List<LogisticsLocationOption>
+            {
+                new(site.LocationId, site.Name, "Player operation", false, site.Latitude, site.Longitude, inventory)
+            };
+            foreach (var gateway in world.Locations.Where(x => x.Kind == EconomicLocationKind.Gateway).OrderBy(x => x.Name, StringComparer.Ordinal))
+            {
+                var coordinates = NamibiaLocationCatalogue.Load().Locations.SingleOrDefault(x => x.StableId == gateway.Id)?.ApproximateCoordinates;
+                if (coordinates is null) continue;
+                logisticsLocations.Add(new(gateway.Id, gateway.Name, "Gateway", true, coordinates.Latitude, coordinates.Longitude,
+                    InventoryFor(world, gateway.Id, null)));
+            }
+            var logisticsCargo = world.Resources.Where(resource => GatewayPriceCatalogue.All.Any(price => price.ResourceId == resource.Id))
+                .OrderBy(x => x.Name, StringComparer.Ordinal).Select(x => new LogisticsCargoOption(x.Id, x.Name, x.UnitName)).ToArray();
             return new OperationDisplay(operation.Id, site.Name, site.AirportIdentifier, operation.Status, operation.PrototypeDay,
                 $"{rations.AvailableQuantity:0.##} / {a.Storage.Single(x => x.ResourceId == rations.ResourceId).Capacity:0.##} kg",
                 $"{minerals.AvailableQuantity:0.##} / {a.Storage.Single(x => x.ResourceId == minerals.ResourceId).Capacity:0.##} kg",
@@ -287,6 +314,8 @@ public sealed class ProspectingOperationsService : IProspectingOperations
                 operation.LastConstraint)
             {
                 LogisticsJobs = logistics,
+                LogisticsLocations = logisticsLocations,
+                LogisticsCargo = logisticsCargo,
                 ImportAvailability = $"Manual Rations import: up to {maxImport:0.##} kg now (camp storage and Eros available stock).",
                 ExportAvailability = $"Manual Raw Minerals export: up to {maxExport:0.##} kg currently unreserved."
             };
@@ -364,7 +393,9 @@ public sealed class ProspectingOperationsViewModel : INotifyPropertyChanged
     private IReadOnlyList<OperationsMapLocation> mapLocations = [];
     private OperationAirportDisplay? selectedAirport; private OperationDisplay? selectedOperation; private OperationsMapLocation? selectedMapLocation;
     private decimal balance; private string currency = "TPC";
-    private string logisticsDirection = "Import", logisticsQuantity = "10", logisticsPayout = "20";
+    private string logisticsQuantity = "10", logisticsPayout = "20";
+    private LogisticsLocationOption? selectedLogisticsOrigin, selectedLogisticsDestination;
+    private LogisticsCargoOption? selectedLogisticsCargo;
     private int fallbackMinutes = -1; private OperationLogisticsDisplay? selectedLogistics;
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<IReadOnlyList<OperationsMapLocation>>? MapLocationsChanged;
@@ -388,7 +419,7 @@ public sealed class ProspectingOperationsViewModel : INotifyPropertyChanged
     public IReadOnlyList<OperationDisplay> Operations { get => operations; private set { operations = value; Changed(); } }
     public IReadOnlyList<OperationsMapLocation> MapLocations { get => mapLocations; private set { mapLocations = value; Changed(); } }
     public OperationAirportDisplay? SelectedAirport { get => selectedAirport; set { selectedAirport = value; Changed(); Changed(nameof(FoundingReason)); FoundCommand.Refresh(); } }
-    public OperationDisplay? SelectedOperation { get => selectedOperation; set { selectedOperation = value; Changed(); NotifyOperation(); AdvanceDayCommand.Refresh(); } }
+    public OperationDisplay? SelectedOperation { get => selectedOperation; set { var originId=selectedLogisticsOrigin?.LocationId;var destinationId=selectedLogisticsDestination?.LocationId;var cargoId=selectedLogisticsCargo?.ResourceId;selectedOperation = value; ConfigureLogisticsBuilder(originId,destinationId,cargoId);Changed(); NotifyOperation(); AdvanceDayCommand.Refresh(); } }
     public OperationsMapLocation? SelectedMapLocation { get => selectedMapLocation; private set { selectedMapLocation = value; Changed(); Changed(nameof(SelectedMapTitle)); Changed(nameof(SelectedMapInventory)); Changed(nameof(CanOpenSelectedMapOperation)); } }
     public string FoundingReason => SelectedAirport?.FoundingReason ?? "Select a saved player-created airport.";
     public string OperationTitle => SelectedOperation is null ? "No prospecting camp selected" : $"{SelectedOperation.SiteName} ({SelectedOperation.AirportIdentifier})";
@@ -404,13 +435,30 @@ public sealed class ProspectingOperationsViewModel : INotifyPropertyChanged
     public string ImportAvailability => SelectedOperation?.ImportAvailability ?? "Select an operation.";
     public string ExportAvailability => SelectedOperation?.ExportAvailability ?? "Select an operation.";
     public IReadOnlyList<OperationLogisticsDisplay> OperationLogistics => SelectedOperation?.LogisticsJobs ?? [];
-    public IReadOnlyList<string> LogisticsDirections { get; } = ["Import", "Export"];
     public IReadOnlyList<string> RoadFallbackOptions { get; } = ["None", "1 minute (development)", "12 hours"];
-    public string LogisticsDirection { get => logisticsDirection; set { logisticsDirection = value; Changed(); Changed(nameof(LogisticsResource)); } }
-    public string LogisticsResource => LogisticsDirection == "Export" ? "Raw Minerals" : "Rations";
-    public string LogisticsQuantity { get => logisticsQuantity; set { logisticsQuantity = value; Changed(); } }
-    public string LogisticsPayout { get => logisticsPayout; set { logisticsPayout = value; Changed(); } }
-    public int RoadFallbackSelection { get => fallbackMinutes < 0 ? 0 : fallbackMinutes == 1 ? 1 : 2; set { fallbackMinutes = value switch { 1 => 1, 2 => 720, _ => -1 }; Changed(); } }
+    public IReadOnlyList<LogisticsLocationOption> LogisticsOrigins => SelectedOperation?.LogisticsLocations ?? [];
+    public IReadOnlyList<LogisticsLocationOption> LogisticsDestinations => SelectedOperation?.LogisticsLocations ?? [];
+    public LogisticsLocationOption? SelectedLogisticsOrigin { get => selectedLogisticsOrigin; set { selectedLogisticsOrigin=value;RefreshLogisticsRoute();Changed(); } }
+    public LogisticsLocationOption? SelectedLogisticsDestination { get => selectedLogisticsDestination; set { selectedLogisticsDestination=value;RefreshLogisticsRoute();Changed(); } }
+    public IReadOnlyList<LogisticsCargoOption> AvailableLogisticsCargo => CompatibleCargo();
+    public LogisticsCargoOption? SelectedLogisticsCargo { get => selectedLogisticsCargo; set { selectedLogisticsCargo=value;Changed();NotifyLogisticsQuote(); } }
+    public string LogisticsResource => SelectedLogisticsCargo?.Name ?? "Select cargo";
+    public string LogisticsQuantity { get => logisticsQuantity; set { logisticsQuantity = value; Changed();NotifyLogisticsQuote(); } }
+    public string LogisticsPayout { get => logisticsPayout; set { logisticsPayout = value; Changed();NotifyLogisticsQuote(); } }
+    public string LogisticsRoute => selectedLogisticsOrigin is null || selectedLogisticsDestination is null ? "Select an origin and destination." :
+        $"{selectedLogisticsOrigin.Name} → {selectedLogisticsDestination.Name}";
+    public string OriginCargoAvailability
+    {
+        get
+        {
+            var cargo=selectedLogisticsCargo;var origin=selectedLogisticsOrigin;if(cargo is null||origin is null)return "Select cargo to inspect origin stock.";
+            var stock=origin.Inventory.SingleOrDefault(x=>x.ResourceId==cargo.ResourceId);
+            return stock is null?$"{origin.Name} has no persistent {cargo.Name} inventory.":$"Available at origin: {stock.Quantity:0.##} {stock.UnitName} (reserved stock excluded).";
+        }
+    }
+    public string CargoEconomics => DescribeCargoEconomics();
+    public string LogisticsCommitment => DescribeCommitment();
+    public int RoadFallbackSelection { get => fallbackMinutes < 0 ? 0 : fallbackMinutes == 1 ? 1 : 2; set { fallbackMinutes = value switch { 1 => 1, 2 => 720, _ => -1 }; Changed();NotifyLogisticsQuote(); } }
     public OperationLogisticsDisplay? SelectedLogistics { get => selectedLogistics; set { selectedLogistics = value; Changed(); if (value is not null) { LogisticsPayout = value.PilotPayout.ToString(CultureInfo.InvariantCulture); fallbackMinutes = value.RoadFallbackMinutes ?? -1; Changed(nameof(RoadFallbackSelection)); } EditLogisticsPayoutCommand.Refresh(); CancelLogisticsCommand.Refresh(); } }
     public string SelectedMapTitle => SelectedMapLocation is null ? "Select a map marker" : $"{SelectedMapLocation.Name} ({SelectedMapLocation.Identifier})";
     public IReadOnlyList<EconomicInventoryDisplay> SelectedMapInventory => SelectedMapLocation?.Inventory ?? [];
@@ -442,10 +490,11 @@ public sealed class ProspectingOperationsViewModel : INotifyPropertyChanged
         { Status = "Job was not published."; Error = "Enter valid numeric quantity and payout values."; return; }
         if (quantity <= 0) { Status = "Job was not published."; Error = "Quantity must be greater than zero."; return; }
         if (payout < 0) { Status = "Job was not published."; Error = "Pilot payout cannot be negative."; return; }
-        var direction = LogisticsDirection == "Export" ? OperationLogisticsDirection.Export : OperationLogisticsDirection.Import;
-        var resource = direction == OperationLogisticsDirection.Export ? OperationArchetypeCatalogue.RawMineralsResourceId : OperationArchetypeCatalogue.RationsResourceId;
-        Status = $"Publishing {direction.ToString().ToLowerInvariant()} contract…";
-        await RunAsync(() => service.PublishLogisticsAsync(operation.OperationId, direction, resource, quantity, payout, fallbackMinutes < 0 ? null : fallbackMinutes, token), "Logistics contract published with cargo and funds reserved.");
+        var origin=SelectedLogisticsOrigin;var destination=SelectedLogisticsDestination;var cargo=SelectedLogisticsCargo;
+        if(origin is null||destination is null||cargo is null){Status="Job was not published.";Error="Select an origin, destination and cargo.";return;}
+        if(!TryRoute(out _,out _,out var routeError)){Status="Job was not published.";Error=routeError;return;}
+        Status = $"Publishing {origin.Name} to {destination.Name} contract…";
+        await RunAsync(() => service.PublishLogisticsAsync(operation.OperationId, origin.LocationId, destination.LocationId, cargo.ResourceId, quantity, payout, fallbackMinutes < 0 ? null : fallbackMinutes, token), "Logistics contract published with cargo and funds reserved.");
     }
     public async Task EditLogisticsAsync(CancellationToken token = default)
     { var c = SelectedLogistics; if (c is null || !decimal.TryParse(LogisticsPayout, NumberStyles.Number, CultureInfo.CurrentCulture, out var payout)) return; await RunAsync(() => service.EditLogisticsPayoutAsync(c.ContractId, payout, fallbackMinutes < 0 ? null : fallbackMinutes, token), "Pilot payout, road fallback and escrow updated atomically."); }
@@ -479,7 +528,74 @@ public sealed class ProspectingOperationsViewModel : INotifyPropertyChanged
         MapLocationsChanged?.Invoke(MapLocations);
         Changed(nameof(Balance)); if (snapshot.Warnings.Count > 0) error = string.Join(" ", snapshot.Warnings);
     }
-    private void NotifyOperation() { Changed(nameof(OperationTitle)); Changed(nameof(OperationStatus)); Changed(nameof(PrototypeDay)); Changed(nameof(Rations)); Changed(nameof(RawMinerals)); Changed(nameof(LastTickResult)); Changed(nameof(PendingLogistics)); Changed(nameof(OperationInventory)); Changed(nameof(OperationLogistics)); Changed(nameof(ImportAvailability)); Changed(nameof(ExportAvailability)); Changed(nameof(OperationArchetype)); Changed(nameof(OperationProduction)); Changed(nameof(OperationConsumption)); Changed(nameof(OperationConstraint)); TransferPrototypeRationsCommand.Refresh(); PublishLogisticsCommand.Refresh(); }
+    private void ConfigureLogisticsBuilder(string? originId,string? destinationId,string? cargoId)
+    {
+        var locations=SelectedOperation?.LogisticsLocations??[];
+        selectedLogisticsOrigin=locations.SingleOrDefault(x=>x.LocationId==originId)??locations.FirstOrDefault(x=>x.IsGateway)??locations.FirstOrDefault();
+        selectedLogisticsDestination=locations.SingleOrDefault(x=>x.LocationId==destinationId)??locations.FirstOrDefault(x=>!x.IsGateway)??locations.Skip(1).FirstOrDefault();
+        var compatible=CompatibleCargo();
+        selectedLogisticsCargo=compatible.SingleOrDefault(x=>x.ResourceId==cargoId)??compatible.FirstOrDefault();
+        Changed(nameof(LogisticsOrigins));Changed(nameof(LogisticsDestinations));Changed(nameof(SelectedLogisticsOrigin));Changed(nameof(SelectedLogisticsDestination));
+        Changed(nameof(AvailableLogisticsCargo));Changed(nameof(SelectedLogisticsCargo));Changed(nameof(LogisticsRoute));NotifyLogisticsQuote();
+    }
+    private void RefreshLogisticsRoute()
+    {
+        var compatible=CompatibleCargo();
+        if(selectedLogisticsCargo is null||!compatible.Any(x=>x.ResourceId==selectedLogisticsCargo.ResourceId))selectedLogisticsCargo=compatible.FirstOrDefault();
+        Changed(nameof(AvailableLogisticsCargo));Changed(nameof(SelectedLogisticsCargo));Changed(nameof(LogisticsRoute));NotifyLogisticsQuote();
+    }
+    private IReadOnlyList<LogisticsCargoOption> CompatibleCargo()
+    {
+        if(!TryRoute(out var direction,out var gateway,out _))return [];
+        return (SelectedOperation?.LogisticsCargo??[]).Where(c=>
+        {
+            try
+            {
+                var quote=GatewayPriceCatalogue.Quote(gateway.LocationId,c.ResourceId);
+                return direction==OperationLogisticsDirection.Import?quote.SellPricePerUnit is not null:quote.BuyPricePerUnit is not null;
+            }
+            catch(InvalidOperationException){return false;}
+        }).ToArray();
+    }
+    private bool TryRoute(out OperationLogisticsDirection direction,out LogisticsLocationOption gateway,out string error)
+    {
+        direction=default;gateway=null!;error="";var operation=SelectedOperation;var origin=selectedLogisticsOrigin;var destination=selectedLogisticsDestination;
+        if(operation is null||origin is null||destination is null){error="Select an origin and destination.";return false;}
+        if(origin.LocationId==destination.LocationId){error="Origin and destination must be different locations.";return false;}
+        if(origin.IsGateway&&destination.LocationId==operation.LocationId){direction=OperationLogisticsDirection.Import;gateway=origin;return true;}
+        if(origin.LocationId==operation.LocationId&&destination.IsGateway){direction=OperationLogisticsDirection.Export;gateway=destination;return true;}
+        error="V0 logistics jobs must connect this operation with a persistent gateway.";return false;
+    }
+    private string DescribeCargoEconomics()
+    {
+        if(!TryRoute(out var direction,out var gateway,out var error))return error;
+        if(selectedLogisticsCargo is not { } cargo)return "No priced cargo is available for this route.";
+        if(!TryNumber(logisticsQuantity,out var quantity)||quantity<=0)return "Enter a quantity to calculate cargo economics.";
+        var quote=GatewayPriceCatalogue.Quote(gateway.LocationId,cargo.ResourceId);
+        var unitPrice=direction==OperationLogisticsDirection.Import?quote.SellPricePerUnit:quote.BuyPricePerUnit;
+        if(unitPrice is null)return "The gateway has no applicable price for this cargo and route.";
+        var value=Math.Round(quantity*unitPrice.Value,2);
+        return direction==OperationLogisticsDirection.Import
+            ? $"Cargo purchase: {quantity:0.##} {cargo.UnitName} × {unitPrice:0.##} {quote.CurrencyCode} = {value:0.##} {quote.CurrencyCode}."
+            : $"Expected cargo sale: {quantity:0.##} {cargo.UnitName} × {unitPrice:0.##} {quote.CurrencyCode} = {value:0.##} {quote.CurrencyCode}, credited only after delivery.";
+    }
+    private string DescribeCommitment()
+    {
+        if(!TryRoute(out var direction,out var gateway,out _)||selectedLogisticsCargo is not { } cargo||
+            !TryNumber(logisticsQuantity,out var quantity)||quantity<=0||!TryNumber(logisticsPayout,out var payout)||payout<0)return "Enter valid cargo quantity and pilot payout values.";
+        var quote=GatewayPriceCatalogue.Quote(gateway.LocationId,cargo.ResourceId);
+        var unitPrice=direction==OperationLogisticsDirection.Import?quote.SellPricePerUnit:quote.BuyPricePerUnit;
+        if(unitPrice is null)return "No applicable gateway price is available.";
+        var cargoValue=Math.Round(quantity*unitPrice.Value,2);
+        var distanceKm=WorldTracking.DistanceMeters(selectedLogisticsOrigin!.Latitude,selectedLogisticsOrigin.Longitude,selectedLogisticsDestination!.Latitude,selectedLogisticsDestination.Longitude)/1000d;
+        var road=RoadLogisticsPrototype.Quote(distanceKm);var serviceReserve=fallbackMinutes<0?payout:Math.Max(payout,road.Cost);
+        var reserved=serviceReserve+(direction==OperationLogisticsDirection.Import?cargoValue:0);
+        return direction==OperationLogisticsDirection.Import
+            ? $"Publish reserves {reserved:0.##} {quote.CurrencyCode}: cargo purchase plus transport commitment."
+            : $"Publish reserves {reserved:0.##} {quote.CurrencyCode} for transport. Expected net after an air delivery is {cargoValue-payout:0.##} {quote.CurrencyCode}.";
+    }
+    private void NotifyLogisticsQuote(){Changed(nameof(LogisticsResource));Changed(nameof(OriginCargoAvailability));Changed(nameof(CargoEconomics));Changed(nameof(LogisticsCommitment));}
+    private void NotifyOperation() { Changed(nameof(OperationTitle)); Changed(nameof(OperationStatus)); Changed(nameof(PrototypeDay)); Changed(nameof(Rations)); Changed(nameof(RawMinerals)); Changed(nameof(LastTickResult)); Changed(nameof(PendingLogistics)); Changed(nameof(OperationInventory)); Changed(nameof(OperationLogistics)); Changed(nameof(ImportAvailability)); Changed(nameof(ExportAvailability)); Changed(nameof(OperationArchetype)); Changed(nameof(OperationProduction)); Changed(nameof(OperationConsumption)); Changed(nameof(OperationConstraint));Changed(nameof(LogisticsOrigins));Changed(nameof(LogisticsDestinations));Changed(nameof(AvailableLogisticsCargo)); TransferPrototypeRationsCommand.Refresh(); PublishLogisticsCommand.Refresh(); }
     private void RefreshCommands() { RefreshCommand.Refresh(); FoundCommand.Refresh(); AdvanceDayCommand.Refresh(); TransferPrototypeRationsCommand.Refresh(); PublishLogisticsCommand.Refresh(); EditLogisticsPayoutCommand.Refresh(); CancelLogisticsCommand.Refresh(); ProcessNextRoadEventCommand.Refresh(); }
     private static bool TryNumber(string value, out decimal result) =>
         decimal.TryParse(value, NumberStyles.Number, CultureInfo.CurrentCulture, out result) ||

@@ -44,7 +44,7 @@ public static class RoadLogisticsPrototype
 }
 
 public sealed record PublishOperationLogisticsRequest(string CommandId, string OperationId,
-    OperationLogisticsDirection Direction, string GatewayLocationId, string ResourceId, decimal Quantity,
+    string OriginLocationId, string DestinationLocationId, string ResourceId, decimal Quantity,
     decimal PilotPayout, int? RoadFallbackDelayMinutes, decimal RoadCost, int RoadDurationMinutes,
     DateTimeOffset OccurredUtc);
 
@@ -71,14 +71,21 @@ public static class PlayerLogisticsKernel
         var operation = world.Operations.SingleOrDefault(x => x.Id == request.OperationId) ?? throw new InvalidOperationException("Operation does not exist.");
         var site = world.Sites.Single(x => x.Id == operation.SiteId);
         if (operation.OwnerId != site.OwnerId) throw new InvalidDataException("Operation ownership is inconsistent.");
-        if (!world.Locations.Any(x => x.Id == request.GatewayLocationId && x.Kind == EconomicLocationKind.Gateway))
-            throw new InvalidOperationException("Selected source or destination is not a gateway.");
-        var price = GatewayPriceCatalogue.Quote(request.GatewayLocationId, request.ResourceId);
-        var unitPrice = request.Direction == OperationLogisticsDirection.Import
+        EconomyValidation.Id(request.OriginLocationId, nameof(request.OriginLocationId));
+        EconomyValidation.Id(request.DestinationLocationId, nameof(request.DestinationLocationId));
+        if (request.OriginLocationId == request.DestinationLocationId)
+            throw new InvalidOperationException("Origin and destination must be different locations.");
+        OperationLogisticsDirection direction; string gatewayLocationId;
+        if (request.DestinationLocationId == site.LocationId && world.Locations.Any(x => x.Id == request.OriginLocationId && x.Kind == EconomicLocationKind.Gateway))
+        { direction = OperationLogisticsDirection.Import; gatewayLocationId = request.OriginLocationId; }
+        else if (request.OriginLocationId == site.LocationId && world.Locations.Any(x => x.Id == request.DestinationLocationId && x.Kind == EconomicLocationKind.Gateway))
+        { direction = OperationLogisticsDirection.Export; gatewayLocationId = request.DestinationLocationId; }
+        else throw new InvalidOperationException("V0 logistics jobs must connect this operation with a persistent gateway.");
+        var price = GatewayPriceCatalogue.Quote(gatewayLocationId, request.ResourceId);
+        var unitPrice = direction == OperationLogisticsDirection.Import
             ? price.SellPricePerUnit ?? throw new InvalidOperationException("The gateway does not sell this resource.")
             : price.BuyPricePerUnit ?? throw new InvalidOperationException("The gateway does not buy this resource.");
-        var origin = request.Direction == OperationLogisticsDirection.Import ? request.GatewayLocationId : site.LocationId;
-        var destination = request.Direction == OperationLogisticsDirection.Import ? site.LocationId : request.GatewayLocationId;
+        var origin = request.OriginLocationId; var destination = request.DestinationLocationId;
         var inventoryIndex = world.Inventories.ToList().FindIndex(x => x.LocationId == origin && x.ResourceId == request.ResourceId);
         if (inventoryIndex < 0 || world.Inventories[inventoryIndex].AvailableQuantity < request.Quantity)
             throw new InvalidOperationException("The origin does not contain enough unreserved inventory.");
@@ -94,7 +101,7 @@ public static class PlayerLogisticsKernel
 
         var cargoValue = Math.Round(request.Quantity * unitPrice, 2);
         var serviceReserve = request.RoadFallbackDelayMinutes is null ? request.PilotPayout : Math.Max(request.PilotPayout, request.RoadCost);
-        var requiredFunds = serviceReserve + (request.Direction == OperationLogisticsDirection.Import ? cargoValue : 0);
+        var requiredFunds = serviceReserve + (direction == OperationLogisticsDirection.Import ? cargoValue : 0);
         if (AvailableFunds(world, operation.OwnerId, price.CurrencyCode) < requiredFunds)
             throw new InvalidOperationException("Available ledger-derived funds cannot cover this contract and its fallback.");
         var stem = EconomyIds.Derive("player-logistics-", request.CommandId);
@@ -102,9 +109,9 @@ public static class PlayerLogisticsKernel
         var jobId = EconomyIds.Derive("job-", stem); var shipmentId = EconomyIds.Derive("shipment-", stem);
         var inventories = world.Inventories.ToArray(); inventories[inventoryIndex] = inventories[inventoryIndex] with
         { AvailableQuantity = inventories[inventoryIndex].AvailableQuantity - request.Quantity };
-        var directionText = request.Direction == OperationLogisticsDirection.Import ? "Import" : "Export";
+        var directionText = direction == OperationLogisticsDirection.Import ? "Import" : "Export";
         var contract = new OperationLogisticsContract(contractId, request.CommandId, operation.Id, operation.OwnerId,
-            jobId, requirementId, shipmentId, request.Direction, origin, destination, request.ResourceId, request.Quantity,
+            jobId, requirementId, shipmentId, direction, origin, destination, request.ResourceId, request.Quantity,
             unitPrice, cargoValue, request.PilotPayout, request.RoadFallbackDelayMinutes, request.RoadCost,
             request.RoadDurationMinutes, requiredFunds, OperationLogisticsContractState.Published, request.OccurredUtc,
             request.RoadFallbackDelayMinutes is null ? null : request.OccurredUtc.AddMinutes(request.RoadFallbackDelayMinutes.Value));

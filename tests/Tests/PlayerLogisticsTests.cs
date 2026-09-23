@@ -186,8 +186,13 @@ public sealed class PlayerLogisticsTests
     }
 
     private static PublishOperationLogisticsRequest Request(string id, string operation, OperationLogisticsDirection direction,
-        string resource, decimal quantity, decimal payout, int? fallback) => new("contract-command-" + id, operation, direction,
-            EmployedCargoPrototype.ErosId, resource, quantity, payout, fallback, 12, 30, T0);
+        string resource, decimal quantity, decimal payout, int? fallback)
+    {
+        var operationLocation="operation-location-"+Airport;
+        var origin=direction==OperationLogisticsDirection.Import?EmployedCargoPrototype.ErosId:operationLocation;
+        var destination=direction==OperationLogisticsDirection.Import?operationLocation:EmployedCargoPrototype.ErosId;
+        return new("contract-command-" + id, operation, origin, destination, resource, quantity, payout, fallback, 12, 30, T0);
+    }
     private static decimal Inventory(EconomyWorld world, string location, string resource) => world.Inventories.Single(x => x.LocationId == location && x.ResourceId == resource).AvailableQuantity;
     private static EconomyWorld World()
     {
