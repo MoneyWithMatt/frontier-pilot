@@ -175,6 +175,30 @@ public sealed class AircraftLoadingTests
         Assert.Equal(80,h.sim.Value.PayloadStations[0].CurrentWeightKilograms);Assert.Equal(70,h.sim.Value.PayloadStations[1].CurrentWeightKilograms);Assert.Equal(120,h.coordinator.Current.Manifest!.CargoKilograms);
     }
 
+    [Fact] public async Task Returned_uncommitted_shipment_rebinds_new_loading_plan_to_current_aircraft()
+    {
+        var now=new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);var identity=new FlightAircraftIdentity("C172SP G1000 Passengers","C172");
+        var live=Snapshot(now,stations:[new(1,"Pilot",0),new(2,"Co-Pilot",77.11m),new(3,"Passenger Left",0),new(4,"Passenger Right",0),new(5,"Tail 1",0),new(6,"Tail 2",0)]) with{Aircraft=identity};
+        TrackingWorldState Tracked(bool seated)
+        {
+            var state=World(now:now,seated:seated);
+            return state with{Aircraft=new AircraftTelemetry(now,identity.Title,identity.Type,-22.5,15,100,90,0,true)};
+        }
+        var h=Harness(snapshot:live,world:Tracked(false),requireBoarded:true);
+        await h.store.SaveManifestAsync(new CargoLoadManifest("manifest-flight-shipment-test","job-test","shipment-test","flight-shipment-test",
+            new("Piper PA28","PA28"),AircraftLoadingMode.MsfsPayloadIntegration,[new(5,0,10,10)],10,
+            LoadManifestState.PendingApplication,now,VerificationResult:"Old aircraft loading intent")
+            {ShipmentQuantityKilograms=120,PriorCargoKilograms=0,IsDesiredStateManifest=true,LastTransferCommandId="old-command"});
+        await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
+
+        await h.coordinator.ApplyCargoAsync();
+
+        Assert.Equal(identity,h.coordinator.Current.Manifest!.Aircraft);Assert.Equal(0,h.sim.PayloadWrites);
+        h.setWorld(Tracked(true));await h.coordinator.RefreshAsync();await h.coordinator.ApplyAuthorizedCargoAfterBoardingAsync();
+        Assert.Equal(10,h.sim.Value.PayloadStations.Single(x=>x.Index==5).CurrentWeightKilograms);
+        Assert.Equal(1,h.tracker.Loads);Assert.Equal(LoadManifestState.CommittedInTransit,h.coordinator.Current.Manifest.State);
+    }
+
     [Fact] public async Task Persisted_zero_reset_intent_reuses_its_recorded_targets_after_restart()
     {
         var live=Snapshot(stations:[new(1,"Forward Baggage",40.823m),new(2,"Pilot",63.5m)]);var h=Harness(snapshot:live);

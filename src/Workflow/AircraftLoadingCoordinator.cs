@@ -266,12 +266,20 @@ public sealed class AircraftLoadingCoordinator
             var commandId=existing?.State is (LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied)&&existing.LastTransferCommandId is not null
                 ? existing.LastTransferCommandId : "cargo-transfer-"+Guid.NewGuid().ToString("N");
             var shipmentLoads=AllocateShipmentLoads(existing,jobs,plan.CargoKilograms,location==job?.DestinationLocationId);
+            // A fully returned/reserved shipment is no longer physically tied to the aircraft
+            // that held an earlier loading intent. Bind the fresh positive load plan to the
+            // aircraft observed during the guarded outside step. Cargo already aboard remains
+            // strictly bound to its recorded aircraft identity.
+            var plannedAircraft=existing is not null&&delta>options.PayloadToleranceKilograms&&
+                CanResetUncommittedIntent(job,existing)&&flight.Current.Attempt is null
+                    ? LoadingIdentityExtensions.FromSnapshot(live)
+                    : existing?.Aircraft??LoadingIdentityExtensions.FromSnapshot(live);
             var manifest=(existing??new CargoLoadManifest(id,job!.JobId,job.ShipmentId!,attemptId,LoadingIdentityExtensions.FromSnapshot(live),
                 AircraftLoadingMode.MsfsPayloadIntegration,plan.Stations,plan.CargoKilograms,LoadManifestState.PendingApplication,utcNow(),
                 VerificationToleranceKilograms:options.PayloadToleranceKilograms,LastValidPosition:live.Position)
                 {ShipmentQuantityKilograms=jobs.Sum(x=>x.CargoMassKilograms),DeliveredCargoKilograms=jobs.Sum(x=>x.DeliveredCargoKilograms),
                     Shipments=shipmentLoads,IsDesiredStateManifest=true}) with
-                {Stations=plan.Stations,CargoKilograms=plan.CargoKilograms,PriorCargoKilograms=currentCargo,State=LoadManifestState.PendingApplication,
+                {Aircraft=plannedAircraft,Stations=plan.Stations,CargoKilograms=plan.CargoKilograms,PriorCargoKilograms=currentCargo,State=LoadManifestState.PendingApplication,
                     Shipments=shipmentLoads,LastTransferCommandId=commandId,SimulatorAppliedUtc=null,CompletedUtc=null,
                     VerificationResult=$"Desired-state intent persisted. Previous managed cargo {currentCargo:0.###} kg; requested {plan.CargoKilograms:0.###} kg."};
             await store.SaveManifestAsync(manifest,token); // durable intent precedes external write
@@ -609,7 +617,7 @@ public sealed class AircraftLoadingCoordinator
             return "No outside cargo authorization exists.";
         var now=utcNow();if(now-authorized>options.AuthorizationDuration)return "The outside cargo authorization expired; exit near the aircraft and authorize the load again.";
         if(now-live.ObservedUtc>options.MaximumAge)return "Aircraft loading data is stale; read the aircraft again.";
-        if(manifest.Aircraft.ClearlyDiffersFrom(LoadingIdentityExtensions.FromSnapshot(live)))return "The seated aircraft differs from the authorized loading aircraft.";
+        if(manifest.Aircraft.ClearlyDiffersFrom(LoadingIdentityExtensions.FromSnapshot(live)))return $"The seated aircraft ({live.Aircraft.Title} / {live.Aircraft.Type}) differs from the authorized loading aircraft ({manifest.Aircraft.Title} / {manifest.Aircraft.Type}). Exit near this aircraft and authorize the load again.";
         var world=tracking();if(world is null)return "Validated live tracking is unavailable.";
         if(now-world.Aircraft.ObservedUtc>options.MaximumAge)return "Aircraft telemetry is stale.";
         if(world.PlayerMode!=PlayerControlMode.InAircraft||world.CurrentObjectId!=world.AircraftObjectId)return "Board the same aircraft before applying the authorized cargo.";
