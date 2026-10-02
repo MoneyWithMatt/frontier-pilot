@@ -8,6 +8,7 @@ namespace FrontierAirportBuilder.Workflow;
 public sealed class LayoutEditor : INotifyPropertyChanged
 {
     private readonly Func<bool> canEdit;
+    private readonly Func<bool> hasRunway;
     private ParkingStand[] stands=[];
     private readonly Stack<(ParkingStand[] Stands,Taxiway[] Taxiways,PlacedSceneryObject[] Objects)> undo=new(),redo=new();
     private readonly Func<AirportSite> site;
@@ -20,7 +21,7 @@ public sealed class LayoutEditor : INotifyPropertyChanged
     private ParkingStandName name;
     private int? selectedObject;
     private string objectEast="",objectNorth="",objectHeading="";
-    public LayoutEditor(Func<bool> canEdit,Func<AirportSite>? site=null) { this.canEdit=canEdit;this.site=site??(()=>new(200,20,0)); }
+    public LayoutEditor(Func<bool> canEdit,Func<AirportSite>? site=null,Func<bool>? hasRunway=null) { this.canEdit=canEdit;this.site=site??(()=>new(200,20,0));this.hasRunway=hasRunway??(()=>true); }
     private int? selectedTaxiway;
     private TaxiwayVertex[] draft=[];
     private string taxiwayName="",taxiwayWidth="12";
@@ -50,7 +51,7 @@ public sealed class LayoutEditor : INotifyPropertyChanged
         else
         {
             var runway=LocalCoordinates.ToRunway(p,site().TrueHeading);
-            if(Math.Abs(runway.East)<=site().RunwayWidth/2&&Math.Abs(runway.North)<=site().RunwayLength/2)
+            if(hasRunway()&&Math.Abs(runway.East)<=site().RunwayWidth/2&&Math.Abs(runway.North)<=site().RunwayLength/2)
                 p=LocalCoordinates.FromRunway(0,runway.North,site().TrueHeading);
             v=new(p.East,p.North);
         }
@@ -226,11 +227,11 @@ public static class LayoutFiles
         if(new FileInfo(path).Length>1000000)throw new IOException("Layout file is too large.");
         return JsonSerializer.Deserialize<LayoutSnapshot>(await File.ReadAllTextAsync(path),Json)??throw new IOException("Layout file is empty.");
     }
-    public static void ValidateForAnchor(LayoutSnapshot file,SurveyPoint anchor,double length,double width)
+    public static void ValidateForAnchor(LayoutSnapshot file,SurveyPoint anchor,double length,double width,bool hasRunway=true)
     {
         if(file.Version!=1||file.Anchor!=anchor||file.RunwayLengthMeters!=length||file.RunwayWidthMeters!=width)
             throw new IOException("Layout belongs to a different survey or runway. Capture provenance cannot be substituted.");
-        var errors=ParkingGeometry.Validate(file.ParkingStands,length,width,anchor.TrueHeadingDegrees);
+        var errors=ParkingGeometry.Validate(file.ParkingStands,length,width,anchor.TrueHeadingDegrees,hasRunway);
         if(errors.Count>0)throw new IOException(string.Join("\n",errors));
         var taxiErrors=TaxiwayGeometry.Validate(file.Taxiways,file.ParkingStands,new(length,width,anchor.TrueHeadingDegrees));
         if(taxiErrors.Count>0)throw new IOException(string.Join("\n",taxiErrors));

@@ -14,7 +14,7 @@ public static class ParkingGeometry
         var position = LocalCoordinates.ToGeographic(new(airport.Latitude, airport.Longitude),new(stand.EastMeters,stand.NorthMeters));
         return new(stand,position,Headings.Normalize(stand.TrueHeadingDegrees));
     }
-    public static IReadOnlyList<string> Validate(IReadOnlyList<ParkingStand>? stands, double length, double width, double runwayHeading = 0)
+    public static IReadOnlyList<string> Validate(IReadOnlyList<ParkingStand>? stands, double length, double width, double runwayHeading = 0, bool hasRunway = true)
     {
         var errors = new List<string>();
         if (stands == null) return ["Parking stands cannot be null."];
@@ -32,7 +32,7 @@ public static class ParkingGeometry
             if(!Enum.IsDefined(s.Type)||!Enum.IsDefined(s.Name)) errors.Add($"Parking {s.Number}: unsupported type or name.");
             var local=LocalCoordinates.ToRunway(new(s.EastMeters,s.NorthMeters),double.IsFinite(runwayHeading)?runwayHeading:0);
             double x = Math.Max(Math.Abs(local.East) - width/2,0), y = Math.Max(Math.Abs(local.North)-length/2,0);
-            if (Math.Sqrt(x*x+y*y) < s.RadiusMeters+2)
+            if (hasRunway && Math.Sqrt(x*x+y*y) < s.RadiusMeters+2)
                 errors.Add($"Parking {s.Number}: leave at least 2 metres between the stand circle and the runway.");
         }
         for (int i=0;i<stands.Count;i++)

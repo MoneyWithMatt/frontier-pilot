@@ -109,10 +109,13 @@ public sealed class SceneryObjectTests : TemporaryDirectoryTest
     }
 
     [Fact]
-    public void SiteWithoutRunwayRefusesParkingAndTaxiways()
+    public void SiteWithoutRunwayPersistsPlannedParkingWithoutEmittingAnInvalidAirport()
     {
         var definition = Fixtures.Strip with { HasRunway = false, ParkingStands = [new(1, 50, 0, 0, 8)] };
-        Assert.Contains(definition.Validate(), x => x.Contains("cannot contain parking", StringComparison.OrdinalIgnoreCase));
+        Assert.Empty(definition.Validate());
+        var generated = ProjectGenerator.Generate(definition, Path.Combine(Root, "planned-parking"));
+        var xml = XDocument.Load(Path.Combine(generated.Directory, "PackageSources", "data", "airport.xml"));
+        Assert.Empty(xml.Descendants("Airport"));Assert.Empty(xml.Descendants("TaxiwayParking"));
     }
 
     [Fact]

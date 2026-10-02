@@ -9,12 +9,13 @@ namespace FrontierAirportBuilder.Desktop;
 public partial class MainWindow : Window
 {
     private readonly BuilderViewModel model;
-    public MainWindow()
+    public MainWindow() : this(null) { }
+    public MainWindow(BuilderViewModel? suppliedModel)
     {
         InitializeComponent();
         bool dryRun = Environment.GetCommandLineArgs().Contains("--dry-run", StringComparer.Ordinal);
         if (dryRun) Title += " · DRY RUN";
-        model = new(dryRun ? BuilderServices.CreateDesktopDryRun() : new BuilderServices(), Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.User) ?? Environment.GetEnvironmentVariable("MSFS2024_SDK") ?? "");
+        model = suppliedModel ?? new(dryRun ? BuilderServices.CreateDesktopDryRun() : new BuilderServices(), Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.User) ?? Environment.GetEnvironmentVariable("MSFS2024_SDK") ?? "");
         DataContext = model;
         model.Tracking.DisplayChanged += TrackingDisplayChanged;
         model.Operations.MapLocationsChanged += locations => Dispatcher.InvokeAsync(() => OperationsMap.Show(locations));
@@ -32,7 +33,7 @@ public partial class MainWindow : Window
     {
         if(!IsInitialized || !ReferenceEquals(e.Source,MainTabs))return;
         BuilderFooter.Visibility=ReferenceEquals(MainTabs.SelectedItem,BuilderTab)?Visibility.Visible:Visibility.Collapsed;
-        if(MainTabs.SelectedIndex is 1 or 2 or 3 or 4 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
+        if(!model.IsDryRun && MainTabs.SelectedIndex is 1 or 2 or 3 or 4 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
             _=model.Tracking.ConnectAsync();
     }
     private void OpenAircraftLoading(object sender,RoutedEventArgs e)=>MainTabs.SelectedIndex=2;
@@ -141,6 +142,10 @@ public partial class MainWindow : Window
     private void CancelTaxiway(object sender,RoutedEventArgs e)=>model.Layout.CancelTaxiway();
     private void ApplyTaxiway(object sender,RoutedEventArgs e)=>model.Layout.ApplyTaxiway();
     private void PlaceRunway(object sender,RoutedEventArgs e)=>model.BeginRunwayPlacement();
+    private void RemoveRunway(object sender,RoutedEventArgs e)
+    {
+        model.CancelRunwayPlacement();model.HasRunway=false;
+    }
     private void CancelRunway(object sender,RoutedEventArgs e)=>model.CancelRunwayPlacement();
     private void FitLayout(object sender,RoutedEventArgs e)=>LayoutCanvas.Fit();
     private async void SaveLayout(object sender,RoutedEventArgs e)
@@ -161,7 +166,12 @@ public partial class MainWindow : Window
     private async void OpenAirport(object sender,RoutedEventArgs e)
     {
         if(model.SelectedAirport is not {} airport||!MayDiscardEdits())return;
-        await model.LoadAirportAsync(airport.Id);if(model.State==WorkflowState.SurveyCaptured){MainTabs.SelectedItem=BuilderTab;LayoutCanvas.Fit();}
+        await model.LoadAirportAsync(airport.Id);
+        if(model.State==WorkflowState.SurveyCaptured)
+        {
+            MainTabs.SelectedItem=BuilderTab;
+            await Dispatcher.InvokeAsync(()=>{BuilderScroll.ScrollToTop();LayoutCanvas.Fit();},System.Windows.Threading.DispatcherPriority.Loaded);
+        }
     }
     private async void DeleteAirport(object sender,RoutedEventArgs e)
     {

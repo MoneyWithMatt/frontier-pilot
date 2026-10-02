@@ -13,9 +13,11 @@ public sealed partial class BuilderViewModel
     public bool CanManageAirports=>!busy&&Management!=null;
     public bool CanEditIdentifier=>!busy&&Management?.ActiveAirportId==null;
     public bool IsEditingSavedSite=>Management?.ActiveAirportId!=null;
+    public bool IsCreatingSite=>!IsEditingSavedSite;
+    public string LayoutSummary=>$"{Layout.Objects.Count} buildings · {Layout.Stands.Count} parking stands · {Layout.Taxiways.Count} taxiways · {(hasRunway ? "runway placed" : "no runway")}";
     public string BuilderTitle=>IsEditingSavedSite?$"Editing saved site · {airportName} ({identifier})":"Create a new site";
     public string BuilderGuidance=>IsEditingSavedSite
-        ? "The saved survey, buildings, runway, taxiways and parking are loaded below. Edit them on the map, choose Save site to update this same site, then Validate, rebuild and install the revised scenery. New site starts a separate location."
+        ? "Edit the restored layout below. Save site will update this same site; validate, rebuild and install to see changes in MSFS."
         : "Connect to MSFS and capture one site anchor. Place the lodge and optional airfield infrastructure on the map, then save, validate, build and install.";
     public string LibraryWarnings=>libraryWarnings;
     public string LibraryPath=>Management?.LibraryDirectory??"Airport management unavailable";
@@ -38,6 +40,7 @@ public sealed partial class BuilderViewModel
     }
     private void RefreshManagement()
     {
+        Changed(nameof(IsCreatingSite));Changed(nameof(LayoutSummary));
         SaveAirportCommand?.Refresh();RefreshAirportsCommand?.Refresh();Changed(nameof(HasUnsavedAirport));Changed(nameof(SaveStatus));Changed(nameof(CanOpenAirport));Changed(nameof(CanEditIdentifier));Changed(nameof(IsEditingSavedSite));Changed(nameof(BuilderTitle));Changed(nameof(BuilderGuidance));
     }
     private void SetAirports(AirportList list)
@@ -74,7 +77,7 @@ public sealed partial class BuilderViewModel
         SavedAirport? loaded=null;
         await Run("Load saved airport",async token=>{loaded=await Management!.LoadAirportAsync(id,token);});
         if(loaded==null)return;
-        checkedReady=false;Survey=loaded.Survey.Point;airportName=loaded.Name;identifier=loaded.Identifier;
+        checkedReady=false;isPlacingRunway=false;Survey=loaded.Survey.Point;airportName=loaded.Name;identifier=loaded.Identifier;
         hasRunway=loaded.Definition.HasRunway;runwayHeading=loaded.Definition.TrueHeadingDegrees;Changed(nameof(HasRunway));Changed(nameof(AccessDescription));Changed(nameof(LayoutRunwayHeading));
         length=loaded.Definition.LengthMeters.ToString("R",System.Globalization.CultureInfo.InvariantCulture);
         width=loaded.Definition.WidthMeters.ToString("R",System.Globalization.CultureInfo.InvariantCulture);surface=loaded.Definition.Surface;surfacePresetId=loaded.Definition.SurfacePresetId;Changed(nameof(SelectedSurfacePreset));Changed(nameof(SurfacePresetDetail));siteConfirmed=false;

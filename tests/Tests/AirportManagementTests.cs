@@ -34,16 +34,17 @@ public sealed class AirportManagementTests
         var (service,vm)=await Ready();
         Assert.NotEmpty(vm.Layout.Stands);Assert.NotEmpty(vm.Layout.Taxiways);
         vm.HasRunway=false;
-        Assert.False(vm.HasRunway);Assert.Empty(vm.Layout.Stands);Assert.Empty(vm.Layout.Taxiways);
+        Assert.False(vm.HasRunway);Assert.NotEmpty(vm.Layout.Stands);Assert.NotEmpty(vm.Layout.Taxiways);
         vm.Layout.AddObject(new(20,30),vm.LayoutRunwayHeading,SceneryAssets.PrototypeBaseLodgeId);
         await vm.SaveAirportAsync();var saved=Assert.Single(vm.Airports);
         Assert.False(saved.Definition.HasRunway);Assert.Contains("airfield not built",saved.Access);
         var reopened=new BuilderViewModel(service.ReopenDryRun(),"");await reopened.LoadAirportAsync(saved.Id);
         Assert.False(reopened.HasRunway);Assert.True(reopened.AddParkingCommand.CanExecute(null));
         Assert.Single(reopened.Layout.Objects);
-        reopened.AddParkingCommand.Execute(null);Assert.True(reopened.HasRunway);await reopened.SaveAirportAsync();
+        reopened.AddParkingCommand.Execute(null);Assert.False(reopened.HasRunway);
+        reopened.HasRunway=true;await reopened.SaveAirportAsync();Assert.Equal("",reopened.Error);
         var upgraded=Assert.Single(reopened.Airports);Assert.Equal(saved.Id,upgraded.Id);Assert.True(upgraded.Definition.HasRunway);
-        Assert.Single(upgraded.Definition.ParkingStands);Assert.Contains("Runway + parking",upgraded.Access);
+        Assert.Equal(2,upgraded.Definition.ParkingStands.Count);Assert.Contains("Runway + parking",upgraded.Access);
     }
 
     [Fact] public async Task RunwayCanBePlacedOnMapAndSavedSiteReopensAsAnEditOfSameIdentity()
@@ -64,7 +65,33 @@ public sealed class AirportManagementTests
     [Fact] public void NewSiteStartsBeforeAirfieldInfrastructure()
     {
         var service=BuilderServices.CreateDryRun();var vm=new BuilderViewModel(service,"");
-        Assert.False(vm.HasRunway);Assert.Contains("airfield infrastructure not built",vm.AccessDescription);
+        Assert.False(vm.HasRunway);Assert.Contains("No runway",vm.AccessDescription);
+    }
+    [Fact] public async Task EditingSavedSiteCannotClearItsLayoutByRepeatingSetup()
+    {
+        var (service,vm)=await Ready();
+        vm.Layout.AddObject(new(80,120),0,SceneryAssets.PrototypeBaseLodgeId);
+        await vm.SaveAirportAsync();var saved=Assert.Single(vm.Airports);
+        var edit=new BuilderViewModel(service.ReopenDryRun(),"");await edit.LoadAirportAsync(saved.Id);
+        Assert.False(edit.IsCreatingSite);Assert.False(edit.CheckCommand.CanExecute(null));
+        await edit.CheckAsync();await edit.CaptureAsync();
+        Assert.Equal(saved.Survey.Point,edit.Survey);Assert.Single(edit.Layout.Objects);Assert.Single(edit.Layout.Stands);
+        Assert.Single(edit.Layout.Taxiways);Assert.Contains("1 buildings",edit.LayoutSummary);
+        edit.Layout.MoveObject(1,new(90,130));await edit.SaveAirportAsync();
+        var updated=Assert.Single(edit.Airports);Assert.Equal(saved.Id,updated.Id);
+        Assert.Equal(90,Assert.Single(updated.Definition.PlacedObjects).EastMeters);
+    }
+    [Fact] public async Task ParkingAtAnchorCanBeSavedBeforeRunwayAndSurvivesRestart()
+    {
+        var service=BuilderServices.CreateDryRun();var vm=new BuilderViewModel(service,"");
+        await vm.CheckAsync();await vm.CaptureAsync();vm.AirportName="Bush camp";vm.Identifier="BUSH1";
+        vm.AddParkingAt(new(0,0));Assert.False(vm.HasRunway);await vm.SaveAirportAsync();
+        var saved=Assert.Single(vm.Airports);var edit=new BuilderViewModel(service.ReopenDryRun(),"");
+        await edit.LoadAirportAsync(saved.Id);Assert.False(edit.HasRunway);Assert.Single(edit.Layout.Stands);
+        Assert.Contains("planned parking",edit.AccessDescription);
+        LayoutFiles.ValidateForAnchor(new(1,edit.Survey!,edit.LayoutRunwayLength,edit.LayoutRunwayWidth,edit.Layout.Stands),edit.Survey!,edit.LayoutRunwayLength,edit.LayoutRunwayWidth,false);
+        edit.BeginRunwayPlacement();edit.PlaceRunwayEnd(new(100,0));
+        Assert.Contains("leave at least",edit.ValidationMessage); // clearance activates only once a runway exists
     }
     [Fact] public async Task BuildAutomaticallySavesAndLoadedEditsRequireSavingAndRebuilding()
     {

@@ -94,14 +94,10 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             : new UnavailableProspectingOperations();
         Operations = new(prospectingOperations);
         Tracking.TelemetryChanged += sample => { _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft); _ = AircraftLoading.ObserveAsync(sample); };
-        Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading));
+        Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading),()=>hasRunway);
         Layout.Edited += (_,_)=>Invalidate();
         AddParkingCommand = new(()=>
         {
-            // TaxiwayParking cannot compile without an MSFS Airport, and an Airport requires a
-            // runway. Adding the first real parking spawn therefore enables that infrastructure
-            // on the same operation site instead of inventing a non-functional scenery marker.
-            if(!hasRunway)HasRunway=true;
             AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading));
         },()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Stands.Count<8);
         AddObjectCommand = new(()=>Layout.AddObject(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+45,Layout.Objects.Count*40,LayoutRunwayHeading),LayoutRunwayHeading,SceneryAssets.PrototypeBaseLodgeId),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Objects.Count<64);
@@ -112,8 +108,8 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         RotateRightCommand = new(()=>Layout.Rotate(15),()=>Layout.HasRotatableSelection);
         ApplyParkingCommand = new(Layout.Apply,()=>Layout.HasSelection);
         ApplyObjectCommand = new(Layout.ApplyObject,()=>Layout.HasObjectSelection);
-        CheckCommand = new(() => _ = CheckAsync(), () => !IsBusy);
-        CaptureCommand = new(() => _ = CaptureAsync(), () => !IsBusy && checkedReady);
+        CheckCommand = new(() => _ = CheckAsync(), () => !IsBusy && !IsEditingSavedSite);
+        CaptureCommand = new(() => _ = CaptureAsync(), () => !IsBusy && checkedReady && !IsEditingSavedSite);
         ValidateCommand = new(() => _ = ValidateAsync(), () => !IsBusy && Survey != null && ValidationMessage == "");
         BuildCommand = new(() => _ = BuildAsync(), () => !IsBusy && EffectiveState == WorkflowState.Validated && !Layout.HasPendingProperties);
         InstallCommand = new(() => _ = InstallAsync(), () => !IsBusy && EffectiveState == WorkflowState.Built && Built != null && !Layout.HasPendingProperties);
@@ -170,8 +166,6 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         {
             if (busy || value == hasRunway) return;
             hasRunway = value;
-            if (!hasRunway && (Layout.Stands.Count > 0 || Layout.Taxiways.Count > 0))
-                Layout.Replace([], [], Layout.Objects.ToArray());
             Changed(); Changed(nameof(AccessDescription)); Changed(nameof(CanEditRunwayLayout)); Changed(nameof(CaptureInstructions));
             Changed(nameof(AfterCaptureInstructions)); Changed(nameof(Designators)); Changed(nameof(SuccessInstructions));
             Changed(nameof(RunwayPlacementInstructions));
@@ -179,7 +173,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         }
     }
     public string AccessDescription => !hasRunway
-        ? "Operation established · airfield infrastructure not built. Jobs can use this location, but MSFS cannot spawn here."
+        ? $"No runway · {Layout.Stands.Count} planned parking stand(s). Place and save stands now; MSFS parking spawns require a runway. Jobs can already use this site."
         : Layout.Stands.Count == 0
             ? "Runway built · runway-start spawning is available. Add parking for a ramp or parking spawn."
             : "Airfield access built · runway-start and parking spawns are available.";
@@ -226,7 +220,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             AltitudeMeters = Survey?.AltitudeMeters ?? 0, TrueHeadingDegrees = LayoutRunwayHeading,
             MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface, SurfacePresetId = surfacePresetId, ParkingStands = Layout.Stands.ToArray(), Taxiways = Layout.Taxiways.ToArray(), PlacedObjects = Layout.Objects.ToArray() };
     }
-    public void AddParkingAt(LocalPoint point) { if(CanLayout && hasRunway)Layout.Add(point,LayoutRunwayHeading); }
+    public void AddParkingAt(LocalPoint point) { if(CanLayout)Layout.Add(point,LayoutRunwayHeading); }
     public void BeginRunwayPlacement()
     {
         if(!CanLayout)return;
@@ -271,7 +265,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         LayoutSnapshot? loaded=null;
         await Run("Load layout",async token=>{
             var file=await LayoutFiles.ReadAsync(path);
-            LayoutFiles.ValidateForAnchor(file,Survey!,LayoutRunwayLength,LayoutRunwayWidth);
+            LayoutFiles.ValidateForAnchor(file,Survey!,LayoutRunwayLength,LayoutRunwayWidth,HasRunway);
             loaded=file;
         });
         if(loaded!=null) {Layout.Replace(loaded.ParkingStands,loaded.Taxiways,loaded.PlacedObjects);Invalidate();Layout.MarkSaved(loaded.ParkingStands,loaded.PlacedObjects);status="Layout loaded for this survey. Validate before building.";Refresh();}
@@ -280,13 +274,13 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     private void Invalidate() { Built = null; InstalledPath = ""; error = ""; SetState(Survey != null ? WorkflowState.SurveyCaptured : checkedReady ? WorkflowState.ReadyToSurvey : WorkflowState.Disconnected); Refresh(); }
     public Task CheckAsync()
     {
-        if (busy) return Task.CompletedTask;
+        if (busy || IsEditingSavedSite) return Task.CompletedTask;
         checkedReady = false; Survey = null; siteConfirmed = false; ClearParking(); Invalidate();
         return Run("Check prerequisites", async token => { status = await services.CheckAsync(sdkRoot, token); token.ThrowIfCancellationRequested(); checkedReady = true; SetState(WorkflowState.ReadyToSurvey); });
     }
     public Task CaptureAsync()
     {
-        if (!checkedReady || busy) return Task.CompletedTask;
+        if (!checkedReady || busy || IsEditingSavedSite) return Task.CompletedTask;
         Survey = null; siteConfirmed = false; ClearParking(); Invalidate();
         return Run("Capture survey", async token => {
             status = IsDryRun ? "Validating recorded avatar frames" : "Capturing — stay upright and still for at least five seconds"; Refresh();

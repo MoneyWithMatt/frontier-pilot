@@ -29,14 +29,15 @@ public sealed class AirportLayoutCanvas : FrameworkElement
             if(model!=null){model.PropertyChanged+=Changed;model.Layout.PropertyChanged+=Changed;}
             fit=true;InvalidateVisual();
         };
-        SizeChanged+=(_,_)=>InvalidateVisual();
+        SizeChanged+=(_,_)=>{if(fit)Fit();InvalidateVisual();};
+        Loaded+=(_,_)=>Fit();
     }
     private void Changed(object? sender,PropertyChangedEventArgs e){InvalidateVisual();ViewChanged?.Invoke(this,EventArgs.Empty);}
     private Point Screen(LocalPoint p) {var s=viewport.ToScreen(p,ActualWidth,ActualHeight);return new(s.X,s.Y);}
     private LocalPoint Local(Point p)=>viewport.ToLocal(p.X,p.Y,ActualWidth,ActualHeight);
     public void Fit()
     {
-        if(model==null)return;
+        if(model==null||ActualWidth<1||ActualHeight<1){fit=true;return;}
         double extent=Math.Max(model.HasRunway?model.LayoutRunwayLength:100,model.Layout.Stands.Select(s=>2*(Math.Max(Math.Abs(s.EastMeters),Math.Abs(s.NorthMeters))+s.RadiusMeters)).DefaultIfEmpty(100).Max());
         foreach(var t in model.Layout.Taxiways)
             foreach(var v in t.Points){var p=v.Resolve(model.Layout.Stands);extent=Math.Max(extent,2*(Math.Max(Math.Abs(p.East),Math.Abs(p.North))+t.WidthMeters));}

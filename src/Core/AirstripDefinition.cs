@@ -51,13 +51,10 @@ public sealed record AirstripDefinition
             else if (!preset.CanGenerate) errors.Add($"Runway surface preset '{preset.DisplayName}' is unavailable.");
             else if (preset.PhysicalSurface != Surface) errors.Add("Runway surface preset does not agree with its physical surface type.");
         }
-        if (!HasRunway && (ParkingStands?.Count > 0 || Taxiways?.Count > 0))
-            errors.Add("A site without a runway cannot contain parking stands or taxiways. MSFS parking requires an airport with a runway.");
-        else if (HasRunway)
-        {
-            errors.AddRange(ParkingGeometry.Validate(ParkingStands, LengthMeters, WidthMeters, TrueHeadingDegrees));
-            errors.AddRange(TaxiwayGeometry.Validate(Taxiways, ParkingStands ?? [], new(LengthMeters,WidthMeters,TrueHeadingDegrees)));
-        }
+        // Planned stands and paths survive before runway construction. The generator omits
+        // Airport infrastructure until it can emit a valid MSFS airport with a runway.
+        errors.AddRange(ParkingGeometry.Validate(ParkingStands, LengthMeters, WidthMeters, TrueHeadingDegrees, HasRunway));
+        errors.AddRange(TaxiwayGeometry.Validate(Taxiways, ParkingStands ?? [], new(LengthMeters,WidthMeters,TrueHeadingDegrees)));
         errors.AddRange(SceneryObjectGeometry.Validate(PlacedObjects, new(LengthMeters,WidthMeters,TrueHeadingDegrees)));
         return errors;
     }
