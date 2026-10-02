@@ -19,7 +19,7 @@
 - Run Tracking V2 against a loaded MSFS flight: verify In Aircraft → On Foot identity transition, stationary aircraft plus independently moving avatar, distance/facing, return to aircraft, manual viewport control and disconnect recovery. See tracking-v2-avatar.md. Tracking V1 aircraft movement was accepted by Matt.
 - Run Tracking V3 persistence acceptance: move the aircraft, disconnect, verify LAST KNOWN, restart Frontier Pilot without MSFS, then reconnect and verify LIVE. See tracking-v3-persistence.md.
 - Build disposable airports for the seven surface presets and visually compare texture/colour, grass behavior, merging and edges. Dry Grass and Weathered Asphalt currently use labelled fallbacks. See scenery-materials-and-prototype-buildings-v0.md.
-- Place the Small Base Lodge placeholder and verify the `MICROSOFT_ASSET_FieldCabins_01` model resolves, resembles a suitable small house/cabin, and sits naturally on its foundation. Measure its true model bounds and replace the provisional 8 × 6 m authoring footprint after live acceptance.
+- Rebuild a site containing the Small Base Lodge and verify `BF_TemplateHouse01` resolves as one suitably small house, has a useful heading, and sits naturally on its foundation. Measure its true model bounds and replace the provisional 10 × 8 m authoring footprint after live acceptance. `MICROSOFT_ASSET_FieldCabins_01` was rejected because it appeared as a large compound/hangar-like object.
 - Run the WPF flow in a real flight: capture a new flat site, close MSFS, compile/install a new identifier, restart and inspect both starts.
 - Exercise replacement of that new app-owned package and verify the prior version backup. Keep FPT1/FPSC untouched.
 - Verify usability at additional Windows scaling settings.

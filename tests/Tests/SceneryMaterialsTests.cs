@@ -102,10 +102,10 @@ public sealed class SceneryMaterialsTests : TemporaryDirectoryTest
         Assert.Equal(ConstructionObjectCatalogue.BaseLodgeId, lodge.Id);
         var asset = SceneryAssets.Find(lodge.SceneryAssetId);
         Assert.NotNull(asset); Assert.True(asset!.IsPrototypePlaceholder);
-        Assert.Equal(new Guid("7C24C83A-0588-4208-9B89-6F01B7D9B82F"), asset.LibraryGuid);
+        Assert.Equal(new Guid("0286FC19-4558-4228-A480-2CD5690A2022"), asset.LibraryGuid);
         Assert.Equal(1, asset.Scale);
-        Assert.Equal(8,asset.Footprint.WidthMeters);
-        Assert.Equal(6,asset.Footprint.DepthMeters);
+        Assert.Equal(10,asset.Footprint.WidthMeters);
+        Assert.Equal(8,asset.Footprint.DepthMeters);
     }
 
     [Fact]

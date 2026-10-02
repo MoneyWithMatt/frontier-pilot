@@ -10,7 +10,7 @@ All V0 values are temporary test fixtures: 150 TPC founding; 70 kg ration capaci
 
 ## Founding and presence
 
-The Operations page lists only saved Frontier Pilot site definitions. Its service reloads the selected definition and derives its capabilities from `ConstructionObjectCatalogue`; display text is never inspected. The current `prototype-base-lodge-v0` field-cabin placeholder resolves through the catalogue to the stable `BaseLodge` capability.
+The Operations page lists only saved Frontier Pilot site definitions. Its service reloads the selected definition and derives its capabilities from `ConstructionObjectCatalogue`; display text is never inspected. The current `prototype-base-lodge-v0` temporary-house placeholder resolves through the catalogue to the stable `BaseLodge` capability.
 
 `GuardedAvatarSitePresence` is the sole production constructor of `VerifiedSitePresenceEvidence`. It accepts only a valid `TrackingWorldState` in `OnFoot` mode whose current object is the explicit avatar, whose avatar differs from the aircraft, is on ground, is no more than three seconds old, and lies within the configured 250 m prototype radius of the saved airport anchor. Aircraft, camera, disconnected, last-known and refused avatar positions cannot produce evidence. The full evidence, object ID, coordinates, timestamps, radius, distance, provider and MSFS integration details are stored with the founded site.
 

@@ -57,16 +57,16 @@ public static class SceneryAssets
     public const string PrototypeBaseLodgeId = "prototype-base-lodge-v0";
     public static readonly SceneryAsset PrototypeBaseLodge = new(
         PrototypeBaseLodgeId,
-        "Small Base Lodge (temporary field-cabin fallback)",
-        new Guid("7C24C83A-0588-4208-9B89-6F01B7D9B82F"),
-        new(-4,4,-3,3),
+        "Small Base Lodge (temporary house fallback)",
+        new Guid("0286FC19-4558-4228-A480-2CD5690A2022"),
+        new(-5,5,-4,4),
         new(1.2,4),
-        "Temporary 8 x 6 m authoring footprint for installed MICROSOFT_ASSET_FieldCabins_01; live model bounds remain to be measured")
+        "Temporary 10 x 8 m authoring footprint for installed BF_TemplateHouse01; live model bounds remain to be measured")
         {
             ConstructionCategory = ConstructionObjectCategory.BaseLodge,
             IsPrototypePlaceholder = true,
             Scale = 1,
-            Dependency = "MSFS package microsoft-modellib-assets; temporary FieldCabins_01 fallback pending dedicated lodge artwork"
+            Dependency = "MSFS base scenery package fs20-fs-base-scenery; temporary BF_TemplateHouse01 fallback pending dedicated lodge artwork"
         };
 
     public static IReadOnlyList<SceneryAsset> All { get; } = [GenericHangar56, PrototypeBaseLodge];
