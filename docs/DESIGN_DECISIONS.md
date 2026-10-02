@@ -26,6 +26,12 @@
 - **Preserved:** existing same-survey layout export/import now retains taxiways; no new airport catalogue, persistence or survey-resume workflow.
 - **Pending:** Matt's new live test of distant parking, segment visibility, joins and terrain fit. See taxiways-and-airport-site.md.
 
+## Georeferenced site editing — 2026-09-24
+- **Implemented:** the site editor now places its existing metre-accurate authoring overlay over the same Mapsui/OpenStreetMap provider already used elsewhere in Frontier Pilot. Tile pixels remain view-only; saved survey coordinates and local metre offsets remain authoritative.
+- **Implemented:** a site without airfield infrastructure renders an operation anchor and placed objects, with no implied runway footprint. Runway creation is a map action: the surveyed anchor remains its validated centre and the selected endpoint determines true heading and full length.
+- **Implemented:** My Sites opens an explicit saved-site editing state. The page identifies the active saved site and explains that Save site revisions that identity, while New site begins a different location.
+- **Constraint:** V0 runway placement retains the guarded survey point as its centre because only that point has validated elevation. Moving the runway centre independently requires a future multi-point terrain/elevation survey rather than deriving authority from map imagery.
+
 ## Airport management decisions — 2026-09-08
 - **Implemented:** Frontier's versioned local JSON definition is the editable source of truth. Generated projects and Community packages are derived outputs.
 - **Implemented:** saved survey evidence remains subject to the same dry-run/live boundary and exact live SDK/simulator qualification. Loading never invents aircraft or camera fallback data.

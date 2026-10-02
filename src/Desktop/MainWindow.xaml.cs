@@ -140,6 +140,8 @@ public partial class MainWindow : Window
     private void FinishTaxiway(object sender,RoutedEventArgs e)=>model.Layout.FinishTaxiway();
     private void CancelTaxiway(object sender,RoutedEventArgs e)=>model.Layout.CancelTaxiway();
     private void ApplyTaxiway(object sender,RoutedEventArgs e)=>model.Layout.ApplyTaxiway();
+    private void PlaceRunway(object sender,RoutedEventArgs e)=>model.BeginRunwayPlacement();
+    private void CancelRunway(object sender,RoutedEventArgs e)=>model.CancelRunwayPlacement();
     private void FitLayout(object sender,RoutedEventArgs e)=>LayoutCanvas.Fit();
     private async void SaveLayout(object sender,RoutedEventArgs e)
     {
@@ -159,7 +161,7 @@ public partial class MainWindow : Window
     private async void OpenAirport(object sender,RoutedEventArgs e)
     {
         if(model.SelectedAirport is not {} airport||!MayDiscardEdits())return;
-        await model.LoadAirportAsync(airport.Id);if(model.State==WorkflowState.SurveyCaptured)MainTabs.SelectedItem=BuilderTab;
+        await model.LoadAirportAsync(airport.Id);if(model.State==WorkflowState.SurveyCaptured){MainTabs.SelectedItem=BuilderTab;LayoutCanvas.Fit();}
     }
     private async void DeleteAirport(object sender,RoutedEventArgs e)
     {

@@ -73,6 +73,8 @@ Matt reports the preceding runway/parking/survey/build/install workflow passed l
 
 Implemented shared Core.AirportSite bounds (runway footprint + 3 km, within the existing 10 km geodesic limit), replacing inconsistent editor square/Core radial 500 m guards. Basic multi-point taxiways now draw in the existing canvas, reuse local coordinates and existing materials, attach to parking, support name/width editing and shared undo/redo, invalidate stale results, and reach real XML in dry run. Existing Save/Load retains these paths; no new persistence feature was added.
 
+On 2026-09-24 the layout canvas gained a georeferenced Mapsui/OpenStreetMap base layer. No-runway sites now show only their validated anchor and authored objects. **Place runway** uses a map click to set heading and full length from the fixed surveyed centre; this intentionally does not claim unsurveyed terrain elevation. Saved sites open with explicit edit-state guidance and continue to revise the same persistent site ID. Automated coverage proves map-driven runway geometry persists and an edit increments the existing site's revision rather than creating a second definition.
+
 Release build: zero warnings/errors; 278 tests pass. Generated XML validates against installed SDK 1.2.4 XSD. Offline UI visually checked. New taxiways and distant parking are not yet simulator-proven. No Package Tool/MSFS invocation or real Community writes during this task. See [implementation, limits and exact manual steps](taxiways-and-airport-site.md), evidence/taxiways/.
 
 ## Persistent airport management — 2026-09-08

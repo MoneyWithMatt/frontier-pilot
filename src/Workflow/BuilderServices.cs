@@ -88,7 +88,7 @@ public sealed partial class BuilderServices : IBuilderServices, IAirportManageme
         // Validate and check read-only prerequisites before allocating any project workspace.
         definition.EnsureValid();
         if (capturedSurvey == null || definition.Latitude != capturedSurvey.Latitude || definition.Longitude != capturedSurvey.Longitude ||
-            definition.AltitudeMeters != capturedSurvey.AltitudeMeters || definition.TrueHeadingDegrees != capturedSurvey.TrueHeadingDegrees ||
+            definition.AltitudeMeters != capturedSurvey.AltitudeMeters ||
             definition.MagneticVariationDegreesEast != capturedSurvey.MagneticVariationDegrees)
             throw new IOException("Definition must use this session's validated survey point without substituted coordinates or elevation.");
         issuedBuild = null; Installer().CheckIdentifier(definition.Identifier); if (!IsDryRun) AssertSimulatorClosed();

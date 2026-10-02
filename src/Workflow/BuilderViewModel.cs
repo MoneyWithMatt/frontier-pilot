@@ -24,7 +24,8 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
 {
     private readonly IBuilderServices services;
     private CancellationTokenSource? cancellation;
-    private bool busy, checkedReady, siteConfirmed, hasRunway;
+    private bool busy, checkedReady, siteConfirmed, hasRunway, isPlacingRunway;
+    private double runwayHeading;
     private string sdkRoot, airportName = "", identifier = "", length = "200", width = "20", status = "Check prerequisites to begin.", error = "", activity = "";
     private RunwaySurface surface = RunwaySurface.Dirt;
     private string? surfacePresetId = RunwaySurfacePresets.CompactedDirtId;
@@ -42,11 +43,17 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public EmployedCargoJobsViewModel Jobs { get; }
     public AircraftLoadingViewModel AircraftLoading { get; }
     public ProspectingOperationsViewModel Operations { get; }
-    public double LayoutRunwayHeading => Survey?.TrueHeadingDegrees ?? 0;
+    public double LayoutRunwayHeading => runwayHeading;
     public double LayoutRunwayLength => double.TryParse(length,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 200;
     public double LayoutRunwayWidth => double.TryParse(width,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 20;
     public bool CanLayout => !busy && Survey!=null;
     public bool CanEditRunwayLayout => CanLayout && hasRunway;
+    public bool IsPlacingRunway => isPlacingRunway;
+    public string RunwayPlacementInstructions => isPlacingRunway
+        ? "Click an intended runway end on the map. The surveyed anchor remains the runway centre; the click sets its heading and full length. Escape cancels."
+        : hasRunway
+            ? "Choose Place runway, then click either runway end on the map. You can repeat this whenever you want to change its heading or length."
+            : "This site currently has no runway. Choose Place runway, then click an intended runway end on the map.";
     public SurveyPoint? Survey { get; private set; }
     public BuiltAirport? Built { get; private set; }
     public string InstalledPath { get; private set; } = "";
@@ -167,6 +174,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
                 Layout.Replace([], [], Layout.Objects.ToArray());
             Changed(); Changed(nameof(AccessDescription)); Changed(nameof(CanEditRunwayLayout)); Changed(nameof(CaptureInstructions));
             Changed(nameof(AfterCaptureInstructions)); Changed(nameof(Designators)); Changed(nameof(SuccessInstructions));
+            Changed(nameof(RunwayPlacementInstructions));
             Invalidate();
         }
     }
@@ -205,7 +213,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         }
     }
     public string Designators { get { if (!hasRunway) return "NO RUNWAY"; try { var g = RunwayGeometry.Calculate(Definition()); return $"{g.Primary.Number:00} / {g.Secondary.Number:00}"; } catch { return "— / —"; } } }
-    public double PreviewHeading => Survey?.TrueHeadingDegrees ?? 0;
+    public double PreviewHeading => LayoutRunwayHeading;
     public double PreviewWidth { get { if (double.TryParse(width, NumberStyles.Float, CultureInfo.InvariantCulture, out var w) && double.TryParse(length, NumberStyles.Float, CultureInfo.InvariantCulture, out var l) && double.IsFinite(w) && double.IsFinite(l) && l > 0) return Math.Clamp(180 * w / l, 4, 100); return 18; } }
     public string SuccessInstructions => InstalledPath == "" ? "" : IsDryRun ? $"Dry run completed. Synthetic test package installed only in:\n{InstalledPath}\nIt is not flyable scenery. Do not copy it to MSFS." : hasRunway
         ? $"Installed {Built!.Definition.Identifier}. Launch or restart MSFS, search {Built.Definition.Identifier} in Free Flight, and test both runway starts ({Designators}). Inspect surface, rocks and terrain edges.\n{InstalledPath}"
@@ -215,10 +223,36 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         if (!double.TryParse(length, NumberStyles.Float, CultureInfo.InvariantCulture, out var l) || !double.TryParse(width, NumberStyles.Float, CultureInfo.InvariantCulture, out var w))
             throw new ArgumentException("Enter length and width in metres using numbers (for example 200 and 20).");
         return new() { HasRunway = hasRunway, Name = airportName, Identifier = identifier, Latitude = Survey?.Latitude ?? 0, Longitude = Survey?.Longitude ?? 0,
-            AltitudeMeters = Survey?.AltitudeMeters ?? 0, TrueHeadingDegrees = Survey?.TrueHeadingDegrees ?? 0,
+            AltitudeMeters = Survey?.AltitudeMeters ?? 0, TrueHeadingDegrees = LayoutRunwayHeading,
             MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface, SurfacePresetId = surfacePresetId, ParkingStands = Layout.Stands.ToArray(), Taxiways = Layout.Taxiways.ToArray(), PlacedObjects = Layout.Objects.ToArray() };
     }
     public void AddParkingAt(LocalPoint point) { if(CanLayout && hasRunway)Layout.Add(point,LayoutRunwayHeading); }
+    public void BeginRunwayPlacement()
+    {
+        if(!CanLayout)return;
+        Layout.CancelTaxiway();isPlacingRunway=true;Changed(nameof(IsPlacingRunway));Changed(nameof(RunwayPlacementInstructions));
+    }
+    public void CancelRunwayPlacement()
+    {
+        if(!isPlacingRunway)return;
+        isPlacingRunway=false;Changed(nameof(IsPlacingRunway));Changed(nameof(RunwayPlacementInstructions));
+    }
+    public void PlaceRunwayEnd(LocalPoint end)
+    {
+        if(!CanLayout||!isPlacingRunway)return;
+        var halfLength=Math.Sqrt(end.East*end.East+end.North*end.North);
+        if(!double.IsFinite(halfLength)||halfLength is <5 or >5000)
+        {
+            error="Choose a runway end 5–5,000 metres from the surveyed centre.";Changed(nameof(Error));return;
+        }
+        runwayHeading=Headings.Normalize(Math.Atan2(end.East,end.North)*180/Math.PI);
+        length=(halfLength*2).ToString("0.###",CultureInfo.InvariantCulture);
+        if(!hasRunway)hasRunway=true;
+        isPlacingRunway=false;
+        Changed(nameof(Length));Changed(nameof(LayoutRunwayLength));Changed(nameof(LayoutRunwayHeading));Changed(nameof(PreviewHeading));
+        Changed(nameof(HasRunway));Changed(nameof(AccessDescription));Changed(nameof(CanEditRunwayLayout));Changed(nameof(Designators));
+        Changed(nameof(IsPlacingRunway));Changed(nameof(RunwayPlacementInstructions));Layout.Notify();Invalidate();
+    }
     private void ClearParking() => Layout.Reset();
     public async Task SaveLayoutAsync(string path)
     {
@@ -258,7 +292,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             status = IsDryRun ? "Validating recorded avatar frames" : "Capturing — stay upright and still for at least five seconds"; Refresh();
             var captured = await services.CaptureAsync(sdkRoot, token); token.ThrowIfCancellationRequested();
             if (SurveyCapture.ValidatePoint(captured) is { } problem) throw new IOException(problem);
-            Survey = captured; status = "Survey captured. Enter details and Validate."; SetState(WorkflowState.SurveyCaptured);
+            Survey = captured;runwayHeading=captured.TrueHeadingDegrees;Changed(nameof(LayoutRunwayHeading));Changed(nameof(PreviewHeading)); status = "Survey captured. Enter details and Validate."; SetState(WorkflowState.SurveyCaptured);
         });
     }
     public Task ValidateAsync()

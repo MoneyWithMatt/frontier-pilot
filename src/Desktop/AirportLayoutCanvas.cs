@@ -17,6 +17,9 @@ public sealed class AirportLayoutCanvas : FrameworkElement
     private bool draggingObject;
     private LocalPoint? ghost;
     private bool panning,fit=true;
+    public event EventHandler? ViewChanged;
+    public (LocalPoint Center,double PixelsPerMeter) ViewState =>
+        (viewport.ToLocal(ActualWidth/2,ActualHeight/2,ActualWidth,ActualHeight),viewport.PixelsPerMeter);
     public AirportLayoutCanvas()
     {
         Focusable=true;ClipToBounds=true;
@@ -28,13 +31,13 @@ public sealed class AirportLayoutCanvas : FrameworkElement
         };
         SizeChanged+=(_,_)=>InvalidateVisual();
     }
-    private void Changed(object? sender,PropertyChangedEventArgs e)=>InvalidateVisual();
+    private void Changed(object? sender,PropertyChangedEventArgs e){InvalidateVisual();ViewChanged?.Invoke(this,EventArgs.Empty);}
     private Point Screen(LocalPoint p) {var s=viewport.ToScreen(p,ActualWidth,ActualHeight);return new(s.X,s.Y);}
     private LocalPoint Local(Point p)=>viewport.ToLocal(p.X,p.Y,ActualWidth,ActualHeight);
     public void Fit()
     {
         if(model==null)return;
-        double extent=Math.Max(model.LayoutRunwayLength,model.Layout.Stands.Select(s=>2*(Math.Max(Math.Abs(s.EastMeters),Math.Abs(s.NorthMeters))+s.RadiusMeters)).DefaultIfEmpty(100).Max());
+        double extent=Math.Max(model.HasRunway?model.LayoutRunwayLength:100,model.Layout.Stands.Select(s=>2*(Math.Max(Math.Abs(s.EastMeters),Math.Abs(s.NorthMeters))+s.RadiusMeters)).DefaultIfEmpty(100).Max());
         foreach(var t in model.Layout.Taxiways)
             foreach(var v in t.Points){var p=v.Resolve(model.Layout.Stands);extent=Math.Max(extent,2*(Math.Max(Math.Abs(p.East),Math.Abs(p.North))+t.WidthMeters));}
         foreach(var o in model.Layout.Objects)
@@ -43,12 +46,12 @@ public sealed class AirportLayoutCanvas : FrameworkElement
             foreach(var corner in SceneryObjectGeometry.FootprintCorners(o,a,a.Foundation?.MarginMeters??0))
                 extent=Math.Max(extent,2*Math.Max(Math.Abs(corner.East),Math.Abs(corner.North)));
         }
-        viewport.Fit(extent+60,ActualWidth,ActualHeight);fit=false;InvalidateVisual();
+        viewport.Fit(extent+60,ActualWidth,ActualHeight);fit=false;InvalidateVisual();ViewChanged?.Invoke(this,EventArgs.Empty);
     }
     protected override void OnRender(DrawingContext dc)
     {
         base.OnRender(dc);
-        dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(237,243,235)),null,new Rect(RenderSize));
+        dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(55,237,243,235)),null,new Rect(RenderSize));
         if(model==null||ActualWidth<1||ActualHeight<1)return;
         if(fit)Fit();
         double step=Math.Pow(10,Math.Floor(Math.Log10(65/viewport.PixelsPerMeter)));
@@ -58,12 +61,15 @@ public sealed class AirportLayoutCanvas : FrameworkElement
         for(double e=Math.Floor(bottom.East/step)*step;e<=top.East;e+=step){var x=Screen(new(e,0)).X;dc.DrawLine(gridPen,new(x,0),new(x,ActualHeight));}
         for(double n=Math.Floor(bottom.North/step)*step;n<=top.North;n+=step){var y=Screen(new(0,n)).Y;dc.DrawLine(gridPen,new(0,y),new(ActualWidth,y));}
         var origin=Screen(new(0,0));
-        dc.PushTransform(new RotateTransform(model.LayoutRunwayHeading,origin.X,origin.Y));
-        double w=model.LayoutRunwayWidth*viewport.PixelsPerMeter,l=model.LayoutRunwayLength*viewport.PixelsPerMeter;
-        dc.DrawRectangle(Brushes.Tan,new Pen(Brushes.SaddleBrown,1),new(origin.X-w/2,origin.Y-l/2,w,l));
-        dc.DrawLine(new Pen(Brushes.White,1){DashStyle=DashStyles.Dash},new(origin.X,origin.Y-l/2),new(origin.X,origin.Y+l/2));
-        dc.Pop();
-        dc.DrawEllipse(Brushes.DarkGreen,null,origin,3,3);
+        if(model.HasRunway)
+        {
+            dc.PushTransform(new RotateTransform(model.LayoutRunwayHeading,origin.X,origin.Y));
+            double w=model.LayoutRunwayWidth*viewport.PixelsPerMeter,l=model.LayoutRunwayLength*viewport.PixelsPerMeter;
+            dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(210,210,180,125)),new Pen(Brushes.SaddleBrown,2),new(origin.X-w/2,origin.Y-l/2,w,l));
+            dc.DrawLine(new Pen(Brushes.White,1){DashStyle=DashStyles.Dash},new(origin.X,origin.Y-l/2),new(origin.X,origin.Y+l/2));
+            dc.Pop();
+        }
+        dc.DrawEllipse(model.IsPlacingRunway?Brushes.DarkOrange:Brushes.DarkGreen,new Pen(Brushes.White,1),origin,5,5);
         foreach(var t in model.Layout.Taxiways)
         {
             var points=t.Points.Select(v=>v.Resolve(model.Layout.Stands)).ToArray();
@@ -106,7 +112,7 @@ public sealed class AirportLayoutCanvas : FrameworkElement
             Text(dc,$"H{item.Number}",new(originPoint.X+5,originPoint.Y+3),Brushes.DarkRed);
         }
         dc.DrawRectangle(Brushes.White,null,new(8,8,235,45));
-        Text(dc,model.Survey==null?"Capture a survey to edit":"Fixed survey anchor • north up",new(15,12),Brushes.DarkGreen);
+        Text(dc,model.Survey==null?"Capture a survey to edit":model.HasRunway?"Surveyed runway centre • north up":"Operation anchor • no runway",new(15,12),Brushes.DarkGreen);
         Text(dc,$"Grid {step:0.##} m  |  zoom {viewport.PixelsPerMeter:0.##} px/m",new(15,32),Brushes.DimGray);
         Text(dc,"N ↑",new(ActualWidth-50,15),Brushes.DarkGreen);
         double metres=Math.Pow(10,Math.Floor(Math.Log10(100/viewport.PixelsPerMeter)));
@@ -134,6 +140,10 @@ public sealed class AirportLayoutCanvas : FrameworkElement
         if(e.ChangedButton is MouseButton.Middle or MouseButton.Right){panning=true;CaptureMouse();e.Handled=true;return;}
         if(e.ChangedButton!=MouseButton.Left||model==null||!model.CanLayout)return;
         var point=Local(lastMouse);
+        if(model.IsPlacingRunway)
+        {
+            model.PlaceRunwayEnd(point);e.Handled=true;return;
+        }
         var hit=model.Layout.Stands.Reverse().FirstOrDefault(s=>Math.Sqrt(Math.Pow(s.EastMeters-point.East,2)+Math.Pow(s.NorthMeters-point.North,2))<=Math.Max(s.RadiusMeters,8/viewport.PixelsPerMeter));
         if(model.Layout.IsDrawingTaxiway)
         {
@@ -165,7 +175,7 @@ public sealed class AirportLayoutCanvas : FrameworkElement
     protected override void OnMouseMove(MouseEventArgs e)
     {
         var point=e.GetPosition(this);
-        if(panning){viewport.Pan(point.X-lastMouse.X,point.Y-lastMouse.Y);lastMouse=point;InvalidateVisual();}
+        if(panning){viewport.Pan(point.X-lastMouse.X,point.Y-lastMouse.Y);lastMouse=point;InvalidateVisual();ViewChanged?.Invoke(this,EventArgs.Empty);}
         else if(dragging.HasValue){var local=Local(point);ghost=new(itemStart.East+local.East-dragStart.East,itemStart.North+local.North-dragStart.North);InvalidateVisual();}
     }
     protected override void OnMouseUp(MouseButtonEventArgs e)
@@ -177,11 +187,11 @@ public sealed class AirportLayoutCanvas : FrameworkElement
         dragging=null;draggingObject=false;ghost=null;panning=false;ReleaseMouseCapture();InvalidateVisual();e.Handled=true;
     }
     protected override void OnLostMouseCapture(MouseEventArgs e){dragging=null;draggingObject=false;ghost=null;panning=false;InvalidateVisual();base.OnLostMouseCapture(e);}
-    protected override void OnMouseWheel(MouseWheelEventArgs e){var p=e.GetPosition(this);viewport.Zoom(e.Delta>0?1.2:1/1.2,p.X,p.Y,ActualWidth,ActualHeight);InvalidateVisual();e.Handled=true;}
+    protected override void OnMouseWheel(MouseWheelEventArgs e){var p=e.GetPosition(this);viewport.Zoom(e.Delta>0?1.2:1/1.2,p.X,p.Y,ActualWidth,ActualHeight);InvalidateVisual();ViewChanged?.Invoke(this,EventArgs.Empty);e.Handled=true;}
     protected override void OnKeyDown(KeyEventArgs e)
     {
         if(model==null)return;
-        if(e.Key==Key.Escape){model.Layout.CancelTaxiway();dragging=null;ghost=null;panning=false;ReleaseMouseCapture();}
+        if(e.Key==Key.Escape){model.Layout.CancelTaxiway();model.CancelRunwayPlacement();dragging=null;ghost=null;panning=false;ReleaseMouseCapture();}
         else if(e.Key==Key.Enter&&model.Layout.IsDrawingTaxiway)model.Layout.FinishTaxiway();
         else if(e.Key==Key.Delete)model.Layout.Delete();
         else if(e.Key==Key.Z&&Keyboard.Modifiers.HasFlag(ModifierKeys.Control))model.Layout.Undo();

@@ -28,6 +28,7 @@
 - Choose a production-capable tile provider/cache policy before distributing Tracking beyond limited prototype use.
 - Add autosave/draft recovery beyond the implemented explicit saved-airport library; saved airports already restore qualified survey evidence and layouts after restart.
 - Detect runway footprint slope/obstacles before committing to placement.
+- Extend guarded surveying beyond the operation anchor before allowing a runway centre to move independently across the site map; current map placement keeps the validated anchor as runway centre and sets heading/length from an endpoint.
 - Explore authoritative global airport identifier collision checks.
 - Support Community storage on other drives through tested on-volume staging.
 - Improve progress detail for long Package Tool runs; preserve child-process safety.

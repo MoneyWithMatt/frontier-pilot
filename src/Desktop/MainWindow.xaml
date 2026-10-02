@@ -8,8 +8,10 @@
 <WrapPanel><Button Content="Validate" Command="{Binding ValidateCommand}"/><Button Content="Generate and compile" Command="{Binding BuildCommand}"/><Button Content="Install site" Command="{Binding InstallCommand}"/><Button Content="Cancel" Command="{Binding CancelCommand}"/><Button Content="Project" Command="{Binding OpenProjectCommand}"/><Button Content="Package" Command="{Binding OpenPackageCommand}"/><Button Content="Build log" Command="{Binding OpenLogCommand}"/><Button Content="Evidence" Command="{Binding OpenEvidenceCommand}"/></WrapPanel>
 </StackPanel></Border>
 <TabControl x:Name="MainTabs" SelectionChanged="MainTabsChanged" SelectedIndex="5"><TabItem x:Name="BuilderTab" Header="" Width="0" MinWidth="0" Padding="0" Focusable="False"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="24,20"><TextBlock Text="{Binding ModeDescription}" FontWeight="Bold" Margin="0,0,0,14"/>
-<Border Style="{StaticResource Card}"><StackPanel>
+<Border Background="#E8F2EC" BorderBrush="#86A99A" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14"><StackPanel>
 <WrapPanel><Button Content="Back to My Sites" Click="BackToMySites"/><Button Content="New site" Click="NewAirport" IsEnabled="{Binding CanManageAirports}"/><Button Content="Save site" Command="{Binding SaveAirportCommand}"/></WrapPanel>
+<TextBlock Text="{Binding BuilderTitle}" FontSize="22" FontWeight="SemiBold" Margin="0,6,0,4"/>
+<TextBlock Text="{Binding BuilderGuidance}" TextWrapping="Wrap"/>
 <TextBlock Text="{Binding SaveStatus}" FontWeight="SemiBold" Margin="0,0,0,10"/>
 <TextBlock Style="{StaticResource Title}" Text="1. Connect to your flight"/>
 <TextBlock Text="{Binding CheckInstructions}"/>
@@ -22,7 +24,7 @@
 <Border Background="#EDF4EF" Padding="12"><TextBlock Text="{Binding SurveyText}" FontFamily="Consolas" FontSize="15"/></Border>
 <TextBlock Text="{Binding AfterCaptureInstructions}" Margin="0,10,0,0" FontWeight="SemiBold"/>
 </StackPanel></Border>
-<Border Style="{StaticResource Card}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="270"/></Grid.ColumnDefinitions>
+<Border Style="{StaticResource Card}"><Grid>
 <StackPanel IsEnabled="{Binding CanEdit}">
 <TextBlock Style="{StaticResource Title}" Text="3. Define your site"/>
 <Label Content="Site _name" Target="{Binding ElementName=NameField}"/><TextBox x:Name="NameField" Text="{Binding AirportName, UpdateSourceTrigger=PropertyChanged}"/>
@@ -33,22 +35,18 @@
 <Label Content="_Surface preset" Target="{Binding ElementName=SurfaceField}"/><ComboBox x:Name="SurfaceField" ItemsSource="{Binding SurfacePresets}" SelectedItem="{Binding SelectedSurfacePreset}" Padding="8" Margin="0,0,12,4"/><TextBlock Text="{Binding SurfacePresetDetail}" FontSize="11" TextWrapping="Wrap" Margin="0,0,12,12"/></StackPanel>
 <CheckBox IsChecked="{Binding SiteConfirmed}" Margin="0,0,12,10"><TextBlock Text="{Binding SiteCheckText}"/></CheckBox>
 <TextBlock Text="{Binding ValidationMessage}" Foreground="#695728" FontSize="12"/>
-</StackPanel>
-<StackPanel Grid.Column="1" Margin="18,0,0,0">
-<TextBlock Text="Runway preview" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="{Binding Designators}" FontSize="30" Margin="0,8"/>
-<Grid Height="250" Background="#E3EBDF" ClipToBounds="True"><TextBlock Text="N ↑" HorizontalAlignment="Center" Margin="0,8" VerticalAlignment="Top"/><Rectangle Width="{Binding PreviewWidth}" Height="180" Fill="#9C8761" Stroke="#6D6048" RenderTransformOrigin=".5,.5"><Rectangle.Style><Style TargetType="Rectangle"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding HasRunway}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Rectangle.Style><Rectangle.RenderTransform><RotateTransform Angle="{Binding PreviewHeading}"/></Rectangle.RenderTransform></Rectangle><Ellipse Width="8" Height="8" Fill="#203C35"/></Grid>
-<TextBlock Text="North up · centre dot is your survey. Designators use magnetic heading; orientation uses true heading. Width is exaggerated for narrow strips." FontSize="12" Margin="0,10"/>
 </StackPanel></Grid></Border>
 <Border Style="{StaticResource Card}"><StackPanel>
-<TextBlock Style="{StaticResource Title}" Text="Site layout · parking, taxiways and objects"/>
-<TextBlock Text="Add the Small Base Lodge to establish a Prospecting Camp. A runway and its parking/taxiways are optional infrastructure that can be added to this same site later. Adding a parking stand automatically enables the airport/runway infrastructure MSFS requires for that spawn. Click to select, drag to move; R / Shift+R rotates." TextWrapping="Wrap"/>
-<WrapPanel><Button Content="Add parking stand" Command="{Binding AddParkingCommand}" ToolTip="A real MSFS parking spawn also enables the runway/airport infrastructure required by the SDK."/><Button Content="Add Small Base Lodge" Command="{Binding AddObjectCommand}"/><Button Content="Delete selected" Command="{Binding RemoveParkingCommand}"/><Button Content="Undo" Command="{Binding UndoLayoutCommand}"/><Button Content="Redo" Command="{Binding RedoLayoutCommand}"/><Button Content="Fit layout" Click="FitLayout"/><Button Content="Save layout…" Click="SaveLayout" IsEnabled="{Binding CanLayout}"/><Button Content="Load layout…" Click="LoadLayout" IsEnabled="{Binding CanLayout}"/></WrapPanel>
+<TextBlock Style="{StaticResource Title}" Text="Site map · place and edit infrastructure"/>
+<TextBlock Text="This map is centred on the saved survey anchor. Existing buildings, runway, taxiways and parking are loaded when you edit a site. Click an item to select it; drag parking or buildings to move them; use R / Shift+R to rotate a selected item." TextWrapping="Wrap"/>
+<WrapPanel><Button Content="Place runway" Click="PlaceRunway" IsEnabled="{Binding CanLayout}"/><Button Content="Cancel runway placement" Click="CancelRunway" IsEnabled="{Binding IsPlacingRunway}"/><Button Content="Add parking stand" Command="{Binding AddParkingCommand}" ToolTip="A real MSFS parking spawn also enables the runway/airport infrastructure required by the SDK."/><Button Content="Add Small Base Lodge" Command="{Binding AddObjectCommand}"/><Button Content="Delete selected" Command="{Binding RemoveParkingCommand}"/><Button Content="Undo" Command="{Binding UndoLayoutCommand}"/><Button Content="Redo" Command="{Binding RedoLayoutCommand}"/><Button Content="Fit site" Click="FitLayout"/><Button Content="Save layout…" Click="SaveLayout" IsEnabled="{Binding CanLayout}"/><Button Content="Load layout…" Click="LoadLayout" IsEnabled="{Binding CanLayout}"/></WrapPanel>
+<TextBlock Text="{Binding RunwayPlacementInstructions}" FontWeight="SemiBold" Foreground="#9A5510" Margin="0,3,0,6"/>
 <WrapPanel><Button Content="New taxiway" Click="NewTaxiway" IsEnabled="{Binding CanEditRunwayLayout}"/><Button Content="Finish taxiway" Click="FinishTaxiway" IsEnabled="{Binding Layout.CanFinishTaxiway}"/><Button Content="Cancel drawing" Click="CancelTaxiway" IsEnabled="{Binding Layout.IsDrawingTaxiway}"/></WrapPanel>
 <TextBlock Text="{Binding Layout.TaxiwayInstructions}"/>
 <TextBlock Text="Site boundary: runway footprint plus 3 km; absolute reach 10 km. Wheel down to zoom out for distant stands." FontSize="12"/>
 <WrapPanel IsEnabled="{Binding Layout.HasTaxiwaySelection}"><Label Content="Selected taxiway name"/><TextBox Width="90" Text="{Binding Layout.TaxiwayName,UpdateSourceTrigger=PropertyChanged}"/><Label Content="Width (3–60 m)"/><TextBox Width="70" Text="{Binding Layout.TaxiwayWidth,UpdateSourceTrigger=PropertyChanged}"/><Button Content="Apply taxiway properties" Click="ApplyTaxiway"/></WrapPanel>
 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="220"/></Grid.ColumnDefinitions>
-<local:AirportLayoutCanvas x:Name="LayoutCanvas" Height="430" MinWidth="300" Margin="0,0,16,0" AutomationProperties.Name="Airport layout canvas"/>
+<Border BorderBrush="#A8BBB3" BorderThickness="1" Background="#E5ECE8" Margin="0,0,16,0"><local:SiteLayoutMap x:Name="LayoutCanvas" Height="500" MinWidth="300" AutomationProperties.Name="Georeferenced site layout map"/></Border>
 <StackPanel Grid.Column="1">
 <StackPanel IsEnabled="{Binding Layout.HasSelection}">
 <TextBlock Text="{Binding Layout.SelectedNumber, StringFormat='Selected stand {0}'}" FontWeight="Bold"/>
@@ -72,7 +70,8 @@
 </StackPanel>
 </StackPanel></Grid>
 <TextBlock Text="{Binding Layout.Message}" Foreground="#A52222"/><TextBlock Text="{Binding Layout.IsDirty,StringFormat='Unsaved layout changes: {0}'}"/>
-<TextBlock Text="Apply property edits before validating. The yellow shape is the authoring footprint; its dot is the MSFS placement origin. The small lodge uses a temporary stock field cabin until dedicated lodge artwork is added. Dashed and dotted outlines show the flat foundation and blended terrain edge." FontSize="12"/>
+<TextBlock Text="Online OpenStreetMap tiles are a geographic reference; the surveyed anchor and metre offsets remain authoritative. With no runway, only the anchor and placed objects appear. Apply property edits before saving or validating. The small lodge is a temporary stock field cabin." FontSize="12"/>
+<TextBlock FontSize="11" Margin="0,4,0,0">Map data © <Hyperlink NavigateUri="https://www.openstreetmap.org/copyright" RequestNavigate="OpenMapAttribution">OpenStreetMap contributors</Hyperlink></TextBlock>
 </StackPanel></Border>
 <Border Style="{StaticResource Card}"><StackPanel><TextBlock Style="{StaticResource Title}" Text="4. Build, install and fly"/><TextBlock Text="Generate and compile creates an isolated project. Install verifies the package and backs up any previous installation owned by this app. FPT1 and FPSC are protected. The full runway footprint still needs a visual terrain check."/><TextBlock Text="{Binding SuccessInstructions}" FontWeight="SemiBold" Margin="0,10"/><Expander Header="Technical log (select text to copy)"><StackPanel><WrapPanel><Button Content="Copy technical log" Click="CopyLog"/><Button Content="Save technical log…" Click="SaveLog"/></WrapPanel><TextBox Text="{Binding TechnicalLog, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="220" VerticalScrollBarVisibility="Auto"/></StackPanel></Expander></StackPanel></Border>
 </StackPanel></ScrollViewer></TabItem>

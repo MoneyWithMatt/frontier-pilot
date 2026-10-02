@@ -153,7 +153,7 @@ internal sealed class AirportLibrary(string stateRoot,bool dryRun)
     }
     public static void MatchSurvey(AirstripDefinition d,SurveyPoint p)
     {
-        if(d.Latitude!=p.Latitude||d.Longitude!=p.Longitude||d.AltitudeMeters!=p.AltitudeMeters||d.TrueHeadingDegrees!=p.TrueHeadingDegrees||d.MagneticVariationDegreesEast!=p.MagneticVariationDegrees)
+        if(d.Latitude!=p.Latitude||d.Longitude!=p.Longitude||d.AltitudeMeters!=p.AltitudeMeters||d.MagneticVariationDegreesEast!=p.MagneticVariationDegrees)
             throw new IOException("Airport location must match its validated avatar survey evidence.");
     }
     public void MarkProject(string path,Guid airportId,string key)

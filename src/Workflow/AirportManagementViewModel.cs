@@ -12,6 +12,11 @@ public sealed partial class BuilderViewModel
     public bool CanOpenAirport=>!busy&&SelectedAirport!=null;
     public bool CanManageAirports=>!busy&&Management!=null;
     public bool CanEditIdentifier=>!busy&&Management?.ActiveAirportId==null;
+    public bool IsEditingSavedSite=>Management?.ActiveAirportId!=null;
+    public string BuilderTitle=>IsEditingSavedSite?$"Editing saved site · {airportName} ({identifier})":"Create a new site";
+    public string BuilderGuidance=>IsEditingSavedSite
+        ? "The saved survey, buildings, runway, taxiways and parking are loaded below. Edit them on the map, choose Save site to update this same site, then Validate, rebuild and install the revised scenery. New site starts a separate location."
+        : "Connect to MSFS and capture one site anchor. Place the lodge and optional airfield infrastructure on the map, then save, validate, build and install.";
     public string LibraryWarnings=>libraryWarnings;
     public string LibraryPath=>Management?.LibraryDirectory??"Airport management unavailable";
     public bool HasUnsavedAirport
@@ -33,7 +38,7 @@ public sealed partial class BuilderViewModel
     }
     private void RefreshManagement()
     {
-        SaveAirportCommand?.Refresh();RefreshAirportsCommand?.Refresh();Changed(nameof(HasUnsavedAirport));Changed(nameof(SaveStatus));Changed(nameof(CanOpenAirport));Changed(nameof(CanEditIdentifier));
+        SaveAirportCommand?.Refresh();RefreshAirportsCommand?.Refresh();Changed(nameof(HasUnsavedAirport));Changed(nameof(SaveStatus));Changed(nameof(CanOpenAirport));Changed(nameof(CanEditIdentifier));Changed(nameof(IsEditingSavedSite));Changed(nameof(BuilderTitle));Changed(nameof(BuilderGuidance));
     }
     private void SetAirports(AirportList list)
     {
@@ -70,7 +75,7 @@ public sealed partial class BuilderViewModel
         await Run("Load saved airport",async token=>{loaded=await Management!.LoadAirportAsync(id,token);});
         if(loaded==null)return;
         checkedReady=false;Survey=loaded.Survey.Point;airportName=loaded.Name;identifier=loaded.Identifier;
-        hasRunway=loaded.Definition.HasRunway;Changed(nameof(HasRunway));Changed(nameof(AccessDescription));
+        hasRunway=loaded.Definition.HasRunway;runwayHeading=loaded.Definition.TrueHeadingDegrees;Changed(nameof(HasRunway));Changed(nameof(AccessDescription));Changed(nameof(LayoutRunwayHeading));
         length=loaded.Definition.LengthMeters.ToString("R",System.Globalization.CultureInfo.InvariantCulture);
         width=loaded.Definition.WidthMeters.ToString("R",System.Globalization.CultureInfo.InvariantCulture);surface=loaded.Definition.Surface;surfacePresetId=loaded.Definition.SurfacePresetId;Changed(nameof(SelectedSurfacePreset));Changed(nameof(SurfacePresetDetail));siteConfirmed=false;
         Layout.Reset();Layout.Replace(loaded.Definition.ParkingStands,loaded.Definition.Taxiways,loaded.Definition.PlacedObjects);Layout.MarkSaved(Layout.Stands,Layout.Objects);
@@ -80,7 +85,7 @@ public sealed partial class BuilderViewModel
     public void NewAirport()
     {
         if(busy)return;
-        Management?.NewAirport();savedDefinition="";Survey=null;checkedReady=false;airportName="";identifier="";length="200";width="20";hasRunway=false;surface=RunwaySurface.Dirt;surfacePresetId=RunwaySurfacePresets.CompactedDirtId;Changed(nameof(HasRunway));Changed(nameof(AccessDescription));Changed(nameof(SelectedSurfacePreset));Changed(nameof(SurfacePresetDetail));siteConfirmed=false;
+        Management?.NewAirport();savedDefinition="";Survey=null;checkedReady=false;airportName="";identifier="";length="200";width="20";hasRunway=false;runwayHeading=0;isPlacingRunway=false;surface=RunwaySurface.Dirt;surfacePresetId=RunwaySurfacePresets.CompactedDirtId;Changed(nameof(HasRunway));Changed(nameof(AccessDescription));Changed(nameof(SelectedSurfacePreset));Changed(nameof(SurfacePresetDetail));Changed(nameof(IsPlacingRunway));siteConfirmed=false;
         Layout.Reset();Invalidate();status="New operation site. Check and connect, then capture its site anchor.";Refresh();
     }
     public async Task<AirportDeletionPlan?> PrepareDeleteAirportAsync(Guid id)

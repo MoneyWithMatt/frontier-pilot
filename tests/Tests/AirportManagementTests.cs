@@ -46,6 +46,21 @@ public sealed class AirportManagementTests
         Assert.Single(upgraded.Definition.ParkingStands);Assert.Contains("Runway + parking",upgraded.Access);
     }
 
+    [Fact] public async Task RunwayCanBePlacedOnMapAndSavedSiteReopensAsAnEditOfSameIdentity()
+    {
+        var (service,vm)=await Ready();vm.HasRunway=false;
+        vm.BeginRunwayPlacement();Assert.True(vm.IsPlacingRunway);
+        vm.PlaceRunwayEnd(new(100,0));
+        Assert.True(vm.HasRunway);Assert.False(vm.IsPlacingRunway);Assert.Equal(200,vm.LayoutRunwayLength);Assert.Equal(90,vm.LayoutRunwayHeading,8);
+        await vm.SaveAirportAsync();var saved=Assert.Single(vm.Airports);
+
+        var reopened=new BuilderViewModel(service.ReopenDryRun(),"");await reopened.LoadAirportAsync(saved.Id);
+        Assert.True(reopened.IsEditingSavedSite);Assert.Contains("Editing saved site",reopened.BuilderTitle);
+        Assert.Contains("update this same site",reopened.BuilderGuidance);Assert.Equal(90,reopened.LayoutRunwayHeading,8);
+        reopened.Width="22";await reopened.SaveAirportAsync();
+        var edited=Assert.Single(reopened.Airports);Assert.Equal(saved.Id,edited.Id);Assert.Equal(saved.Revision+1,edited.Revision);Assert.Equal(22,edited.Definition.WidthMeters);
+    }
+
     [Fact] public void NewSiteStartsBeforeAirfieldInfrastructure()
     {
         var service=BuilderServices.CreateDryRun();var vm=new BuilderViewModel(service,"");
