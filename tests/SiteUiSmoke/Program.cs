@@ -39,6 +39,15 @@ internal static class Program
                 Check(map.ActualWidth>200&&map.ViewState.PixelsPerMeter>.1,"Map fitted after measurement");
                 var folder=args.FirstOrDefault()??Path.Combine(Path.GetTempPath(),"FrontierPilot-UiSmoke");Directory.CreateDirectory(folder);
                 Save(window,Path.Combine(folder,"site-editor.png"));
+                var draw=Descendants<Button>(window).Single(b=>b.IsVisible&&b.Content?.ToString()=="Draw runway");
+                draw.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                edit.PlaceRunwayEnd(new(120,100));Check(edit.IsPlacingRunway,"First endpoint waits for opposite end");
+                edit.PlaceRunwayEnd(new(120,400));Pump();map.Fit();Pump();
+                Check(edit.HasRunway&&edit.RunwayEast==120&&edit.RunwayNorth==250,"Two endpoint placement moved runway independently of anchor");
+                var heading=Descendants<TextBox>(window).Single(b=>b.GetBindingExpression(TextBox.TextProperty)?.ParentBinding.Path?.Path=="RunwayHeading");
+                heading.Text="90";heading.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();Pump();
+                Check(edit.RunwayHeading==90,"Actual heading textbox updates runway");
+                Save(window,Path.Combine(folder,"runway-editor.png"));
                 foreach(var index in new[]{5,1,2,3,4}){tabs.SelectedIndex=index;Pump();Save(window,Path.Combine(folder,$"page-{index}.png"));}
                 edit.NewAirport();window.Close();result=0;
             }

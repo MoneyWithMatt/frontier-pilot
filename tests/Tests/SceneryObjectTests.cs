@@ -117,6 +117,31 @@ public sealed class SceneryObjectTests : TemporaryDirectoryTest
         var xml = XDocument.Load(Path.Combine(generated.Directory, "PackageSources", "data", "airport.xml"));
         Assert.Empty(xml.Descendants("Airport"));Assert.Empty(xml.Descendants("TaxiwayParking"));
     }
+    [Fact] public void OffsetTransparentRunwayDoesNotMoveAnchorBuildingsOrParking()
+    {
+        var definition=Fixtures.Strip with { RunwayEastMeters=500,RunwayNorthMeters=300,RunwayTransparent=true,
+            ParkingStands=[new(1,50,0,0,8)],PlacedObjects=[new(1,SceneryAssets.PrototypeBaseLodgeId,12,18,35)] };
+        var generated=ProjectGenerator.Generate(definition,Path.Combine(Root,"offset-runway"));
+        var xml=XDocument.Load(Path.Combine(generated.Directory,"PackageSources","data","airport.xml"));
+        var airport=Assert.Single(xml.Descendants("Airport"));var runway=Assert.Single(xml.Descendants("Runway"));
+        double Value(XElement element,string name)=>double.Parse(element.Attribute(name)!.Value,System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal(definition.Latitude,Value(airport,"lat"),9);
+        Assert.Equal(definition.RunwayCenter.Latitude,Value(runway,"lat"),9);
+        Assert.Equal(definition.RunwayCenter.Longitude,Value(runway,"lon"),9);
+        Assert.Equal("TRUE",runway.Attribute("transparent")!.Value);
+        var parking=Assert.Single(xml.Descendants("TaxiwayParking"));
+        Assert.Equal(ParkingGeometry.Calculate(definition,definition.ParkingStands[0]).Position.Latitude,Value(parking,"lat"),9);
+        var lodge=Assert.Single(xml.Root!.Elements("SceneryObject"));
+        Assert.Equal(LocalCoordinates.ToGeographic(new(definition.Latitude,definition.Longitude),new(12,18)).Latitude,Value(lodge,"lat"),9);
+        Assert.NotEqual(Value(runway,"lat"),Value(airport,"lat"));
+    }
+    [Fact] public void ParkingClearanceUsesMovedRunwayAndLegacyOffsetsDefaultToZero()
+    {
+        var definition=Fixtures.Strip with {RunwayEastMeters=500,RunwayNorthMeters=300,ParkingStands=[new(1,500,300,0,8)]};
+        Assert.Contains(definition.Validate(),e=>e.Contains("leave at least"));
+        Assert.Empty((definition with {ParkingStands=[new(1,0,0,0,8)]}).Validate());
+        Assert.Equal(0,Fixtures.Strip.RunwayEastMeters);Assert.Equal(0,Fixtures.Strip.RunwayNorthMeters);
+    }
 
     [Fact]
     public void EditorMovesRotatesDeletesMultipleObjectsAndUndoRedoRestoresThem()

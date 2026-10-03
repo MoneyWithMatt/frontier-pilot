@@ -213,3 +213,8 @@ At Matt's request, remove the UI action that starts a new simulated cargo load. 
 ## Real-time world progression — 2026-10-03
 
 SYSTEM offers use real UTC time with a three-hour generation cadence and six-hour unaccepted expiry. Accepted shipments are protected. Player contracts retain their separate road/cancellation lifecycle. Existing production batches now advance once per real day, with restart-safe offline catch-up and no retroactive consumption on clock activation. See docs/real-time-economy.md.
+
+
+## Independent runway placement — 2026-10-03
+
+Runway drawing now uses two endpoints, with independent persisted centre offsets and editable heading/length/width. The survey anchor and existing scenery remain fixed. Runway-free sites remain scenery-only, with no airport search or parking spawn. Explicit transparent runway surfaces are supported but still flatten terrain; no no-terraform guarantee or automatic hidden runway is made. See [runway-placement-and-runway-free-sites.md](runway-placement-and-runway-free-sites.md) for MAT1 build evidence and manual verification.

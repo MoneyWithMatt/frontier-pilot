@@ -105,7 +105,7 @@ public sealed class AirportLocationRecognizer
         var anchorDistance=WorldTracking.DistanceMeters(airport.Latitude,airport.Longitude,sample.Latitude,sample.Longitude);
         if(anchorDistance>Geodesy.MaximumDistanceMeters+options.AirportMarginMeters)return Math.Max(0,anchorDistance-Geodesy.MaximumDistanceMeters);
         var point=LocalCoordinates.FromGeographic(new(airport.Latitude,airport.Longitude),new(sample.Latitude,sample.Longitude));
-        var runway=LocalCoordinates.ToRunway(point,airport.TrueHeadingDegrees);
+        var runway=LocalCoordinates.ToRunway(new(point.East-airport.RunwayEastMeters,point.North-airport.RunwayNorthMeters),airport.TrueHeadingDegrees);
         var dx=Math.Max(Math.Abs(runway.East)-airport.WidthMeters/2,0);
         var dy=Math.Max(Math.Abs(runway.North)-airport.LengthMeters/2,0);
         var distance=Math.Sqrt(dx*dx+dy*dy);

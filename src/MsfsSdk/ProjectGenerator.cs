@@ -46,7 +46,8 @@ public static class ProjectGenerator
         // Core uses east-positive declination; the MSFS airport XML uses west-positive magvar.
         airport.SetAttributeValue("magvar", Number(-definition.MagneticVariationDegreesEast));
         var runway = airport.Element("Runway")!;
-        SetPosition(runway, new(definition.Latitude, Geodesy.NormalizeLongitude(definition.Longitude)), definition.AltitudeMeters);
+        SetPosition(runway, definition.RunwayCenter, definition.AltitudeMeters);
+        runway.SetAttributeValue("transparent", definition.RunwayTransparent ? "TRUE" : null);
         runway.SetAttributeValue("heading", Number(geometry.TrueHeadingDegrees));
         runway.SetAttributeValue("length", Number(definition.LengthMeters));
         runway.SetAttributeValue("width", Number(definition.WidthMeters));

@@ -10,6 +10,11 @@ public sealed record AirstripDefinition
     /// <summary>False means airfield infrastructure has not yet been built at this site. MSFS
     /// parking belongs to an Airport and an Airport requires a runway, so this state has no spawn.</summary>
     public bool HasRunway { get; init; } = true;
+    public bool RunwayTransparent { get; init; }
+    public double RunwayEastMeters { get; init; }
+    public double RunwayNorthMeters { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public GeoPoint RunwayCenter => LocalCoordinates.ToGeographic(new(Latitude,Longitude),new(RunwayEastMeters,RunwayNorthMeters));
     public required string Name { get; init; }
     public required string Identifier { get; init; }
     public required double Latitude { get; init; }
@@ -53,9 +58,13 @@ public sealed record AirstripDefinition
         }
         // Planned stands and paths survive before runway construction. The generator omits
         // Airport infrastructure until it can emit a valid MSFS airport with a runway.
-        errors.AddRange(ParkingGeometry.Validate(ParkingStands, LengthMeters, WidthMeters, TrueHeadingDegrees, HasRunway));
-        errors.AddRange(TaxiwayGeometry.Validate(Taxiways, ParkingStands ?? [], new(LengthMeters,WidthMeters,TrueHeadingDegrees)));
-        errors.AddRange(SceneryObjectGeometry.Validate(PlacedObjects, new(LengthMeters,WidthMeters,TrueHeadingDegrees)));
+        var site=new AirportSite(LengthMeters,WidthMeters,TrueHeadingDegrees,RunwayEastMeters,RunwayNorthMeters);
+        if(!double.IsFinite(RunwayEastMeters)||!double.IsFinite(RunwayNorthMeters)||
+            Math.Sqrt(RunwayEastMeters*RunwayEastMeters+RunwayNorthMeters*RunwayNorthMeters)+LengthMeters/2>Geodesy.MaximumDistanceMeters)
+            errors.Add("The runway must fit within 10 km of the surveyed anchor.");
+        errors.AddRange(ParkingGeometry.Validate(ParkingStands, LengthMeters, WidthMeters, TrueHeadingDegrees, HasRunway,RunwayEastMeters,RunwayNorthMeters));
+        errors.AddRange(TaxiwayGeometry.Validate(Taxiways, ParkingStands ?? [], site));
+        errors.AddRange(SceneryObjectGeometry.Validate(PlacedObjects, site));
         return errors;
     }
 

@@ -51,7 +51,7 @@ public sealed class AirportManagementTests
     {
         var (service,vm)=await Ready();vm.HasRunway=false;
         vm.BeginRunwayPlacement();Assert.True(vm.IsPlacingRunway);
-        vm.PlaceRunwayEnd(new(100,0));
+        vm.PlaceRunwayEnd(new(-100,0));vm.PlaceRunwayEnd(new(100,0));
         Assert.True(vm.HasRunway);Assert.False(vm.IsPlacingRunway);Assert.Equal(200,vm.LayoutRunwayLength);Assert.Equal(90,vm.LayoutRunwayHeading,8);
         await vm.SaveAirportAsync();var saved=Assert.Single(vm.Airports);
 
@@ -66,6 +66,30 @@ public sealed class AirportManagementTests
     {
         var service=BuilderServices.CreateDryRun();var vm=new BuilderViewModel(service,"");
         Assert.False(vm.HasRunway);Assert.Contains("No runway",vm.AccessDescription);
+    }
+    [Fact] public async Task TwoEndpointRunwayMovesIndependentlyAndPersistsEditableGeometry()
+    {
+        var (service,vm)=await Ready();
+        var stands=vm.Layout.Stands.ToArray();var paths=vm.Layout.Taxiways.ToArray();
+        vm.BeginRunwayPlacement();vm.PlaceRunwayEnd(new(200,300));
+        Assert.True(vm.IsPlacingRunway);Assert.Equal(new LocalPoint(200,300),vm.RunwayFirstPoint);
+        vm.PlaceRunwayEnd(new(600,300));
+        Assert.Equal(400,vm.LayoutRunwayLength);Assert.Equal(90,vm.RunwayHeading);
+        Assert.Equal(400,vm.RunwayEast);Assert.Equal(300,vm.RunwayNorth);
+        Assert.Equal(stands,vm.Layout.Stands);Assert.Equal(paths,vm.Layout.Taxiways);
+        vm.RunwayHeading=180;vm.Length="450";vm.Width="24";vm.RunwayTransparent=true;
+        await vm.SaveAirportAsync();Assert.Equal("",vm.Error);var saved=Assert.Single(vm.Airports);
+        var edit=new BuilderViewModel(service.ReopenDryRun(),"");await edit.LoadAirportAsync(saved.Id);
+        Assert.Equal(400,edit.RunwayEast);Assert.Equal(300,edit.RunwayNorth);Assert.Equal(180,edit.RunwayHeading);
+        Assert.Equal(450,edit.LayoutRunwayLength);Assert.Equal(24,edit.LayoutRunwayWidth);Assert.True(edit.RunwayTransparent);
+        edit.NewAirport();Assert.Equal(0,edit.RunwayEast);Assert.Equal(0,edit.RunwayNorth);Assert.False(edit.RunwayTransparent);
+    }
+    [Fact] public async Task CancellingOrInvalidSecondEndpointPreservesExistingRunway()
+    {
+        var (_,vm)=await Ready();var heading=vm.RunwayHeading;
+        vm.BeginRunwayPlacement();vm.PlaceRunwayEnd(new(400,400));vm.PlaceRunwayEnd(new(401,400));
+        Assert.True(vm.IsPlacingRunway);Assert.Equal(heading,vm.RunwayHeading);
+        vm.CancelRunwayPlacement();Assert.Null(vm.RunwayFirstPoint);Assert.Equal(0,vm.RunwayEast);
     }
     [Fact] public async Task EditingSavedSiteCannotClearItsLayoutByRepeatingSetup()
     {
@@ -90,7 +114,7 @@ public sealed class AirportManagementTests
         await edit.LoadAirportAsync(saved.Id);Assert.False(edit.HasRunway);Assert.Single(edit.Layout.Stands);
         Assert.Contains("planned parking",edit.AccessDescription);
         LayoutFiles.ValidateForAnchor(new(1,edit.Survey!,edit.LayoutRunwayLength,edit.LayoutRunwayWidth,edit.Layout.Stands),edit.Survey!,edit.LayoutRunwayLength,edit.LayoutRunwayWidth,false);
-        edit.BeginRunwayPlacement();edit.PlaceRunwayEnd(new(100,0));
+        edit.BeginRunwayPlacement();edit.PlaceRunwayEnd(new(-100,0));edit.PlaceRunwayEnd(new(100,0));
         Assert.Contains("leave at least",edit.ValidationMessage); // clearance activates only once a runway exists
     }
     [Fact] public async Task BuildAutomaticallySavesAndLoadedEditsRequireSavingAndRebuilding()

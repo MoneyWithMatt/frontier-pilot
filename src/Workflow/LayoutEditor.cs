@@ -50,9 +50,9 @@ public sealed class LayoutEditor : INotifyPropertyChanged
         if(stand!=null)v=new(0,0,stand.Number);
         else
         {
-            var runway=LocalCoordinates.ToRunway(p,site().TrueHeading);
+            var runway=LocalCoordinates.ToRunway(new(p.East-site().RunwayEast,p.North-site().RunwayNorth),site().TrueHeading);
             if(hasRunway()&&Math.Abs(runway.East)<=site().RunwayWidth/2&&Math.Abs(runway.North)<=site().RunwayLength/2)
-                p=LocalCoordinates.FromRunway(0,runway.North,site().TrueHeading);
+                { var snap=LocalCoordinates.FromRunway(0,runway.North,site().TrueHeading);p=new(snap.East+site().RunwayEast,snap.North+site().RunwayNorth); }
             v=new(p.East,p.North);
         }
         if(!site().Contains(v.Resolve(stands),6)){message=AirportSite.BoundaryMessage;Notify();return;}
@@ -216,7 +216,7 @@ public sealed class LayoutEditor : INotifyPropertyChanged
     public void Notify()=>PropertyChanged?.Invoke(this,new(""));
 }
 public sealed record LayoutSnapshot(int Version, SurveyPoint Anchor,double RunwayLengthMeters,double RunwayWidthMeters,IReadOnlyList<ParkingStand> ParkingStands)
-{ public IReadOnlyList<Taxiway> Taxiways {get;init;}=[]; public IReadOnlyList<PlacedSceneryObject> PlacedObjects {get;init;}=[]; }
+{ public double? RunwayHeading {get;init;} public double RunwayEast {get;init;} public double RunwayNorth {get;init;} public IReadOnlyList<Taxiway> Taxiways {get;init;}=[]; public IReadOnlyList<PlacedSceneryObject> PlacedObjects {get;init;}=[]; }
 public static class LayoutFiles
 {
     private static readonly JsonSerializerOptions Json=new() {WriteIndented=true,UnmappedMemberHandling=JsonUnmappedMemberHandling.Disallow,Converters={new JsonStringEnumConverter()}};
@@ -227,15 +227,18 @@ public static class LayoutFiles
         if(new FileInfo(path).Length>1000000)throw new IOException("Layout file is too large.");
         return JsonSerializer.Deserialize<LayoutSnapshot>(await File.ReadAllTextAsync(path),Json)??throw new IOException("Layout file is empty.");
     }
-    public static void ValidateForAnchor(LayoutSnapshot file,SurveyPoint anchor,double length,double width,bool hasRunway=true)
+    public static void ValidateForAnchor(LayoutSnapshot file,SurveyPoint anchor,double length,double width,bool hasRunway=true,AirportSite? site=null)
     {
         if(file.Version!=1||file.Anchor!=anchor||file.RunwayLengthMeters!=length||file.RunwayWidthMeters!=width)
             throw new IOException("Layout belongs to a different survey or runway. Capture provenance cannot be substituted.");
-        var errors=ParkingGeometry.Validate(file.ParkingStands,length,width,anchor.TrueHeadingDegrees,hasRunway);
+        site??=new(length,width,anchor.TrueHeadingDegrees);
+        if((file.RunwayHeading??anchor.TrueHeadingDegrees)!=site.TrueHeading||file.RunwayEast!=site.RunwayEast||file.RunwayNorth!=site.RunwayNorth)
+            throw new IOException("Layout belongs to a different runway placement.");
+        var errors=ParkingGeometry.Validate(file.ParkingStands,length,width,site.TrueHeading,hasRunway,site.RunwayEast,site.RunwayNorth);
         if(errors.Count>0)throw new IOException(string.Join("\n",errors));
-        var taxiErrors=TaxiwayGeometry.Validate(file.Taxiways,file.ParkingStands,new(length,width,anchor.TrueHeadingDegrees));
+        var taxiErrors=TaxiwayGeometry.Validate(file.Taxiways,file.ParkingStands,site);
         if(taxiErrors.Count>0)throw new IOException(string.Join("\n",taxiErrors));
-        var objectErrors=SceneryObjectGeometry.Validate(file.PlacedObjects,new(length,width,anchor.TrueHeadingDegrees));
+        var objectErrors=SceneryObjectGeometry.Validate(file.PlacedObjects,site);
         if(objectErrors.Count>0)throw new IOException(string.Join("\n",objectErrors));
     }
 }

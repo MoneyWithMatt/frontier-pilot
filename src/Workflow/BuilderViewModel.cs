@@ -25,7 +25,16 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     private readonly IBuilderServices services;
     private CancellationTokenSource? cancellation;
     private bool busy, checkedReady, siteConfirmed, hasRunway, isPlacingRunway;
-    private double runwayHeading;
+    private double runwayHeading,runwayEast,runwayNorth;
+    private LocalPoint? runwayFirst;
+    private bool runwayTransparent;
+    public bool RunwayTransparent {get=>runwayTransparent;set {if(busy||value==runwayTransparent)return;runwayTransparent=value;Invalidate();}}
+    public LocalPoint? RunwayFirstPoint => runwayFirst;
+    public double LayoutRunwayEast => runwayEast;
+    public double LayoutRunwayNorth => runwayNorth;
+    public double RunwayHeading { get=>runwayHeading;set { if(busy||!double.IsFinite(value))return;runwayHeading=Headings.Normalize(value);Invalidate(); } }
+    public double RunwayEast { get=>runwayEast;set { if(busy||!double.IsFinite(value))return;runwayEast=value;Invalidate(); } }
+    public double RunwayNorth { get=>runwayNorth;set { if(busy||!double.IsFinite(value))return;runwayNorth=value;Invalidate(); } }
     private string sdkRoot, airportName = "", identifier = "", length = "200", width = "20", status = "Check prerequisites to begin.", error = "", activity = "";
     private RunwaySurface surface = RunwaySurface.Dirt;
     private string? surfacePresetId = RunwaySurfacePresets.CompactedDirtId;
@@ -50,10 +59,10 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public bool CanEditRunwayLayout => CanLayout && hasRunway;
     public bool IsPlacingRunway => isPlacingRunway;
     public string RunwayPlacementInstructions => isPlacingRunway
-        ? "Click an intended runway end on the map. The surveyed anchor remains the runway centre; the click sets its heading and full length. Escape cancels."
+        ? runwayFirst is null ? "Click the first runway end, then the opposite end. Escape cancels." : "Click the opposite runway end. The two points set position, heading and length. Escape cancels."
         : hasRunway
-            ? "Choose Place runway, then click either runway end on the map. You can repeat this whenever you want to change its heading or length."
-            : "This site currently has no runway. Choose Place runway, then click an intended runway end on the map.";
+            ? "Draw runway: click its two ends anywhere on the map. Adjust heading, length, width or centre offsets below. Buildings and stands stay in place."
+            : "No runway. Draw runway and click its two ends on the map when you want to add one.";
     public SurveyPoint? Survey { get; private set; }
     public BuiltAirport? Built { get; private set; }
     public string InstalledPath { get; private set; } = "";
@@ -94,13 +103,14 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             : new UnavailableProspectingOperations();
         Operations = new(prospectingOperations);
         Tracking.TelemetryChanged += sample => { _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft); _ = AircraftLoading.ObserveAsync(sample); };
-        Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading),()=>hasRunway);
+        Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading,runwayEast,runwayNorth),()=>hasRunway);
         Layout.Edited += (_,_)=>Invalidate();
         AddParkingCommand = new(()=>
         {
-            AddParkingAt(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading));
+            var point=LocalCoordinates.FromRunway(LayoutRunwayWidth/2+25,Layout.Stands.Count*30,LayoutRunwayHeading);
+            AddParkingAt(new(point.East+runwayEast,point.North+runwayNorth));
         },()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Stands.Count<8);
-        AddObjectCommand = new(()=>Layout.AddObject(LocalCoordinates.FromRunway(LayoutRunwayWidth/2+45,Layout.Objects.Count*40,LayoutRunwayHeading),LayoutRunwayHeading,SceneryAssets.PrototypeBaseLodgeId),()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Objects.Count<64);
+        AddObjectCommand = new(()=>{var point=LocalCoordinates.FromRunway(LayoutRunwayWidth/2+45,Layout.Objects.Count*40,LayoutRunwayHeading);Layout.AddObject(new(point.East+runwayEast,point.North+runwayNorth),LayoutRunwayHeading,SceneryAssets.PrototypeBaseLodgeId);},()=>CanLayout&&!Layout.IsDrawingTaxiway&&Layout.Objects.Count<64);
         RemoveParkingCommand = new(Layout.Delete,()=>CanLayout&&(Layout.Selected!=null||Layout.SelectedTaxiway!=null||Layout.SelectedObject!=null));
         UndoLayoutCommand = new(Layout.Undo,()=>Layout.CanUndo);
         RedoLayoutCommand = new(Layout.Redo,()=>Layout.CanRedo);
@@ -216,7 +226,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     {
         if (!double.TryParse(length, NumberStyles.Float, CultureInfo.InvariantCulture, out var l) || !double.TryParse(width, NumberStyles.Float, CultureInfo.InvariantCulture, out var w))
             throw new ArgumentException("Enter length and width in metres using numbers (for example 200 and 20).");
-        return new() { HasRunway = hasRunway, Name = airportName, Identifier = identifier, Latitude = Survey?.Latitude ?? 0, Longitude = Survey?.Longitude ?? 0,
+        return new() { HasRunway = hasRunway, RunwayTransparent=runwayTransparent, RunwayEastMeters=runwayEast,RunwayNorthMeters=runwayNorth, Name = airportName, Identifier = identifier, Latitude = Survey?.Latitude ?? 0, Longitude = Survey?.Longitude ?? 0,
             AltitudeMeters = Survey?.AltitudeMeters ?? 0, TrueHeadingDegrees = LayoutRunwayHeading,
             MagneticVariationDegreesEast = Survey?.MagneticVariationDegrees ?? 0, LengthMeters = l, WidthMeters = w, Surface = surface, SurfacePresetId = surfacePresetId, ParkingStands = Layout.Stands.ToArray(), Taxiways = Layout.Taxiways.ToArray(), PlacedObjects = Layout.Objects.ToArray() };
     }
@@ -224,23 +234,27 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public void BeginRunwayPlacement()
     {
         if(!CanLayout)return;
-        Layout.CancelTaxiway();isPlacingRunway=true;Changed(nameof(IsPlacingRunway));Changed(nameof(RunwayPlacementInstructions));
+        Layout.CancelTaxiway();runwayFirst=null;isPlacingRunway=true;Changed(nameof(IsPlacingRunway));Changed(nameof(RunwayPlacementInstructions));
     }
     public void CancelRunwayPlacement()
     {
         if(!isPlacingRunway)return;
-        isPlacingRunway=false;Changed(nameof(IsPlacingRunway));Changed(nameof(RunwayPlacementInstructions));
+        isPlacingRunway=false;runwayFirst=null;Changed(nameof(IsPlacingRunway));Changed(nameof(RunwayPlacementInstructions));
     }
     public void PlaceRunwayEnd(LocalPoint end)
     {
         if(!CanLayout||!isPlacingRunway)return;
-        var halfLength=Math.Sqrt(end.East*end.East+end.North*end.North);
-        if(!double.IsFinite(halfLength)||halfLength is <5 or >5000)
-        {
-            error="Choose a runway end 5–5,000 metres from the surveyed centre.";Changed(nameof(Error));return;
-        }
-        runwayHeading=Headings.Normalize(Math.Atan2(end.East,end.North)*180/Math.PI);
-        length=(halfLength*2).ToString("0.###",CultureInfo.InvariantCulture);
+        if(!double.IsFinite(end.East)||!double.IsFinite(end.North)||Math.Sqrt(end.East*end.East+end.North*end.North)>9000)
+        { error="Choose a runway endpoint within 9 km of the survey anchor.";Changed(nameof(Error));return; }
+        if(runwayFirst is not {} first)
+        { runwayFirst=end;Changed(nameof(RunwayFirstPoint));Changed(nameof(RunwayPlacementInstructions));return; }
+        double east=end.East-first.East,north=end.North-first.North;
+        var distance=Math.Sqrt(east*east+north*north);
+        if(distance<10||distance>10000||distance<=LayoutRunwayWidth)
+        { error="Choose endpoints 10–10,000 m apart, with length greater than width.";Changed(nameof(Error));return; }
+        runwayHeading=Headings.Normalize(Math.Atan2(east,north)*180/Math.PI);
+        runwayEast=(first.East+end.East)/2;runwayNorth=(first.North+end.North)/2;
+        length=distance.ToString("R",CultureInfo.InvariantCulture);runwayFirst=null;
         if(!hasRunway)hasRunway=true;
         isPlacingRunway=false;
         Changed(nameof(Length));Changed(nameof(LayoutRunwayLength));Changed(nameof(LayoutRunwayHeading));Changed(nameof(PreviewHeading));
@@ -254,7 +268,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         await Run("Save layout",async token=>{
             if(Layout.HasPendingProperties)throw new IOException("Apply property edits before saving the layout.");
             var d=Definition();d.EnsureValid();
-            var snapshot=new LayoutSnapshot(1,Survey!,d.LengthMeters,d.WidthMeters,d.ParkingStands) {Taxiways=d.Taxiways,PlacedObjects=d.PlacedObjects};
+            var snapshot=new LayoutSnapshot(1,Survey!,d.LengthMeters,d.WidthMeters,d.ParkingStands) {Taxiways=d.Taxiways,PlacedObjects=d.PlacedObjects,RunwayHeading=d.TrueHeadingDegrees,RunwayEast=d.RunwayEastMeters,RunwayNorth=d.RunwayNorthMeters};
             await LayoutFiles.SaveNewAsync(path,snapshot);
             Layout.MarkSaved(snapshot.ParkingStands,snapshot.PlacedObjects);status="Layout saved. Future edits require validation and a new build.";
         });
@@ -265,7 +279,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         LayoutSnapshot? loaded=null;
         await Run("Load layout",async token=>{
             var file=await LayoutFiles.ReadAsync(path);
-            LayoutFiles.ValidateForAnchor(file,Survey!,LayoutRunwayLength,LayoutRunwayWidth,HasRunway);
+            LayoutFiles.ValidateForAnchor(file,Survey!,LayoutRunwayLength,LayoutRunwayWidth,HasRunway,new(LayoutRunwayLength,LayoutRunwayWidth,runwayHeading,runwayEast,runwayNorth));
             loaded=file;
         });
         if(loaded!=null) {Layout.Replace(loaded.ParkingStands,loaded.Taxiways,loaded.PlacedObjects);Invalidate();Layout.MarkSaved(loaded.ParkingStands,loaded.PlacedObjects);status="Layout loaded for this survey. Validate before building.";Refresh();}

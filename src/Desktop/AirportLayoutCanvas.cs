@@ -15,7 +15,7 @@ public sealed class AirportLayoutCanvas : FrameworkElement
     private LocalPoint dragStart,itemStart;
     private int? dragging;
     private bool draggingObject;
-    private LocalPoint? ghost;
+    private LocalPoint? ghost,runwayPointer;
     private bool panning,fit=true;
     public event EventHandler? ViewChanged;
     public (LocalPoint Center,double PixelsPerMeter) ViewState =>
@@ -38,7 +38,7 @@ public sealed class AirportLayoutCanvas : FrameworkElement
     public void Fit()
     {
         if(model==null||ActualWidth<1||ActualHeight<1){fit=true;return;}
-        double extent=Math.Max(model.HasRunway?model.LayoutRunwayLength:100,model.Layout.Stands.Select(s=>2*(Math.Max(Math.Abs(s.EastMeters),Math.Abs(s.NorthMeters))+s.RadiusMeters)).DefaultIfEmpty(100).Max());
+        double extent=Math.Max(model.HasRunway?model.LayoutRunwayLength+2*Math.Max(Math.Abs(model.LayoutRunwayEast),Math.Abs(model.LayoutRunwayNorth)):100,model.Layout.Stands.Select(s=>2*(Math.Max(Math.Abs(s.EastMeters),Math.Abs(s.NorthMeters))+s.RadiusMeters)).DefaultIfEmpty(100).Max());
         foreach(var t in model.Layout.Taxiways)
             foreach(var v in t.Points){var p=v.Resolve(model.Layout.Stands);extent=Math.Max(extent,2*(Math.Max(Math.Abs(p.East),Math.Abs(p.North))+t.WidthMeters));}
         foreach(var o in model.Layout.Objects)
@@ -64,13 +64,20 @@ public sealed class AirportLayoutCanvas : FrameworkElement
         var origin=Screen(new(0,0));
         if(model.HasRunway)
         {
-            dc.PushTransform(new RotateTransform(model.LayoutRunwayHeading,origin.X,origin.Y));
+            var runwayOrigin=Screen(new(model.LayoutRunwayEast,model.LayoutRunwayNorth));
+            dc.PushTransform(new RotateTransform(model.LayoutRunwayHeading,runwayOrigin.X,runwayOrigin.Y));
             double w=model.LayoutRunwayWidth*viewport.PixelsPerMeter,l=model.LayoutRunwayLength*viewport.PixelsPerMeter;
-            dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(210,210,180,125)),new Pen(Brushes.SaddleBrown,2),new(origin.X-w/2,origin.Y-l/2,w,l));
-            dc.DrawLine(new Pen(Brushes.White,1){DashStyle=DashStyles.Dash},new(origin.X,origin.Y-l/2),new(origin.X,origin.Y+l/2));
+            dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(210,210,180,125)),new Pen(Brushes.SaddleBrown,2),new(runwayOrigin.X-w/2,runwayOrigin.Y-l/2,w,l));
+            dc.DrawLine(new Pen(Brushes.White,1){DashStyle=DashStyles.Dash},new(runwayOrigin.X,runwayOrigin.Y-l/2),new(runwayOrigin.X,runwayOrigin.Y+l/2));
             dc.Pop();
         }
         dc.DrawEllipse(model.IsPlacingRunway?Brushes.DarkOrange:Brushes.DarkGreen,new Pen(Brushes.White,1),origin,5,5);
+        if(model.RunwayFirstPoint is {} first)
+            {
+                dc.DrawEllipse(Brushes.DarkOrange,new Pen(Brushes.White,2),Screen(first),6,6);
+                if(model.IsPlacingRunway&&runwayPointer is {} pointer)
+                    DrawPath(dc,[first,pointer],Brushes.DarkOrange,model.LayoutRunwayWidth);
+            }
         foreach(var t in model.Layout.Taxiways)
         {
             var points=t.Points.Select(v=>v.Resolve(model.Layout.Stands)).ToArray();
@@ -113,7 +120,7 @@ public sealed class AirportLayoutCanvas : FrameworkElement
             Text(dc,$"H{item.Number}",new(originPoint.X+5,originPoint.Y+3),Brushes.DarkRed);
         }
         dc.DrawRectangle(Brushes.White,null,new(8,8,235,45));
-        Text(dc,model.Survey==null?"Capture a survey to edit":model.HasRunway?"Surveyed runway centre • north up":"Operation anchor • no runway",new(15,12),Brushes.DarkGreen);
+        Text(dc,model.Survey==null?"Capture a survey to edit":model.HasRunway?"Site anchor • north up":"Operation anchor • no runway",new(15,12),Brushes.DarkGreen);
         Text(dc,$"Grid {step:0.##} m  |  zoom {viewport.PixelsPerMeter:0.##} px/m",new(15,32),Brushes.DimGray);
         Text(dc,"N ↑",new(ActualWidth-50,15),Brushes.DarkGreen);
         double metres=Math.Pow(10,Math.Floor(Math.Log10(100/viewport.PixelsPerMeter)));
@@ -176,6 +183,7 @@ public sealed class AirportLayoutCanvas : FrameworkElement
     protected override void OnMouseMove(MouseEventArgs e)
     {
         var point=e.GetPosition(this);
+        if(model?.IsPlacingRunway==true){runwayPointer=Local(point);InvalidateVisual();}
         if(panning){viewport.Pan(point.X-lastMouse.X,point.Y-lastMouse.Y);lastMouse=point;InvalidateVisual();ViewChanged?.Invoke(this,EventArgs.Empty);}
         else if(dragging.HasValue){var local=Local(point);ghost=new(itemStart.East+local.East-dragStart.East,itemStart.North+local.North-dragStart.North);InvalidateVisual();}
     }

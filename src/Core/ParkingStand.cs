@@ -14,7 +14,7 @@ public static class ParkingGeometry
         var position = LocalCoordinates.ToGeographic(new(airport.Latitude, airport.Longitude),new(stand.EastMeters,stand.NorthMeters));
         return new(stand,position,Headings.Normalize(stand.TrueHeadingDegrees));
     }
-    public static IReadOnlyList<string> Validate(IReadOnlyList<ParkingStand>? stands, double length, double width, double runwayHeading = 0, bool hasRunway = true)
+    public static IReadOnlyList<string> Validate(IReadOnlyList<ParkingStand>? stands, double length, double width, double runwayHeading = 0, bool hasRunway = true, double runwayEast=0,double runwayNorth=0)
     {
         var errors = new List<string>();
         if (stands == null) return ["Parking stands cannot be null."];
@@ -27,10 +27,10 @@ public static class ParkingGeometry
             if (new[]{s.NorthMeters,s.EastMeters,s.TrueHeadingDegrees,s.RadiusMeters}.Any(v=>!double.IsFinite(v)))
             { errors.Add($"Parking {s.Number}: all values must be finite."); continue; }
             if (s.RadiusMeters is < 5 or > 30) errors.Add($"Parking {s.Number}: radius must be 5–30 metres.");
-            if (!new AirportSite(length,width,runwayHeading).Contains(new(s.EastMeters,s.NorthMeters),s.RadiusMeters))
+            if (!new AirportSite(length,width,runwayHeading,runwayEast,runwayNorth).Contains(new(s.EastMeters,s.NorthMeters),s.RadiusMeters))
                 errors.Add($"Parking {s.Number}: {AirportSite.BoundaryMessage}");
             if(!Enum.IsDefined(s.Type)||!Enum.IsDefined(s.Name)) errors.Add($"Parking {s.Number}: unsupported type or name.");
-            var local=LocalCoordinates.ToRunway(new(s.EastMeters,s.NorthMeters),double.IsFinite(runwayHeading)?runwayHeading:0);
+            var local=LocalCoordinates.ToRunway(new(s.EastMeters-runwayEast,s.NorthMeters-runwayNorth),double.IsFinite(runwayHeading)?runwayHeading:0);
             double x = Math.Max(Math.Abs(local.East) - width/2,0), y = Math.Max(Math.Abs(local.North)-length/2,0);
             if (hasRunway && Math.Sqrt(x*x+y*y) < s.RadiusMeters+2)
                 errors.Add($"Parking {s.Number}: leave at least 2 metres between the stand circle and the runway.");

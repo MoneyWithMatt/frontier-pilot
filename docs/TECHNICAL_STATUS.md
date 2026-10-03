@@ -252,3 +252,8 @@ The existing generic `ResourceType` + per-location `InventoryBalance` + authorit
 ## Player Operation Logistics & Job Builder V0 — 2026-09-19
 
 Owned operations can publish real import/export contracts into the existing Jobs marketplace. Publication atomically reserves authoritative origin inventory and ledger-derived funds; acceptance, aircraft loading, Flight Attempt evidence and delivery reuse the proven aviation path. Separate purchase/sale, pilot-payment and road-cost ledger entries preserve the distinction between goods and transport. An optional persisted road fallback moves the same shipment through a deterministic deadline and ETA, with restart-safe exactly-once settlement. Economy schema 6 adds contract and escrow records. See [player-operation-logistics-job-builder-v0.md](player-operation-logistics-job-builder-v0.md).
+
+
+## Independent runway placement — 2026-10-03
+
+Runway drawing now uses two endpoints, with independent persisted centre offsets and editable heading/length/width. The survey anchor and existing scenery remain fixed. Runway-free sites remain scenery-only, with no airport search or parking spawn. Explicit transparent runway surfaces are supported but still flatten terrain; no no-terraform guarantee or automatic hidden runway is made. See [runway-placement-and-runway-free-sites.md](runway-placement-and-runway-free-sites.md) for MAT1 build evidence and manual verification.

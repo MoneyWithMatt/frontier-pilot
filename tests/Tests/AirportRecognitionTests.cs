@@ -42,6 +42,13 @@ public sealed class AirportRecognitionTests
         var airport=Airport();var result=new AirportLocationRecognizer().Evaluate(At(airport,new(0,700)),[airport]);
         Assert.Null(result.Context);Assert.Equal("FPRA",result.NearestAirportIdentifier);Assert.True(result.NearestAirportDistanceMeters>250);
     }
+    [Fact] public void RecognitionFollowsMovedRunwayRatherThanOldSurveyCentre()
+    {
+        var airport=Airport(stands:[]) with {RunwayEastMeters=1500,RunwayNorthMeters=600};
+        var recognizer=new AirportLocationRecognizer();
+        Assert.Equal("FPRA",recognizer.Evaluate(At(airport,new(1500,600)),[airport]).Context!.AirportIdentifier);
+        Assert.Null(recognizer.Evaluate(At(airport,new(0,0)),[airport]).Context);
+    }
 
     [Fact]
     public void StandThresholdUsesPhysicalRadiusPlusConfiguredMargin()

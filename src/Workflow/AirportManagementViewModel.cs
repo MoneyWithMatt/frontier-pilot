@@ -78,7 +78,7 @@ public sealed partial class BuilderViewModel
         await Run("Load saved airport",async token=>{loaded=await Management!.LoadAirportAsync(id,token);});
         if(loaded==null)return;
         checkedReady=false;isPlacingRunway=false;Survey=loaded.Survey.Point;airportName=loaded.Name;identifier=loaded.Identifier;
-        hasRunway=loaded.Definition.HasRunway;runwayHeading=loaded.Definition.TrueHeadingDegrees;Changed(nameof(HasRunway));Changed(nameof(AccessDescription));Changed(nameof(LayoutRunwayHeading));
+        runwayTransparent=loaded.Definition.RunwayTransparent;runwayEast=loaded.Definition.RunwayEastMeters;runwayNorth=loaded.Definition.RunwayNorthMeters;runwayFirst=null;hasRunway=loaded.Definition.HasRunway;runwayHeading=loaded.Definition.TrueHeadingDegrees;Changed(nameof(HasRunway));Changed(nameof(AccessDescription));Changed(nameof(LayoutRunwayHeading));
         length=loaded.Definition.LengthMeters.ToString("R",System.Globalization.CultureInfo.InvariantCulture);
         width=loaded.Definition.WidthMeters.ToString("R",System.Globalization.CultureInfo.InvariantCulture);surface=loaded.Definition.Surface;surfacePresetId=loaded.Definition.SurfacePresetId;Changed(nameof(SelectedSurfacePreset));Changed(nameof(SurfacePresetDetail));siteConfirmed=false;
         Layout.Reset();Layout.Replace(loaded.Definition.ParkingStands,loaded.Definition.Taxiways,loaded.Definition.PlacedObjects);Layout.MarkSaved(Layout.Stands,Layout.Objects);
@@ -88,7 +88,7 @@ public sealed partial class BuilderViewModel
     public void NewAirport()
     {
         if(busy)return;
-        Management?.NewAirport();savedDefinition="";Survey=null;checkedReady=false;airportName="";identifier="";length="200";width="20";hasRunway=false;runwayHeading=0;isPlacingRunway=false;surface=RunwaySurface.Dirt;surfacePresetId=RunwaySurfacePresets.CompactedDirtId;Changed(nameof(HasRunway));Changed(nameof(AccessDescription));Changed(nameof(SelectedSurfacePreset));Changed(nameof(SurfacePresetDetail));Changed(nameof(IsPlacingRunway));siteConfirmed=false;
+        Management?.NewAirport();savedDefinition="";Survey=null;checkedReady=false;airportName="";identifier="";length="200";width="20";hasRunway=false;runwayTransparent=false;runwayHeading=0;runwayEast=0;runwayNorth=0;runwayFirst=null;isPlacingRunway=false;surface=RunwaySurface.Dirt;surfacePresetId=RunwaySurfacePresets.CompactedDirtId;Changed(nameof(HasRunway));Changed(nameof(AccessDescription));Changed(nameof(SelectedSurfacePreset));Changed(nameof(SurfacePresetDetail));Changed(nameof(IsPlacingRunway));siteConfirmed=false;
         Layout.Reset();Invalidate();status="New operation site. Check and connect, then capture its site anchor.";Refresh();
     }
     public async Task<AirportDeletionPlan?> PrepareDeleteAirportAsync(Guid id)
