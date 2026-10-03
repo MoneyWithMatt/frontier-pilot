@@ -185,6 +185,34 @@ public sealed class PlayerLogisticsTests
         finally{Directory.Delete(root,true);}
     }
 
+    [Fact]
+    public void RealTimeSystemExpiryLeavesPlayerContractAndEscrowIntact()
+    {
+        var world=World();var operation=world.Operations.Single();
+        world=PlayerLogisticsKernel.Publish(world,Request("clock-protect",operation.Id,OperationLogisticsDirection.Import,
+            OperationArchetypeCatalogue.RationsResourceId,10,20,null)).World;
+        var contract=world.LogisticsContracts.Single();var escrow=world.FinancialReservations;
+        world=EconomyRealTime.Advance(world,T0).World;
+        world=EconomyRealTime.Advance(world,T0.AddHours(7)).World;
+        Assert.Equal(OperationLogisticsContractState.Published,world.LogisticsContracts.Single().State);
+        Assert.Equal(EconomyJobState.Offered,world.Jobs.Single(x=>x.Id==contract.JobId).State);
+        Assert.Null(world.Jobs.Single(x=>x.Id==contract.JobId).ExpiresUtc);
+        Assert.Equal(escrow,world.FinancialReservations);
+    }
+    [Fact]
+    public void RealTimeProcessesRoadArrivalExactlyOnceBeforeDailyConsumption()
+    {
+        var world=World();var operation=world.Operations.Single();
+        world=PlayerLogisticsKernel.Publish(world,Request("clock-road",operation.Id,OperationLogisticsDirection.Import,
+            OperationArchetypeCatalogue.RationsResourceId,10,20,1)).World;
+        world=EconomyRealTime.Advance(world,T0).World;
+        var road=world.LogisticsContracts.Single();
+        world=EconomyRealTime.Advance(world,road.FallbackAtUtc!.Value.AddMinutes(road.RoadDurationMinutes).AddSeconds(1)).World;
+        Assert.Equal(OperationLogisticsContractState.Completed,world.LogisticsContracts.Single().State);
+        var ledger=world.FinancialLedger;
+        Assert.False(EconomyRealTime.Advance(world,road.FallbackAtUtc.Value.AddMinutes(road.RoadDurationMinutes).AddSeconds(1)).Changed);
+        Assert.Equal(ledger,world.FinancialLedger);
+    }
     private static PublishOperationLogisticsRequest Request(string id, string operation, OperationLogisticsDirection direction,
         string resource, decimal quantity, decimal payout, int? fallback)
     {

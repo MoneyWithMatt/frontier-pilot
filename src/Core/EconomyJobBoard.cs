@@ -1,9 +1,9 @@
 namespace FrontierAirportBuilder.Core;
 
-/// <summary>Maintains configured system-funded transport work. It has no clock or customer-consumption model.</summary>
+/// <summary>Maintains configured system-funded transport work. Scheduling is supplied by EconomyRealTime; stock provisioning stays auditable.</summary>
 public static class EconomyJobBoard
 {
-    public static EconomyTransition Maintain(EconomyWorld source, DateTimeOffset occurredUtc, bool incrementRevision = true)
+    public static EconomyTransition Maintain(EconomyWorld source, DateTimeOffset occurredUtc, bool incrementRevision = true, bool scheduledGeneration = false)
     {
         var world = source.EnsureValid();
         if (occurredUtc == default) throw new ArgumentOutOfRangeException(nameof(occurredUtc));
@@ -13,13 +13,13 @@ public static class EconomyJobBoard
         var inventoryLedger = world.InventoryLedger.ToList();
         var changed = false;
 
-        foreach (var definition in world.RecurringDemand.Where(x => x.IsEnabled).OrderBy(x => x.Id, StringComparer.Ordinal))
+        foreach (var definition in world.RecurringDemand.Where(x => x.IsEnabled && (world.RealTime is null || scheduledGeneration)).OrderBy(x => x.Id, StringComparer.Ordinal))
         {
             var destination = world.Locations.Single(x => x.Id == definition.DestinationLocationId);
             if (destination.Status != EconomicLocationStatus.ActiveCustomer) continue;
 
-            var outstanding = requirements.Count(x => x.NeedId == definition.NeedId && x.State is TransportRequirementState.Open or TransportRequirementState.Reserved);
-            var missing = Math.Max(0, definition.DesiredAvailableOffers - outstanding);
+            var outstanding = requirements.Count(x => x.NeedId == definition.NeedId && (world.RealTime is null ? x.State is TransportRequirementState.Open or TransportRequirementState.Reserved : x.State == TransportRequirementState.Open));
+            var missing = Math.Max(0, (world.RealTime is null ? definition.DesiredAvailableOffers : definition.DesiredAvailableOffers * world.RealTime.OfferSlotsPerDemand) - outstanding);
             for (var index = 0; index < missing; index++)
             {
                 var cycle = requirements.Count(x => x.NeedId == definition.NeedId) + 1;
@@ -49,7 +49,7 @@ public static class EconomyJobBoard
                 requirements.Add(new(requirementId, definition.NeedId, definition.OriginLocationId, definition.DestinationLocationId,
                     definition.ResourceId, definition.PreferredShipmentQuantity, definition.PaymentAmount, definition.CurrencyCode,
                     definition.FundingBusinessId, TransportRequirementState.Open));
-                jobs.Add(new(jobId, requirementId, definition.EmployerBusinessId, definition.PlayerId, shipmentId, EconomyJobState.Offered));
+                jobs.Add(new(jobId, requirementId, definition.EmployerBusinessId, definition.PlayerId, shipmentId, EconomyJobState.Offered) { OfferedUtc = world.RealTime is null ? null : occurredUtc, ExpiresUtc = world.RealTime is null ? null : occurredUtc.AddHours(world.RealTime.OfferLifetimeHours) });
                 changed = true;
             }
         }

@@ -143,8 +143,7 @@ public sealed class ProspectingOperationsService : IProspectingOperations
     public async Task<OperationsSnapshot> LoadAsync(CancellationToken cancellationToken = default)
     {
         var world = await EnsureWorldAsync(cancellationToken).ConfigureAwait(false);
-        _ = await economy.ProcessRoadLogisticsAsync(utcNow(), cancellationToken).ConfigureAwait(false);
-        _ = await economy.MaintainJobBoardAsync(utcNow(), cancellationToken).ConfigureAwait(false);
+        _ = await economy.AdvanceRealTimeAsync(utcNow(), cancellationToken).ConfigureAwait(false);
         world = await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ?? throw new IOException("Economy state disappeared during operation maintenance.");
         return await PresentAsync(world, cancellationToken).ConfigureAwait(false);
     }
@@ -308,8 +307,8 @@ public sealed class ProspectingOperationsService : IProspectingOperations
                 $"{minerals.AvailableQuantity:0.##} / {a.Storage.Single(x => x.ResourceId == minerals.ResourceId).Capacity:0.##} kg",
                 last, pending, definitions.ContainsKey(site.AirportDefinitionId), a.DisplayName, site.LocationId,
                 site.Latitude, site.Longitude, inventory,
-                $"{a.Process.OutputPerTick:0.##} kg {world.Resources.Single(x => x.Id == a.Process.OutputResourceId).Name} per supplied prototype day",
-                $"{a.Process.InputPerTick:0.##} kg {world.Resources.Single(x => x.Id == a.Process.InputResourceId).Name} per prototype day",
+                $"{a.Process.OutputPerTick:0.##} kg {world.Resources.Single(x => x.Id == a.Process.OutputResourceId).Name} per supplied real day",
+                $"{a.Process.InputPerTick:0.##} kg {world.Resources.Single(x => x.Id == a.Process.InputResourceId).Name} per real day",
                 operation.LastConstraint)
             {
                 LogisticsJobs = logistics,
@@ -401,6 +400,7 @@ public sealed class ProspectingOperationsViewModel : INotifyPropertyChanged
     private int fallbackMinutes = -1; private OperationLogisticsDisplay? selectedLogistics;
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<IReadOnlyList<OperationsMapLocation>>? MapLocationsChanged;
+    public bool IsBusy => busy;
     public ActionCommand RefreshCommand { get; } public ActionCommand FoundCommand { get; } public ActionCommand AdvanceDayCommand { get; }
     public ActionCommand TransferPrototypeRationsCommand { get; }
     public ActionCommand PublishLogisticsCommand { get; } public ActionCommand EditLogisticsPayoutCommand { get; }

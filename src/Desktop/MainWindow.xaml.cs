@@ -9,6 +9,8 @@ namespace FrontierAirportBuilder.Desktop;
 public partial class MainWindow : Window
 {
     private readonly BuilderViewModel model;
+    private readonly System.Windows.Threading.DispatcherTimer worldTimer = new() { Interval = TimeSpan.FromSeconds(30) };
+    private bool refreshingWorld;
     public MainWindow() : this(null) { }
     public MainWindow(BuilderViewModel? suppliedModel)
     {
@@ -21,13 +23,25 @@ public partial class MainWindow : Window
         model.Operations.MapLocationsChanged += locations => Dispatcher.InvokeAsync(() => OperationsMap.Show(locations));
         OperationsMap.LocationSelected += key => Dispatcher.InvokeAsync(() => model.Operations.SelectMapLocation(key));
         Closing += OnClosing;
+        worldTimer.Tick += async (_,_) => await RefreshWorldTimeAsync();
+        Closed += (_,_) => worldTimer.Stop();
         Loaded += async (_,_)=>
         {
             await Task.WhenAll(model.RefreshAirportsAsync(),model.Tracking.InitializeAsync());
             await model.Jobs.InitializeAsync();
             await model.AircraftLoading.InitializeAsync();
             await model.Operations.RefreshAsync();
+            if (!model.IsDryRun) worldTimer.Start();
+            WorldClock.Text = DateTimeOffset.Now.ToString("dd MMM yyyy · HH:mm · 'Local time'");
         };
+    }
+    private async Task RefreshWorldTimeAsync()
+    {
+        WorldClock.Text = DateTimeOffset.Now.ToString("dd MMM yyyy · HH:mm · 'Local time'");
+        if (refreshingWorld || model.IsBusy || model.Jobs.IsBusy || model.Operations.IsBusy) return;
+        refreshingWorld = true;
+        try { await model.Jobs.RefreshLiveAsync(); await model.Operations.RefreshAsync(); }
+        finally { refreshingWorld = false; }
     }
     private void MainTabsChanged(object sender,SelectionChangedEventArgs e)
     {

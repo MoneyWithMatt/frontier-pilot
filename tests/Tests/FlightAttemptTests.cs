@@ -32,7 +32,7 @@ public sealed class FlightAttemptTrackerTests
         await h.Tracker.ObserveAsync(atEros with { ObservedUtc = Start.AddSeconds(10) }); Assert.True(h.Tracker.Current.CanLoadCargo);
         await h.Tracker.LoadCargoAsync(); await h.Tracker.LoadCargoAsync();
         var world = await h.Economy.LoadAsync();
-        Assert.Equal(3, world!.Revision); Assert.Single(world.Shipments);
+        Assert.Equal(4, world!.Revision); Assert.Single(world.Shipments);
         Assert.Equal(ShipmentState.Loaded, world.Shipments.Single().State); Assert.Equal(EmployedCargoPrototype.ErosId,world.Shipments.Single().CurrentLocationId);
         Assert.Single(await h.Attempts.LoadAsync());
     }
@@ -141,7 +141,7 @@ public sealed class FlightAttemptTrackerTests
         var reopened = new FlightAttemptTracker(new LocalEconomyStateStore(economyPath), new LocalFlightAttemptStore(attemptPath));
         await reopened.InitializeAsync(); await reopened.LoadCargoAsync();
         var world = await new LocalEconomyStateStore(economyPath).LoadAsync();
-        Assert.Equal(3, world!.Revision); Assert.Equal(ShipmentState.Loaded, world.Shipments.Single().State);
+        Assert.Equal(4, world!.Revision); Assert.Equal(ShipmentState.Loaded, world.Shipments.Single().State);
         Assert.Equal(FlightAttemptState.CargoLoaded, reopened.Current.Attempt!.State);
     }
 
@@ -243,6 +243,8 @@ public sealed class FlightAttemptTrackerTests
         Assert.Equal(ShipmentState.Cancelled,world.Shipments.Single().State);
         Assert.Empty(world.FinancialLedger);
         Assert.Single(world.InventoryLedger,x=>x.Kind==InventoryTransactionKind.ShipmentReservationReleased);
+        await new EconomyService(h.Economy).AdvanceRealTimeAsync(Start.AddHours(3));
+        world=(await h.Economy.LoadAsync())!;
         var replacement=world.Jobs.Single(x=>x.Id=="job-uis-supplies-v0-000002");
         await new EconomyService(h.Economy).AcceptJobAsync(replacement.Id,Start.AddMinutes(1));
         await h.Tracker.RefreshEconomyAsync();
@@ -321,7 +323,7 @@ public sealed class FlightAttemptTrackerTests
         var reopened = new FlightAttemptTracker(new LocalEconomyStateStore(economyPath), new LocalFlightAttemptStore(attemptPath));
         await reopened.InitializeAsync(); await reopened.UnloadCargoAsync();
         var world = await new LocalEconomyStateStore(economyPath).LoadAsync();
-        Assert.Equal(5, world!.Revision);
+        Assert.Equal(6, world!.Revision);
         Assert.Equal(EconomyJobState.Completed, world.Jobs.Single(x => x.Id == "job-uis-supplies-v0").State);
         Assert.Equal(TransportRequirementState.Fulfilled, world.Requirements.Single(x => x.Id == "requirement-uis-supplies-v0").State);
         Assert.Equal(ShipmentState.Delivered, world.Shipments.Single().State);
@@ -356,7 +358,7 @@ public sealed class FlightAttemptTrackerTests
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => h.Tracker.ResetIncompletePrototypeProgressAsync());
         Assert.Contains("completed", error.Message, StringComparison.OrdinalIgnoreCase);
         var after = await h.Economy.LoadAsync();
-        Assert.Equal(before, after); Assert.Equal(5, after!.Revision); Assert.Single(after.FinancialLedger);
+        Assert.Equal(before, after); Assert.Equal(6, after!.Revision); Assert.Single(after.FinancialLedger);
         Assert.Equal(240, after.Players.Single().CachedBalance);
         Assert.Equal(FlightAttemptState.Delivered, Assert.Single(await h.Attempts.LoadAsync()).State);
     }

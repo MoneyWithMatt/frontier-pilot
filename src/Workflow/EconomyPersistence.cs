@@ -18,7 +18,7 @@ public interface IEconomyStateStore
 /// inventory and ledger changes cannot become independently visible.</summary>
 public sealed class LocalEconomyStateStore : IEconomyStateStore
 {
-    public const int CurrentSchemaVersion = 6;
+    public const int CurrentSchemaVersion = 7;
     private sealed record Document(int SchemaVersion, EconomyWorld World);
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -185,6 +185,8 @@ public sealed class EconomyService(IEconomyStateStore store)
     public string StoragePath => store.StoragePath;
     public Task<EconomyWorld?> LoadAsync(CancellationToken cancellationToken = default) => store.LoadAsync(cancellationToken);
     public Task InitializeAsync(EconomyWorld initial, CancellationToken cancellationToken = default) => store.InitializeAsync(initial, cancellationToken);
+    public Task<EconomyTransition> AdvanceRealTimeAsync(DateTimeOffset utc, CancellationToken cancellationToken = default) =>
+        store.ApplyAsync(world => EconomyRealTime.Advance(world, utc), cancellationToken);
     public Task<EconomyTransition> AcceptJobAsync(string jobId, DateTimeOffset acceptedUtc, CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => EconomyKernel.AcceptJob(world, jobId, acceptedUtc), cancellationToken);
     public Task<EconomyTransition> MarkShipmentInTransitAsync(string jobId, CancellationToken cancellationToken = default) =>

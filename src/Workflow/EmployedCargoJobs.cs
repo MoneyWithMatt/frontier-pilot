@@ -12,6 +12,8 @@ public sealed record CargoJobDisplay(string JobId, string Employer, string Origi
     double? OriginLongitude = null, double? DestinationLatitude = null, double? DestinationLongitude = null,
     decimal LoadedCargoKilograms = 0, decimal DeliveredCargoKilograms = 0)
 {
+    public DateTimeOffset? ExpiresUtc { get; init; }
+    public string Availability => ExpiresUtc is {} time ? $"Expires {time.ToLocalTime():dd MMM HH:mm}" : "No automatic expiry";
     public string Cargo => $"{CargoCategory} · {CargoMassKilograms:0.#} kg";
     public string Payment => $"{PaymentAmount:0.##} {CurrencyCode}";
     public string Route => $"{Origin} → {Destination}";
@@ -20,7 +22,8 @@ public sealed record CargoJobDisplay(string JobId, string Employer, string Origi
 
 public sealed record EmployedCargoJobsSnapshot(IReadOnlyList<CargoJobDisplay> Offers, CargoJobDisplay? ActiveJob,
     IReadOnlyList<CargoJobDisplay> ReservedJobs, IReadOnlyList<CargoJobDisplay> RecentCompletedJobs,
-    string StoragePath, int EconomyRevision, decimal PlayerBalance, string CurrencyCode);
+    string StoragePath, int EconomyRevision, decimal PlayerBalance, string CurrencyCode)
+{ public EconomyRealTimeState? RealTime { get; init; } }
 public sealed record FlightDiagnosticEventDisplay(string Utc, string Event, string Details);
 
 /// <summary>The employee-facing boundary deliberately exposes selection and acceptance only. Delivery requires a later evidence provider.</summary>
@@ -62,8 +65,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
             _ = await economy.UpgradeRepeatableJobsAsync(options, utcNow(), cancellationToken).ConfigureAwait(false);
             world = await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ?? throw new IOException("Economy upgrade produced no state.");
         }
-        _ = await economy.MaintainJobBoardAsync(utcNow(), cancellationToken).ConfigureAwait(false);
-        _ = await economy.ProcessRoadLogisticsAsync(utcNow(), cancellationToken).ConfigureAwait(false);
+        _ = await economy.AdvanceRealTimeAsync(utcNow(), cancellationToken).ConfigureAwait(false);
         world = await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ?? throw new IOException("Economy board maintenance produced no state.");
         return Present(RequirePrototype(world));
     }
@@ -98,7 +100,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
                 requirement.Purpose ?? destination.Purpose, resource.Name, requirement.Quantity,
                 requirement.PaymentAmount, requirement.CurrencyCode, destination.Known, shipment?.Id, shipment?.State,
                 requirement.OriginLocationId, requirement.DestinationLocationId, origin.Latitude, origin.Longitude,
-                destination.Latitude, destination.Longitude, shipment?.LoadedQuantity ?? 0, shipment?.DeliveredQuantity ?? 0);
+                destination.Latitude, destination.Longitude, shipment?.LoadedQuantity ?? 0, shipment?.DeliveredQuantity ?? 0) { ExpiresUtc = job.ExpiresUtc };
         }
 
         var operationNeedIds = world.Operations.SelectMany(x => new[] { ProspectingCampKernel.InboundNeed(x.Id), ProspectingCampKernel.OutboundNeed(x.Id) }).ToHashSet(StringComparer.Ordinal);
@@ -115,7 +117,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
         var completed = world.Jobs.Where(x => x.State == EconomyJobState.Completed).OrderByDescending(x => x.CompletedUtc)
             .ThenBy(x => x.Id, StringComparer.Ordinal).Take(12).Select(Display).ToArray();
         var player = world.Players.Single(x => x.Id == EmployedCargoPrototype.PlayerId);
-        return new(offers, currentJob, reserved, completed, StoragePath, world.Revision, player.CachedBalance, player.CurrencyCode);
+        return new(offers, currentJob, reserved, completed, StoragePath, world.Revision, player.CachedBalance, player.CurrencyCode) { RealTime = world.RealTime };
 
         (string Display, string Purpose, string Known, double Latitude, double Longitude) Place(string id)
         {
@@ -172,6 +174,8 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     private CargoJobDisplay? selectedOffer, activeJob;
     private decimal playerBalance;
     private string balanceCurrency = EmployedCargoPrototype.Currency;
+    private EconomyRealTimeState? realTime;
+    public string BoardTiming => realTime is {} clock ? $"SYSTEM offers: every {clock.OfferIntervalHours}h · expire after {clock.OfferLifetimeHours}h · next update {clock.NextOffersUtc.ToLocalTime():dd MMM HH:mm}. Accepted jobs stay reserved." : "Loading real-time job schedule…";
     public event PropertyChangedEventHandler? PropertyChanged;
     public ActionCommand RefreshCommand { get; }
     public ActionCommand AcceptCommand { get; }
@@ -235,6 +239,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
         await RunAsync(() => jobs.LoadAsync(cancellationToken), "Choose one employed cargo offer.");
         if (Error == "") try { await flight.InitializeAsync(cancellationToken); } catch (Exception error) { Error = error.Message; Status = "Flight-attempt data could not be loaded. Existing files were preserved."; }
     }
+    public Task RefreshLiveAsync(CancellationToken cancellationToken = default) => RunAsync(() => jobs.LoadAsync(cancellationToken), "SYSTEM board follows real time: new offers every 3 hours; unaccepted offers expire after 6 hours.");
     public async Task AcceptSelectedAsync(CancellationToken cancellationToken = default)
     {
         var selected = SelectedOffer; if (selected is null) return;
@@ -315,6 +320,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     }
     private Task ApplySnapshotAsync(EmployedCargoJobsSnapshot snapshot)
     {
+        realTime = snapshot.RealTime; Changed(nameof(BoardTiming));
         Offers = snapshot.Offers; ActiveJob = snapshot.ActiveJob; ReservedJobs = snapshot.ReservedJobs; CompletedJobs = snapshot.RecentCompletedJobs;
         if (LoadingJobs.Count > 0) LoadingJobs = LoadingJobs.Select(x => ReservedJobs.SingleOrDefault(r => r.JobId == x.JobId)).Where(x => x is not null).Cast<CargoJobDisplay>().ToArray();
         if (LoadingJobs.Count == 0)

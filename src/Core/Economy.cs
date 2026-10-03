@@ -8,7 +8,7 @@ public enum EconomicOwnerKind { System, Player }
 public enum EconomicLocationKind { Gateway, Mine, Community, Lodge, OperationSite }
 public enum EconomicLocationStatus { PrototypeOnly, ResearchCandidate, MsfsVerified, ActiveCustomer, DormantCandidate, ActiveOperation }
 public enum TransportRequirementState { Open, Reserved, Fulfilled, Cancelled }
-public enum EconomyJobState { Offered, Accepted, RoadInTransit, Completed, Cancelled, Forfeited }
+public enum EconomyJobState { Offered, Accepted, RoadInTransit, Completed, Cancelled, Forfeited, Expired }
 public enum ShipmentState { Available, Reserved, InTransit, Delivered, Consumed, Sold, Cancelled, Loaded, Forfeited }
 public enum FinancialTransactionKind { JobPayment, SiteFounding, LogisticsCargoPurchase, LogisticsSaleRevenue, RoadTransportCost }
 public enum InventoryTransactionKind { LegacyOpeningBalance, SystemGatewaySupply, ShipmentReserved, DeliveryReceived, OperationInitialStock, OperationConsumption, OperationProduction, ShipmentReservationReleased, PartialDeliveryReceived, PersistentGatewayOpeningStock, PersistentTransferOut, PersistentTransferIn, PlayerContractReserved, PlayerContractReleased, PlayerContractDelivered }
@@ -33,6 +33,8 @@ public sealed record EconomyJob(string Id, string RequirementId, string Employer
 {
     public DateTimeOffset? CancelledUtc { get; init; }
     public string? CancellationReason { get; init; }
+    public DateTimeOffset? OfferedUtc { get; init; }
+    public DateTimeOffset? ExpiresUtc { get; init; }
 }
 public sealed record Shipment(string Id, string JobId, string ResourceId, decimal Quantity, string OriginLocationId,
     string DestinationLocationId, ShipmentState State, string? CurrentLocationId, string? DeliveryEvidenceId = null,
@@ -96,8 +98,11 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
     public IReadOnlyList<OperationLogisticsContract> LogisticsContracts { get; init; } = [];
     public IReadOnlyList<FinancialReservation> FinancialReservations { get; init; } = [];
 
+    public EconomyRealTimeState? RealTime { get; init; }
+
     public EconomyWorld EnsureValid()
     {
+        RealTime?.EnsureValid();
         EconomyValidation.Id(Id, nameof(Id));
         if (Revision < 1) throw new InvalidDataException("Economy revision is invalid.");
         EconomyValidation.Collection(Locations, nameof(Locations)); EconomyValidation.Collection(Businesses, nameof(Businesses));
@@ -184,6 +189,9 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         foreach (var x in Jobs)
         {
             var contract = LogisticsContracts.SingleOrDefault(c => c.JobId == x.Id);
+            if ((x.OfferedUtc is null) != (x.ExpiresUtc is null) || x.ExpiresUtc <= x.OfferedUtc) throw new InvalidDataException("Job offer timing is inconsistent.");
+            if (x.ExpiresUtc is not null && (contract is not null || !RecurringDemand.Any(d => d.NeedId == requirements[x.RequirementId].NeedId))) throw new InvalidDataException("Only configured SYSTEM demand may have an offer expiry.");
+            if (x.State == EconomyJobState.Expired && (x.ExpiresUtc is null || x.AcceptedUtc is not null || x.CompletedUtc is not null || shipments.ContainsKey(x.ShipmentId) || x.CancelledUtc is null || string.IsNullOrWhiteSpace(x.CancellationReason))) throw new InvalidDataException("Expired offer state is incomplete.");
             EconomyValidation.Id(x.Id, "job ID"); EconomyValidation.Reference(requirements, x.RequirementId, "job requirement");
             EconomyValidation.Reference(businesses, x.EmployerBusinessId, "job employer"); EconomyValidation.Reference(players, x.PlayerId, "job player");
             EconomyValidation.Id(x.ShipmentId, "job shipment ID");
@@ -201,14 +209,14 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
             if (x.State == EconomyJobState.Forfeited && (x.AcceptedUtc is null || x.CompletedUtc is not null || x.CancelledUtc is null ||
                 string.IsNullOrWhiteSpace(x.CancellationReason) || !shipments.ContainsKey(x.ShipmentId)))
                 throw new InvalidDataException("Forfeited job state is incomplete.");
-            if (x.State is not (EconomyJobState.Cancelled or EconomyJobState.Forfeited) && (x.CancelledUtc is not null || x.CancellationReason is not null))
+            if (x.State is not (EconomyJobState.Cancelled or EconomyJobState.Forfeited or EconomyJobState.Expired) && (x.CancelledUtc is not null || x.CancellationReason is not null))
                 throw new InvalidDataException("Active job contains cancellation data.");
             var requirement = requirements[x.RequirementId];
             if (x.State == EconomyJobState.Offered && requirement.State != TransportRequirementState.Open ||
                 x.State == EconomyJobState.Accepted && requirement.State != TransportRequirementState.Reserved ||
                 x.State == EconomyJobState.RoadInTransit && requirement.State != TransportRequirementState.Reserved ||
                 x.State == EconomyJobState.Completed && requirement.State != TransportRequirementState.Fulfilled ||
-                x.State is (EconomyJobState.Cancelled or EconomyJobState.Forfeited) && requirement.State != TransportRequirementState.Cancelled)
+                x.State is (EconomyJobState.Cancelled or EconomyJobState.Forfeited or EconomyJobState.Expired) && requirement.State != TransportRequirementState.Cancelled)
                 throw new InvalidDataException("Job and transport requirement states disagree.");
             if (x.State == EconomyJobState.Accepted && shipments[x.ShipmentId].State is not (ShipmentState.Reserved or ShipmentState.Loaded or ShipmentState.InTransit) ||
                 x.State == EconomyJobState.RoadInTransit && shipments[x.ShipmentId].State != ShipmentState.InTransit ||
@@ -403,6 +411,7 @@ public static class EconomyKernel
         if (acceptedUtc == default) throw new ArgumentOutOfRangeException(nameof(acceptedUtc));
         var job = world.Jobs.SingleOrDefault(x => x.Id == jobId) ?? throw new InvalidOperationException("Job does not exist.");
         if (job.State is EconomyJobState.Accepted or EconomyJobState.Completed) return new(world, false);
+        if (job.ExpiresUtc is {} expiry && acceptedUtc >= expiry && job.State == EconomyJobState.Offered) throw new InvalidOperationException("This SYSTEM offer has expired. Refresh the jobs board.");
         var requirement = world.Requirements.Single(x => x.Id == job.RequirementId);
         if (requirement.State != TransportRequirementState.Open) throw new InvalidOperationException("Transport requirement is no longer open.");
         var playerContract = world.LogisticsContracts.SingleOrDefault(x => x.JobId == job.Id);
@@ -493,7 +502,7 @@ public static class EconomyKernel
         var prior = world.CargoTransfers.SingleOrDefault(x => x.CommandId == supplied.CommandId);
         if (prior is not null) return new(world, false);
         var job = world.Jobs.SingleOrDefault(x => x.Id == supplied.JobId) ?? throw new InvalidOperationException("Cargo job does not exist.");
-        if (job.State is EconomyJobState.Completed or EconomyJobState.Cancelled or EconomyJobState.Forfeited)
+        if (job.State is EconomyJobState.Completed or EconomyJobState.Cancelled or EconomyJobState.Forfeited or EconomyJobState.Expired)
             throw new InvalidOperationException("Terminal job cargo cannot be changed through an active shipment.");
         if (job.State != EconomyJobState.Accepted) throw new InvalidOperationException("Cargo job must be accepted before transfer.");
         var requirement = world.Requirements.Single(x => x.Id == job.RequirementId);
