@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Window x:Class="FrontierAirportBuilder.Desktop.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:FrontierAirportBuilder.Desktop" Title="Frontier Pilot · Prototype 0.1" Width="1280" Height="860" MinWidth="1040" MinHeight="650" Background="#111A22" Foreground="#E5EDF2" FontFamily="Segoe UI" FontSize="14">
-<DockPanel>
+<Grid><DockPanel x:Name="GameplayShell">
 <Border DockPanel.Dock="Top" Background="#203C35" Padding="22,12"><DockPanel><TextBlock x:Name="WorldClock" DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#C4D7CA"/><StackPanel><TextBlock Text="FRONTIER PILOT" Foreground="White" FontSize="21" FontWeight="SemiBold" /><TextBlock Text="FLY · BUILD · GROW" Foreground="#C4D7CA" Margin="0,3,0,0" /></StackPanel></DockPanel></Border>
 <Border x:Name="BuilderFooter" DockPanel.Dock="Bottom" Background="#1A2732" Padding="20,8" Visibility="Collapsed"><StackPanel>
 <TextBlock Text="{Binding Status}" Margin="0,4" />
@@ -155,5 +155,5 @@
 <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" /><DataGridTextColumn Header="Identifier" Binding="{Binding Identifier}" Width="90" /><DataGridTextColumn Header="Access" Binding="{Binding Access}" Width="2*" /><DataGridTextColumn Header="Location" Binding="{Binding Location}" Width="160" /><DataGridTextColumn Header="Last recorded status" Binding="{Binding Status}" Width="3*" />
 </DataGrid.Columns></DataGrid>
 <StackPanel Grid.Row="3"><TextBlock Text="{Binding LibraryWarnings}" Foreground="#FF9999" /><TextBlock Text="Build/install entries are history, not a fresh verification of files. Deletion checks ownership and asks for confirmation. Close MSFS before deleting a live airport." /></StackPanel>
-</Grid></TabItem></TabControl>
-</DockPanel></Window>
+</Grid></TabItem><TabItem Header="Career / Settings"><StackPanel Margin="30"><TextBlock Text="Career" Style="{StaticResource Title}"/><TextBlock x:Name="CareerPilotLabel"/><TextBlock Text="Existing prototype career: current gameplay remains available." Margin="0,10"/><Button Content="Delete Career…" Click="DeleteCareer" HorizontalAlignment="Left"/><TextBlock Text="Resets money, jobs, operations, inventories, flight progress, cargo manifests and saved fuel/aircraft state. Site definitions, installed scenery, SDK settings and diagnostic archives are retained." TextWrapping="Wrap" MaxWidth="700" HorizontalAlignment="Left" Margin="0,16"/></StackPanel></TabItem></TabControl>
+</DockPanel><local:CareerScreen x:Name="Onboarding" Visibility="Collapsed"/></Grid></Window>

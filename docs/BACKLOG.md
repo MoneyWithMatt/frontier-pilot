@@ -1,5 +1,10 @@
 # Backlog
 
+## Career onboarding follow-up
+
+- V1 onboarding shell and safe reset are implemented; obtain live acceptance for legacy startup, reset/restart and resumable employer exploration.
+- Employer acceptance/activation, employer-specific jobs, destination pools, company aircraft and offshore mechanics remain separate future milestones. New drafts intentionally stop at Coming Soon.
+
 ## Aircraft Loading V0 live acceptance
 
 - Run the desired-state Piper PA28 procedure in [aircraft-payload-loading-v0.md](aircraft-payload-loading-v0.md); accept loading is already proven, then verify partial load/unload, correct-destination completion, wrong-location forfeiture, restart recovery and the Station 5 missing-payload reconciliation.

@@ -1,5 +1,11 @@
 # Design decisions
 
+## Career Onboarding V1 — 2026-10-04
+
+- Existing gameplay saves migrate to an active legacy profile without altering their economy. New installations use resumable onboarding drafts; the three employers remain Coming Soon and cannot activate a career.
+- Delete Career resets an explicit gameplay-file allowlist before services start, through a durable restart/recovery intent. Old files are archived. Site authoring assets, scenery/install receipts, SDK configuration and standalone diagnostics remain separate from career state.
+- Region/base/employer presentation data lives in an extensible catalogue; onboarding reuses the Operations map. No employer-specific gameplay or aircraft restrictions are implemented. See [career-onboarding-v1.md](career-onboarding-v1.md).
+
 - **Implemented:** retain the CLI and add Desktop plus platform-neutral Workflow. WPF code-behind only constructs the view model and handles safe close; testable services own operations.
 - **Implemented:** use existing avatar capture unchanged in substance, with a separate read-only prerequisite handshake. Strict qualification and no fallback take priority over accepting a questionable survey.
 - **Empirical prototype decision:** Sedona elevation results are sufficient for this exact simulator build. Microsoft's aircraft-local documentation contradicts observed avatar targeting. Preserve the 66 cm return-to-A caveat; invalidate qualification when binaries change.

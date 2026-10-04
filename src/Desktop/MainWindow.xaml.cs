@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
@@ -11,14 +12,33 @@ public partial class MainWindow : Window
     private readonly BuilderViewModel model;
     private readonly System.Windows.Threading.DispatcherTimer worldTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private bool refreshingWorld;
+    private bool careerReady,resettingCareer;
+    private CareerStore? careerStore;
     public MainWindow() : this(null) { }
-    public MainWindow(BuilderViewModel? suppliedModel)
+    public MainWindow(BuilderViewModel? suppliedModel,CareerStore? suppliedCareerStore=null)
     {
         InitializeComponent();
         bool dryRun = Environment.GetCommandLineArgs().Contains("--dry-run", StringComparer.Ordinal);
         if (dryRun) Title += " · DRY RUN";
+        CareerViewModel? career=null;
+        string? careerError=null;
+        // Supplied-model and dry-run UI tests remain isolated from Matt's live career.
+        careerReady=(suppliedModel is not null||dryRun)&&suppliedCareerStore is null;
+        if(!careerReady)
+        {
+            careerStore=suppliedCareerStore??new(CareerStore.DefaultRoot);
+            try {career=new(careerStore);careerReady=career.IsActive;}
+            catch(Exception ex){careerError="Career state could not be read. Existing files were preserved. "+ex.Message;}
+        }
         model = suppliedModel ?? new(dryRun ? BuilderServices.CreateDesktopDryRun() : new BuilderServices(), Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.User) ?? Environment.GetEnvironmentVariable("MSFS2024_SDK") ?? "");
         DataContext = model;
+        CareerPilotLabel.Text=career?.PilotName??"Prototype pilot";
+        if(!careerReady)
+        {
+            GameplayShell.Visibility=Visibility.Collapsed;Onboarding.Visibility=Visibility.Visible;
+            if(career is not null)Onboarding.Show(career);else Onboarding.ShowError(careerError!);
+        }
+        Onboarding.DeleteRequested+=()=>DeleteCareer(this,new RoutedEventArgs());
         model.Tracking.DisplayChanged += TrackingDisplayChanged;
         model.Operations.MapLocationsChanged += locations => Dispatcher.InvokeAsync(() => OperationsMap.Show(locations));
         OperationsMap.LocationSelected += key => Dispatcher.InvokeAsync(() => model.Operations.SelectMapLocation(key));
@@ -27,6 +47,7 @@ public partial class MainWindow : Window
         Closed += (_,_) => worldTimer.Stop();
         Loaded += async (_,_)=>
         {
+            if(!careerReady)return;
             await Task.WhenAll(model.RefreshAirportsAsync(),model.Tracking.InitializeAsync());
             await model.Jobs.InitializeAsync();
             await model.AircraftLoading.InitializeAsync();
@@ -45,7 +66,7 @@ public partial class MainWindow : Window
     }
     private void MainTabsChanged(object sender,SelectionChangedEventArgs e)
     {
-        if(!IsInitialized || !ReferenceEquals(e.Source,MainTabs))return;
+        if(!IsInitialized || !ReferenceEquals(e.Source,MainTabs)||!careerReady)return;
         BuilderFooter.Visibility=ReferenceEquals(MainTabs.SelectedItem,BuilderTab)?Visibility.Visible:Visibility.Collapsed;
         if(!model.IsDryRun && MainTabs.SelectedIndex is 1 or 2 or 3 or 4 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
             _=model.Tracking.ConnectAsync();
@@ -196,8 +217,36 @@ public partial class MainWindow : Window
     }
     private void OnClosing(object? sender, CancelEventArgs e)
     {
+        if(resettingCareer){model.Tracking.Dispose();TrackingMap.Dispose();return;}
         if (!model.IsBusy) {e.Cancel=!MayDiscardEdits();if(!e.Cancel){model.Tracking.Dispose();TrackingMap.Dispose();}return;}
         model.Cancel();
         e.Cancel = true;
+    }
+    private void DeleteCareer(object sender,RoutedEventArgs e)
+    {
+        if(careerStore is null){MessageBox.Show(this,"Career deletion is unavailable in isolated dry-run mode.");return;}
+        if(model.IsBusy||model.Jobs.IsBusy||model.Operations.IsBusy||model.AircraftLoading.IsBusy||refreshingWorld)
+        {MessageBox.Show(this,"Wait for the current operation to finish before deleting the career.");return;}
+        const string warning="Delete this career? This resets pilot/onboarding data, money and ledger, jobs and reservations, operations and inventories, flight progress, cargo manifests, saved fuel and last-known aircraft state.\n\nSDK settings, saved site designs, installed scenery and ownership records are retained. Old career files are archived locally for recovery and diagnostics. No MSFS payload or scenery is changed.\n\nFrontier Pilot will restart at New Career. This cannot be undone from the app. Unsaved site edits will be discarded.";
+        if(MessageBox.Show(this,warning,"Delete Career — destructive reset",MessageBoxButton.YesNo,MessageBoxImage.Warning,MessageBoxResult.No)!=MessageBoxResult.Yes)return;
+        if(model.IsBusy||model.Jobs.IsBusy||model.Operations.IsBusy||model.AircraftLoading.IsBusy||refreshingWorld)
+        {MessageBox.Show(this,"An operation started while confirmation was open. Let it finish and try again.");return;}
+        var resetRequested=false;
+        try
+        {
+            var executable=Environment.ProcessPath??throw new IOException("Application executable not found.");
+            if(Process.GetProcessesByName(Process.GetCurrentProcess().ProcessName).Any(p=>p.Id!=Environment.ProcessId))
+                throw new IOException("Close other Frontier Pilot instances before deleting a career.");
+            careerStore.RequestReset(true);resetRequested=true;worldTimer.Stop();resettingCareer=true;
+            Process.Start(new ProcessStartInfo(executable,$"--career-reset-wait {Environment.ProcessId}"){UseShellExecute=false});
+            Application.Current.Shutdown();
+        }
+        catch(Exception ex)
+        {
+            MessageBox.Show(this,"Career reset could not restart: "+ex.Message+
+                (resetRequested?"\nThe app will close. Open Frontier Pilot again to finish the requested reset.":"\nNo reset was requested."));
+            if(resetRequested)Application.Current.Shutdown();
+            else resettingCareer=false;
+        }
     }
 }

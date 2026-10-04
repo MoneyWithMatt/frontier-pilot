@@ -1,0 +1,9 @@
+{
+ "Regions":[{"Id":"namibia","Name":"Namibia","Latitude":-22.5,"Longitude":17,"MapResolution":1500}],
+ "Bases":[{"Id":"eros","Name":"Eros, Windhoek","Identifier":"FYWE","Latitude":-22.604920,"Longitude":17.079002},{"Id":"walvis-bay","Name":"Walvis Bay","Identifier":"FYWB","Latitude":-22.97972,"Longitude":14.64532}],
+ "Employers":[
+ {"Id":"eros-community-aviation","RegionId":"namibia","BaseId":"eros","Name":"Eros Community Aviation","Role":"Community Bush Pilot","Aircraft":"PA-28 · Savage Cub","Description":"A community-focused aviation organisation flying cargo, aid, essential supplies and personnel to remote communities and small airstrips.","Work":"Bush flying · short and unimproved strips · small payloads · remote destinations"},
+ {"Id":"fly-eros","RegionId":"namibia","BaseId":"eros","Name":"Fly Eros","Role":"Industrial Pilot","Aircraft":"C172 · Baron","Description":"An industrial aviation operator supporting mines, businesses and remote industrial sites.","Work":"Personnel · industrial cargo · replacement parts · samples · logistics"},
+ {"Id":"skeleton-coast-petroleum","RegionId":"namibia","BaseId":"walvis-bay","Name":"Skeleton Coast Petroleum","Role":"Offshore Operations Pilot","Aircraft":"Vision Jet · H125","Description":"An aviation division supporting petroleum and offshore operations. Helicopter and offshore landing mechanics remain unproven.","Work":"Coastal transport · personnel and equipment · future offshore helicopter operations"}
+ ]
+}

@@ -49,7 +49,28 @@ internal static class Program
                 Check(edit.RunwayHeading==90,"Actual heading textbox updates runway");
                 Save(window,Path.Combine(folder,"runway-editor.png"));
                 foreach(var index in new[]{5,1,2,3,4}){tabs.SelectedIndex=index;Pump();Save(window,Path.Combine(folder,$"page-{index}.png"));}
-                edit.NewAirport();window.Close();result=0;
+                edit.NewAirport();window.Close();
+                var careerRoot=Path.Combine(Path.GetTempPath(),"FrontierCareerUi",Guid.NewGuid().ToString("N"));
+                var careerStore=new CareerStore(careerRoot);
+                var newPlayerModel=new BuilderViewModel(BuilderServices.CreateDryRun(),"");
+                var careerWindow=new MainWindow(newPlayerModel,careerStore){ShowInTaskbar=false};careerWindow.Show();await Task.Delay(300);Pump();
+                Check(((FrameworkElement)careerWindow.FindName("GameplayShell")).Visibility==Visibility.Collapsed,"No career hides normal gameplay");
+                Check(!Directory.Exists(Path.Combine(careerRoot,"economy")),"Onboarding never initializes gameplay economy");
+                Save(careerWindow,Path.Combine(folder,"career-welcome.png"));
+                var screen=(CareerScreen)careerWindow.FindName("Onboarding");
+                Button CareerButton(string content)=>Descendants<Button>(screen).Single(b=>b.IsVisible&&b.Content?.ToString()==content);
+                CareerButton("New Career").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                var pilot=(TextBox)screen.FindName("PilotName");pilot.Text="Matt";pilot.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();
+                CareerButton("Continue to region").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                await Task.Delay(1200);Pump();Save(careerWindow,Path.Combine(folder,"career-region.png"));
+                ((ListBox)screen.FindName("RegionsList")).SelectedIndex=0;Pump();
+                CareerButton("Explore employment opportunities").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(400);Pump();
+                Check(careerStore.Load().Stage==CareerStage.Opportunities&&!careerStore.Load().IsActive,"UI persists draft without activating employer");
+                Check(((ListBox)screen.FindName("EmployersList")).Items.Count==3,"All three employers are visible");
+                Save(careerWindow,Path.Combine(folder,"career-employers.png"));
+                ((ListBox)screen.FindName("EmployersList")).SelectedIndex=2;Pump();Save(careerWindow,Path.Combine(folder,"career-offshore.png"));
+                CareerButton("Back").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(careerStore.Load().Stage==CareerStage.Region,"Back navigation preserves draft");
+                careerWindow.Close();result=0;
             }
             catch(Exception e){Console.Error.WriteLine(e);}
             finally{app.Shutdown(result);}

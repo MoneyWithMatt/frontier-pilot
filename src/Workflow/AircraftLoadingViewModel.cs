@@ -51,6 +51,7 @@ public sealed record LivePayloadStationViewModel(int Index, string Name, decimal
 public sealed class AircraftLoadingViewModel : INotifyPropertyChanged
 {
     private readonly AircraftLoadingCoordinator service;private bool busy;private string error="",status="Connect to MSFS, then read aircraft loading data.";
+    public bool IsBusy=>busy;
     public event PropertyChangedEventHandler? PropertyChanged;public event Action? OpenRequested;
     public ObservableCollection<PayloadStationViewModel> PayloadStations{get;}=[];public ObservableCollection<FuelTankViewModel> FuelTanks{get;}=[];
     public ObservableCollection<LivePayloadStationViewModel> LivePayloadStations{get;}=[];

@@ -1,5 +1,9 @@
 # Technical status — 2026-09-07
 
+## Career Onboarding V1 — 2026-10-04
+
+Implemented New Career/name/region/employer exploration, draft persistence, legacy-career detection, and confirmed restart-safe career reset. Namibia offers all three planned employers as Coming Soon. Mapsui/Operations map is reused. New drafts do not initialize gameplay services or seed an economy. Verification: 22 focused tests and all 616 solution tests pass; WPF smoke covers onboarding and existing site editing. See [career-onboarding-v1.md](career-onboarding-v1.md) for reset scope and manual tests.
+
 ## Return-leg boarded loading retry — 2026-09-21
 
 The return import remained PendingApplication with 10 kg already reported in its baggage station. Each retry took the already-loaded gross weight as a fresh baseline and expected another 10 kg increase from writing the same target. Authorized boarded application now calculates its physical delta from live managed-station weights. When targets already match but the recorded gross expectation does not, the explicit retry persists its intent, removes only the authorized managed allocation to its recorded baseline, verifies both station and gross removal, then reapplies and verifies the target. Unrelated seats are preserved. No automatic restoration or economic mutation occurs on refresh; failed weight verification still prevents commitment. Pending target weights no longer appear as additional Other payload in the editor.
