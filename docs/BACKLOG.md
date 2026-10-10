@@ -71,3 +71,8 @@ Economy Core, employed-cargo selection and Flight Attempt V0 now implement the f
 - Runway, parking, multi-point taxiway, persistence and Windows launch are accepted by Matt in MSFS (user report).
 - The generic hangar's position and orientation are accepted. Next: test its measured footprint and generated local terrain foundation following object-footprints-and-foundations.md.
 - Future taxiway work only after acceptance: vertex dragging, curve/turn-clearance handling, explicit junctions and complete ATC/AI runway graph. Not implemented in this task.
+## Dependency setup acceptance — 2026-10-10
+
+- Install both Microsoft SDK components through the new setup window on a clean PC; verify detection, persisted configuration and a live qualified connection, then compile an explicitly authorized test airport.
+- Add Store configuration discovery, download resume and explicit dependency-download cleanup before customer distribution.
+- Requalify newer SDK/simulator builds empirically; never select the newest Microsoft manifest version as automatically qualified.

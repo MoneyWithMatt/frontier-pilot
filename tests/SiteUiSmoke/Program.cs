@@ -56,6 +56,12 @@ internal static class Program
                 var careerWindow=new MainWindow(newPlayerModel,careerStore){ShowInTaskbar=false};careerWindow.Show();await Task.Delay(300);Pump();
                 Check(((FrameworkElement)careerWindow.FindName("GameplayShell")).Visibility==Visibility.Collapsed,"No career hides normal gameplay");
                 Check(!Directory.Exists(Path.Combine(careerRoot,"economy")),"Onboarding never initializes gameplay economy");
+                Check(Descendants<Button>(careerWindow).Any(b=>b.IsVisible&&b.Content?.ToString()=="Dependency setup…"),"Dependency setup is available before career activation");
+                var setupWindow=new DependencySetupWindow("",_=>throw new Exception("Smoke test must not change SDK configuration")){ShowInTaskbar=false};
+                setupWindow.Show();await Task.Delay(100);Pump();
+                Check(((TextBlock)setupWindow.FindName("SdkStatus")).Text.Length>0,"Dependency detector displays SDK status");
+                Check(((Button)setupWindow.FindName("CoreButton")).IsEnabled,"Core download action is available");
+                Save(setupWindow,Path.Combine(folder,"dependency-setup.png"));setupWindow.Close();
                 Save(careerWindow,Path.Combine(folder,"career-welcome.png"));
                 var screen=(CareerScreen)careerWindow.FindName("Onboarding");
                 Button CareerButton(string content)=>Descendants<Button>(screen).Single(b=>b.IsVisible&&b.Content?.ToString()==content);

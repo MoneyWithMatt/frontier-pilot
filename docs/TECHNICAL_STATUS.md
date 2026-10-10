@@ -1,5 +1,9 @@
 # Technical status — 2026-09-07
 
+## Dependency setup — 2026-10-10
+
+Added a setup window available before career activation: SDK discovery, Community path detection, pinned Microsoft Core/Samples 1.2.4 downloads with cancellation, external CAB preservation, signature-gated interactive installation, and saving a verified SDK configuration. Existing exact SDK/simulator capture safeguards remain unchanged. Missing SDK paths now give setup guidance. Release build and 626 tests pass; WPF setup smoke and real Core download/signature verification pass. Actual SDK installation and live simulator acceptance remain pending. See [dependency-setup.md](dependency-setup.md).
+
 ## Career Onboarding V1 — 2026-10-04
 
 Implemented New Career/name/region/employer exploration, draft persistence, legacy-career detection, and confirmed restart-safe career reset. Namibia offers all three planned employers as Coming Soon. Mapsui/Operations map is reused. New drafts do not initialize gameplay services or seed an economy. Verification: 22 focused tests and all 616 solution tests pass; WPF smoke covers onboarding and existing site editing. See [career-onboarding-v1.md](career-onboarding-v1.md) for reset scope and manual tests.

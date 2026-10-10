@@ -1,0 +1,20 @@
+<Window x:Class="FrontierAirportBuilder.Desktop.DependencySetupWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Frontier Pilot · Dependency setup" Width="760" Height="650" MinWidth="650" MinHeight="500" Background="#111A22" Foreground="#E5EDF2" FontFamily="Segoe UI" WindowStartupLocation="CenterOwner">
+<ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="24">
+<TextBlock Text="Set up Frontier Pilot" FontSize="26" FontWeight="SemiBold"/>
+<TextBlock Text="The app includes its .NET runtime. Live aircraft connection and airport building currently require the Microsoft Flight Simulator 2024 SDK. MSFS itself must be installed separately." TextWrapping="Wrap" Margin="0,12"/>
+<TextBlock Text="SDK status" FontSize="18" FontWeight="SemiBold"/>
+<TextBlock x:Name="SdkStatus" TextWrapping="Wrap" Margin="0,8"/>
+<TextBlock Text="Installed SDK folder"/>
+<TextBox x:Name="SdkFolder" Margin="0,6"/>
+<WrapPanel><Button x:Name="BrowseButton" Content="Browse…" Click="Browse"/><Button x:Name="RecheckButton" Content="Detect and recheck" Click="Recheck"/><Button x:Name="UseButton" Content="Use verified SDK" Click="UseSdk"/></WrapPanel>
+<TextBlock Text="Microsoft downloads" FontSize="18" FontWeight="SemiBold" Margin="0,18,0,6"/>
+<TextBlock Text="Download SDK 1.2.4 Core (264 MB) and Samples (3.2 GB) from Microsoft. Install both to the same SDK folder. Windows will show Microsoft's installer and any license or administrator prompts. A different SDK version does not qualify avatar survey." TextWrapping="Wrap"/>
+<WrapPanel Margin="0,8"><Button x:Name="CoreButton" Content="Download Core" Click="DownloadCore"/><Button x:Name="SamplesButton" Content="Download Samples" Click="DownloadSamples"/><Button x:Name="InstallButton" Content="Install downloaded component…" Click="Install" IsEnabled="False"/></WrapPanel>
+<ProgressBar x:Name="Progress" Height="5" IsIndeterminate="True" Visibility="Collapsed" Margin="0,8"/>
+<TextBlock x:Name="Activity" TextWrapping="Wrap" Margin="0,6"/>
+<Button x:Name="CancelButton" Content="Cancel download" Click="Cancel" IsEnabled="False" HorizontalAlignment="Left"/>
+<TextBlock Text="Community folder" FontSize="18" FontWeight="SemiBold" Margin="0,18,0,6"/>
+<TextBlock x:Name="CommunityStatus" TextWrapping="Wrap"/>
+<TextBlock x:Name="CommunityPath" TextWrapping="Wrap" Foreground="#9FB4C1" Margin="0,6"/>
+<TextBlock Text="Detection does not install scenery or change your Community folder. Live survey checks still verify the exact simulator and SDK files when you connect." TextWrapping="Wrap" Foreground="#9FB4C1" Margin="0,14"/>
+</StackPanel></ScrollViewer></Window>

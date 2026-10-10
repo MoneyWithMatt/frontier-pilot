@@ -64,6 +64,16 @@ public partial class MainWindow : Window
         try { await model.Jobs.RefreshLiveAsync(); await model.Operations.RefreshAsync(); }
         finally { refreshingWorld = false; }
     }
+    private void OpenDependencySetup(object sender,RoutedEventArgs e)
+    {
+        if(model.IsBusy||model.Tracking.State is TrackingState.Connecting or TrackingState.Connected||model.AircraftLoading.IsBusy||model.Jobs.IsBusy||model.Operations.IsBusy||refreshingWorld)
+        {MessageBox.Show(this,"Disconnect from MSFS and wait for current operations to finish before changing dependency setup.");return;}
+        new DependencySetupWindow(model.SdkRoot,root=>
+        {
+            if(root!=model.SdkRoot&&!MayDiscardEdits())return false;
+            model.SdkRoot=root;return true;
+        }){Owner=this}.ShowDialog();
+    }
     private void MainTabsChanged(object sender,SelectionChangedEventArgs e)
     {
         if(!IsInitialized || !ReferenceEquals(e.Source,MainTabs)||!careerReady)return;

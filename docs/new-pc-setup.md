@@ -46,4 +46,6 @@ Machine-specific workspaces, SDK settings and Community paths must be checked on
 
 ## MSFS prerequisites
 
+The application now provides **Dependency setup…** on both onboarding and gameplay screens. It can download the qualified SDK 1.2.4 Core and Samples installers from Microsoft, verify the installer signature, open Windows Installer and save a verified SDK folder. See [dependency setup](dependency-setup.md). Native installation and live qualification still require manual acceptance.
+
 Install MSFS 2024 and the qualified SDK needed for scenery compilation. Existing evidence targets SDK 1.2.4; newer SDK/simulator combinations are not automatically qualified by copying this project. Set the user-level `MSFS2024_SDK` to the actual SDK root on the new PC, and recheck simulator connection, survey safeguards and install paths. SDKs and Microsoft scenery assets are not bundled in the transfer backup.
