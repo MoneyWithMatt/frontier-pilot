@@ -8,7 +8,7 @@ Never weaken avatar capture safeguards or substitute aircraft/camera data. Quali
 
 Do not modify FPT1 or FPSC, prior evidence or unrelated Community content. Desktop replacement requires an intact ownership receipt and matching hashes; never adopt an unknown existing package. Keep backups and fail safely if MSFS is running. Do not delete installed packages to make tests pass.
 
-Build/test with .tools/dotnet/dotnet.exe; set DOTNET_CLI_HOME=.tools/home and NUGET_PACKAGES=.tools/nuget. Run focused tests and a solution build. Tests use temporary packages, never the real Community folder. Local UI launch uses scripts/Start-Desktop.ps1. Commit implementation and accurate evidence; distinguish automated tests from live simulator verification. No remote is configured at this time.
+Build/test with .tools/dotnet/dotnet.exe; set DOTNET_CLI_HOME=.tools/home and NUGET_PACKAGES=.tools/nuget. Run focused tests and a solution build. Tests use temporary packages, never the real Community folder. Local UI launch uses scripts/Start-Desktop.ps1. Commit implementation and accurate evidence; distinguish automated tests from live simulator verification. The private origin repository is https://github.com/MoneyWithMatt/frontier-pilot.git. Keep personal saves and generated distributions out of source control.
 
 The normal local test distribution is a self-contained Windows x64 single-file build at dist/FrontierPilot/FrontierPilot.exe. Recreate it with scripts/Publish-Development.ps1; dist is intentionally untracked. See docs/development-distribution.md. Do not commit generated runtime binaries.
 

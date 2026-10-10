@@ -1,6 +1,10 @@
-# Frontier Airport Builder — Prototype 0.1
+# Frontier Pilot
 
-Frontier Pilot's first generated airport, **Frontier Test Strip (FPT1)**, compiles successfully with MSFS 2024 SDK 1.2.4. All 152 unit tests pass. The CLI produces one airport, one runway and two starts from an explicit airstrip definition. No WPF UI is implemented.
+Frontier Pilot is a Windows/MSFS 2024 prototype with a WPF desktop interface, site/airport authoring, aircraft tracking and cargo loading, jobs, operations and a persistent economy. Career Onboarding V1 adds resumable pilot/region/employer exploration; all three starting employers remain Coming Soon. Latest verified solution: 616 tests pass, Release build has zero warnings/errors.
+
+**Continuing on a new PC:** read [new-PC setup and save migration](docs/new-pc-setup.md). Current architecture and limitations are in [Technical Status](docs/TECHNICAL_STATUS.md), [Design Decisions](docs/DESIGN_DECISIONS.md) and [Backlog](docs/BACKLOG.md). The project started as Frontier Airport Builder, so solution/project names retain that name.
+
+The original Frontier Test Strip (FPT1) compilation proof uses MSFS 2024 SDK 1.2.4. Reports below describe that historical milestone, not the full current feature set.
 
 See [the implementation and verification report](docs/prototype-0.1.md), [the compiled package](artifacts/fpt1/frontier-airport-fpt1.zip), and [template provenance](src/MsfsSdk/Templates/PROVENANCE.md). Earlier baseline investigations remain in [the diagnosis](docs/toolchain-diagnosis.md) and [the original experiment](docs/sample-build-report.md).
 
