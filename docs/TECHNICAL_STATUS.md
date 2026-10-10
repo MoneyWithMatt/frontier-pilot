@@ -2,6 +2,8 @@
 
 ## Dependency setup — 2026-10-10
 
+Recheck follow-up: new-PC inspection found SDK Core installed but Samples absent. Detection now retains and displays incomplete SDK roots, identifies missing Samples and confirms each check with a timestamp. Regression and actual-button WPF checks pass; 627 solution tests pass. The current user's open application is preserved during distribution replacement.
+
 Added a setup window available before career activation: SDK discovery, Community path detection, pinned Microsoft Core/Samples 1.2.4 downloads with cancellation, external CAB preservation, signature-gated interactive installation, and saving a verified SDK configuration. Existing exact SDK/simulator capture safeguards remain unchanged. Missing SDK paths now give setup guidance. Release build and 626 tests pass; WPF setup smoke and real Core download/signature verification pass. Actual SDK installation and live simulator acceptance remain pending. See [dependency-setup.md](dependency-setup.md).
 
 ## Career Onboarding V1 — 2026-10-04

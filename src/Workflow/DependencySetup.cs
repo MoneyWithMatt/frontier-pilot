@@ -21,12 +21,13 @@ public static class DependencySetup
     {
         string selected = "", sdkMessage = "SDK missing. Install Core and Samples, then recheck. Existing SDK installations can be selected below.";
         bool ready = false;
+        void RecordFailure(string candidate,string message)
+        { if(selected.Length==0){selected=candidate;sdkMessage=message;} }
         foreach (var candidate in candidates.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase))
         {
             if (!Directory.Exists(candidate)) continue;
             // Do not treat an arbitrary existing folder as an SDK installation.
             if (!File.Exists(Path.Combine(candidate, "version.txt"))) continue;
-            selected = candidate;
             try
             {
                 var version = File.ReadAllText(Path.Combine(candidate, "version.txt")).Trim();
@@ -39,12 +40,16 @@ public static class DependencySetup
                 sdkMessage = $"SDK {RequiredVersion} components verified. Live survey still requires the qualified simulator build and a loaded flight.";
                 break;
             }
-            catch (FileNotFoundException)
-            { sdkMessage = "SDK components are missing. Install Core and Samples to the same SDK folder, then recheck."; }
+            catch (FileNotFoundException ex)
+            {
+                var sample = Path.Combine(candidate,"Samples","DevmodeProjects","Sceneries","SimpleAirport","AirportProject.xml");
+                RecordFailure(candidate,string.Equals(ex.FileName,sample,StringComparison.OrdinalIgnoreCase)
+                    ? $"SDK Core {RequiredVersion} found. Samples is missing: install SDK Samples into this same folder, then recheck."
+                    : "SDK components are missing. Install Core and Samples to the same SDK folder, then recheck.");
+            }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
-            { sdkMessage = ex.Message; selected = candidate; }
-            // A later valid installation should win over an incomplete or incompatible one.
-            selected = "";
+            { RecordFailure(candidate,ex.Message); }
+            // Retain a discovered incomplete installation for display; a later valid installation still wins.
         }
         string community = "", communityMessage;
         try

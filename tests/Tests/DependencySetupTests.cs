@@ -23,6 +23,15 @@ public sealed class DependencySetupTests : TemporaryDirectoryTest
         var status=DependencySetup.Detect([],config);
         Assert.Equal("",status.CommunityPath);Assert.Contains("exactly one",status.CommunityMessage);
     }
+    [Fact] public void CoreOnlyInstallationKeepsDiscoveredFolderAndExplainsMissingSamples()
+    {
+        var sdk=Path.Combine(Root,"SDK");Directory.CreateDirectory(Path.Combine(sdk,"Tools","bin"));
+        File.WriteAllText(Path.Combine(sdk,"version.txt"),"1.2.4");
+        File.WriteAllText(Path.Combine(sdk,"Tools","bin","fspackagetool.exe"),"fixture only");
+        var status=DependencySetup.Detect([sdk,Path.Combine(Root,"missing")],Path.Combine(Root,"missing.opt"));
+        Assert.False(status.SdkReady);Assert.Equal(sdk,status.SdkRoot);
+        Assert.Contains("Core 1.2.4 found",status.SdkMessage);Assert.Contains("Samples is missing",status.SdkMessage);
+    }
     [Theory][InlineData("1.9.0")][InlineData("1.2.4")]
     public void VersionOrUnqualifiedHashesCannotEnableSdk(string version)
     {

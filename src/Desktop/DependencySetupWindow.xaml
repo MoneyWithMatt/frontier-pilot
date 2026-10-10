@@ -7,6 +7,7 @@
 <TextBlock Text="Installed SDK folder"/>
 <TextBox x:Name="SdkFolder" Margin="0,6"/>
 <WrapPanel><Button x:Name="BrowseButton" Content="Browse…" Click="Browse"/><Button x:Name="RecheckButton" Content="Detect and recheck" Click="Recheck"/><Button x:Name="UseButton" Content="Use verified SDK" Click="UseSdk"/></WrapPanel>
+<TextBlock x:Name="DetectionFeedback" TextWrapping="Wrap" Foreground="#9FB4C1" Margin="0,8"/>
 <TextBlock Text="Microsoft downloads" FontSize="18" FontWeight="SemiBold" Margin="0,18,0,6"/>
 <TextBlock Text="Download SDK 1.2.4 Core (264 MB) and Samples (3.2 GB) from Microsoft. Install both to the same SDK folder. Windows will show Microsoft's installer and any license or administrator prompts. A different SDK version does not qualify avatar survey." TextWrapping="Wrap"/>
 <WrapPanel Margin="0,8"><Button x:Name="CoreButton" Content="Download Core" Click="DownloadCore"/><Button x:Name="SamplesButton" Content="Download Samples" Click="DownloadSamples"/><Button x:Name="InstallButton" Content="Install downloaded component…" Click="Install" IsEnabled="False"/></WrapPanel>

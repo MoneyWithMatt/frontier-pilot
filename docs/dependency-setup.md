@@ -2,6 +2,8 @@
 
 Open **Dependency setup…** at the top of Frontier Pilot, including before a career has been created.
 
+**Detect and recheck** shows a completion time even if nothing changed. A Core-only installation populates the SDK folder and specifically identifies missing Samples; it remains unavailable for use until all required files and hashes pass. A selected incomplete installation is kept visible rather than replaced by another incomplete candidate.
+
 1. **Detect and recheck** looks for SDK installations in the selected folder, environment configuration, Windows installer registry and common SDK locations. Community2024 is read from the same MSFS UserCfg.opt used by the live builder. Detection never modifies scenery.
 2. If missing, download **Core** (264 MB) and **Samples** (3.2 GB). Downloads use Microsoft's pinned SDK 1.2.4 HTTPS URLs; the current survey implementation cannot accept a newer SDK automatically.
 3. After each download, choose **Install downloaded component…**. Microsoft Windows Installer displays its normal installation/license/elevation prompts. Install both components into the same SDK folder. Close MSFS and Package Tool before installation. Cancellation is available during downloading/extraction/signature verification; once Windows Installer is open, use its own Cancel action.

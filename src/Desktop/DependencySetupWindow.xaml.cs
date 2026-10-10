@@ -48,8 +48,9 @@ public partial class DependencySetupWindow : Window
     {
         var status=DependencySetup.Detect(SdkCandidates(SdkFolder.Text),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"Microsoft Flight Simulator 2024","UserCfg.opt"));
         SdkStatus.Text=status.SdkMessage;CommunityStatus.Text=status.CommunityMessage;CommunityPath.Text=status.CommunityPath;
-        if(status.SdkReady)SdkFolder.Text=status.SdkRoot;
+        if(!string.IsNullOrWhiteSpace(status.SdkRoot))SdkFolder.Text=status.SdkRoot;
         UseButton.IsEnabled=status.SdkReady&&!busy;
+        DetectionFeedback.Text=$"Checked at {DateTime.Now:HH:mm:ss}. "+(status.SdkReady?"SDK ready to use.":"SDK not ready; see the component status above.");
     }
     private void Recheck(object sender,RoutedEventArgs e)=>Detect();
     private void Cancel(object sender,RoutedEventArgs e)=>cancellation?.Cancel();

@@ -60,6 +60,15 @@ internal static class Program
                 var setupWindow=new DependencySetupWindow("",_=>throw new Exception("Smoke test must not change SDK configuration")){ShowInTaskbar=false};
                 setupWindow.Show();await Task.Delay(100);Pump();
                 Check(((TextBlock)setupWindow.FindName("SdkStatus")).Text.Length>0,"Dependency detector displays SDK status");
+                var feedback=(TextBlock)setupWindow.FindName("DetectionFeedback");feedback.Text="stale feedback";
+                ((Button)setupWindow.FindName("RecheckButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                Check(feedback.Text.StartsWith("Checked at "),"Actual recheck button displays completion feedback");
+                var partialSdk=Path.Combine(careerRoot,"core-only-sdk");Directory.CreateDirectory(Path.Combine(partialSdk,"Tools","bin"));
+                File.WriteAllText(Path.Combine(partialSdk,"version.txt"),"1.2.4");File.WriteAllText(Path.Combine(partialSdk,"Tools","bin","fspackagetool.exe"),"fixture only");
+                var sdkBox=(TextBox)setupWindow.FindName("SdkFolder");sdkBox.Text=partialSdk;
+                ((Button)setupWindow.FindName("RecheckButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                Check(sdkBox.Text==partialSdk&&((TextBlock)setupWindow.FindName("SdkStatus")).Text.Contains("Samples is missing"),"Recheck retains Core-only folder and identifies missing Samples");
+                Check(!((Button)setupWindow.FindName("UseButton")).IsEnabled,"Incomplete SDK cannot be applied");
                 Check(((Button)setupWindow.FindName("CoreButton")).IsEnabled,"Core download action is available");
                 Save(setupWindow,Path.Combine(folder,"dependency-setup.png"));setupWindow.Close();
                 Save(careerWindow,Path.Combine(folder,"career-welcome.png"));
