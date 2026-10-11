@@ -73,6 +73,19 @@ public static class DependencySetup
             throw new IOException("SDK files do not match the qualified build. Survey remains disabled; select the original SDK 1.2.4 installation.");
     }
 
+    public static string VerifyCore(string root)
+    {
+        if(string.IsNullOrWhiteSpace(root))throw new IOException("Install SDK Core first, then detect its folder before installing Samples.");
+        root=Path.GetFullPath(root);
+        if(!File.Exists(Path.Combine(root,"version.txt"))||File.ReadAllText(Path.Combine(root,"version.txt")).Trim()!=RequiredVersion)
+            throw new IOException($"Select the installed SDK Core {RequiredVersion} folder before installing Samples.");
+        if(!File.Exists(Path.Combine(root,"Tools","bin","fspackagetool.exe")))
+            throw new IOException("SDK Core is incomplete. Finish its installation before installing Samples.");
+        VerifyHash(Path.Combine(root,"SimConnect SDK","lib","SimConnect.dll"),LiveSurveyCapture.TestedSimConnectHash);
+        VerifyHash(Path.Combine(root,"SimConnect SDK","include","SimConnect.h"),LiveSurveyCapture.TestedHeaderHash);
+        return root;
+    }
+
     public static async Task<string> DownloadAsync(DependencyDownload package, string downloadsRoot, IProgress<string> progress,
         CancellationToken token, HttpClient? client = null)
     {

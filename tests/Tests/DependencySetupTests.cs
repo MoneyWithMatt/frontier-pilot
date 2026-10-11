@@ -7,6 +7,13 @@ namespace FrontierAirportBuilder.Tests;
 
 public sealed class DependencySetupTests : TemporaryDirectoryTest
 {
+    [Fact] public void SamplesCannotInstallBeforeCoreIsAvailable()
+    {
+        Assert.Contains("Core first",Assert.Throws<IOException>(()=>DependencySetup.VerifyCore("")).Message);
+        Assert.Throws<IOException>(()=>DependencySetup.VerifyCore(Root));
+        File.WriteAllText(Path.Combine(Root,"version.txt"),"1.2.4");
+        Assert.Contains("Core is incomplete",Assert.Throws<IOException>(()=>DependencySetup.VerifyCore(Root)).Message);
+    }
     [Fact] public void MissingSdkHasActionableGuidanceAndCommunityIsDetected()
     {
         var packages=Path.Combine(Root,"Packages");Directory.CreateDirectory(Path.Combine(packages,"Community2024"));

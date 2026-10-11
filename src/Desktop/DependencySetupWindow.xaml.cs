@@ -12,17 +12,19 @@ public partial class DependencySetupWindow : Window
     private readonly Func<string,bool> apply;
     private CancellationTokenSource? cancellation;
     private string? installer;
+    private DependencyDownload? installerPackage;
     private bool busy;
     public DependencySetupWindow(string sdkRoot, Func<string,bool> apply)
     {
         InitializeComponent(); this.apply = apply; SdkFolder.Text = sdkRoot;
-        Loaded += (_, _) => Detect();
+        Loaded += (_, _) => { RestoreDownloadedInstaller();Detect(); };
         Closing += (_, e) => { if (busy) { cancellation?.Cancel(); Activity.Text="Wait for the download to cancel or the Microsoft installer to finish before closing."; e.Cancel=true; } };
     }
     internal static IEnumerable<string> SdkCandidates(string selected)
     {
         yield return selected;
         yield return Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.User) ?? "";
+        yield return Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.Machine) ?? "";
         yield return Environment.GetEnvironmentVariable("MSFS2024_SDK") ?? "";
         foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
         {
@@ -54,6 +56,27 @@ public partial class DependencySetupWindow : Window
     }
     private void Recheck(object sender,RoutedEventArgs e)=>Detect();
     private void Cancel(object sender,RoutedEventArgs e)=>cancellation?.Cancel();
+    private void RestoreDownloadedInstaller()
+    {
+        var downloads=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"FrontierAirportBuilder","dependency-downloads");
+        if(!Directory.Exists(downloads))return;
+        try
+        {
+            foreach(var file in Directory.EnumerateFiles(downloads,"MicrosoftSdkInstaller.msi",SearchOption.AllDirectories).OrderByDescending(File.GetLastWriteTimeUtc))
+            {
+                try
+                {
+                    var package=MicrosoftSdkInstaller.Identify(file);
+                    if(package!=DependencySetup.Samples)continue;
+                    installer=file;installerPackage=package;InstallButton.IsEnabled=true;
+                    Activity.Text="A previous Samples download is available. Choose Install downloaded component to retry; its signature will be checked again.";
+                    break;
+                }
+                catch(IOException){ }
+            }
+        }
+        catch(Exception ex) when(ex is IOException or UnauthorizedAccessException){Activity.Text="Previous downloads could not be checked: "+ex.Message;}
+    }
     private void Browse(object sender,RoutedEventArgs e)
     {
         var dialog=new OpenFolderDialog{Title="Select the MSFS 2024 SDK folder"};
@@ -81,13 +104,15 @@ public partial class DependencySetupWindow : Window
     private async Task Download(DependencyDownload package)
     {
         if(busy)return;
-        cancellation=new();installer=null;SetBusy(true);
+        cancellation=new();installer=null;installerPackage=null;SetBusy(true);
         try
         {
             Activity.Text=$"Downloading {package.Name} from Microsoft…";
             installer=await DependencySetup.DownloadAsync(package,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"FrontierAirportBuilder","dependency-downloads"),new Progress<string>(text=>Activity.Text=text),cancellation.Token);
             Activity.Text="Verifying the Microsoft installer signature…";
             await VerifyMicrosoftSignature(installer,cancellation.Token);
+            installerPackage=MicrosoftSdkInstaller.Identify(installer);
+            if(installerPackage!=package)throw new IOException("The downloaded SDK component does not match the requested installer.");
             Activity.Text=$"{package.Name} downloaded and Microsoft signature verified. Choose Install downloaded component to open the installer.";
         }
         catch(OperationCanceledException){installer=null;Activity.Text="Download cancelled. You can retry.";}
@@ -116,11 +141,18 @@ public partial class DependencySetupWindow : Window
         {
             BuilderServices.AssertSimulatorClosed();
             await VerifyMicrosoftSignature(installer,CancellationToken.None);
-            var info=new ProcessStartInfo("msiexec.exe"){UseShellExecute=true};info.ArgumentList.Add("/i");info.ArgumentList.Add(installer);
-            Activity.Text="Complete the Microsoft installer, then recheck. Install Core and Samples to the same folder.";
+            installerPackage=MicrosoftSdkInstaller.Identify(installer);
+            string? coreRoot=installerPackage==DependencySetup.Samples?DependencySetup.VerifyCore(SdkFolder.Text):null;
+            // Core's installer changes the machine environment; the already-open app otherwise keeps stale values.
+            var info=new ProcessStartInfo(Path.Combine(Environment.SystemDirectory,"msiexec.exe")){UseShellExecute=false};
+            info.ArgumentList.Add("/i");info.ArgumentList.Add(installer);
+            if(coreRoot!=null){info.Environment["MSFS2024_SDK"]=coreRoot;info.ArgumentList.Add("MSFS_SDK="+coreRoot);}
+            var log=Path.Combine(Path.GetDirectoryName(installer)!,"install-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")+".log");
+            info.ArgumentList.Add("/L*v");info.ArgumentList.Add(log);
+            Activity.Text=coreRoot==null?"Complete the Microsoft Core installer, then recheck.":$"Installing Samples into {Path.Combine(coreRoot,"Samples")}. Complete the Microsoft installer, then recheck.";
             using var process=Process.Start(info)??throw new IOException("Could not open the Microsoft installer.");
             await process.WaitForExitAsync();
-            Activity.Text=process.ExitCode switch {0=>"Installation completed. Recheck the SDK folder.",3010=>"Installation completed; Windows requires a restart.",1602=>"Installation cancelled. You can retry.",_=>$"Microsoft installer returned code {process.ExitCode}. Recheck or retry."};
+            Activity.Text=process.ExitCode switch {0=>"Installation completed. Recheck the SDK folder.",3010=>"Installation completed; Windows requires a restart.",1602=>"Installation cancelled. You can retry.",_=>$"Microsoft installer returned code {process.ExitCode}. Log: {log}"};
         }
         catch(Exception ex){Activity.Text="Installation did not complete: "+ex.Message;}
         finally{SetBusy(false);Detect();}
