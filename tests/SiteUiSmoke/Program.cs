@@ -57,7 +57,7 @@ internal static class Program
                 Check(((FrameworkElement)careerWindow.FindName("GameplayShell")).Visibility==Visibility.Collapsed,"No career hides normal gameplay");
                 Check(!Directory.Exists(Path.Combine(careerRoot,"economy")),"Onboarding never initializes gameplay economy");
                 Check(Descendants<Button>(careerWindow).Any(b=>b.IsVisible&&b.Content?.ToString()=="Dependency setup…"),"Dependency setup is available before career activation");
-                var setupWindow=new DependencySetupWindow("",_=>throw new Exception("Smoke test must not change SDK configuration")){ShowInTaskbar=false};
+                var setupWindow=new DependencySetupWindow("",_=>throw new Exception("Smoke test must not change SDK configuration"),selected=>new[]{selected}){ShowInTaskbar=false};
                 setupWindow.Show();await Task.Delay(100);Pump();
                 Check(((TextBlock)setupWindow.FindName("SdkStatus")).Text.Length>0,"Dependency detector displays SDK status");
                 var feedback=(TextBlock)setupWindow.FindName("DetectionFeedback");feedback.Text="stale feedback";
@@ -69,7 +69,10 @@ internal static class Program
                 ((Button)setupWindow.FindName("RecheckButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
                 Check(sdkBox.Text==partialSdk&&((TextBlock)setupWindow.FindName("SdkStatus")).Text.Contains("Samples is missing"),"Recheck retains Core-only folder and identifies missing Samples");
                 Check(!((Button)setupWindow.FindName("UseButton")).IsEnabled,"Incomplete SDK cannot be applied");
-                Check(((Button)setupWindow.FindName("CoreButton")).IsEnabled,"Core download action is available");
+                Check(((Button)setupWindow.FindName("CoreButton")).IsEnabled||((Button)setupWindow.FindName("CoreInstallButton")).IsEnabled,"Core download or cached install action is available");
+                Check(!((Button)setupWindow.FindName("SamplesButton")).IsEnabled&&!((Button)setupWindow.FindName("SamplesInstallButton")).IsEnabled,"Samples waits for verified Core");
+                Check(((TextBlock)setupWindow.FindName("NextStep")).Text.Contains("Core"),"Next instruction directs the user to Core first");
+                Check(((Button)setupWindow.FindName("CoreInstallButton")).Content.ToString()=="Install Core…"&&((Button)setupWindow.FindName("SamplesInstallButton")).Content.ToString()=="Install Samples…","Each component has its own named install action");
                 Save(setupWindow,Path.Combine(folder,"dependency-setup.png"));setupWindow.Close();
                 Save(careerWindow,Path.Combine(folder,"career-welcome.png"));
                 var screen=(CareerScreen)careerWindow.FindName("Onboarding");

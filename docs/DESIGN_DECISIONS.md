@@ -3,6 +3,7 @@
 ## Dependency setup — 2026-10-10
 
 - Setup is available outside the career gate and does not seed gameplay. Detection reads the existing MSFS configuration and discovers SDK candidates without changing Community packages.
+- Dependency setup follows Core → Samples → check/save, with a named installer action for each component and one next instruction. Cached downloads suppress repeat downloads; Samples stays unavailable until Core is verified. Advanced folder/connection details are collapsed by default.
 - SDK downloads pin the empirically supported 1.2.4 Core and Samples URLs. Streaming/cancellation and bounded extraction preserve external CAB payloads; only trusted Microsoft-signed MSI files can be launched through the normal interactive Windows installer.
 - User-level SDK configuration is saved only after SDK version, required files and exact SimConnect/header hashes pass. Live simulator qualification remains an independent existing gate. A successful download or MSI exit cannot qualify survey or installed scenery.
 - Resume/cleanup, Store configuration discovery, installer automation and broader simulator/SDK qualification remain future work. See dependency-setup.md.

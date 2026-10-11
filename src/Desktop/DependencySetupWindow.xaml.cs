@@ -10,13 +10,14 @@ namespace FrontierAirportBuilder.Desktop;
 public partial class DependencySetupWindow : Window
 {
     private readonly Func<string,bool> apply;
+    private readonly Func<string,IEnumerable<string>> candidates;
     private CancellationTokenSource? cancellation;
-    private string? installer;
-    private DependencyDownload? installerPackage;
+    private readonly Dictionary<DependencyDownload,string> installers = new();
+    private bool coreReady, sdkReady;
     private bool busy;
-    public DependencySetupWindow(string sdkRoot, Func<string,bool> apply)
+    public DependencySetupWindow(string sdkRoot, Func<string,bool> apply, Func<string,IEnumerable<string>>? candidates=null)
     {
-        InitializeComponent(); this.apply = apply; SdkFolder.Text = sdkRoot;
+        InitializeComponent(); this.apply = apply; this.candidates=candidates??SdkCandidates;SdkFolder.Text = sdkRoot;
         Loaded += (_, _) => { RestoreDownloadedInstaller();Detect(); };
         Closing += (_, e) => { if (busy) { cancellation?.Cancel(); Activity.Text="Wait for the download to cancel or the Microsoft installer to finish before closing."; e.Cancel=true; } };
     }
@@ -48,14 +49,32 @@ public partial class DependencySetupWindow : Window
     }
     private void Detect()
     {
-        var status=DependencySetup.Detect(SdkCandidates(SdkFolder.Text),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"Microsoft Flight Simulator 2024","UserCfg.opt"));
+        var status=DependencySetup.Detect(candidates(SdkFolder.Text),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"Microsoft Flight Simulator 2024","UserCfg.opt"));
         SdkStatus.Text=status.SdkMessage;CommunityStatus.Text=status.CommunityMessage;CommunityPath.Text=status.CommunityPath;
         if(!string.IsNullOrWhiteSpace(status.SdkRoot))SdkFolder.Text=status.SdkRoot;
-        UseButton.IsEnabled=status.SdkReady&&!busy;
+        sdkReady=status.SdkReady;
+        coreReady=false;
+        try {DependencySetup.VerifyCore(SdkFolder.Text);coreReady=true;}
+        catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or ArgumentException){ }
+        UpdateActions();
         DetectionFeedback.Text=$"Checked at {DateTime.Now:HH:mm:ss}. "+(status.SdkReady?"SDK ready to use.":"SDK not ready; see the component status above.");
     }
     private void Recheck(object sender,RoutedEventArgs e)=>Detect();
     private void Cancel(object sender,RoutedEventArgs e)=>cancellation?.Cancel();
+    private void UpdateActions()
+    {
+        bool Has(DependencyDownload package)=>installers.ContainsKey(package);
+        CoreButton.IsEnabled=!busy&&!coreReady&&!Has(DependencySetup.Core);
+        CoreInstallButton.IsEnabled=!busy&&!coreReady&&Has(DependencySetup.Core);
+        SamplesButton.IsEnabled=!busy&&coreReady&&!sdkReady&&!Has(DependencySetup.Samples);
+        SamplesInstallButton.IsEnabled=!busy&&coreReady&&!sdkReady&&Has(DependencySetup.Samples);
+        UseButton.IsEnabled=!busy&&sdkReady;
+        CoreButton.Content=coreReady?"Core installed":Has(DependencySetup.Core)?"Core downloaded":"Download Core";
+        SamplesButton.Content=sdkReady?"Samples installed":Has(DependencySetup.Samples)?"Samples downloaded":"Download Samples";
+        CoreStatus.Text=coreReady?"Installed and verified.":Has(DependencySetup.Core)?"Downloaded. Click Install Core to continue.":"Not ready. Download and install Core first.";
+        SamplesStatus.Text=sdkReady?"Installed and verified.":!coreReady?"Waiting for Core to be installed and verified.":Has(DependencySetup.Samples)?"Downloaded. Click Install Samples to continue.":"Not installed. Download and install Samples next.";
+        NextStep.Text=sdkReady?"Ready! Click Finish setup to save this SDK folder.":!coreReady?Has(DependencySetup.Core)?"Next: click Install Core and finish Microsoft's wizard.":"Next: download Core, then install it.":Has(DependencySetup.Samples)?"Next: click Install Samples and finish Microsoft's wizard.":"Next: download Samples, then install it.";
+    }
     private void RestoreDownloadedInstaller()
     {
         var downloads=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"FrontierAirportBuilder","dependency-downloads");
@@ -67,10 +86,7 @@ public partial class DependencySetupWindow : Window
                 try
                 {
                     var package=MicrosoftSdkInstaller.Identify(file);
-                    if(package!=DependencySetup.Samples)continue;
-                    installer=file;installerPackage=package;InstallButton.IsEnabled=true;
-                    Activity.Text="A previous Samples download is available. Choose Install downloaded component to retry; its signature will be checked again.";
-                    break;
+                    installers.TryAdd(package,file);
                 }
                 catch(IOException){ }
             }
@@ -89,34 +105,36 @@ public partial class DependencySetupWindow : Window
         {
             if(!apply(SdkFolder.Text)){Activity.Text="SDK change cancelled. Your current site edits are preserved.";return;}
             Environment.SetEnvironmentVariable("MSFS2024_SDK",SdkFolder.Text,EnvironmentVariableTarget.User);
-            Activity.Text="SDK folder saved. Connect to a loaded flight to verify simulator compatibility.";
+            Activity.Text="Setup complete. SDK folder saved. You can close this window.";
+            NextStep.Text="Setup complete. Connect to a loaded flight to check simulator compatibility.";
         }
         catch(Exception ex){Activity.Text="Could not save SDK configuration: "+ex.Message;}
     }
     private void SetBusy(bool value)
     {
-        busy=value;CoreButton.IsEnabled=SamplesButton.IsEnabled=BrowseButton.IsEnabled=RecheckButton.IsEnabled=!value;
-        SdkFolder.IsEnabled=!value;UseButton.IsEnabled=false;InstallButton.IsEnabled=!value&&installer!=null;
+        busy=value;BrowseButton.IsEnabled=RecheckButton.IsEnabled=!value;
+        SdkFolder.IsEnabled=!value;UpdateActions();
         CancelButton.IsEnabled=value&&cancellation!=null;Progress.Visibility=value?Visibility.Visible:Visibility.Collapsed;
+        CancelButton.Visibility=CancelButton.IsEnabled?Visibility.Visible:Visibility.Collapsed;
     }
     private async void DownloadCore(object sender,RoutedEventArgs e)=>await Download(DependencySetup.Core);
     private async void DownloadSamples(object sender,RoutedEventArgs e)=>await Download(DependencySetup.Samples);
     private async Task Download(DependencyDownload package)
     {
         if(busy)return;
-        cancellation=new();installer=null;installerPackage=null;SetBusy(true);
+        cancellation=new();SetBusy(true);
         try
         {
             Activity.Text=$"Downloading {package.Name} from Microsoft…";
-            installer=await DependencySetup.DownloadAsync(package,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"FrontierAirportBuilder","dependency-downloads"),new Progress<string>(text=>Activity.Text=text),cancellation.Token);
+            var installer=await DependencySetup.DownloadAsync(package,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"FrontierAirportBuilder","dependency-downloads"),new Progress<string>(text=>Activity.Text=text),cancellation.Token);
             Activity.Text="Verifying the Microsoft installer signature…";
             await VerifyMicrosoftSignature(installer,cancellation.Token);
-            installerPackage=MicrosoftSdkInstaller.Identify(installer);
-            if(installerPackage!=package)throw new IOException("The downloaded SDK component does not match the requested installer.");
-            Activity.Text=$"{package.Name} downloaded and Microsoft signature verified. Choose Install downloaded component to open the installer.";
+            if(MicrosoftSdkInstaller.Identify(installer)!=package)throw new IOException("The downloaded SDK component does not match the requested installer.");
+            installers[package]=installer;
+            Activity.Text=$"{package.Id} downloaded. Click Install {package.Id}, then complete Microsoft's wizard. Downloading alone does not install it.";
         }
-        catch(OperationCanceledException){installer=null;Activity.Text="Download cancelled. You can retry.";}
-        catch(Exception ex){installer=null;Activity.Text="Download was not accepted: "+ex.Message;}
+        catch(OperationCanceledException){Activity.Text="Download cancelled. You can retry.";}
+        catch(Exception ex){Activity.Text="Download was not accepted: "+ex.Message;}
         finally{cancellation.Dispose();cancellation=null;SetBusy(false);Detect();}
     }
     internal static async Task VerifyMicrosoftSignature(string path,CancellationToken token)
@@ -133,16 +151,18 @@ public partial class DependencySetupWindow : Window
         catch(OperationCanceledException){if(!process.HasExited)process.Kill();throw;}
         if(process.ExitCode!=0)throw new IOException("The installer does not have a trusted Microsoft signature. Installation was refused.");
     }
-    private async void Install(object sender,RoutedEventArgs e)
+    private async void InstallCore(object sender,RoutedEventArgs e)=>await Install(DependencySetup.Core);
+    private async void InstallSamples(object sender,RoutedEventArgs e)=>await Install(DependencySetup.Samples);
+    private async Task Install(DependencyDownload package)
     {
-        if(busy||installer==null)return;
+        if(busy||!installers.TryGetValue(package,out var installer))return;
         SetBusy(true);
         try
         {
             BuilderServices.AssertSimulatorClosed();
             await VerifyMicrosoftSignature(installer,CancellationToken.None);
-            installerPackage=MicrosoftSdkInstaller.Identify(installer);
-            string? coreRoot=installerPackage==DependencySetup.Samples?DependencySetup.VerifyCore(SdkFolder.Text):null;
+            if(MicrosoftSdkInstaller.Identify(installer)!=package)throw new IOException("The cached installer is not the selected component.");
+            string? coreRoot=package==DependencySetup.Samples?DependencySetup.VerifyCore(SdkFolder.Text):null;
             // Core's installer changes the machine environment; the already-open app otherwise keeps stale values.
             var info=new ProcessStartInfo(Path.Combine(Environment.SystemDirectory,"msiexec.exe")){UseShellExecute=false};
             if(coreRoot!=null)info.Environment["MSFS2024_SDK"]=Path.TrimEndingDirectorySeparator(coreRoot);

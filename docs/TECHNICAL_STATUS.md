@@ -2,6 +2,8 @@
 
 ## Dependency setup — 2026-10-10
 
+Guided setup — 2026-10-11: three numbered steps, separate Core/Samples installer buttons, cached-download reuse and a next-step instruction make download versus install explicit. Samples waits for verified Core; Finish setup saves only the verified SDK. Release build and 634 tests pass; isolated WPF checks cover actions/gating and the rendered menu was inspected. Clean reinstall acceptance remains pending.
+
 Native SDK installation verified — 2026-10-11: the user completed Samples setup; the MSI log records Samples 1.2.4 success/exit 0, the SimpleAirport project exists under `C:\MSFS 2024 SDK\Samples`, and the user's actual recheck screenshot reports all required SDK components verified. Core and Samples now share the SDK root. Live simulator connection, survey qualification and airport compilation on the new PC remain unverified.
 
 Installer command correction — 2026-10-11: the user's Windows Installer help screenshot exposed invalid SDK property quoting. Launch now quotes the property value using MSI syntax and trims the trailing SDK separator. Release solution build and 634 tests pass; actual msiexec accepted the production command against a synthetic invalid package (1620), without installing anything. Native Samples installation and live airport compilation remain pending.
