@@ -2,6 +2,8 @@
 
 ## Dependency setup — 2026-10-10
 
+Installer command correction — 2026-10-11: the user's Windows Installer help screenshot exposed invalid SDK property quoting. Launch now quotes the property value using MSI syntax and trims the trailing SDK separator. Release solution build and 634 tests pass; actual msiexec accepted the production command against a synthetic invalid package (1620), without installing anything. Native Samples installation and live airport compilation remain pending.
+
 Samples follow-up — 2026-10-11: Windows Installer logs show Samples failed before successful Core installation, rather than installed elsewhere. Samples now requires a verified Core root, receives fresh SDK environment and explicit root arguments, supports reusing previous downloaded Samples installers, and records verbose installation logs. Actual Core hashes and four cached Microsoft MSI identities/signatures pass; 628 tests and WPF smoke pass. Native Samples installation and live simulator acceptance remain pending.
 
 Recheck follow-up: new-PC inspection found SDK Core installed but Samples absent. Detection now retains and displays incomplete SDK roots, identifies missing Samples and confirms each check with a timestamp. Regression and actual-button WPF checks pass; 627 solution tests pass. The current user's open application is preserved during distribution replacement.

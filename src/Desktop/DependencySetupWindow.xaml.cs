@@ -145,10 +145,9 @@ public partial class DependencySetupWindow : Window
             string? coreRoot=installerPackage==DependencySetup.Samples?DependencySetup.VerifyCore(SdkFolder.Text):null;
             // Core's installer changes the machine environment; the already-open app otherwise keeps stale values.
             var info=new ProcessStartInfo(Path.Combine(Environment.SystemDirectory,"msiexec.exe")){UseShellExecute=false};
-            info.ArgumentList.Add("/i");info.ArgumentList.Add(installer);
-            if(coreRoot!=null){info.Environment["MSFS2024_SDK"]=coreRoot;info.ArgumentList.Add("MSFS_SDK="+coreRoot);}
+            if(coreRoot!=null)info.Environment["MSFS2024_SDK"]=Path.TrimEndingDirectorySeparator(coreRoot);
             var log=Path.Combine(Path.GetDirectoryName(installer)!,"install-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")+".log");
-            info.ArgumentList.Add("/L*v");info.ArgumentList.Add(log);
+            info.Arguments=SdkInstallerCommand.BuildArguments(installer,log,coreRoot);
             Activity.Text=coreRoot==null?"Complete the Microsoft Core installer, then recheck.":$"Installing Samples into {Path.Combine(coreRoot,"Samples")}. Complete the Microsoft installer, then recheck.";
             using var process=Process.Start(info)??throw new IOException("Could not open the Microsoft installer.");
             await process.WaitForExitAsync();
