@@ -38,8 +38,11 @@ public sealed class EmployerDestinationCatalogue
     public static IReadOnlyList<DestinationResearch> Research {get;}=LoadResearch();
     private readonly NamibiaLocationCatalogueDocument legacy;
     public IReadOnlyList<DestinationReview> Reviews {get;}
-    public EmployerDestinationCatalogue(IEnumerable<DestinationReview>? reviews=null, NamibiaLocationCatalogueDocument? legacy=null)
+    public SimulatorAirportCache? SimulatorCache {get; private set;}
+    public void ApplySimulatorCache(SimulatorAirportCache cache) => SimulatorCache = cache;
+    public EmployerDestinationCatalogue(IEnumerable<DestinationReview>? reviews=null, NamibiaLocationCatalogueDocument? legacy=null, SimulatorAirportCache? simulatorCache=null)
     {
+        SimulatorCache=simulatorCache;
         this.legacy=(legacy??NamibiaLocationCatalogue.Load()).EnsureValid();
         Reviews=(reviews??[]).ToArray();
         if(Reviews.Select(x=>x.Key).Distinct().Count()!=Reviews.Count)throw new InvalidDataException("Duplicate destination reviews.");
@@ -71,6 +74,14 @@ public sealed class EmployerDestinationCatalogue
         var prior=legacy.Locations.SingleOrDefault(x=>!string.IsNullOrWhiteSpace(row.Identifier)&&x.AirportIdentifier.Value==row.Identifier);
         if(prior?.VerificationState==LocationVerificationState.MsfsVerified)return prior;
         var review=Reviews.SingleOrDefault(x=>x.Key==row.Key);
+        var automatic=false;
+        if ((review is null || review.ApprovedUtc is null && review.Status!="Approved") && SimulatorCache?.Routes.SingleOrDefault(x=>x.Airport.Identifier==row.Identifier) is {} saved)
+        {
+            automatic=true;
+            var airport=saved.Airport;
+            review=new(row.Key,"Approved",airport.Identifier,airport.Latitude,airport.Longitude,
+                "MSFS airport database resolution; scenery and runway suitability uninspected",saved.ObservedUtc,[]);
+        }
         // Retain approved route coordinates even after rejection, so accepted shipments/history remain resolvable.
         if(review?.Latitude is not {} lat||review.Longitude is not {} lon||string.IsNullOrWhiteSpace(review.Identifier)||(review.Status!="Approved"&&review.ApprovedUtc is null))return null;
         var inspected=review.ApprovedUtc??review.RecordedUtc;var inspection=review.ApprovedEvidence??review.Evidence;
@@ -78,9 +89,9 @@ public sealed class EmployerDestinationCatalogue
         var minutes=Math.Max(1,(int)Math.Round(Geodesy.Inverse(new(-22.604920,17.079002),new(lat,lon)).DistanceMeters/1852/120*60));
         return new(id,row.VerifiedName,row.Career=="Industrial"?NamibiaLocationCategory.Mining:row.Career=="Safari"?NamibiaLocationCategory.Safari:NamibiaLocationCategory.SmallCommunity,false,
             new(review.Identifier,AirportIdentifierConfidence.ConfirmedIcao),new(lat,lon),
-            new(CoordinateSourceKind.SimulatorDerived,"Local MSFS inspection","User-recorded MSFS airport inspection",DateOnly.FromDateTime(inspected.UtcDateTime),inspection),
+            new(CoordinateSourceKind.SimulatorDerived,automatic?"MSFS airport database":"Local MSFS inspection",automatic?"SimConnect_RequestFacilitiesList":"User-recorded MSFS airport inspection",DateOnly.FromDateTime(inspected.UtcDateTime),inspection),
             minutes,row.VerificationNote,[row.ProposedMissions],row.ReviewStatus,[string.IsNullOrWhiteSpace(row.SourceUrl)?"User-supplied destination research CSV":row.SourceUrl],
-            LocationVerificationState.MsfsVerified,new("ManualInSimulatorInspection",DateOnly.FromDateTime(inspected.UtcDateTime),inspection),CustomerActivationState.ActiveCustomer,false);
+            LocationVerificationState.MsfsVerified,new(automatic?"SimConnectAirportCatalogue":"ManualInSimulatorInspection",DateOnly.FromDateTime(inspected.UtcDateTime),inspection),CustomerActivationState.ActiveCustomer,false);
     }
     public NamibiaLocation? Find(string id)=>Research.Select(Resolve).FirstOrDefault(x=>x?.StableId==id);
     public NamibiaLocation? Base(CareerEmployer employer)
@@ -96,10 +107,16 @@ public sealed class EmployerDestinationCatalogue
             var employer=CareerCatalogue.Employers.Single(x=>x.Category==row.Career);
             var location=Resolve(row);var review=Reviews.SingleOrDefault(x=>x.Key==row.Key);
             var origin=Base(employer);
-            var recognition=location is null?string.IsNullOrWhiteSpace(row.Identifier)?"Identifier missing":"Unresolved in verified app catalogue":"Manual MSFS inspection recorded";
-            var reason=review is {Status:not "Approved"}?review.Status:location is null?"MSFS inspection and coordinates required":origin is null?"Employer base requires MSFS inspection":
+            var recognition=location is null?string.IsNullOrWhiteSpace(row.Identifier)?"Identifier missing":"Awaiting MSFS airport lookup":location.VerificationEvidence?.Method=="SimConnectAirportCatalogue"?"Found in MSFS database; scenery uninspected":"Manual MSFS inspection recorded";
+            var reason=review is {Status:not "Approved"}?review.Status:location is null?"Check airports with MSFS running to resolve coordinates":origin is null?"Employer base awaits MSFS airport lookup":
                 origin.StableId==location.StableId?"Base / return only; no same-airport job":"Eligible route; aircraft/runway suitability requires pilot assessment";
             var baseCode=CareerCatalogue.Bases.Single(x=>x.Id==employer.BaseId).Identifier;
+            if(SimulatorCache is {} cache)
+            {
+                var issue=string.IsNullOrWhiteSpace(row.Identifier)?"Identifier missing; cannot query MSFS":cache.Problem(row.Identifier);
+                if(issue is not null){recognition=issue;reason=issue;}
+                if(cache.Problem(baseCode) is {} baseIssue)reason="Employer base: "+baseIssue;
+            }
             var baseReview=Reviews.FirstOrDefault(x=>x.Key==baseCode||x.Identifier==baseCode);
             if(baseReview is {Status:not "Approved"})reason="Employer base review: "+baseReview.Status;
             if(reason.StartsWith("Eligible route",StringComparison.Ordinal)&&review?.CompatibleAircraft is {Length:>0} compatible&&!CompanyAircraft.Types.Any(x=>x.Enabled&&employer.Fleet.Contains(x.Id)&&compatible.Contains(x.Id)))
@@ -122,10 +139,10 @@ public sealed class DestinationReviewStore(string root)
     public EmployerDestinationCatalogue Load()
     {
         Safe();
-        if(!File.Exists(path))return new();
+        if(!File.Exists(path))return new(simulatorCache:new SimulatorAirportStore(root).Load());
         var document=JsonSerializer.Deserialize<DestinationReviewDocument>(File.ReadAllText(path),Json)??throw new IOException("Empty destination reviews. File preserved.");
         if(document.SchemaVersion!=1||document.Reviews is null)throw new IOException("Unsupported destination reviews. File preserved.");
-        return new(document.Reviews);
+        return new(document.Reviews,simulatorCache:new SimulatorAirportStore(root).Load());
     }
     public void Save(DestinationReview review)
     {
@@ -143,7 +160,7 @@ public sealed class DestinationReviewStore(string root)
                 throw new IOException("Existing verified route coordinates/identifier are immutable. Record a rejection or investigation instead of moving an accepted route.");
             if(previous?.Latitude is not null&&(previous.Latitude!=review.Latitude||previous.Longitude!=review.Longitude||previous.Identifier!=review.Identifier))
                 throw new IOException("Previously recorded route coordinates are immutable to protect accepted flights. Mark this destination for investigation instead.");
-            var rows=current.Reviews.Where(x=>x.Key!=review.Key).Append(review).ToArray();_ = new EmployerDestinationCatalogue(rows);
+            var rows=current.Reviews.Where(x=>x.Key!=review.Key).Append(review).ToArray();_ = new EmployerDestinationCatalogue(rows,simulatorCache:current.SimulatorCache);
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             var temporary=path+"."+Guid.NewGuid().ToString("N")+".tmp";
             try {using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)){JsonSerializer.Serialize(stream,new DestinationReviewDocument(1,rows),Json);stream.Flush(true);}File.Move(temporary,path,true);}

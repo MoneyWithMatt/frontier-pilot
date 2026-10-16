@@ -1,5 +1,11 @@
 # Design decisions
 
+## Automatic employer airport recognition — 2026-10-16
+
+- Employer routes may use exact simulator airport database matches without mandatory human visits. Database presence and manual scenery/runway acceptance are separate evidence methods. This supersedes the earlier manual-only prerequisite.
+- Read the complete non-EX1 worldwide facility response before declaring anything missing. Incomplete queries retain previous results. Identifierless candidates stay visible and unresolved.
+- Store scan metadata outside careers and preserve first route coordinates. Re-scan absence/ambiguity/coordinate changes block new offers, never move accepted routes. Optional manual reviews override availability. See [details](automatic-airport-resolution.md).
+
 ## Starting company employment — 2026-10-15
 
 - Accepted employer profiles configure the existing generic recurring-demand board; they do not create another mission/economy lifecycle. Company access and per-job aircraft type selection never imply ownership.

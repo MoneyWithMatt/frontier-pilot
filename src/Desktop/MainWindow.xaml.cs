@@ -14,6 +14,9 @@ public partial class MainWindow : Window
     private bool refreshingWorld;
     private bool careerReady,resettingCareer;
     private CareerStore? careerStore;
+    private EmployerDestinationCatalogue? employerCatalogue;
+    private bool airportLookupAttempted;
+    private string employmentDescription="";
     public MainWindow() : this(null) { }
     public MainWindow(BuilderViewModel? suppliedModel,CareerStore? suppliedCareerStore=null)
     {
@@ -37,10 +40,13 @@ public partial class MainWindow : Window
             catch(Exception ex){careerReady=false;careerError="Destination reviews could not be loaded; files preserved. "+ex.Message;career=null;}
         }
         model = suppliedModel ?? new(dryRun ? BuilderServices.CreateDesktopDryRun() : new BuilderServices(), Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.User) ?? Environment.GetEnvironmentVariable("MSFS2024_SDK") ?? "",careerStore:careerReady?careerStore:null,employerDestinations:destinations);
+        employerCatalogue=destinations;
         DataContext = model;
         CareerPilotLabel.Text=career?.PilotName??"Prototype pilot";
         var employer=CareerCatalogue.Employers.SingleOrDefault(x=>x.Id==career?.Profile.Employment?.EmployerId);
         EmploymentLabel.Text=employer is null?"Legacy prototype career: existing gameplay remains available.":$"{employer.Name} · {employer.Role}\nBase: {CareerCatalogue.Bases.Single(x=>x.Id==employer.BaseId).Name}\nCompany fleet access (not ownership): {employer.Aircraft}";
+        employmentDescription=EmploymentLabel.Text;
+        if(employerCatalogue is not null)ShowAirportSummary();
         CompanyType.ItemsSource=CompanyAircraft.Types.Where(x=>x.Enabled&&employer?.Fleet.Contains(x.Id)==true).ToArray();
         if(!careerReady)
         {
@@ -90,7 +96,30 @@ public partial class MainWindow : Window
             model.SdkRoot=root;return true;
         }){Owner=this}.ShowDialog();
     }
-    private void OpenDestinations(object sender,RoutedEventArgs e)=>new DestinationDiagnosticsWindow(careerStore?.StorageRoot??CareerStore.DefaultRoot){Owner=this}.ShowDialog();
+    private void OpenDestinations(object sender,RoutedEventArgs e)=>new DestinationDiagnosticsWindow(careerStore?.StorageRoot??CareerStore.DefaultRoot,model.SdkRoot,cache=>
+    {
+        employerCatalogue?.ApplySimulatorCache(cache);ShowAirportSummary();_=model.Jobs.RefreshLiveAsync();
+    },allowLive:!model.IsDryRun){Owner=this}.ShowDialog();
+    private void ShowAirportSummary()
+    {
+        if(employerCatalogue is null)return;
+        var cache=employerCatalogue.SimulatorCache;
+        var problems=employerCatalogue.Diagnose().Where(x=>x.Resolved is null||cache?.Problem(x.Research.Identifier) is not null).Select(x=>x.Research.Key).Distinct().Count();
+        EmploymentLabel.Text=employmentDescription+"\n"+(cache is null?"Airports: connect to MSFS for automatic lookup; no airport visits required.":$"Airport check {cache.Scan.ObservedUtc:u}: {problems} destinations need attention. Open Curated destinations for details. Runway suitability unassessed.");
+    }
+    private async Task CheckEmployerAirportsAsync()
+    {
+        if(airportLookupAttempted||model.IsDryRun||employerCatalogue is null||careerStore is null)return;
+        airportLookupAttempted=true;
+        EmploymentLabel.Text=employmentDescription+"\nChecking researched airports against MSFS…";
+        try
+        {
+            var scan=await FrontierAirportBuilder.MsfsSdk.LiveAirportCatalogue.ReadAsync(model.SdkRoot);
+            var cache=new SimulatorAirportStore(careerStore.StorageRoot).Save(scan);
+            employerCatalogue.ApplySimulatorCache(cache);ShowAirportSummary();await model.Jobs.RefreshLiveAsync();
+        }
+        catch(Exception ex){EmploymentLabel.Text=employmentDescription+"\nAirport lookup incomplete: "+ex.Message+" Retry in Curated destinations.";}
+    }
     private void BindCompanyAircraft(object sender,RoutedEventArgs e)
     {
         try
@@ -145,7 +174,7 @@ public partial class MainWindow : Window
         }
     }
     private void TrackingDisplayChanged(FrontierAirportBuilder.Core.AircraftTelemetry? aircraft,FrontierAirportBuilder.Core.PlayerTelemetry? player,bool isLive) =>
-        Dispatcher.InvokeAsync(()=>TrackingMap.Show(aircraft,player,isLive));
+        Dispatcher.InvokeAsync(()=>{TrackingMap.Show(aircraft,player,isLive);if(isLive)_=CheckEmployerAirportsAsync();});
     private void CenterAircraft(object sender,RoutedEventArgs e)=>TrackingMap.CenterOnAircraft();
     private void CenterPlayer(object sender,RoutedEventArgs e)=>TrackingMap.CenterOnPlayer();
     private void OpenSelectedOperation(object sender,RoutedEventArgs e)

@@ -1,5 +1,7 @@
 # Starting employers, company fleets and destination curation — 2026-10-15
 
+**2026-10-16 update:** [Automatic MSFS airport resolution](automatic-airport-resolution.md) supersedes this report's manual-approval prerequisite and initial enabled-count limitation. Found airports now enable employer routes without visiting each airport. The unresolved list below is the historical app-catalogue baseline, not evidence of absence from MSFS.
+
 ## Outcome and evidence boundary
 
 Four employers can be accepted from Namibia onboarding. Acceptance opens the normal application and records employment and company fleet access, not aircraft ownership. Company jobs use the existing economy demand/requirement/job/shipment/ledger and flight-tracking lifecycle.

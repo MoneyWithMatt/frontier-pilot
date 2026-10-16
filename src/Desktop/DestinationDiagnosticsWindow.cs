@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using FrontierAirportBuilder.Workflow;
+using FrontierAirportBuilder.MsfsSdk;
 
 namespace FrontierAirportBuilder.Desktop;
 
@@ -16,12 +17,28 @@ public sealed class DestinationDiagnosticsWindow : Window
     private readonly TextBox identifier=new(),latitude=new(),longitude=new(),evidence=new(){TextWrapping=TextWrapping.Wrap,MinHeight=50};
     private readonly ListBox aircraft=new(){ItemsSource=CompanyAircraft.Types.Where(x=>x.Enabled).ToArray(),SelectionMode=SelectionMode.Multiple,Height=90};
     private readonly TextBlock detail=new(){TextWrapping=TextWrapping.Wrap},message=new(){TextWrapping=TextWrapping.Wrap};
-    public DestinationDiagnosticsWindow(string root)
+    public DestinationDiagnosticsWindow(string root, string sdkRoot="", Action<SimulatorAirportCache>? applied=null, bool allowLive=true)
     {
         store=new(root);Title="Curated destinations — MSFS inspection";Width=1180;Height=850;MinWidth=850;MinHeight=650;
         var grid=new Grid{Margin=new Thickness(18)};Content=grid;
         grid.RowDefinitions.Add(new(){Height=GridLength.Auto});grid.RowDefinitions.Add(new(){Height=new GridLength(1,GridUnitType.Star)});grid.RowDefinitions.Add(new(){Height=GridLength.Auto});
-        var header=new StackPanel();header.Children.Add(new TextBlock{Text="Research verification is not simulator recognition. Inspect in MSFS before approving. Changes apply after restarting Frontier Pilot.",TextWrapping=TextWrapping.Wrap});
+        var header=new StackPanel();header.Children.Add(new TextBlock{Text="Check all airports with a flight loaded anywhere in MSFS. Found airports enable company jobs automatically; missing airports are flagged. Runway suitability remains unassessed. Manual reviews are optional and apply after restart.",TextWrapping=TextWrapping.Wrap});
+        var check=new Button{Content="Check all airports in MSFS",HorizontalAlignment=HorizontalAlignment.Left,IsEnabled=allowLive};header.Children.Add(check);
+        var cancel=new CancellationTokenSource();Closed+=(_,_)=>cancel.Cancel();
+        check.Click+=async (_,_)=>
+        {
+            check.IsEnabled=false;message.Text="Reading the complete MSFS airport catalogue…";
+            try
+            {
+                var scan=await LiveAirportCatalogue.ReadAsync(sdkRoot,cancel.Token);
+                var cache=new SimulatorAirportStore(root).Save(scan);
+                catalogue=store.Load();applied?.Invoke(cache);RefreshRows();
+                var missing=catalogue.Diagnose().Where(x=>x.Recognition.Contains("Not found")||x.Recognition.Contains("Ambiguous")||x.Recognition.Contains("Identifier missing")).Select(x=>x.Research.Key).Distinct().Count();
+                message.Text=$"Airport check saved: {cache.Scan.ObservedUtc:u}. {missing} destinations need attention. Found routes are available immediately; no individual approval needed.";
+            }
+            catch(Exception ex){message.Text="Lookup incomplete; previous results preserved. "+ex.Message;}
+            finally{check.IsEnabled=true;}
+        };
         header.Children.Add(category);grid.Children.Add(header);
         foreach(var column in new[]{("Employer","Employer"),("Airport","Airport"),("Identifier","Identifier"),("Recognition","Recognition"),("Jobs enabled","Enabled"),("Runway research","Runway")})
             rows.Columns.Add(new DataGridTextColumn{Header=column.Item1,Binding=new Binding(column.Item2),Width=new DataGridLength(column.Item2=="Airport"||column.Item2=="Recognition"||column.Item2=="Runway"?2:1,DataGridLengthUnitType.Star)});

@@ -2,6 +2,8 @@
 
 ## Career onboarding follow-up
 
+- 2026-10-16: automatic worldwide MSFS airport resolution is implemented, superseding the manual-inspection prerequisite and future-enumeration item below. Live-test the batch lookup with a flight loaded anywhere; then test generated employer jobs. Resolve the nine identifierless research candidates separately. No individual airport visits are required to enable database-resolved routes. See [current workflow](automatic-airport-resolution.md).
+
 - V1 onboarding shell and safe reset are implemented; obtain live acceptance for legacy startup, reset/restart and resumable employer exploration.
 - Employer acceptance, profiles, company dispatch and curated destination diagnostics are implemented on 2026-10-15. Live-test each employer and stock/add-on mapping; inspect unresolved airports using the new review UI. Only Industrial FYUS/FYAR currently generates live work. See [the report and all 45 unresolved airports](starting-employers-and-destinations.md).
 - Validate FYWB before Offshore airport jobs; qualify H125 helipad/platform operations before enabling them. Future survey missions need offshore geographic zones, continuous loiter qualification (e.g. 30 minutes), return and inspection-without-landing rules.

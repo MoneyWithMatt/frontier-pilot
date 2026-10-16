@@ -1,5 +1,9 @@
 # Technical status — 2026-09-07
 
+## Automatic employer airport resolution — 2026-10-16
+
+Live tracking now triggers one worldwide MSFS airport lookup; Curated destinations also offers a batch check/retry. Unique exact matches enable employer routes without individual inspection. Missing/ambiguous identifiers, missing bases and changed coordinates are flagged and excluded from new work; accepted route coordinates survive. Nine candidates have no researched identifier. Manual reviews remain optional overrides. This supersedes the inspection prerequisite described below. See [implementation and live-test boundary](automatic-airport-resolution.md). Offline verification: 670 tests pass; no live scan or scenery acceptance claimed.
+
 ## Starting employers and curated destinations — 2026-10-15
 
 Four Namibia employers now accept employment and persist company fleet access. Employer profiles feed the existing recurring-demand/economy/flight lifecycle, with explicit per-job aircraft selection and user-confirmed exact simulator identity mappings. All 53 supplied research memberships are embedded and visible in a filterable inspection/review window. Only Industrial FYUS/FYAR is initially enabled; Missionary/Safari await destination inspection and Offshore awaits FYWB base inspection. The 45 unresolved unique airports are retained and listed in [the complete implementation and manual-test report](starting-employers-and-destinations.md).
