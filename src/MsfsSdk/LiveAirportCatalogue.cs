@@ -81,8 +81,14 @@ internal sealed class AirportListPackets
         uint U(int offset) => BitConverter.ToUInt32(bytes, offset);
         if (U(12) != 700) return false;
         var count = U(16); var entry = U(20); var batches = U(24);
-        if (batches is 0 or > 100_000 || entry >= batches || count > 100_000 || Airports.Count+count>200_000 || bytes.Length != 28L + count * 36L ||
-            total is {} expected && expected != batches || !received.Add(entry)) throw new IOException("Invalid airport list packet sequence.");
+        var payloadLength=28L+count*36L;
+        // Live MSFS 2024 also sends sizeof(SIMCONNECT_RECV_AIRPORT_LIST) + count*36:
+        // the structure's one-element array placeholder adds a trailing 36-byte slot.
+        // Only dwArraySize records are data; do not interpret the trailing slot as an airport.
+        if (batches is 0 or > 100_000 || entry >= batches || count > 100_000 || Airports.Count+count>200_000 ||
+            (bytes.Length != payloadLength && bytes.Length != payloadLength+36) || U(0)!=bytes.Length ||
+            total is {} expected && expected != batches || !received.Add(entry))
+            throw new IOException($"Invalid airport list packet: bytes={bytes.Length}, declared={U(0)}, airports={count}, packet={entry}/{batches}.");
         total = batches;
         for (var i = 0; i < count; i++)
         {

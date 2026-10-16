@@ -1,5 +1,7 @@
 # Automatic employer airport resolution — 2026-10-16
 
+**Live update:** the initial reader rejected MSFS's trailing array slot. This is corrected and the production reader completed a live lookup: 84,319 records, 33 supplied identifiers found, including eight Safari destinations. See [packet correction and exact missing identifiers](../evidence/airport-packet-padding/verification.md). The no-live-scan statements below describe the initial implementation, superseded by this read-only lookup; scenery/runway acceptance remains pending.
+
 The research catalogue is implemented without requiring individual airport visits or approval. On the first live tracking connection in an employed career, Frontier requests the worldwide airport list from MSFS 2024. The Curated destinations window also has **Check all airports in MSFS**, available before accepting employment. Load a flight anywhere; there is no need to travel to Namibia first.
 
 Found identifiers supply simulator coordinates and enable eligible employer jobs immediately. The existing shared generator, company fleet rules, accounting and flight evidence remain unchanged. Unknown runway data stays unknown. Database presence is not visual acceptance or proof that a particular aircraft can use a runway.

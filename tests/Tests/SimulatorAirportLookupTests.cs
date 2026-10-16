@@ -33,6 +33,26 @@ public sealed class SimulatorAirportLookupTests : IDisposable
         var reader=new AirportListPackets();reader.Add(Packet(0,2));Assert.Throws<IOException>(()=>reader.Add(Packet(0,2)));
         reader=new();reader.Add(Packet(0,2));Assert.Throws<IOException>(()=>reader.Add(Packet(1,3)));
     }
+    [Fact] public void Live2024TrailingArraySlotIsIgnoredWithoutDroppingPacketCompleteness()
+    {
+        var bytes=Packet(0,2).Concat(Enumerable.Repeat((byte)255,36)).ToArray();
+        BitConverter.GetBytes((uint)bytes.Length).CopyTo(bytes,0);
+        var reader=new AirportListPackets();Assert.False(reader.Add(bytes));
+        Assert.Single(reader.Airports);Assert.Equal("FYNG",reader.Airports[0].Identifier);
+        Assert.True(reader.Add(Packet(1,2,"FYWE")));Assert.Equal(2,reader.Airports.Count);
+        // Reproduce the observed first packet's exact dimensions: 1,139 records plus one slot.
+        var full=new byte[41068];Packet(0,75).AsSpan(0,28).CopyTo(full);
+        BitConverter.GetBytes(41068u).CopyTo(full,0);BitConverter.GetBytes(1139u).CopyTo(full,16);
+        for(var i=0;i<1139;i++)Packet(0,1).AsSpan(28,36).CopyTo(full.AsSpan(28+i*36,36));
+        reader=new();Assert.False(reader.Add(full));Assert.Equal(1139,reader.Airports.Count);
+    }
+    [Fact] public void ArbitraryTrailingBytesAndInconsistentDeclaredSizesAreRejected()
+    {
+        var bytes=Packet(0,1).Concat(new byte[1]).ToArray();BitConverter.GetBytes((uint)bytes.Length).CopyTo(bytes,0);
+        Assert.Throws<IOException>(()=>new AirportListPackets().Add(bytes));
+        bytes=Packet(0,1);BitConverter.GetBytes(63u).CopyTo(bytes,0);
+        Assert.Throws<IOException>(()=>new AirportListPackets().Add(bytes));
+    }
     [Theory][InlineData("Missionary")][InlineData("Industrial")][InlineData("Safari")][InlineData("Offshore")]
     public async Task FoundAirportsEnableJobsWithoutManualReviews(string category)
     {

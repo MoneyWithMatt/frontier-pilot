@@ -2,6 +2,8 @@
 
 ## Automatic employer airport resolution — 2026-10-16
 
+Live packet-reader correction: MSFS 2024 sends an extra trailing 36-byte array slot. Reader now accepts either exact data length or that single trailing slot, retaining full sequence and payload validation. Read-only live lookup succeeded on SDK 1.2.4 / simulator 1,9,18,0: 84,319 records, 33 of 39 researched identifiers found, eight Safari destinations found. Six identifiers absent; nine candidates lack identifiers. 672 tests pass; Release build clean. See `evidence/airport-packet-padding/verification.md`. This is airport database resolution, not runway/scenery acceptance.
+
 Live tracking now triggers one worldwide MSFS airport lookup; Curated destinations also offers a batch check/retry. Unique exact matches enable employer routes without individual inspection. Missing/ambiguous identifiers, missing bases and changed coordinates are flagged and excluded from new work; accepted route coordinates survive. Nine candidates have no researched identifier. Manual reviews remain optional overrides. This supersedes the inspection prerequisite described below. See [implementation and live-test boundary](automatic-airport-resolution.md). Offline verification: 670 tests pass; no live scan or scenery acceptance claimed.
 
 ## Starting employers and curated destinations — 2026-10-15
