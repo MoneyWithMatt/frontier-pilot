@@ -12,9 +12,10 @@ public sealed record CargoJobDisplay(string JobId, string Employer, string Origi
     double? OriginLongitude = null, double? DestinationLatitude = null, double? DestinationLongitude = null,
     decimal LoadedCargoKilograms = 0, decimal DeliveredCargoKilograms = 0)
 {
+    public string? CompanyAircraftTypeId {get;init;}
     public DateTimeOffset? ExpiresUtc { get; init; }
     public string Availability => ExpiresUtc is {} time ? $"Expires {time.ToLocalTime():dd MMM HH:mm}" : "No automatic expiry";
-    public string Cargo => $"{CargoCategory} · {CargoMassKilograms:0.#} kg";
+    public string Cargo => $"{CargoCategory} · {CargoMassKilograms:0.#} kg"+(CompanyAircraftTypeId is {} id?$" · Company: {id}":"");
     public string Payment => $"{PaymentAmount:0.##} {CurrencyCode}";
     public string Route => $"{Origin} → {Destination}";
     public string Shipment => ShipmentState is null ? "Not accepted" : $"{ShipmentState} · {ShipmentId}";
@@ -36,6 +37,17 @@ public interface IEmployedCargoJobs
 
 public sealed class EmployedCargoJobsService : IEmployedCargoJobs
 {
+    private readonly IEconomyStateStore store;
+    public CareerEmployer? Employer {get;}
+    private readonly EmployerDestinationCatalogue? destinations;
+    public string? SelectedAircraftTypeId {get;set;}
+    public IReadOnlyList<CompanyAircraftType> AircraftChoices(CargoJobDisplay? job)
+    {
+        if(Employer is null||job is null||job.Employer!=Employer.Name)return [];
+        var destination=destinations!.Diagnose(Employer.Category).SingleOrDefault(x=>x.Resolved?.StableId==job.DestinationLocationId&&x.Enabled);
+        return destination is null?[]:CompanyAircraft.Choices(Employer,destination,job.CargoMassKilograms);
+    }
+    public string EmploymentStatus=>Employer is null?"Legacy / freelance board":$"{Employer.Name} · {destinations!.Diagnose(Employer.Category).Count(x=>x.Enabled)} eligible destinations. Cargo only; passengers deferred. Aircraft limits below are prototype dispatch budgets; assess runway and performance yourself.";
     private readonly EconomyService economy;
     private readonly NamibiaLocationCatalogueDocument catalogue;
     private readonly EmployedCargoPrototypeOptions options;
@@ -43,8 +55,10 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
     public string StoragePath => economy.StoragePath;
 
     public EmployedCargoJobsService(IEconomyStateStore store, NamibiaLocationCatalogueDocument? catalogue = null,
-        EmployedCargoPrototypeOptions? options = null, Func<DateTimeOffset>? utcNow = null)
+        EmployedCargoPrototypeOptions? options = null, Func<DateTimeOffset>? utcNow = null,
+        CareerEmployer? employer = null, EmployerDestinationCatalogue? destinations = null)
     {
+        this.store=store;Employer=employer;this.destinations=destinations??(employer is null?null:new());
         economy = new(store); this.catalogue = (catalogue ?? NamibiaLocationCatalogue.Load()).EnsureValid();
         this.options = (options ?? new()).EnsureValid(); this.utcNow = utcNow ?? (() => DateTimeOffset.UtcNow);
     }
@@ -57,10 +71,14 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
         var world = await economy.LoadAsync(cancellationToken).ConfigureAwait(false);
         if (world is null)
         {
-            await economy.InitializeAsync(EmployedCargoPrototype.Create(catalogue, options), cancellationToken).ConfigureAwait(false);
+            await economy.InitializeAsync(Employer is null?EmployedCargoPrototype.Create(catalogue, options):CompanyEmployment.Create(Employer,destinations!,utcNow()), cancellationToken).ConfigureAwait(false);
             world = await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ?? throw new IOException("Economy initialization produced no state.");
         }
-        if (world.RecurringDemand.Count == 0)
+        if(Employer is not null)
+        {
+            await store.ApplyAsync(w=>CompanyEmployment.Configure(w,Employer,destinations!,utcNow()),cancellationToken).ConfigureAwait(false);
+        }
+        if (Employer is null && world.RecurringDemand.Count == 0)
         {
             _ = await economy.UpgradeRepeatableJobsAsync(options, utcNow(), cancellationToken).ConfigureAwait(false);
             world = await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ?? throw new IOException("Economy upgrade produced no state.");
@@ -74,7 +92,20 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
     {
         var current = RequirePrototype(await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ??
             throw new IOException("Economy state has not been initialized."));
-        _ = await economy.AcceptJobAsync(jobId, utcNow(), cancellationToken).ConfigureAwait(false);
+        var selectedType=SelectedAircraftTypeId;
+        if(Employer is null) _ = await economy.AcceptJobAsync(jobId, utcNow(), cancellationToken).ConfigureAwait(false);
+        else await store.ApplyAsync(w=>
+        {
+            var job=w.Jobs.Single(x=>x.Id==jobId);
+            if(job.State==EconomyJobState.Accepted)return new(w,false);
+            if(job.EmployerBusinessId==Employer.Id)
+            {
+                var display=Present(w).Offers.SingleOrDefault(x=>x.JobId==jobId)??throw new InvalidOperationException("Destination is not enabled for this employer.");
+                if(!AircraftChoices(display).Any(x=>x.Id==selectedType))throw new InvalidOperationException("Choose an appropriate company aircraft before accepting this job.");
+            }
+            var result=EconomyKernel.AcceptJob(w,jobId,utcNow());
+            return result with {World=(result.World with {Jobs=result.World.Jobs.Select(x=>x.Id==jobId&&job.EmployerBusinessId==Employer.Id?x with {CompanyAircraftTypeId=selectedType}:x).ToArray()}).EnsureValid()};
+        },cancellationToken).ConfigureAwait(false);
         return Present(RequirePrototype(await economy.LoadAsync(cancellationToken).ConfigureAwait(false) ??
             throw new IOException("Accepted economy state could not be reloaded.")));
     }
@@ -100,7 +131,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
                 requirement.Purpose ?? destination.Purpose, resource.Name, requirement.Quantity,
                 requirement.PaymentAmount, requirement.CurrencyCode, destination.Known, shipment?.Id, shipment?.State,
                 requirement.OriginLocationId, requirement.DestinationLocationId, origin.Latitude, origin.Longitude,
-                destination.Latitude, destination.Longitude, shipment?.LoadedQuantity ?? 0, shipment?.DeliveredQuantity ?? 0) { ExpiresUtc = job.ExpiresUtc };
+                destination.Latitude, destination.Longitude, shipment?.LoadedQuantity ?? 0, shipment?.DeliveredQuantity ?? 0) { ExpiresUtc = job.ExpiresUtc,CompanyAircraftTypeId=job.CompanyAircraftTypeId };
         }
 
         var operationNeedIds = world.Operations.SelectMany(x => new[] { ProspectingCampKernel.InboundNeed(x.Id), ProspectingCampKernel.OutboundNeed(x.Id) }).ToHashSet(StringComparer.Ordinal);
@@ -108,6 +139,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
             .Where(x => { var requirement = world.Requirements.Single(r => r.Id == x.RequirementId);
                 if (world.LogisticsContracts.Any(c => c.JobId == x.Id && c.State == OperationLogisticsContractState.Published)) return true;
                 if (operationNeedIds.Contains(requirement.NeedId)) return true;
+                if(Employer is not null)return x.EmployerBusinessId==Employer.Id&&world.RecurringDemand.Any(d=>d.NeedId==requirement.NeedId&&d.IsEnabled)&&destinations!.Diagnose(Employer.Category).Any(d=>d.Enabled&&d.Resolved?.StableId==requirement.DestinationLocationId);
                 return catalogue.Locations.SingleOrDefault(c => c.StableId == requirement.DestinationLocationId)?.CanGenerateOrdinaryLiveJobs == true; })
             .OrderBy(x => x.Id, StringComparer.Ordinal).Select(Display).ToArray();
         var reserved = world.Jobs.Where(x => x.State == EconomyJobState.Accepted).Select(Display)
@@ -121,7 +153,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
 
         (string Display, string Purpose, string Known, double Latitude, double Longitude) Place(string id)
         {
-            var authored = catalogue.Locations.SingleOrDefault(x => x.StableId == id);
+            var authored = destinations?.Find(id) ?? catalogue.Locations.SingleOrDefault(x => x.StableId == id);
             if (authored is not null)
             {
                 var identifier = authored.AirportIdentifier.Value ?? "identifier unconfirmed";
@@ -191,10 +223,17 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
         UnloadCargoCommand = new(() => _ = UnloadCargoAsync(), () => !busy && flight.Current.CanUnloadCargo);
     }
     public IReadOnlyList<CargoJobDisplay> Offers { get => offers; private set { offers = value; Changed(); } }
+    public string EmploymentStatus=>(jobs as EmployedCargoJobsService)?.EmploymentStatus??"";
+    public IReadOnlyList<CompanyAircraftType> CompanyAircraftChoices=>(jobs as EmployedCargoJobsService)?.AircraftChoices(SelectedOffer)??[];
+    public CompanyAircraftType? SelectedCompanyAircraft
+    {
+        get=>CompanyAircraftChoices.FirstOrDefault(x=>x.Id==(jobs as EmployedCargoJobsService)?.SelectedAircraftTypeId);
+        set {if(jobs is EmployedCargoJobsService service)service.SelectedAircraftTypeId=value?.Id;Changed();}
+    }
     public IReadOnlyList<CargoJobDisplay> ReservedJobs { get => reservedJobs; private set { reservedJobs = value; Changed(); Changed(nameof(ReservedSummary)); } }
     public IReadOnlyList<CargoJobDisplay> LoadingJobs { get => loadingJobs; private set { loadingJobs = value; Changed(); Changed(nameof(LoadingSelectionSummary)); } }
     public IReadOnlyList<CargoJobDisplay> CompletedJobs { get => completedJobs; private set { completedJobs = value; Changed(); } }
-    public CargoJobDisplay? SelectedOffer { get => selectedOffer; set { selectedOffer = value; Changed(); Changed(nameof(SelectedPurpose)); Changed(nameof(SelectedDestinationInformation)); AcceptCommand.Refresh(); } }
+    public CargoJobDisplay? SelectedOffer { get => selectedOffer; set { selectedOffer = value; Changed(); Changed(nameof(SelectedPurpose)); Changed(nameof(SelectedDestinationInformation)); Changed(nameof(CompanyAircraftChoices));Changed(nameof(SelectedCompanyAircraft)); AcceptCommand.Refresh(); } }
     public CargoJobDisplay? ActiveJob { get => activeJob; private set { activeJob = value; Changed(); Changed(nameof(ActiveRoute)); Changed(nameof(ActiveCargo)); Changed(nameof(ActiveShipment)); AcceptCommand.Refresh(); } }
     public bool HasActiveJob => ActiveJob?.ShipmentState is ShipmentState.Reserved or ShipmentState.Loaded or ShipmentState.InTransit;
     public string ReservedSummary => ReservedJobs.Count == 0 ? "No accepted jobs are reserved." : $"{ReservedJobs.Count} accepted job{(ReservedJobs.Count == 1 ? "" : "s")} reserved.";

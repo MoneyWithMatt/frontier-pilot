@@ -1,5 +1,14 @@
 # Design decisions
 
+## Starting company employment — 2026-10-15
+
+- Accepted employer profiles configure the existing generic recurring-demand board; they do not create another mission/economy lifecycle. Company access and per-job aircraft type selection never imply ownership.
+- Research existence and runway confidence are distinct from MSFS inspection. All 53 memberships remain visible; unresolved routes and bases cannot generate jobs. Manual review is explicit, persistent and separate from career reset.
+- Approved coordinates and initial inspection provenance remain immutable so later rejection cannot move an accepted flight's endpoints. Reviews take effect for gameplay after restart. A future route-version feature is required to correct previously approved coordinates safely.
+- Exact TITLE/ATC MODEL pairs map to supported types only through explicit player confirmation. No stock/add-on aliases are guessed; the existing flight identity and guarded loading checks remain independent.
+- Passenger proposals remain metadata; current jobs move real cargo only. H125/platform, multi-leg and area-loiter work remain deferred. Dispatch budgets, cargo quantities, pay and time-reference speed are labelled prototype policy, not certified aircraft performance.
+- See [starting-employers-and-destinations.md](starting-employers-and-destinations.md) for eligibility counts, every unresolved airport, migration details and manual acceptance steps.
+
 ## Dependency setup — 2026-10-10
 
 - Setup is available outside the career gate and does not seed gameplay. Detection reads the existing MSFS configuration and discovers SDK candidates without changing Community packages.

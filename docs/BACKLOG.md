@@ -3,7 +3,10 @@
 ## Career onboarding follow-up
 
 - V1 onboarding shell and safe reset are implemented; obtain live acceptance for legacy startup, reset/restart and resumable employer exploration.
-- Employer acceptance/activation, employer-specific jobs, destination pools, company aircraft and offshore mechanics remain separate future milestones. New drafts intentionally stop at Coming Soon.
+- Employer acceptance, profiles, company dispatch and curated destination diagnostics are implemented on 2026-10-15. Live-test each employer and stock/add-on mapping; inspect unresolved airports using the new review UI. Only Industrial FYUS/FYAR currently generates live work. See [the report and all 45 unresolved airports](starting-employers-and-destinations.md).
+- Validate FYWB before Offshore airport jobs; qualify H125 helipad/platform operations before enabling them. Future survey missions need offshore geographic zones, continuous loiter qualification (e.g. 30 minutes), return and inspection-without-landing rules.
+- Add genuine passenger lifecycle and optional multi-stop duties later; never simulate people by corrupting cargo accounting. Research closer Missionary destinations to support the desired short-sector rhythm from Eros.
+- Add safe versioned corrections for already-approved destination coordinates; V1 preserves those endpoints and permits rejection/investigation only. Automatic simulator facility enumeration and evidence-backed stock/add-on aliases remain future enhancements.
 
 ## Aircraft Loading V0 live acceptance
 

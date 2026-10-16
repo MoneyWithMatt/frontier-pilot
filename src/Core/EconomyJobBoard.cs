@@ -16,7 +16,7 @@ public static class EconomyJobBoard
         foreach (var definition in world.RecurringDemand.Where(x => x.IsEnabled && (world.RealTime is null || scheduledGeneration)).OrderBy(x => x.Id, StringComparer.Ordinal))
         {
             var destination = world.Locations.Single(x => x.Id == definition.DestinationLocationId);
-            if (destination.Status != EconomicLocationStatus.ActiveCustomer) continue;
+            if (destination.Status != EconomicLocationStatus.ActiveCustomer && !(destination.Kind==EconomicLocationKind.Gateway&&destination.Status==EconomicLocationStatus.MsfsVerified)) continue;
 
             var outstanding = requirements.Count(x => x.NeedId == definition.NeedId && (world.RealTime is null ? x.State is TransportRequirementState.Open or TransportRequirementState.Reserved : x.State == TransportRequirementState.Open));
             var missing = Math.Max(0, (world.RealTime is null ? definition.DesiredAvailableOffers : definition.DesiredAvailableOffers * world.RealTime.OfferSlotsPerDemand) - outstanding);

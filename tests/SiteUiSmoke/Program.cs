@@ -84,11 +84,37 @@ internal static class Program
                 ((ListBox)screen.FindName("RegionsList")).SelectedIndex=0;Pump();
                 CareerButton("Explore employment opportunities").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(400);Pump();
                 Check(careerStore.Load().Stage==CareerStage.Opportunities&&!careerStore.Load().IsActive,"UI persists draft without activating employer");
-                Check(((ListBox)screen.FindName("EmployersList")).Items.Count==3,"All three employers are visible");
+                Check(((ListBox)screen.FindName("EmployersList")).Items.Count==4,"All four employers are visible");
                 Save(careerWindow,Path.Combine(folder,"career-employers.png"));
                 ((ListBox)screen.FindName("EmployersList")).SelectedIndex=2;Pump();Save(careerWindow,Path.Combine(folder,"career-offshore.png"));
                 CareerButton("Back").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(careerStore.Load().Stage==CareerStage.Region,"Back navigation preserves draft");
-                careerWindow.Close();result=0;
+                var diagnostic=new DestinationDiagnosticsWindow(careerRoot){ShowInTaskbar=false};diagnostic.Show();Pump();
+                Check(Descendants<DataGrid>(diagnostic).Single().Items.Count==53,"Diagnostics retains all 53 memberships");
+                Save(diagnostic,Path.Combine(folder,"employer-destinations.png"));diagnostic.Close();
+                foreach(var employer in CareerCatalogue.Employers)
+                {
+                    var isolated=new CareerStore(Path.Combine(careerRoot,employer.Id));isolated.SaveDraft(CareerStage.Opportunities,"Test Pilot","namibia");
+                    var careerModel=new CareerViewModel(isolated){SelectedEmployer=employer};var control=new CareerScreen();control.Show(careerModel);
+                    var host=new Window{Content=control,Width=1200,Height=850,ShowInTaskbar=false};host.Show();Pump();
+                    var accepted=false;control.EmploymentAccepted+=()=>accepted=true;
+                    Descendants<Button>(control).Single(b=>b.Content?.ToString()=="Accept employment").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                    Check(accepted&&isolated.Load().Employment?.EmployerId==employer.Id,"Actual acceptance button persists "+employer.Name);host.Close();
+                }
+                CareerButton("Explore employment opportunities").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+                ((ListBox)screen.FindName("EmployersList")).SelectedIndex=1;
+                CareerButton("Accept employment").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(500);Pump();
+                var employedWindow=(MainWindow)Application.Current.MainWindow;
+                var employedModel=(BuilderViewModel)employedWindow.DataContext;
+                Check(employedModel.Jobs.Offers.Count>0&&employedModel.Jobs.Offers.All(x=>x.Employer=="Fly Eros"),"MainWindow acceptance enters isolated employer gameplay and initializes its board");
+                ((TabControl)employedWindow.FindName("MainTabs")).SelectedItem=((TabControl)employedWindow.FindName("MainTabs")).Items.Cast<TabItem>().Single(x=>x.Header?.ToString()=="Jobs");Pump();
+                var offerGrid=Descendants<DataGrid>(employedWindow).Single(x=>x.GetBindingExpression(ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path=="Offers");
+                offerGrid.SelectedItem=employedModel.Jobs.Offers.First(x=>x.CargoMassKilograms==160);Pump();
+                var dispatch=Descendants<ComboBox>(employedWindow).Single(x=>x.GetBindingExpression(ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path=="CompanyAircraftChoices");
+                Check(dispatch.Items.Count==1,"160 kg industrial fixture permits Caravan only");dispatch.SelectedIndex=0;Pump();
+                Save(employedWindow,Path.Combine(folder,"company-jobs.png"));
+                var reserve=Descendants<Button>(employedWindow).Single(x=>x.Content?.ToString()=="Accept and reserve job");reserve.Command.Execute(reserve.CommandParameter);await Task.Delay(250);Pump();
+                Check(employedModel.Jobs.ReservedJobs.Count==1&&employedModel.Jobs.ReservedJobs[0].CompanyAircraftTypeId=="c208","Aircraft selector and bound accept command reserve company dispatch: "+employedModel.Jobs.Error);
+                employedWindow.Close();result=0;
             }
             catch(Exception e){Console.Error.WriteLine(e);}
             finally{app.Shutdown(result);}

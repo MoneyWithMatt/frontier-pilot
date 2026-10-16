@@ -86,6 +86,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
     private readonly EconomyService economy;
     private readonly IFlightAttemptStore store;
     private readonly NamibiaLocationCatalogueDocument catalogue;
+    public Func<string,NamibiaLocation?>? AdditionalLocationResolver {get;init;}
     private readonly FlightAttemptTrackerOptions options;
     private readonly SemaphoreSlim gate = new(1, 1);
     private readonly Func<DateTimeOffset> utcNow;
@@ -1054,7 +1055,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
 
     private ApproximateCoordinates Coordinates(string locationId)
     {
-        var authored = catalogue.Locations.SingleOrDefault(x => x.StableId == locationId);
+        var authored = AdditionalLocationResolver?.Invoke(locationId) ?? catalogue.Locations.SingleOrDefault(x => x.StableId == locationId);
         if (authored?.ApproximateCoordinates is { } coordinates) return coordinates;
         var site = world?.Sites.SingleOrDefault(x => x.LocationId == locationId) ??
             throw new InvalidDataException("Flight route location has no trustworthy configured coordinates.");
@@ -1064,7 +1065,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
     private string PlaceName(string locationId)
     {
         if (locationId == EmployedCargoPrototype.ErosId) return "Eros (FYWE)";
-        var authored = catalogue.Locations.SingleOrDefault(x => x.StableId == locationId);
+        var authored = AdditionalLocationResolver?.Invoke(locationId) ?? catalogue.Locations.SingleOrDefault(x => x.StableId == locationId);
         if (authored is not null) return authored.Name + (authored.AirportIdentifier.Value is { } code ? " (" + code + ")" : "");
         var site = world?.Sites.SingleOrDefault(x => x.LocationId == locationId) ??
             throw new InvalidDataException("Flight route location is unknown.");

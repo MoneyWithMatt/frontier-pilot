@@ -11,6 +11,8 @@ public partial class CareerScreen : UserControl
     private CareerViewModel? model;
     private CareerStage? lastStage;
     public event Action? DeleteRequested;
+    public event Action? EmploymentAccepted;
+    public event Action? DestinationsRequested;
     public CareerScreen(){InitializeComponent();Map.LocationSelected+=SelectLocation;}
     public void Show(CareerViewModel profile)
     {model=profile;DataContext=profile;model.PropertyChanged+=(_,_)=>Update();Update();}
@@ -48,5 +50,8 @@ public partial class CareerScreen : UserControl
     private void Continue(object sender,RoutedEventArgs e){try{if(model?.Continue()!=true)ErrorText.Text=model?.Stage==CareerStage.Region?"Choose a region.":model?.NameError;else ErrorText.Text="";}catch(Exception ex){ErrorText.Text=ex.Message;}}
     private void Back(object sender,RoutedEventArgs e){try{model?.Back();ErrorText.Text="";}catch(Exception ex){ErrorText.Text=ex.Message;}}
     private void Delete(object sender,RoutedEventArgs e)=>DeleteRequested?.Invoke();
+    private void AcceptEmployment(object sender,RoutedEventArgs e)
+    {try{model?.AcceptEmployment();EmploymentAccepted?.Invoke();}catch(Exception ex){ErrorText.Text=ex.Message;}}
+    private void InspectDestinations(object sender,RoutedEventArgs e)=>DestinationsRequested?.Invoke();
     private void Attribution(object sender,RequestNavigateEventArgs e){Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri){UseShellExecute=true});e.Handled=true;}
 }

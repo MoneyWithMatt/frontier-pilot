@@ -1,5 +1,11 @@
 # Technical status — 2026-09-07
 
+## Starting employers and curated destinations — 2026-10-15
+
+Four Namibia employers now accept employment and persist company fleet access. Employer profiles feed the existing recurring-demand/economy/flight lifecycle, with explicit per-job aircraft selection and user-confirmed exact simulator identity mappings. All 53 supplied research memberships are embedded and visible in a filterable inspection/review window. Only Industrial FYUS/FYAR is initially enabled; Missionary/Safari await destination inspection and Offshore awaits FYWB base inspection. The 45 unresolved unique airports are retained and listed in [the complete implementation and manual-test report](starting-employers-and-destinations.md).
+
+Career schema 2 and economy schema 8 preserve legacy careers/history. Reviews retain original route coordinates and survive career reset. Passenger, H125/platform and survey-area missions remain deferred. Verification: 660 tests, Release build with zero warnings/errors, isolated WPF onboarding/dispatch/site and loading-control smoke checks; self-contained distribution republished. No new live MSFS acceptance or Community changes.
+
 ## Dependency setup — 2026-10-10
 
 Guided setup — 2026-10-11: three numbered steps, separate Core/Samples installer buttons, cached-download reuse and a next-step instruction make download versus install explicit. Samples waits for verified Core; Finish setup saves only the verified SDK. Release build and 634 tests pass; isolated WPF checks cover actions/gating and the rendered menu was inspected. Clean reinstall acceptance remains pending.

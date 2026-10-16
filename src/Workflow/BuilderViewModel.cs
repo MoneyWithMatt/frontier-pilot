@@ -81,20 +81,27 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     public BuilderViewModel(IBuilderServices services, string sdkRoot, ITrackingTelemetrySource? telemetrySource = null,
         IAircraftStateStore? aircraftStateStore = null, IEmployedCargoJobs? employedCargoJobs = null,
-        IFlightAttemptTracker? flightAttemptTracker = null, IProspectingOperations? prospectingOperations = null)
+        IFlightAttemptTracker? flightAttemptTracker = null, IProspectingOperations? prospectingOperations = null,
+        CareerStore? careerStore = null, EmployerDestinationCatalogue? employerDestinations = null)
     {
         this.services = services; this.sdkRoot = sdkRoot;
-        aircraftStateStore ??= services.IsDryRun ? new MemoryAircraftStateStore() : new LocalAircraftStateStore();
+        var careerRoot=careerStore?.StorageRoot??CareerStore.DefaultRoot;
+        aircraftStateStore ??= services.IsDryRun ? new MemoryAircraftStateStore() : new LocalAircraftStateStore(Path.Combine(careerRoot,"tracking","aircraft-state.json"));
         Tracking = new(telemetrySource ?? new FrontierAirportBuilder.MsfsSdk.LiveAircraftTelemetry(), aircraftStateStore, () => this.sdkRoot, !services.IsDryRun);
-        IEconomyStateStore economyStore = services.IsDryRun ? new MemoryEconomyStateStore() : new LocalEconomyStateStore();
-        employedCargoJobs ??= new EmployedCargoJobsService(economyStore);
-        IFlightAttemptStore attemptStore = services.IsDryRun ? new MemoryFlightAttemptStore() : new LocalFlightAttemptStore();
-        flightAttemptTracker ??= new FlightAttemptTracker(economyStore, attemptStore);
+        IEconomyStateStore economyStore = services.IsDryRun ? new MemoryEconomyStateStore() : new LocalEconomyStateStore(Path.Combine(careerRoot,"economy","economy-state.json"));
+        var employment=careerStore?.Load().Employment;
+        var employer=CareerCatalogue.Employers.SingleOrDefault(x=>x.Id==employment?.EmployerId);
+        employedCargoJobs ??= new EmployedCargoJobsService(economyStore,employer:employer,destinations:employerDestinations);
+        IFlightAttemptStore attemptStore = services.IsDryRun ? new MemoryFlightAttemptStore() : new LocalFlightAttemptStore(Path.Combine(careerRoot,"economy","flight-attempts.json"));
+        flightAttemptTracker ??= new FlightAttemptTracker(economyStore, attemptStore) {AdditionalLocationResolver=employerDestinations is null?null:employerDestinations.Find};
         Jobs = new(employedCargoJobs, flightAttemptTracker);
-        IAircraftLoadingStore loadingStore = services.IsDryRun ? new MemoryAircraftLoadingStore() : new LocalAircraftLoadingStore();
+        IAircraftLoadingStore loadingStore = services.IsDryRun ? new MemoryAircraftLoadingStore() : new LocalAircraftLoadingStore(Path.Combine(careerRoot,"economy","aircraft-loading.json"));
         var loadingCoordinator = new AircraftLoadingCoordinator(loadingStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(),
             flightAttemptTracker, () => this.sdkRoot, () => Tracking.World, () => Jobs.LoadingJobs)
-            { RecoverManifestJobsAsync = Jobs.RecoverManifestJobsAsync };
+            { RecoverManifestJobsAsync = Jobs.RecoverManifestJobsAsync,CompanyAircraftGuard=(identity,jobs)=>
+                {
+                    return CompanyAircraft.CheckDispatch(identity,jobs,careerStore?.Load().AircraftBindings??[]);
+                } };
         AircraftLoading = new(loadingCoordinator, () => { if (Tracking.ConnectCommand.CanExecute(null)) _ = Tracking.ConnectAsync(); });
         if (flightAttemptTracker is FlightAttemptTracker concreteFlightTracker) concreteFlightTracker.AircraftLoadingDiagnosticProvider = loadingCoordinator.CreateDiagnosticSnapshot;
         if (services is BuilderServices concrete) concrete.SetEconomyDependencyStore(economyStore);

@@ -2,4 +2,4 @@
   <PropertyGroup><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
   <ItemGroup><ProjectReference Include="../MsfsSdk/FrontierAirportBuilder.MsfsSdk.csproj" /></ItemGroup>
   <ItemGroup><InternalsVisibleTo Include="FrontierAirportBuilder.Tests" /></ItemGroup>
-  <ItemGroup><EmbeddedResource Include="Fixtures/namibia-centre-frames.json" /><EmbeddedResource Include="CareerCatalogue.json" /></ItemGroup></Project>
+  <ItemGroup><EmbeddedResource Include="Fixtures/namibia-centre-frames.json" /><EmbeddedResource Include="CareerCatalogue.json" /><EmbeddedResource Include="NamibiaDestinationResearch.json" /></ItemGroup></Project>

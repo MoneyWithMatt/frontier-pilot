@@ -30,15 +30,31 @@ public partial class MainWindow : Window
             try {career=new(careerStore);careerReady=career.IsActive;}
             catch(Exception ex){careerError="Career state could not be read. Existing files were preserved. "+ex.Message;}
         }
-        model = suppliedModel ?? new(dryRun ? BuilderServices.CreateDesktopDryRun() : new BuilderServices(), Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.User) ?? Environment.GetEnvironmentVariable("MSFS2024_SDK") ?? "");
+        EmployerDestinationCatalogue? destinations=null;
+        if(career?.Profile.Employment is not null)
+        {
+            try{destinations=new DestinationReviewStore(careerStore!.StorageRoot).Load();}
+            catch(Exception ex){careerReady=false;careerError="Destination reviews could not be loaded; files preserved. "+ex.Message;career=null;}
+        }
+        model = suppliedModel ?? new(dryRun ? BuilderServices.CreateDesktopDryRun() : new BuilderServices(), Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.User) ?? Environment.GetEnvironmentVariable("MSFS2024_SDK") ?? "",careerStore:careerReady?careerStore:null,employerDestinations:destinations);
         DataContext = model;
         CareerPilotLabel.Text=career?.PilotName??"Prototype pilot";
+        var employer=CareerCatalogue.Employers.SingleOrDefault(x=>x.Id==career?.Profile.Employment?.EmployerId);
+        EmploymentLabel.Text=employer is null?"Legacy prototype career: existing gameplay remains available.":$"{employer.Name} · {employer.Role}\nBase: {CareerCatalogue.Bases.Single(x=>x.Id==employer.BaseId).Name}\nCompany fleet access (not ownership): {employer.Aircraft}";
+        CompanyType.ItemsSource=CompanyAircraft.Types.Where(x=>x.Enabled&&employer?.Fleet.Contains(x.Id)==true).ToArray();
         if(!careerReady)
         {
             GameplayShell.Visibility=Visibility.Collapsed;Onboarding.Visibility=Visibility.Visible;
             if(career is not null)Onboarding.Show(career);else Onboarding.ShowError(careerError!);
         }
         Onboarding.DeleteRequested+=()=>DeleteCareer(this,new RoutedEventArgs());
+        Onboarding.DestinationsRequested+=()=>OpenDestinations(this,new RoutedEventArgs());
+        Onboarding.EmploymentAccepted+=()=>
+        {
+            // Reconstruct services from the durable employment assignment before any economy initialization.
+            var isolated=suppliedModel is null?null:new BuilderViewModel(BuilderServices.CreateDryRun(),"",careerStore:careerStore,employerDestinations:destinations??new());
+            var next=new MainWindow(isolated,careerStore);Application.Current.MainWindow=next;next.Show();Close();
+        };
         model.Tracking.DisplayChanged += TrackingDisplayChanged;
         model.Operations.MapLocationsChanged += locations => Dispatcher.InvokeAsync(() => OperationsMap.Show(locations));
         OperationsMap.LocationSelected += key => Dispatcher.InvokeAsync(() => model.Operations.SelectMapLocation(key));
@@ -73,6 +89,19 @@ public partial class MainWindow : Window
             if(root!=model.SdkRoot&&!MayDiscardEdits())return false;
             model.SdkRoot=root;return true;
         }){Owner=this}.ShowDialog();
+    }
+    private void OpenDestinations(object sender,RoutedEventArgs e)=>new DestinationDiagnosticsWindow(careerStore?.StorageRoot??CareerStore.DefaultRoot){Owner=this}.ShowDialog();
+    private void BindCompanyAircraft(object sender,RoutedEventArgs e)
+    {
+        try
+        {
+            if(careerStore is null||model.Tracking.World?.Aircraft is not {} live||CompanyType.SelectedItem is not CompanyAircraftType type)
+                throw new IOException("Connect to live MSFS tracking and choose a company aircraft type.");
+            var identity=FrontierAirportBuilder.Core.FlightAircraftIdentity.From(live);
+            if(MessageBox.Show(this,$"Confirm this is {type.Name}:\nTITLE: {identity.Title}\nATC MODEL: {identity.Type}\n\nThis maps this exact simulator implementation, not an owned aircraft.","Confirm aircraft compatibility",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No)!=MessageBoxResult.Yes)return;
+            careerStore.BindAircraft(identity,type.Id);MessageBox.Show(this,"Aircraft type mapping saved. Existing flight identity checks remain in force.");
+        }
+        catch(Exception ex){MessageBox.Show(this,ex.Message);}
     }
     private void MainTabsChanged(object sender,SelectionChangedEventArgs e)
     {

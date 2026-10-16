@@ -31,6 +31,7 @@ public sealed record TransportRequirement(string Id, string NeedId, string Origi
 public sealed record EconomyJob(string Id, string RequirementId, string EmployerBusinessId, string PlayerId,
     string ShipmentId, EconomyJobState State, DateTimeOffset? AcceptedUtc = null, DateTimeOffset? CompletedUtc = null)
 {
+    public string? CompanyAircraftTypeId { get; init; }
     public DateTimeOffset? CancelledUtc { get; init; }
     public string? CancellationReason { get; init; }
     public DateTimeOffset? OfferedUtc { get; init; }
@@ -188,6 +189,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         }
         foreach (var x in Jobs)
         {
+            if(x.CompanyAircraftTypeId is not null)EconomyValidation.Id(x.CompanyAircraftTypeId,"company aircraft type");
             var contract = LogisticsContracts.SingleOrDefault(c => c.JobId == x.Id);
             if ((x.OfferedUtc is null) != (x.ExpiresUtc is null) || x.ExpiresUtc <= x.OfferedUtc) throw new InvalidDataException("Job offer timing is inconsistent.");
             if (x.ExpiresUtc is not null && (contract is not null || !RecurringDemand.Any(d => d.NeedId == requirements[x.RequirementId].NeedId))) throw new InvalidDataException("Only configured SYSTEM demand may have an offer expiry.");
