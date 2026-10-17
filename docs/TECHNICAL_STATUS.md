@@ -1,5 +1,9 @@
 # Technical status — 2026-09-07
 
+## Employed pilot wages V1 — 2026-10-17
+
+Four starting employers pay $400/$400/$650/$800 per verified airborne hour (Missionary/Safari/Industrial/Offshore). Existing flight attempts now persist precise duration, excluding ground and continuity gaps; existing delivery transactions pay one ledger wage per shared flight. Company lists hide per-job rewards; freelance contracts retain them. Player-facing amounts use dollars without converting balances. Economy schema 9 / flight-attempt schema 5 preserve older records; old unmeasured time is never inferred. 695 tests pass, clean Release build, isolated WPF checks, development distribution rebuilt. Live wage flight acceptance pending. See [full implementation/report](employed-pilot-wages-v1.md).
+
 ## Automatic employer airport resolution — 2026-10-16
 
 Live packet-reader correction: MSFS 2024 sends an extra trailing 36-byte array slot. Reader now accepts either exact data length or that single trailing slot, retaining full sequence and payload validation. Read-only live lookup succeeded on SDK 1.2.4 / simulator 1,9,18,0: 84,319 records, 33 of 39 researched identifiers found, eight Safari destinations found. Six identifiers absent; nine candidates lack identifiers. 672 tests pass; Release build clean. See `evidence/airport-packet-padding/verification.md`. This is airport database resolution, not runway/scenery acceptance.

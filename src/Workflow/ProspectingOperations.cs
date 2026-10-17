@@ -249,7 +249,7 @@ public sealed class ProspectingOperationsService : IProspectingOperations
                 if (linked) { can = false; reason = "This airport is already linked to an economic site."; }
                 else if (!candidate.Capabilities.Contains(ConstructionCapability.BaseLodge)) { can = false; reason = "Save a placed object with the Base Lodge capability first."; }
                 else if (EconomyLedger.Balance(world, EmployedCargoPrototype.PlayerId, EmployedCargoPrototype.Currency) < OperationArchetypeCatalogue.ProspectingCamp.FoundingCost)
-                { can = false; reason = "The ledger-derived balance is below the temporary 150 TPC founding cost."; }
+                { can = false; reason = "The ledger-derived balance is below the temporary $150 founding cost."; }
                 else { var assessment = presence.Assess(airport, now); can = assessment.IsVerified; reason = assessment.Reason; }
             }
             catch (Exception error) { can = false; reason = error.Message; }
@@ -465,13 +465,13 @@ public sealed class ProspectingOperationsViewModel : INotifyPropertyChanged
     public string SelectedMapTitle => SelectedMapLocation is null ? "Select a map marker" : $"{SelectedMapLocation.Name} ({SelectedMapLocation.Identifier})";
     public IReadOnlyList<EconomicInventoryDisplay> SelectedMapInventory => SelectedMapLocation?.Inventory ?? [];
     public bool CanOpenSelectedMapOperation => SelectedMapLocation?.OperationId is not null;
-    public string Balance => $"Ledger balance: {balance:0.##} {currency}"; public string Status { get => status; private set { status = value; Changed(); } }
+    public string Balance => $"Ledger balance: {DollarDisplay.Format(balance)}"; public string Status { get => status; private set { status = value; Changed(); } }
     public string Error { get => error; private set { error = value; Changed(); } } public string StoragePath => service.StoragePath;
     public async Task RefreshAsync(CancellationToken token = default) => await RunAsync(() => service.LoadAsync(token), "Operation state refreshed.");
     public async Task FoundAsync(CancellationToken token = default)
     {
         var airport = SelectedAirport; if (airport?.CanFound != true) return;
-        await RunAsync(() => service.FoundAsync(airport.AirportId, "found-" + airport.AirportId.ToString("N"), token), "Prospecting camp founded. Temporary 150 TPC debit recorded once.");
+        await RunAsync(() => service.FoundAsync(airport.AirportId, "found-" + airport.AirportId.ToString("N"), token), "Prospecting camp founded. Temporary $150 debit recorded once.");
     }
     public async Task AdvanceDayAsync(CancellationToken token = default)
     {
@@ -578,8 +578,8 @@ public sealed class ProspectingOperationsViewModel : INotifyPropertyChanged
         if(unitPrice is null)return "The gateway has no applicable price for this cargo and route.";
         var value=Math.Round(quantity*unitPrice.Value,2);
         return direction==OperationLogisticsDirection.Import
-            ? $"Cargo purchase: {quantity:0.##} {cargo.UnitName} × {unitPrice:0.##} {quote.CurrencyCode} = {value:0.##} {quote.CurrencyCode}."
-            : $"Expected cargo sale: {quantity:0.##} {cargo.UnitName} × {unitPrice:0.##} {quote.CurrencyCode} = {value:0.##} {quote.CurrencyCode}, credited only after delivery.";
+            ? $"Cargo purchase: {quantity:0.##} {cargo.UnitName} × {DollarDisplay.Format(unitPrice.Value)} = {DollarDisplay.Format(value)}."
+            : $"Expected cargo sale: {quantity:0.##} {cargo.UnitName} × {DollarDisplay.Format(unitPrice.Value)} = {DollarDisplay.Format(value)}, credited only after delivery.";
     }
     private string DescribeCommitment()
     {
@@ -593,8 +593,8 @@ public sealed class ProspectingOperationsViewModel : INotifyPropertyChanged
         var road=RoadLogisticsPrototype.Quote(distanceKm);var serviceReserve=fallbackMinutes<0?payout:Math.Max(payout,road.Cost);
         var reserved=serviceReserve+(direction==OperationLogisticsDirection.Import?cargoValue:0);
         return direction==OperationLogisticsDirection.Import
-            ? $"Publish reserves {reserved:0.##} {quote.CurrencyCode}: cargo purchase plus transport commitment."
-            : $"Publish reserves {reserved:0.##} {quote.CurrencyCode} for transport. Expected net after an air delivery is {cargoValue-payout:0.##} {quote.CurrencyCode}.";
+            ? $"Publish reserves {DollarDisplay.Format(reserved)}: cargo purchase plus transport commitment."
+            : $"Publish reserves {DollarDisplay.Format(reserved)} for transport. Expected net after an air delivery is {DollarDisplay.Format(cargoValue-payout)}.";
     }
     private void NotifyLogisticsQuote(){Changed(nameof(LogisticsResource));Changed(nameof(OriginCargoAvailability));Changed(nameof(CargoEconomics));Changed(nameof(LogisticsCommitment));}
     private void NotifyOperation() { Changed(nameof(OperationTitle)); Changed(nameof(OperationStatus)); Changed(nameof(PrototypeDay)); Changed(nameof(Rations)); Changed(nameof(RawMinerals)); Changed(nameof(LastTickResult)); Changed(nameof(PendingLogistics)); Changed(nameof(OperationInventory)); Changed(nameof(OperationLogistics)); Changed(nameof(ImportAvailability)); Changed(nameof(ExportAvailability)); Changed(nameof(OperationArchetype)); Changed(nameof(OperationProduction)); Changed(nameof(OperationConsumption)); Changed(nameof(OperationConstraint));Changed(nameof(LogisticsOrigins));Changed(nameof(LogisticsDestinations));Changed(nameof(AvailableLogisticsCargo)); TransferPrototypeRationsCommand.Refresh(); PublishLogisticsCommand.Refresh(); }

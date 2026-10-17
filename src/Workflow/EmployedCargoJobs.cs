@@ -13,10 +13,12 @@ public sealed record CargoJobDisplay(string JobId, string Employer, string Origi
     decimal LoadedCargoKilograms = 0, decimal DeliveredCargoKilograms = 0)
 {
     public string? CompanyAircraftTypeId {get;init;}
+    public decimal? HourlyWage {get;init;}
+    public string? WageHistory {get;init;}
     public DateTimeOffset? ExpiresUtc { get; init; }
     public string Availability => ExpiresUtc is {} time ? $"Expires {time.ToLocalTime():dd MMM HH:mm}" : "No automatic expiry";
     public string Cargo => $"{CargoCategory} · {CargoMassKilograms:0.#} kg"+(CompanyAircraftTypeId is {} id?$" · Company: {id}":"");
-    public string Payment => $"{PaymentAmount:0.##} {CurrencyCode}";
+    public string Payment => WageHistory??(HourlyWage is {} rate?DollarDisplay.Format(rate)+" / flight hour":DollarDisplay.Format(PaymentAmount));
     public string Route => $"{Origin} → {Destination}";
     public string Shipment => ShipmentState is null ? "Not accepted" : $"{ShipmentState} · {ShipmentId}";
 }
@@ -47,7 +49,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
         var destination=destinations!.Diagnose(Employer.Category).SingleOrDefault(x=>x.Resolved?.StableId==job.DestinationLocationId&&x.Enabled);
         return destination is null?[]:CompanyAircraft.Choices(Employer,destination,job.CargoMassKilograms);
     }
-    public string EmploymentStatus=>Employer is null?"Legacy / freelance board":$"{Employer.Name} · {destinations!.Diagnose(Employer.Category).Count(x=>x.Enabled)} eligible destinations. Cargo only; passengers deferred. Aircraft limits below are prototype dispatch budgets; assess runway and performance yourself.";
+    public string EmploymentStatus=>Employer is null?"Legacy / freelance board":$"{Employer.Name} · {Employer.WageDisplay} · paid for verified airborne time on successful delivery. {destinations!.Diagnose(Employer.Category).Count(x=>x.Enabled)} eligible destinations. Cargo only; passengers deferred.";
     private readonly EconomyService economy;
     private readonly NamibiaLocationCatalogueDocument catalogue;
     private readonly EmployedCargoPrototypeOptions options;
@@ -131,7 +133,10 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
                 requirement.Purpose ?? destination.Purpose, resource.Name, requirement.Quantity,
                 requirement.PaymentAmount, requirement.CurrencyCode, destination.Known, shipment?.Id, shipment?.State,
                 requirement.OriginLocationId, requirement.DestinationLocationId, origin.Latitude, origin.Longitude,
-                destination.Latitude, destination.Longitude, shipment?.LoadedQuantity ?? 0, shipment?.DeliveredQuantity ?? 0) { ExpiresUtc = job.ExpiresUtc,CompanyAircraftTypeId=job.CompanyAircraftTypeId };
+                destination.Latitude, destination.Longitude, shipment?.LoadedQuantity ?? 0, shipment?.DeliveredQuantity ?? 0) {
+                    ExpiresUtc = job.ExpiresUtc,CompanyAircraftTypeId=job.CompanyAircraftTypeId,
+                    HourlyWage=job.State==EconomyJobState.Completed||world.LogisticsContracts.Any(x=>x.JobId==job.Id)?null:employer.PilotHourlyRate,
+                    WageHistory=job.CompletedWage is {} wage?WageHistory(world,wage):null };
         }
 
         var operationNeedIds = world.Operations.SelectMany(x => new[] { ProspectingCampKernel.InboundNeed(x.Id), ProspectingCampKernel.OutboundNeed(x.Id) }).ToHashSet(StringComparer.Ordinal);
@@ -169,6 +174,11 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
             return ($"{site.Name} ({site.AirportIdentifier})", "Player-owned economic operation",
                 string.Create(CultureInfo.InvariantCulture, $"{site.AirportIdentifier} · player-created airport anchor {site.Latitude:F6}, {site.Longitude:F6}"), site.Latitude, site.Longitude);
         }
+    }
+    private static string WageHistory(EconomyWorld world,PilotWage wage)
+    {
+        var payment=world.FinancialLedger.Single(x=>x.Kind==FinancialTransactionKind.PilotWage&&x.Wage?.FlightId==wage.FlightId);
+        return $"{wage.Summary}\nPaid once per flight · {payment.OccurredUtc:u}\nFlight: {wage.FlightId}\nPayment job: {payment.JobId}";
     }
 }
 
@@ -224,6 +234,8 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     }
     public IReadOnlyList<CargoJobDisplay> Offers { get => offers; private set { offers = value; Changed(); } }
     public string EmploymentStatus=>(jobs as EmployedCargoJobsService)?.EmploymentStatus??"";
+    public bool ShowOfferCompensation=>Offers.Any(x=>x.HourlyWage is null);
+    public bool ShowReservedCompensation=>ReservedJobs.Any(x=>x.HourlyWage is null);
     public IReadOnlyList<CompanyAircraftType> CompanyAircraftChoices=>(jobs as EmployedCargoJobsService)?.AircraftChoices(SelectedOffer)??[];
     public CompanyAircraftType? SelectedCompanyAircraft
     {
@@ -252,9 +264,10 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
         : ActiveJob?.Shipment ?? "—";
     public string FlightStage => flight.Current.Stage;
     public string FlightReason => flight.Current.Reason;
+    public string VerifiedAirborneTime => "Verified airborne time: "+TimeSpan.FromTicks(flight.Current.Attempt?.VerifiedAirborneTicks??0).ToString(@"hh\:mm\:ss");
     public string OriginDistance => flight.Current.OriginDistanceNauticalMiles is { } value ? $"Origin distance: {value:F2} NM" : "Origin distance: —";
     public string DestinationDistance => flight.Current.DestinationDistanceNauticalMiles is { } value ? $"Destination distance: {value:F2} NM" : "Destination distance: —";
-    public string Balance => $"Balance: {playerBalance:0.##} {balanceCurrency}";
+    public string Balance => $"Balance: {DollarDisplay.Format(playerBalance)}";
     public string FlightStoragePath => flight.StoragePath;
     private FlightAttemptDiagnosticSnapshot FlightDiagnostic => flight.Current.Diagnostic;
     public string DiagnosticConnection => FlightDiagnostic.ConnectionState;
@@ -361,6 +374,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     {
         realTime = snapshot.RealTime; Changed(nameof(BoardTiming));
         Offers = snapshot.Offers; ActiveJob = snapshot.ActiveJob; ReservedJobs = snapshot.ReservedJobs; CompletedJobs = snapshot.RecentCompletedJobs;
+        Changed(nameof(ShowOfferCompensation));Changed(nameof(ShowReservedCompensation));Changed(nameof(EmploymentStatus));
         if (LoadingJobs.Count > 0) LoadingJobs = LoadingJobs.Select(x => ReservedJobs.SingleOrDefault(r => r.JobId == x.JobId)).Where(x => x is not null).Cast<CargoJobDisplay>().ToArray();
         if (LoadingJobs.Count == 0)
         {
@@ -377,7 +391,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
         void Notify()
         {
             Changed(nameof(ActiveShipment));
-            Changed(nameof(FlightStage)); Changed(nameof(FlightReason)); Changed(nameof(OriginDistance)); Changed(nameof(DestinationDistance)); Changed(nameof(CanResetIncompleteFlight));
+            Changed(nameof(FlightStage)); Changed(nameof(FlightReason)); Changed(nameof(VerifiedAirborneTime)); Changed(nameof(OriginDistance)); Changed(nameof(DestinationDistance)); Changed(nameof(CanResetIncompleteFlight));
             Changed(nameof(DiagnosticConnection)); Changed(nameof(DiagnosticFreshness)); Changed(nameof(DiagnosticLastSample)); Changed(nameof(DiagnosticRoute)); Changed(nameof(DiagnosticIds));
             Changed(nameof(DiagnosticRecordedAircraft)); Changed(nameof(DiagnosticObservedAircraft)); Changed(nameof(DiagnosticLiveValues)); Changed(nameof(DiagnosticDistances));
             Changed(nameof(DiagnosticPersistedEvidence)); Changed(nameof(DiagnosticQualification)); Changed(nameof(DiagnosticUnavailableReason)); Changed(nameof(DiagnosticTimeline)); RefreshCommands();

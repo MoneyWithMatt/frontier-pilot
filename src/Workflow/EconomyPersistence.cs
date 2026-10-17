@@ -18,7 +18,7 @@ public interface IEconomyStateStore
 /// inventory and ledger changes cannot become independently visible.</summary>
 public sealed class LocalEconomyStateStore : IEconomyStateStore
 {
-    public const int CurrentSchemaVersion = 8;
+    public const int CurrentSchemaVersion = 9;
     private sealed record Document(int SchemaVersion, EconomyWorld World);
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -107,6 +107,8 @@ public sealed class LocalEconomyStateStore : IEconomyStateStore
         try
         {
             var world = document.World;
+            // Schema 9 adds nullable employer wage policy and immutable wage receipts.
+            // Missing fields retain defaults; historical ledger amounts/balances are not recalculated as wages.
             if (document.SchemaVersion < 5)
             {
                 world = world with

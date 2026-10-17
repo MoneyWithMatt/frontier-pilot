@@ -34,7 +34,7 @@
       "Aircraft": "Cessna 152 · Cessna 208 Caravan",
       "Description": "A fictional missionary aviation organisation supporting communities with essential supplies and personnel.",
       "Work": "Bush flying · short and unimproved strips · small payloads · remote destinations",
-      "Category": "Missionary",
+      "Category": "Missionary", "HourlyWage": 400,
       "Fleet": [
         "c152",
         "c208"
@@ -50,8 +50,7 @@
         10,
         100,
         5
-      ],
-      "PrototypePaymentPerKilogram": 2
+      ]
     },
     {
       "Id": "fly-eros",
@@ -62,7 +61,7 @@
       "Aircraft": "Cessna 208 Caravan · Beechcraft Baron G58",
       "Description": "An industrial aviation operator supporting mines, businesses and remote industrial sites.",
       "Work": "Personnel · industrial cargo · replacement parts · samples · logistics",
-      "Category": "Industrial",
+      "Category": "Industrial", "HourlyWage": 650,
       "Fleet": [
         "c208",
         "baron-g58"
@@ -78,8 +77,7 @@
         10,
         160,
         80
-      ],
-      "PrototypePaymentPerKilogram": 2
+      ]
     },
     {
       "Id": "skeleton-coast-petroleum",
@@ -90,7 +88,7 @@
       "Aircraft": "Cirrus Vision Jet · H125 (Coming Soon)",
       "Description": "An aviation division supporting petroleum and offshore operations. Helicopter and offshore landing mechanics remain unproven.",
       "Work": "Coastal transport · personnel and equipment · future offshore helicopter operations",
-      "Category": "Offshore",
+      "Category": "Offshore", "HourlyWage": 800,
       "Fleet": [
         "vision-jet",
         "h125"
@@ -106,8 +104,7 @@
         10,
         20,
         20
-      ],
-      "PrototypePaymentPerKilogram": 2
+      ]
     },
     {
       "Id": "namibia-safari",
@@ -118,7 +115,7 @@
       "Aircraft": "Beechcraft Bonanza · PA-28 · Savage Cub",
       "Description": "Temporary configurable safari and conservation operator based at Eros.",
       "Work": "Lodge supplies · conservation equipment · future guest transfers",
-      "Category": "Safari",
+      "Category": "Safari", "HourlyWage": 400,
       "Fleet": [
         "bonanza",
         "pa28",
@@ -135,8 +132,7 @@
         10,
         20,
         20
-      ],
-      "PrototypePaymentPerKilogram": 2
+      ]
     }
   ]
 }

@@ -41,7 +41,8 @@ public sealed record CareerEmployer(string Id,string RegionId,string BaseId,stri
     public string[] Fleet {get;init;}=[];
     public string[] CargoMissions {get;init;}=[];
     public decimal[] PrototypeCargoKilograms {get;init;}=[];
-    public decimal PrototypePaymentPerKilogram {get;init;}=2;
+    public decimal HourlyWage {get;init;}
+    public string WageDisplay=>DollarDisplay.Format(HourlyWage)+" / flight hour";
     public int PreferredMinimumMinutes {get;init;}
     public int PreferredMaximumMinutes {get;init;}
     public string Availability=>"ACCEPT EMPLOYMENT · destinations subject to verification";
@@ -61,7 +62,7 @@ public static class CareerCatalogue
         if(data.Regions.Select(r=>r.Id).Distinct().Count()!=data.Regions.Length||data.Bases.Select(b=>b.Id).Distinct().Count()!=data.Bases.Length||data.Employers.Select(e=>e.Id).Distinct().Count()!=data.Employers.Length||
             data.Employers.Any(e=>!data.Regions.Any(r=>r.Id==e.RegionId)||!data.Bases.Any(b=>b.Id==e.BaseId)))throw new IOException("Career catalogue identities and references must be valid.");
         if(data.Employers.Any(e=>e.Fleet.Length==0||e.Fleet.Distinct().Count()!=e.Fleet.Length||e.Fleet.Any(id=>!CompanyAircraft.Types.Any(t=>t.Id==id))||
-            e.CargoMissions.Length==0||e.PrototypeCargoKilograms.Length!=e.CargoMissions.Length||e.PrototypeCargoKilograms.Any(x=>x<=0)||e.PrototypePaymentPerKilogram<=0||e.PreferredMinimumMinutes<=0||e.PreferredMaximumMinutes<e.PreferredMinimumMinutes))throw new IOException("Invalid employer fleet or generation profile.");
+            e.HourlyWage<=0||e.CargoMissions.Length==0||e.PrototypeCargoKilograms.Length!=e.CargoMissions.Length||e.PrototypeCargoKilograms.Any(x=>x<=0)||e.PreferredMinimumMinutes<=0||e.PreferredMaximumMinutes<e.PreferredMinimumMinutes))throw new IOException("Invalid employer fleet or generation profile.");
         return data;
     }
 }

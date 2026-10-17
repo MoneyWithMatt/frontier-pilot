@@ -1,5 +1,11 @@
 # Design decisions
 
+## Employed airborne wages — 2026-10-17
+
+- Employer configuration supplies hourly wages. Shared flight attempts accumulate only contiguous valid airborne intervals and supply the existing delivery evidence boundary; no independent pay timer.
+- Successful completion commits one system-source `PilotWage` ledger transaction per shared flight, with duration/rate audit. Grouped shipments do not multiply pay. Freelance contracts retain their reward settlement.
+- Retain the internal TPC key and existing numerical balances, present dollars. Old fixed payments remain history; old unmeasured airborne time is not reconstructed. See [wage report](employed-pilot-wages-v1.md).
+
 ## Automatic employer airport recognition — 2026-10-16
 
 - Employer routes may use exact simulator airport database matches without mandatory human visits. Database presence and manual scenery/runway acceptance are separate evidence methods. This supersedes the earlier manual-only prerequisite.

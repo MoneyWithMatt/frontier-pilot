@@ -108,7 +108,7 @@ public static class ProspectingCampKernel
         var player = world.Players.Single(x => x.Id == EmployedCargoPrototype.PlayerId);
         var archetype = OperationArchetypeCatalogue.ProspectingCamp;
         if (EconomyLedger.Balance(world, player.Id, player.CurrencyCode) < archetype.FoundingCost)
-            throw new InvalidOperationException($"Founding requires {archetype.FoundingCost:0} {archetype.CurrencyCode} from the authoritative ledger balance.");
+            throw new InvalidOperationException($"Founding requires {DollarDisplay.Format(archetype.FoundingCost)} from the authoritative ledger balance.");
 
         var stem = candidate.AirportDefinitionId;
         var siteId = EconomyIds.Derive("site-", stem); var locationId = EconomyIds.Derive("operation-location-", stem);

@@ -147,7 +147,7 @@ public sealed class CompanyEmploymentTests : IDisposable
         for(var t=13;t<=24;t++)await tracker.ObserveAsync(At(t,b.Latitude,b.Longitude));
         Assert.True(tracker.Current.CanUnloadCargo);await tracker.UnloadCargoAsync();await tracker.UnloadCargoAsync();
         var completed=(await store.LoadAsync())!;Assert.Single(completed.FinancialLedger);Assert.Equal(ShipmentState.Delivered,Assert.Single(completed.Shipments).State);
-        Assert.Equal(offer.PaymentAmount,completed.Players.Single().CachedBalance);
+        Assert.Equal(.11m,completed.Players.Single().CachedBalance); Assert.Equal(FinancialTransactionKind.PilotWage,completed.FinancialLedger.Single().Kind);
     }
     [Fact] public async Task DispatchRefusesDifferentTypesAndOverBudgetGroupedLoads()
     {
@@ -166,7 +166,7 @@ public sealed class CompanyEmploymentTests : IDisposable
         var json=System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(store.StoragePath))!;json["SchemaVersion"]=7;File.WriteAllText(store.StoragePath,json.ToJsonString());
         var after=(await new LocalEconomyStateStore(store.StoragePath).LoadAsync())!;
         Assert.Equal(before.Jobs,after.Jobs);Assert.Equal(before.FinancialLedger,after.FinancialLedger);Assert.Equal(before.Inventories,after.Inventories);
-        Assert.Equal(8,System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(store.StoragePath))!["SchemaVersion"]!.GetValue<int>());
+        Assert.Equal(LocalEconomyStateStore.CurrentSchemaVersion,System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(store.StoragePath))!["SchemaVersion"]!.GetValue<int>());
     }
     public void Dispose(){if(Directory.Exists(root))Directory.Delete(root,true);}
 }

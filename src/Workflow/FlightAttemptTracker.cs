@@ -95,6 +95,14 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
     private FlightAttempt? attempt;
     private AircraftTelemetry? latest;
     private AircraftTelemetry? continuityAnchor;
+    private AircraftTelemetry? wageSample;
+    private PilotWage? CreateWage(FlightAttempt flight)
+    {
+        var job=world!.Jobs.Single(x=>x.Id==flight.JobId);
+        if(world.LogisticsContracts.Any(x=>x.JobId==job.Id))return null;
+        var employer=world.Businesses.Single(x=>x.Id==job.EmployerBusinessId);
+        return employer.PilotHourlyRate is {} rate?new(flight.WageFlightId??flight.Id,employer.Id,employer.Name,flight.VerifiedAirborneTicks,rate):null;
+    }
     private DateTimeOffset? stationarySince, lastSampleUtc, lastValidSampleUtc;
     private bool connected;
     private IReadOnlyList<FlightDiagnosticEvent> timeline = [];
@@ -173,6 +181,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            var previousWageSample=wageSample; wageSample=null;
             if (telemetry is null)
             {
                 if (attempt is not null && latest is not null) continuityAnchor ??= latest;
@@ -310,6 +319,19 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             var origin = Coordinates(attempt.OriginLocationId);
             double originDistance = DistanceNm(sample, origin); var updated = attempt;
             bool persist = false, recordedAirborne = false, recordedMovement = false, recordedMaximum = false, recordedReadyToUnload = false;
+            if(!sample.IsOnGround)
+            {
+                if(updated.WageFlightId is null){updated=updated with {WageFlightId=updated.Id};persist=true;}
+                if(continuous && previousWageSample is {IsOnGround:false} previousPaid &&
+                    sample.ObservedUtc>previousPaid.ObservedUtc && sample.ObservedUtc-previousPaid.ObservedUtc<=options.MaximumSampleGap &&
+                    (attempt.WageObservedUtc is null||previousPaid.ObservedUtc>=attempt.WageObservedUtc))
+                {
+                    updated=updated with {VerifiedAirborneTicks=checked(updated.VerifiedAirborneTicks+(sample.ObservedUtc-previousPaid.ObservedUtc).Ticks),
+                        WageObservedUtc=sample.ObservedUtc,WageFlightId=updated.WageFlightId??updated.Id};
+                    persist=true;
+                }
+                wageSample=sample;
+            }
             if (!sample.IsOnGround && updated.FirstAirborneUtc is null)
             {
                 updated = updated with { FirstAirborneUtc = sample.ObservedUtc, State = FlightAttemptState.Departed }; persist = true;
@@ -479,9 +501,12 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             }
             VerifiedDeliveryEvidence? evidence = null;
             if (attempt?.DeliveryProof is { } proof)
+            {
+                await store.SaveAsync(attempt,cancellationToken).ConfigureAwait(false);
                 evidence = new VerifiedDeliveryEvidence(proof.EvidenceId, "frontier-flight-attempt-v0", attempt.JobId, attempt.ShipmentId,
                     attempt.OriginLocationId, attempt.DestinationLocationId, proof.ReadyUtc,
-                    $"Persisted flight proof: airborne {proof.FirstAirborneUtc:O}; movement {proof.MovementObservedUtc:O}; maximum origin distance {proof.MaximumDistanceFromOriginNauticalMiles:F2} NM.").EnsureValid();
+                    $"Persisted flight proof: airborne {proof.FirstAirborneUtc:O}; movement {proof.MovementObservedUtc:O}; maximum origin distance {proof.MaximumDistanceFromOriginNauticalMiles:F2} NM.") {Wage=CreateWage(attempt!)}.EnsureValid();
+            }
             var request = new ShipmentCargoTransferRequest(transferId, commandId, job.Id, desiredLoadedKilograms,
                 currentLocationId, latitude, longitude, utcNow(), confirmForfeit, evidence);
             var transition = await economy.ApplyCargoTransferAsync(request, cancellationToken).ConfigureAwait(false);
@@ -578,7 +603,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 if (batchAttempt?.DeliveryProof is { } proof)
                     evidence = new VerifiedDeliveryEvidence(proof.EvidenceId, "frontier-flight-attempt-v0", job.Id, job.ShipmentId,
                         batchAttempt.OriginLocationId, batchAttempt.DestinationLocationId, proof.ReadyUtc,
-                        $"Persisted shared-flight proof: airborne {proof.FirstAirborneUtc:O}; movement {proof.MovementObservedUtc:O}; maximum origin distance {proof.MaximumDistanceFromOriginNauticalMiles:F2} NM.").EnsureValid();
+                        $"Persisted shared-flight proof: airborne {proof.FirstAirborneUtc:O}; movement {proof.MovementObservedUtc:O}; maximum origin distance {proof.MaximumDistanceFromOriginNauticalMiles:F2} NM.") {Wage=CreateWage(batchAttempt)}.EnsureValid();
                 return new ShipmentCargoTransferRequest(transferId + "-" + index, commandId + "-" + index, job.Id,
                     desiredLoadedByJob[job.Id], currentLocationId, latitude, longitude, utcNow(), confirmForfeit, evidence);
             }).ToArray();
@@ -622,10 +647,11 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             try
             {
                 if (attempt?.DeliveryProof is null || world is null) throw new InvalidOperationException("Verified arrival evidence is not ready.");
+                await store.SaveAsync(attempt,cancellationToken).ConfigureAwait(false);
                 var proof = attempt.DeliveryProof;
                 var evidence = new VerifiedDeliveryEvidence(proof.EvidenceId, "frontier-flight-attempt-v0", attempt.JobId, attempt.ShipmentId,
                     attempt.OriginLocationId, attempt.DestinationLocationId, proof.ReadyUtc,
-                    $"Persisted flight proof: airborne {proof.FirstAirborneUtc:O}; movement {proof.MovementObservedUtc:O}; maximum origin distance {proof.MaximumDistanceFromOriginNauticalMiles:F2} NM.").EnsureValid();
+                    $"Persisted flight proof: airborne {proof.FirstAirborneUtc:O}; movement {proof.MovementObservedUtc:O}; maximum origin distance {proof.MaximumDistanceFromOriginNauticalMiles:F2} NM.") {Wage=CreateWage(attempt!)}.EnsureValid();
                 var transition = await economy.CompleteDeliveryAsync(evidence, cancellationToken).ConfigureAwait(false); world = transition.World; economyCommitted = true;
                 if (attempt.State != FlightAttemptState.Delivered)
                 { attempt = attempt with { State = FlightAttemptState.Delivered, DeliveredUtc = proof.ReadyUtc }; await store.SaveAsync(attempt, cancellationToken).ConfigureAwait(false); }
@@ -719,6 +745,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 attempt.State == FlightAttemptState.Delivered || attempt.DeliveredUtc is not null)
                 throw new InvalidOperationException("Only observation progress for an incomplete, loaded shipment can be reset. Completed economy state is protected.");
             attempt = await store.ResetIncompleteProgressAsync(attempt.Id, cancellationToken).ConfigureAwait(false);
+            wageSample=null;
             stationarySince = null; lastSampleUtc = null; latest = null; connected = false;
             observationReason = "Developer reset cleared incomplete flight observations. Shipment remains loaded and InTransit; no inventory or money changed.";
             UpdateStatus();
@@ -936,7 +963,8 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             var synchronized = item with { State = primary.State, FirstAirborneUtc = primary.FirstAirborneUtc,
                 MovementObservedUtc = primary.MovementObservedUtc, MaximumDistanceFromOriginNauticalMiles = primary.MaximumDistanceFromOriginNauticalMiles,
                 MaximumDistanceObservedUtc = primary.MaximumDistanceObservedUtc, DeliveryProof = proof,
-                OriginDepartedUtc = primary.OriginDepartedUtc };
+                OriginDepartedUtc = primary.OriginDepartedUtc, VerifiedAirborneTicks=primary.VerifiedAirborneTicks,
+                WageObservedUtc=primary.WageObservedUtc,WageFlightId=primary.WageFlightId };
             await store.SaveAsync(synchronized, cancellationToken).ConfigureAwait(false);
         }
     }

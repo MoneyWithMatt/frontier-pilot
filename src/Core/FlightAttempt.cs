@@ -84,8 +84,16 @@ public sealed record FlightAttempt(string Id, string JobId, string ShipmentId, s
     double RequiredMaximumDistanceNauticalMiles = 10, bool TransitBeginsAtDeparture = false,
     DateTimeOffset? OriginDepartedUtc = null)
 {
+    public long VerifiedAirborneTicks {get;init;}
+    public DateTimeOffset? WageObservedUtc {get;init;}
+    public string? WageFlightId {get;init;}
     public FlightAttempt EnsureValid()
     {
+        if(VerifiedAirborneTicks<0 || VerifiedAirborneTicks>0 && (FirstAirborneUtc is null||WageObservedUtc is null||WageFlightId is null))
+            throw new InvalidDataException("Airborne duration lacks flight evidence.");
+        if(WageFlightId is not null)EconomyValidation.Id(WageFlightId,nameof(WageFlightId));
+        if(WageObservedUtc is {} observed && (observed<LoadedUtc || VerifiedAirborneTicks>(observed-LoadedUtc).Ticks))
+            throw new InvalidDataException("Airborne duration exceeds observed flight time.");
         EconomyValidation.Id(Id, nameof(Id)); EconomyValidation.Id(JobId, nameof(JobId)); EconomyValidation.Id(ShipmentId, nameof(ShipmentId));
         EconomyValidation.Id(OriginLocationId, nameof(OriginLocationId)); EconomyValidation.Id(DestinationLocationId, nameof(DestinationLocationId));
         if (OriginLocationId == DestinationLocationId || LoadedUtc == default) throw new InvalidDataException("Flight attempt route or load time is invalid.");

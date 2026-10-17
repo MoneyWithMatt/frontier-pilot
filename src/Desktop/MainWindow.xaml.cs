@@ -42,9 +42,18 @@ public partial class MainWindow : Window
         model = suppliedModel ?? new(dryRun ? BuilderServices.CreateDesktopDryRun() : new BuilderServices(), Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.User) ?? Environment.GetEnvironmentVariable("MSFS2024_SDK") ?? "",careerStore:careerReady?careerStore:null,employerDestinations:destinations);
         employerCatalogue=destinations;
         DataContext = model;
+        model.Jobs.PropertyChanged+=(_,args)=>
+        {
+            if(args.PropertyName is nameof(EmployedCargoJobsViewModel.ShowOfferCompensation) or nameof(EmployedCargoJobsViewModel.ShowReservedCompensation))
+                Dispatcher.InvokeAsync(()=>
+                {
+                    OfferCompensationColumn.Visibility=model.Jobs.ShowOfferCompensation?Visibility.Visible:Visibility.Collapsed;
+                    ReservedCompensationColumn.Visibility=model.Jobs.ShowReservedCompensation?Visibility.Visible:Visibility.Collapsed;
+                });
+        };
         CareerPilotLabel.Text=career?.PilotName??"Prototype pilot";
         var employer=CareerCatalogue.Employers.SingleOrDefault(x=>x.Id==career?.Profile.Employment?.EmployerId);
-        EmploymentLabel.Text=employer is null?"Legacy prototype career: existing gameplay remains available.":$"{employer.Name} · {employer.Role}\nBase: {CareerCatalogue.Bases.Single(x=>x.Id==employer.BaseId).Name}\nCompany fleet access (not ownership): {employer.Aircraft}";
+        EmploymentLabel.Text=employer is null?"Legacy prototype career: existing gameplay remains available.":$"{employer.Name} · {employer.Role}\n{employer.WageDisplay}\nBase: {CareerCatalogue.Bases.Single(x=>x.Id==employer.BaseId).Name}\nCompany fleet access (not ownership): {employer.Aircraft}";
         employmentDescription=EmploymentLabel.Text;
         if(employerCatalogue is not null)ShowAirportSummary();
         CompanyType.ItemsSource=CompanyAircraft.Types.Where(x=>x.Enabled&&employer?.Fleet.Contains(x.Id)==true).ToArray();

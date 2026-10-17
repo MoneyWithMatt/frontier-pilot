@@ -681,7 +681,7 @@ public sealed class FlightAttemptPersistenceTests : TemporaryDirectoryTest
         document.Remove("DiagnosticTimeline"); await File.WriteAllTextAsync(FilePath, document.ToJsonString());
         var original = await new LocalFlightAttemptStore(FilePath).LoadAsync();
         Assert.Contains(attempt, original); Assert.Contains(completed, original); Assert.Empty(await new LocalFlightAttemptStore(FilePath).LoadDiagnosticTimelineAsync());
-        Assert.Equal(4, JsonNode.Parse(await File.ReadAllTextAsync(FilePath))!["SchemaVersion"]!.GetValue<int>());
+        Assert.Equal(LocalFlightAttemptStore.CurrentSchemaVersion, JsonNode.Parse(await File.ReadAllTextAsync(FilePath))!["SchemaVersion"]!.GetValue<int>());
     }
 
     [Fact]

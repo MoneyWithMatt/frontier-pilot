@@ -1,5 +1,10 @@
 # Backlog
 
+## Employed wages acceptance
+
+- V1 implemented 2026-10-17. Live-test a new Missionary flight (~30 measured minutes = ~$200), compare Industrial/Offshore rates, inspect History, and verify restart/repeated completion never pays again. Grouped cargo should earn one flight wage. See [manual procedure and migration limitations](employed-pilot-wages-v1.md).
+- Tips, progression, duty/block pay and employer finances remain deferred.
+
 ## Career onboarding follow-up
 
 - 2026-10-16: automatic worldwide MSFS airport resolution is implemented, superseding the manual-inspection prerequisite and future-enumeration item below. Live-test the batch lookup with a flight loaded anywhere; then test generated employer jobs. Resolve the nine identifierless research candidates separately. No individual airport visits are required to enable database-resolved routes. See [current workflow](automatic-airport-resolution.md).

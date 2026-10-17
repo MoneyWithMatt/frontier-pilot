@@ -20,7 +20,7 @@ public interface IFlightAttemptStore
 /// <summary>Strict whole-document persistence using flushed same-directory replacement. Invalid files are preserved.</summary>
 public sealed class LocalFlightAttemptStore : IFlightAttemptStore
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
     private const int MaximumEventsPerShipment = 256;
     private sealed record Document(int SchemaVersion, IReadOnlyList<FlightAttempt> Attempts,
         IReadOnlyList<FlightDiagnosticEvent>? DiagnosticTimeline = null);
@@ -137,6 +137,8 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
         if (document.SchemaVersion is < 1 or > CurrentSchemaVersion || document.Attempts is null) throw new IOException("Saved flight-attempt document uses an unsupported schema. File preserved.");
         try
         {
+            // Schema 5 adds zero-default accumulated duration and nullable wage identity/checkpoint.
+            // Older takeoff/arrival timestamps never reconstruct missing airborne intervals.
             var attempts = document.Attempts.Select(x => (document.SchemaVersion < 3
                 ? x with { RequiredMaximumDistanceNauticalMiles = 10 }
                 : x).EnsureValid()).ToArray();
@@ -183,6 +185,11 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
 
     private static void ValidateForward(FlightAttempt old, FlightAttempt next)
     {
+        if(next.VerifiedAirborneTicks<old.VerifiedAirborneTicks ||
+            old.WageFlightId is not null && old.WageFlightId!=next.WageFlightId ||
+            old.WageObservedUtc is {} observed && (next.WageObservedUtc is null || next.WageObservedUtc<observed) ||
+            old.DeliveryProof is not null && next.VerifiedAirborneTicks!=old.VerifiedAirborneTicks)
+            throw new InvalidDataException("Verified airborne time cannot be rewritten or changed after arrival proof.");
         if (old.JobId != next.JobId || old.ShipmentId != next.ShipmentId || old.OriginLocationId != next.OriginLocationId ||
             old.DestinationLocationId != next.DestinationLocationId || old.LoadedUtc != next.LoadedUtc || old.Aircraft != next.Aircraft ||
             old.RequiredMaximumDistanceNauticalMiles != next.RequiredMaximumDistanceNauticalMiles ||
@@ -198,6 +205,7 @@ public sealed class LocalFlightAttemptStore : IFlightAttemptStore
     internal static FlightAttempt ResetProgress(FlightAttempt attempt) => attempt with
     {
         State = FlightAttemptState.CargoLoaded,
+        VerifiedAirborneTicks=0,WageObservedUtc=null,WageFlightId=null,
         FirstAirborneUtc = null,
         OriginDepartedUtc = null,
         MovementObservedUtc = null,

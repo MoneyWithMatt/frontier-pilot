@@ -49,6 +49,7 @@ public static class CompanyEmployment
         if(world.Players.Single(x=>x.Id==EmployedCargoPrototype.PlayerId).EmployerBusinessId!=employer.Id)
             throw new IOException("Career employer differs from the saved economy. Both files were preserved.");
         var origin=destinations.Base(employer);
+        var businesses=world.Businesses.Select(x=>x.Id==employer.Id?x with {PilotHourlyRate=employer.HourlyWage}:x).ToArray();
         var locations=world.Locations.ToList();var resources=world.Resources.ToList();var needs=world.Needs.ToList();
         var definitions=world.RecurringDemand.ToList();
         var eligible=destinations.Diagnose(employer.Category).Where(x=>x.Enabled).ToArray();
@@ -73,15 +74,15 @@ public static class CompanyEmployment
                 if(CompanyAircraft.Choices(employer,destination,mass).Count==0)continue;
                 var need="need-"+stem;var id="demand-"+stem;desired.Add(id);
                 if(!needs.Any(x=>x.Id==need))needs.Add(new(need,place.StableId,resourceId,mass));
-                var definition=new RecurringDemandDefinition(id,need,stem,origin!.StableId,place.StableId,resourceId,mass,mass*employer.PrototypePaymentPerKilogram,
+                var definition=new RecurringDemandDefinition(id,need,stem,origin!.StableId,place.StableId,resourceId,mass,0,
                     EmployedCargoPrototype.Currency,TimePenalty(origin,place,employer)==0?2:1,employer.Id,employer.Id,EmployedCargoPrototype.PlayerId,true);
                 var index=definitions.FindIndex(x=>x.Id==id);
                 if(index<0)definitions.Add(definition);else definitions[index]=definition;
             }
         }
         for(var i=0;i<definitions.Count;i++)definitions[i]=definitions[i] with {IsEnabled=desired.Contains(definitions[i].Id)};
-        if(locations.SequenceEqual(world.Locations)&&resources.SequenceEqual(world.Resources)&&needs.SequenceEqual(world.Needs)&&definitions.SequenceEqual(world.RecurringDemand))return new(world,false);
-        var updated=world with {Locations=locations,Resources=resources,Needs=needs,RecurringDemand=definitions};
+        if(businesses.SequenceEqual(world.Businesses)&&locations.SequenceEqual(world.Locations)&&resources.SequenceEqual(world.Resources)&&needs.SequenceEqual(world.Needs)&&definitions.SequenceEqual(world.RecurringDemand))return new(world,false);
+        var updated=world with {Businesses=businesses,Locations=locations,Resources=resources,Needs=needs,RecurringDemand=definitions};
         // Existing jobs, accepted shipments, inventory and financial history are untouched.
         updated=EconomyJobBoard.Maintain(updated,now,false,scheduledGeneration:true).World;
         return new((updated with {Revision=increment?world.Revision+1:world.Revision}).EnsureValid(),true);
