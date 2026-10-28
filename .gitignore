@@ -4,6 +4,15 @@ workspaces/
 **/obj/
 TestResults/
 dist/
+.ci-output*/
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.key
+local-state/
+local-secrets/
 .vs/
 *.user
 evidence/avatar-spike/sedona-01/observations.jsonl

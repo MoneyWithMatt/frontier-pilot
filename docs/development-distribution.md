@@ -1,5 +1,7 @@
 # Development distribution
 
+For the separate hosted CI bundle, provenance/checksums and seven-day download instructions, see [TESTING.md](../TESTING.md). CI publishes to a fresh `.ci-output/development/application` folder, never replaces this local distribution or creates shortcuts. Downloading a CI artifact does not grant approval to execute it on the gaming PC.
+
 Frontier Pilot publishes as a Windows x64, self-contained, single-file WPF application. This is the smallest practical test distribution: it runs without a machine-wide .NET installation and leaves the normal source/build outputs available for Codex development.
 
 The stable executable is:
