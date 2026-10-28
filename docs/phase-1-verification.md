@@ -27,3 +27,11 @@ Local command: `./scripts/Invoke-Verification.ps1 -Stage BuildTest -OutputDirect
 - The separate diagnostics upload warned that no files matched: upload-artifact excluded the hidden parent directory. The workflow now explicitly includes hidden files only for its narrowly listed synthetic output paths. Validate the follow-up run on PR #1 before merging.
 
 No live simulator verification, personal-save migration, local published-binary execution or repository-setting changes were performed. Successful hosted compilation and smoke tests do not establish live acceptance.
+
+## Follow-up result
+
+[Run 2](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40743911128) passed every step for head `4bbe2a54c9da46c216212f074f469f7b17d88d77`, tested clean merge `f448e40c41897cf1a340b916e24ec9a447813bd8`. Both development (artifact 12840122826) and separate verification diagnostics (artifact 12840392917) are present: the hidden-directory upload issue is resolved. Regression remains 744 passed, zero failed/skipped; both WPF programs passed.
+
+The initial development archive was downloaded without execution: its archive SHA-256 and all 11 internal file hashes matched. Embedded TRX independently confirmed 744 passed and zero failures/skips; build.json matched the tested clean commit, SDK, UTC timestamp and run URL. This download inspection applies to the initial artifact specifically; later artifacts have their own checksums.
+
+Subsequent evidence-only commits do not alter application, tests or build logic. Check the latest PR check before merging; this document records the concrete runs above rather than predicting future results.
