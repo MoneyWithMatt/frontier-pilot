@@ -1,5 +1,13 @@
 # Technical status — 2026-09-07
 
+## Aircraft Condition Recorder V0 — 2026-10-19
+
+Implemented an optional read-only CLI recorder using an isolated native SimConnect session, per-field availability/validation and streaming JSONL diagnostics. Added create-only GUID-backed individual-aircraft documents with unknown initial estimates and explicit model binding; telemetry never updates those estimates. Standard/add-on profile boundaries, future fault synchronization and probabilistic-failure design are documented in [Aircraft Condition V0](aircraft-condition-v0.md). All aircraft capabilities remain unverified. 24 new tests / 719 total pass; Release build clean, CLI failure-path smoke passes and development distribution rebuilt. No simulator writes or gameplay changes. [Evidence](../evidence/aircraft-condition-v0/verification.md).
+
+## Aircraft-condition feasibility — 2026-10-19
+
+Completed repository/official MSFS 2024 SDK investigation with [capability matrix, compatibility limits and proposed read-only prototype](aircraft-condition-feasibility.md). Native wear-and-tear is documented, but component addressing, aircraft behaviour and cross-flight persistence require live qualification. No runtime feature was added. Offline native export check and 77 focused tests pass; Release solution build has zero warnings/errors. No simulator or Package Tool was launched. See [verification evidence](../evidence/aircraft-condition-investigation/verification.md).
+
 ## Employed pilot wages V1 — 2026-10-17
 
 Four starting employers pay $400/$400/$650/$800 per verified airborne hour (Missionary/Safari/Industrial/Offshore). Existing flight attempts now persist precise duration, excluding ground and continuity gaps; existing delivery transactions pay one ledger wage per shared flight. Company lists hide per-job rewards; freelance contracts retain them. Player-facing amounts use dollars without converting balances. Economy schema 9 / flight-attempt schema 5 preserve older records; old unmeasured time is never inferred. 695 tests pass, clean Release build, isolated WPF checks, development distribution rebuilt. Live wage flight acceptance pending. See [full implementation/report](employed-pilot-wages-v1.md).
@@ -293,3 +301,8 @@ Owned operations can publish real import/export contracts into the existing Jobs
 ## Independent runway placement — 2026-10-03
 
 Runway drawing now uses two endpoints, with independent persisted centre offsets and editable heading/length/width. The survey anchor and existing scenery remain fixed. Runway-free sites remain scenery-only, with no airport search or parking spawn. Explicit transparent runway surfaces are supported but still flatten terrain; no no-terraform guarantee or automatic hidden runway is made. See [runway-placement-and-runway-free-sites.md](runway-placement-and-runway-free-sites.md) for MAT1 build evidence and manual verification.
+
+Aircraft condition recording UI (2026-10-20): Tracking now hosts manual Start/Stop, status, identity, duration, count and folder access using the existing V0 recorder. Safe session transitions and shutdown are covered with synthetic tests; live acceptance remains pending. See [recording UI](aircraft-condition-recording-ui.md).
+
+## Physical aircraft V1 — 2026-10-27
+Individual fleet identity, explicit bindings, automatic observation/location checkpoints, fleet overview/map and persistent history are implemented. Component exposure/risk, maintenance/economy settlement and command/placement journals have synthetic coverage. Production wear calibration, workshop facilities and simulator-write adapters remain unavailable pending evidence. See [implementation and acceptance](physical-aircraft-v1.md).

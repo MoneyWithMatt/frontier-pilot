@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using FrontierAirportBuilder.Core;
 using FrontierAirportBuilder.MsfsSdk;
+using FrontierAirportBuilder.Workflow;
 
 var json = new JsonSerializerOptions
 {
@@ -11,6 +12,26 @@ var json = new JsonSerializerOptions
 };
 try
 {
+    if (args.Length == 7 && args[0] == "condition-airframe")
+    {
+        var record = AircraftConditionRecord.Create(args[2], args[3], args[4], args[5]);
+        if (args[6] != "--confirm-model-binding") throw new ArgumentException("Explicit model binding confirmation is required.");
+        AircraftConditionFiles.Create(args[1], record);
+        Console.WriteLine($"Created individual aircraft {record.AirframeId}. Hours/condition unknown; no simulator writes.");
+        return 0;
+    }
+    if (args.Length is 4 or 5 && args[0] == "record-condition")
+    {
+        if (!int.TryParse(args[2], out var seconds) || seconds is < 1 or > 3600)
+            throw new ArgumentException("Recording duration must be 1–3600 seconds.");
+        var selected = args.Length == 5 ? AircraftConditionFiles.Load(args[4]) : null;
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(seconds));
+        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
+        Console.WriteLine("Recording read-only condition diagnostics. Ctrl+C stops. No capability is automatically qualified.");
+        var count = await new AircraftConditionRecorder().RecordAsync(new LiveAircraftCondition(args[3]), args[1], selected, stop.Token);
+        Console.WriteLine($"Exported {count} frames. Native state was not modified. Results remain unverified.");
+        return count > 0 ? 0 : 1;
+    }
     if (args.Length is 2 or 3 && args[0] == "capture-survey")
     {
         using var stop = new CancellationTokenSource();
@@ -27,7 +48,7 @@ try
     }
     if (args.Length is < 3 or > 4 || args[0] is not ("generate" or "build") || (args[0] == "generate" && args.Length != 3))
     {
-        Console.Error.WriteLine("Frontier Airport Builder 0.1 (CLI spike)\nUsage:\n  inspect <SDK root>\n  generate <airstrip.json> <new output directory>\n  build <airstrip.json> <new output directory> [SDK root]\nAll geometry is in metres / true degrees. Output directory must not exist.");
+        Console.Error.WriteLine("Frontier Airport Builder 0.1 (CLI spike)\nUsage:\n  inspect <SDK root>\n  generate <airstrip.json> <new output directory>\n  build <airstrip.json> <new output directory> [SDK root]\n  record-condition <new.jsonl> <seconds 1-3600> <SDK root> [airframe.json]\n  condition-airframe <new.json> <label> <exact TITLE> <exact ATC MODEL> <package/version note> --confirm-model-binding\nAll geometry is in metres / true degrees. Output must not exist.");
         return 2;
     }
     var input = JsonSerializer.Deserialize<AirstripDefinition>(await File.ReadAllTextAsync(args[1]), json)

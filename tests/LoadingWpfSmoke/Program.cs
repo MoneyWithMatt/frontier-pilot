@@ -1,4 +1,5 @@
 using System.Windows;
+using System.IO;
 using System.Windows.Controls;
 using System.Windows.Markup;
 using System.Windows.Media;
@@ -37,6 +38,20 @@ internal static class Program
         Check(inputs[1].Text=="7.25"&&fuel.PlannedGallons==7.25m,"Fuel plan survived a live refresh");
         payload.ResetCommand.Execute(null);fuel.ResetCommand.Execute(null);Pump();
         Check(inputs.All(x=>x.Text=="0"),"Zero reset reached actual TextBox controls");
+        XNamespace xaml="http://schemas.microsoft.com/winfx/2006/xaml";
+        var panelXml=new XElement(document.Descendants(p+"StackPanel").Single(x=>(string?)x.Attribute(xaml+"Name")=="ConditionRecordingPanel"));
+        panelXml.SetAttributeValue(XNamespace.Xmlns+"x",xaml.NamespaceName);
+        var condition=new AircraftConditionSession(()=>throw new IOException("Synthetic connection error"),
+            Path.Combine(Path.GetTempPath(),"condition-ui-"+Guid.NewGuid()),_=>{});
+        window.DataContext=new { ConditionRecording=condition };
+        var panel=(FrameworkElement)XamlReader.Parse(panelXml.ToString());stack.Children.Add(panel);Pump();
+        var buttons=Descendants<Button>(panel).ToArray();
+        Check(!buttons[0].IsEnabled&&!buttons[1].IsEnabled,"Recording controls disabled while disconnected");
+        condition.ObserveConnection(new(new(DateTimeOffset.UtcNow,"Synthetic aircraft","Synthetic model",0,0,100,0,0,true),
+            42,42,null,PlayerControlMode.InAircraft,null,"test"));Pump();
+        Check(buttons[0].IsEnabled&&!buttons[1].IsEnabled,"Actual production Start binding accepts identified aircraft");
+        condition.ShutdownAsync().GetAwaiter().GetResult();Pump();
+        Check(!buttons[0].IsEnabled,"Shutdown disables production Start binding");
         window.Close();Console.WriteLine("WPF loading control smoke checks passed; synthetic data only.");return 0;
     }
     private static void Check(bool condition,string message){if(!condition)throw new Exception(message);Console.WriteLine("PASS: "+message);}

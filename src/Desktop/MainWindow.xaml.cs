@@ -92,7 +92,7 @@ public partial class MainWindow : Window
         WorldClock.Text = DateTimeOffset.Now.ToString("dd MMM yyyy · HH:mm · 'Local time'");
         if (refreshingWorld || model.IsBusy || model.Jobs.IsBusy || model.Operations.IsBusy) return;
         refreshingWorld = true;
-        try { await model.Jobs.RefreshLiveAsync(); await model.Operations.RefreshAsync(); }
+        try { await model.Jobs.RefreshLiveAsync(); await model.Operations.RefreshAsync(); await model.Fleet.AdvanceMaintenanceAsync(DateTimeOffset.UtcNow); }
         finally { refreshingWorld = false; }
     }
     private void OpenDependencySetup(object sender,RoutedEventArgs e)
@@ -292,14 +292,23 @@ public partial class MainWindow : Window
         bool confirmed=MessageBox.Show(this,plan.Summary+"\n\nIf this airport is open, its unsaved edits will also be discarded.","Confirm Delete Airport",MessageBoxButton.YesNo,MessageBoxImage.Warning,MessageBoxResult.No)==MessageBoxResult.Yes;
         await model.DeleteAirportAsync(plan,confirmed);
     }
-    private void OnClosing(object? sender, CancelEventArgs e)
+    private bool closingRecording, closeReady;
+    private async void OnClosing(object? sender, CancelEventArgs e)
     {
-        if(resettingCareer){model.Tracking.Dispose();TrackingMap.Dispose();return;}
-        if (!model.IsBusy) {e.Cancel=!MayDiscardEdits();if(!e.Cancel){model.Tracking.Dispose();TrackingMap.Dispose();}return;}
-        model.Cancel();
-        e.Cancel = true;
+        if(closeReady)return;
+        e.Cancel=true;
+        if(closingRecording)return;
+        if(!resettingCareer && model.IsBusy){model.Cancel();return;}
+        if(!resettingCareer && !MayDiscardEdits())return;
+        closingRecording=true;
+        await model.ConditionRecording.ShutdownAsync();
+            await model.Fleet.ShutdownAsync();
+        model.Tracking.Dispose();TrackingMap.Dispose();
+        closeReady=true;
+        // Defer even when shutdown completed synchronously: Close cannot re-enter Closing.
+        _ = Dispatcher.BeginInvoke(new Action(Close));
     }
-    private void DeleteCareer(object sender,RoutedEventArgs e)
+    private async void DeleteCareer(object sender,RoutedEventArgs e)
     {
         if(careerStore is null){MessageBox.Show(this,"Career deletion is unavailable in isolated dry-run mode.");return;}
         if(model.IsBusy||model.Jobs.IsBusy||model.Operations.IsBusy||model.AircraftLoading.IsBusy||refreshingWorld)
@@ -314,6 +323,8 @@ public partial class MainWindow : Window
             var executable=Environment.ProcessPath??throw new IOException("Application executable not found.");
             if(Process.GetProcessesByName(Process.GetCurrentProcess().ProcessName).Any(p=>p.Id!=Environment.ProcessId))
                 throw new IOException("Close other Frontier Pilot instances before deleting a career.");
+            await model.ConditionRecording.ShutdownAsync();
+            await model.Fleet.ShutdownAsync();
             careerStore.RequestReset(true);resetRequested=true;worldTimer.Stop();resettingCareer=true;
             Process.Start(new ProcessStartInfo(executable,$"--career-reset-wait {Environment.ProcessId}"){UseShellExecute=false});
             Application.Current.Shutdown();

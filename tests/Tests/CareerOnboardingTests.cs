@@ -32,7 +32,8 @@ public sealed class CareerOnboardingTests : IDisposable
         Assert.Equal(CareerStage.New,Store().Load().Stage);
         foreach(var file in CareerStore.ResetFiles.Skip(1))Assert.False(File.Exists(Path.Combine(root,file)));
         foreach(var file in preserved)Assert.Equal("keep",File.ReadAllText(Path.Combine(root,file)));
-        Assert.Equal(5,Directory.GetFiles(Path.Combine(root,"career-archives"),"*.json",SearchOption.AllDirectories).Length);
+        Assert.Equal(CareerStore.ResetFiles.Count(f=>f.EndsWith(".json",StringComparison.Ordinal)),Directory.GetFiles(Path.Combine(root,"career-archives"),"*.json",SearchOption.AllDirectories).Length);
+        Assert.Single(Directory.GetFiles(Path.Combine(root,"career-archives"),"aircraft-fleet.json.previous",SearchOption.AllDirectories));
         Assert.False(File.Exists(Path.Combine(root,"career-reset.json")));Assert.Equal(CareerStage.New,Store().Load().Stage);
     }
     [Theory][InlineData("career.json")][InlineData("economy/economy-state.json")][InlineData("economy/aircraft-loading.json")][InlineData("clean-profile")]

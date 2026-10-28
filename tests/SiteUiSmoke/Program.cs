@@ -49,6 +49,18 @@ internal static class Program
                 Check(edit.RunwayHeading==90,"Actual heading textbox updates runway");
                 Save(window,Path.Combine(folder,"runway-editor.png"));
                 foreach(var index in new[]{5,1,2,3,4}){tabs.SelectedIndex=index;Pump();Save(window,Path.Combine(folder,$"page-{index}.png"));}
+                var fleetStore=new AircraftFleetStore(Path.Combine(folder,"synthetic-fleet-"+Guid.NewGuid(),"aircraft-fleet.json"));
+                var aircraft=FleetOperations.DiscoverComponents(FleetOperations.Enrol("SYNTHETIC-1","test",new(DateTimeOffset.UtcNow,"Synthetic aircraft","Test model",-22,15,5000,90,0,true),"synthetic-package",null,DateTimeOffset.UtcNow),1);
+                fleetStore.Commit(new(1,1,aircraft.Id,[aircraft]),0);
+                var fleetModel=new AircraftFleetViewModel(fleetStore,()=>throw new Exception("UI smoke must not connect"));
+                var fleetPanel=new AircraftFleetPanel{DataContext=fleetModel};var fleetWindow=new Window{Content=fleetPanel,Width=1200,Height=850,ShowInTaskbar=false};fleetWindow.Show();Pump();
+                Check(Descendants<TextBlock>(fleetPanel).Any(t=>t.Text.Contains("SYNTHETIC-1")),"Physical fleet registration rendered");
+                Check(Descendants<TextBlock>(fleetPanel).Any(t=>t.Text.Contains("Unknown location")),"Unknown location is explicit; no illustrative position");
+                fleetModel.EstablishBaseline();Pump();
+                Check(fleetModel.SelectedAirframeId==aircraft.Id,"Fleet selection survives immutable snapshot refresh");
+                Save(fleetWindow,Path.Combine(folder,"physical-fleet.png"));
+                var fleetTabs=Descendants<TabControl>(fleetPanel).Single();fleetTabs.SelectedIndex=2;Pump();Save(fleetWindow,Path.Combine(folder,"aircraft-maintenance.png"));
+                await fleetModel.ShutdownAsync();fleetWindow.Close();
                 edit.NewAirport();window.Close();
                 var careerRoot=Path.Combine(Path.GetTempPath(),"FrontierCareerUi",Guid.NewGuid().ToString("N"));
                 var careerStore=new CareerStore(careerRoot);

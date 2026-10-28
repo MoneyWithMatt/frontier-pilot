@@ -29,11 +29,14 @@ public sealed class OperationsWorldMap : MapControl
         };
     }
 
-    public void Show(IReadOnlyList<OperationsMapLocation> locations)
+    private bool centered;
+    public void Show(IReadOnlyList<OperationsMapLocation> locations, bool recenter = true)
     {
         locationsLayer.Features = locations.Select(CreateFeature).ToArray();
         Map.RefreshGraphics();
         if (locations.Count == 0) return;
+        if (centered && !recenter) return;
+        centered = true;
         var centreLongitude = locations.Average(x => x.Longitude);
         var centreLatitude = locations.Average(x => x.Latitude);
         var centre = SphericalMercator.FromLonLat(centreLongitude, Math.Clamp(centreLatitude, -85.05112878, 85.05112878)).ToMPoint();

@@ -50,6 +50,8 @@
 - Replace the implemented self-contained development executable/shortcut with a signed customer installer, updater and prerequisite handling when distribution work begins.
 
 ## Research
+
+- Aircraft Condition Recorder V0 implemented 2026-10-19: run [C172, exact Dakota and Baron acceptance](aircraft-condition-v0.md), qualify fields with controlled observations, and establish component-W&T addressing/reload persistence. See also the [SDK capability matrix](aircraft-condition-feasibility.md). Individual GUID records are create-only; no penalties, maintenance economy or failure activation. All live capabilities remain unverified.
 - Requalify avatar elevation after simulator/SDK changes.
 - Track an officially supported ground query API; retain empirical source limitations.
 - Replace the Dry Grass and Weathered Asphalt fallbacks only after a reliable licensed material source and simulator visual proof exist.
@@ -86,3 +88,8 @@ Economy Core, employed-cargo selection and Flight Attempt V0 now implement the f
 - Install both Microsoft SDK components through the new setup window on a clean PC; verify detection, persisted configuration and a live qualified connection, then compile an explicitly authorized test airport.
 - Add Store configuration discovery, download resume and explicit dependency-download cleanup before customer distribution.
 - Requalify newer SDK/simulator builds empirically; never select the newest Microsoft manifest version as automatically qualified.
+
+Aircraft condition UI: implemented manual recording in Tracking. Next: run the documented C172/Dakota/Baron UI acceptance and capability tests, including reload/disconnect/close; then design automatic monitoring with explicit airframe binding and optional raw export.
+
+## Physical aircraft V1 acceptance — 2026-10-27
+Run automatic enrolment/location/restart and time/pause acceptance from physical-aircraft-v1.md. Qualify one exact aircraft and service facility, including dry-ground and elevated-platform height. Production wear/incident calibration, native fault/position adapters, vendor mappings, explicit cargo reassignment and individual fuel/payload migration remain pending. Do not enable unverified effects from synthetic test results.

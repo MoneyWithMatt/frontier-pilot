@@ -77,7 +77,7 @@ public sealed class CareerStore
     private string ProfilePath=>Path.Combine(root,"career.json");
     private string PendingPath=>Path.Combine(root,"career-reset.json");
     private static readonly JsonSerializerOptions Json=new(){WriteIndented=true,UnmappedMemberHandling=JsonUnmappedMemberHandling.Disallow,Converters={new JsonStringEnumConverter()}};
-    public static IReadOnlyList<string> ResetFiles {get;}=["career.json","economy/economy-state.json","economy/flight-attempts.json","economy/aircraft-loading.json","tracking/aircraft-state.json"];
+    public static IReadOnlyList<string> ResetFiles {get;}=["career.json","economy/economy-state.json","economy/flight-attempts.json","economy/aircraft-loading.json","tracking/aircraft-state.json","fleet/aircraft-fleet.json","fleet/aircraft-fleet.json.previous"];
     public CareerStore(string rootPath) : this(rootPath,null) { }
     internal CareerStore(string rootPath,Action<string>? checkpoint) {root=Path.GetFullPath(rootPath);resetCheckpoint=checkpoint;}
     private void Safe(string path)

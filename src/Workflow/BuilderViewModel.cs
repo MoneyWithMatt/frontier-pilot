@@ -22,6 +22,7 @@ public sealed class ActionCommand(Action execute, Func<bool>? canExecute = null)
 
 public sealed partial class BuilderViewModel : INotifyPropertyChanged
 {
+    public AircraftFleetViewModel Fleet { get; }
     private readonly IBuilderServices services;
     private CancellationTokenSource? cancellation;
     private bool busy, checkedReady, siteConfirmed, hasRunway, isPlacingRunway;
@@ -49,6 +50,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public ActionCommand AddObjectCommand { get; }
     public ActionCommand ApplyObjectCommand { get; }
     public TrackingViewModel Tracking { get; }
+    public AircraftConditionSession ConditionRecording { get; }
     public EmployedCargoJobsViewModel Jobs { get; }
     public AircraftLoadingViewModel AircraftLoading { get; }
     public ProspectingOperationsViewModel Operations { get; }
@@ -86,9 +88,20 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     {
         this.services = services; this.sdkRoot = sdkRoot;
         var careerRoot=careerStore?.StorageRoot??CareerStore.DefaultRoot;
+        Fleet = new(services.IsDryRun ? null : new AircraftFleetStore(Path.Combine(careerRoot,"fleet","aircraft-fleet.json")), () => new FrontierAirportBuilder.MsfsSdk.LiveAircraftCondition(this.sdkRoot));
+        Fleet.OperatorId = careerStore?.Load().Employment?.EmployerId ?? EmployedCargoPrototype.PlayerId;
+        Fleet.ResolveCompanyType = t => CompanyAircraft.Resolve(FlightAircraftIdentity.From(t), careerStore?.Load().AircraftBindings ?? []);
+        var customTrackingStore = aircraftStateStore is not null;
         aircraftStateStore ??= services.IsDryRun ? new MemoryAircraftStateStore() : new LocalAircraftStateStore(Path.Combine(careerRoot,"tracking","aircraft-state.json"));
+        if (!services.IsDryRun && !customTrackingStore) aircraftStateStore = new FleetTrackingProjection(aircraftStateStore, () => Fleet.Selected);
         Tracking = new(telemetrySource ?? new FrontierAirportBuilder.MsfsSdk.LiveAircraftTelemetry(), aircraftStateStore, () => this.sdkRoot, !services.IsDryRun);
+        ConditionRecording = new(() => new FrontierAirportBuilder.MsfsSdk.LiveAircraftCondition(this.sdkRoot),
+            Path.Combine(careerRoot, "diagnostics", "aircraft-condition"), services.OpenPath,
+            services.IsDryRun ? ConditionRecordingMode.Disabled : ConditionRecordingMode.Manual);
+        Tracking.TelemetryChanged += ConditionRecording.ObserveConnection;
+        Tracking.TelemetryChanged += sample => Fleet.ObserveTracking(sample, Tracking.CurrentLocation);
         IEconomyStateStore economyStore = services.IsDryRun ? new MemoryEconomyStateStore() : new LocalEconomyStateStore(Path.Combine(careerRoot,"economy","economy-state.json"));
+        Fleet.ConfigureMaintenance(economyStore);
         var employment=careerStore?.Load().Employment;
         var employer=CareerCatalogue.Employers.SingleOrDefault(x=>x.Id==employment?.EmployerId);
         employedCargoJobs ??= new EmployedCargoJobsService(economyStore,employer:employer,destinations:employerDestinations);
@@ -100,7 +113,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             flightAttemptTracker, () => this.sdkRoot, () => Tracking.World, () => Jobs.LoadingJobs)
             { RecoverManifestJobsAsync = Jobs.RecoverManifestJobsAsync,CompanyAircraftGuard=(identity,jobs)=>
                 {
-                    return CompanyAircraft.CheckDispatch(identity,jobs,careerStore?.Load().AircraftBindings??[]);
+                    return CompanyAircraft.CheckDispatch(identity,jobs,careerStore?.Load().AircraftBindings??[]) ?? Fleet.CheckDispatch(identity,jobs);
                 } };
         AircraftLoading = new(loadingCoordinator, () => { if (Tracking.ConnectCommand.CanExecute(null)) _ = Tracking.ConnectAsync(); });
         if (flightAttemptTracker is FlightAttemptTracker concreteFlightTracker) concreteFlightTracker.AircraftLoadingDiagnosticProvider = loadingCoordinator.CreateDiagnosticSnapshot;

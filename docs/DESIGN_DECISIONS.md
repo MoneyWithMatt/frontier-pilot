@@ -1,5 +1,12 @@
 # Design decisions
 
+## Aircraft condition foundation — 2026-10-19
+
+- Condition recording is opt-in and read-only in the existing CLI, with an independent SimConnect diagnostic session. Optional-variable failures cannot terminate the existing position source or feed delivery evidence.
+- Individual aircraft identity is an explicitly selected GUID. Title/model consistency is not proof of ownership or uniqueness. Create-only schema-1 records preserve unknown estimates; native observations remain in separate exports.
+- Receipt is always unverified until an empirical, version-specific field/action assessment exists. Aircraft recognition does not establish failure-control compatibility. No setter or failure event is bound by the recorder.
+- No wear, random failures, maintenance gameplay or synchronization is activated. See [architecture and acceptance gates](aircraft-condition-v0.md).
+
 ## Employed airborne wages — 2026-10-17
 
 - Employer configuration supplies hourly wages. Shared flight attempts accumulate only contiguous valid airborne intervals and supply the existing delivery evidence boundary; no independent pay timer.
@@ -253,3 +260,8 @@ SYSTEM offers use real UTC time with a three-hour generation cadence and six-hou
 ## Independent runway placement — 2026-10-03
 
 Runway drawing now uses two endpoints, with independent persisted centre offsets and editable heading/length/width. The survey anchor and existing scenery remain fixed. Runway-free sites remain scenery-only, with no airport search or parking spawn. Explicit transparent runway surfaces are supported but still flatten terrain; no no-terraform guarantee or automatic hidden runway is made. See [runway-placement-and-runway-free-sites.md](runway-placement-and-runway-free-sites.md) for MAT1 build evidence and manual verification.
+
+Aircraft-condition diagnostics use one session lifecycle shared by manual commands and future connection policy. Raw JSONL remains optional diagnostic evidence, distinct from persistent aircraft condition. Automatic monitoring is deferred until explicit airframe association and aircraft capability validation. See aircraft-condition-recording-ui.md.
+
+## Physical aircraft authority — 2026-10-27
+The physical fleet GUID is distinct from company aircraft-type permission and legacy title/model tracking. Legacy tracking remains preserved/unassigned; the fleet snapshot atomically owns per-airframe location and condition. Automatic observation never requires Record. Maintenance uses durable intents plus existing authoritative economy ledger/UTC scheduling; unknown and vendor authority never receive assumed Frontier wear. No production fault or positioning adapter/facility is enabled without qualification. See physical-aircraft-v1.md.

@@ -10,7 +10,7 @@ public enum EconomicLocationStatus { PrototypeOnly, ResearchCandidate, MsfsVerif
 public enum TransportRequirementState { Open, Reserved, Fulfilled, Cancelled }
 public enum EconomyJobState { Offered, Accepted, RoadInTransit, Completed, Cancelled, Forfeited, Expired }
 public enum ShipmentState { Available, Reserved, InTransit, Delivered, Consumed, Sold, Cancelled, Loaded, Forfeited }
-public enum FinancialTransactionKind { JobPayment, SiteFounding, LogisticsCargoPurchase, LogisticsSaleRevenue, RoadTransportCost, PilotWage }
+public enum FinancialTransactionKind { JobPayment, SiteFounding, LogisticsCargoPurchase, LogisticsSaleRevenue, RoadTransportCost, PilotWage, AircraftMaintenance }
 public enum InventoryTransactionKind { LegacyOpeningBalance, SystemGatewaySupply, ShipmentReserved, DeliveryReceived, OperationInitialStock, OperationConsumption, OperationProduction, ShipmentReservationReleased, PartialDeliveryReceived, PersistentGatewayOpeningStock, PersistentTransferOut, PersistentTransferIn, PlayerContractReserved, PlayerContractReleased, PlayerContractDelivered }
 public enum ShipmentCargoTransferKind { LoadedToAircraft, UnloadedAtOrigin, UnloadedAtDestination, UnloadedAndForfeited }
 
@@ -95,6 +95,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
     IReadOnlyList<EconomyJob> Jobs, IReadOnlyList<Shipment> Shipments,
     IReadOnlyList<FinancialTransaction> FinancialLedger)
 {
+    public IReadOnlyList<MaintenanceCharge> MaintenanceCharges { get; init; } = [];
     public IReadOnlyList<InventoryTransaction> InventoryLedger { get; init; } = [];
     public IReadOnlyList<RecurringDemandDefinition> RecurringDemand { get; init; } = [];
     public IReadOnlyList<EconomicSite> Sites { get; init; } = [];
@@ -281,6 +282,15 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
                 throw new InvalidDataException("Cargo transfer position or time is invalid.");
             if (shipments[x.ShipmentId].JobId != x.JobId) throw new InvalidDataException("Cargo transfer job and shipment disagree.");
         }
+        EconomyValidation.Collection(MaintenanceCharges, nameof(MaintenanceCharges));
+        EconomyValidation.Unique(MaintenanceCharges.Select(c=>c.WorkOrderId), "maintenance work order");
+        foreach(var c in MaintenanceCharges)
+        {
+            EconomyValidation.Id(c.WorkOrderId,"work order"); EconomyValidation.Id(c.AirframeId,"airframe");
+            if(!FinancialLedger.Any(t=>t.Kind==FinancialTransactionKind.AircraftMaintenance && t.EvidenceId==c.WorkOrderId) ||
+               !Businesses.Any(b=>b.Id==c.Payee) || (!Players.Any(p=>p.Id==c.Payer) && !Businesses.Any(b=>b.Id==c.Payer)))
+                throw new InvalidDataException("Maintenance charge lacks its authoritative ledger entry or explicit payer.");
+        }
         foreach (var x in FinancialLedger)
         {
             if(x.Kind!=FinancialTransactionKind.PilotWage && x.Wage is not null)throw new InvalidDataException("Only pilot wage entries may contain wage audit details.");
@@ -301,6 +311,12 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
                     x.OccurredUtc!=paidJob.CompletedUtc ||
                     FinancialLedger.Count(t=>t.Kind==FinancialTransactionKind.PilotWage&&t.Wage?.FlightId==x.Wage.FlightId)!=1))
                     throw new InvalidDataException("Pilot wage audit or payment is inconsistent.");
+            }
+            else if (x.Kind == FinancialTransactionKind.AircraftMaintenance)
+            {
+                var charge=MaintenanceCharges.SingleOrDefault(c=>c.WorkOrderId==x.EvidenceId);
+                if(charge is null || x.Id!="maintenance-"+charge.WorkOrderId || x.JobId is not null || x.SiteId is not null || x.FromEntityId!=charge.Payer || x.ToEntityId!=charge.Payee || x.Amount!=charge.Amount || x.CurrencyCode!=charge.Currency || x.OccurredUtc!=charge.Utc)
+                    throw new InvalidDataException("Invalid maintenance ledger receipt.");
             }
             else if (x.Kind == FinancialTransactionKind.SiteFounding)
             {
