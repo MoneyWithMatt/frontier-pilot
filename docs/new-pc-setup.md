@@ -1,5 +1,7 @@
 # Continue Frontier Pilot on a new PC
 
+Current development entry points and CI are in [TESTING.md](../TESTING.md), with current feature status in [ROADMAP.md](../ROADMAP.md). Historical transfer instructions below remain useful for explicitly authorized personal backup restoration. The repository is intentionally public; never upload those backups. The exact SDK is pinned without patch roll-forward.
+
 ## Source and development
 
 Clone the private [MoneyWithMatt/frontier-pilot](https://github.com/MoneyWithMatt/frontier-pilot) repository into a writable folder on Windows x64 while signed into the owning GitHub account:

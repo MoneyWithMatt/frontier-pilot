@@ -1,4 +1,24 @@
-# Frontier Airport Builder — agent instructions
+# Frontier Pilot — agent instructions
+
+## Current development contract
+
+Read `ARCHITECTURE.md`, `TESTING.md` and `ROADMAP.md` for the current source map, commands and evidence boundaries. Feature reports below retain historical context; newer explicit decisions supersede old implementation status, never safety guards. Repository visibility is intentionally public.
+
+Work on an isolated feature branch and one coherent PR targeting `master`; never merge without human approval. Use `docs/templates/feature-spec.md` and `.github/pull_request_template.md`. Preserve user work and avoid unrelated gameplay changes/refactoring. An approved objective is not permission to invent unresolved game design.
+
+Build/test entry point: PowerShell 7 `scripts/Invoke-Verification.ps1 -Stage BuildTest -OutputDirectory .ci-output-<run>`. It prefers `.tools/dotnet/dotnet.exe`, or accepts `-DotnetPath dotnet` on clean Windows hosts, and sets the required local caches. `global.json` pins the exact SDK. Full regression requires Windows named semaphores. Separate WPF smoke and package stages are documented in `TESTING.md`; do not run SiteUiSmoke against personal simulator configuration without reviewing its dependency-detector reads. Ordinary CI must never need MSFS/SDK installations, live Community or saves. Keep the existing local launch/publish scripts for explicitly requested development use.
+
+Use only GitHub-hosted Windows CI; no self-hosted runner on the gaming PC, paid APIs/services, unrestricted remote shell or automatic quota bypass. New/modified executable artifacts do not inherit approval to run locally. Later allowlisted scenario approval is separate from artifact approval. Do not change GitHub settings without explicit approval; see `docs/repository-protection.md`.
+
+Report exact commands, source commit/dirty status, counts/failures/skips, evidence links and pending checks. Never claim live MSFS acceptance from synthetic/replay tests, WPF screenshots or compilation. Preserve failures; do not skip/weaken assertions to get green CI. Escalate missing credentials, unqualified simulator operations, destructive actions, changes to safety/authority, conflicting gameplay requirements or unresolved hosted-test failures.
+
+For session/usage handoff, maintain `docs/handoffs/<task-id>.md` using `docs/task-continuity.md`. Record completed/remaining work, last validated commit, test results, blockers and exact next steps. Inspect current state before resuming; never repeat external actions blindly. No automatic restart after quota resets is implemented.
+
+### Current feature clarifications
+
+The historical V0 paragraphs below describe their original slices. Later approved implementations now include explicit physical payload/fuel writes (`docs/aircraft-payload-loading-v0.md`), route-adaptive maximum distance (`FlightAttemptTracker.RequiredDistanceForRoute`), recurring demand, player logistics, UTC economy progression, hourly wages and physical GUID-backed fleet records. Preserve their implemented gates rather than reverting them to V0. Read `docs/employed-pilot-wages-v1.md` and `docs/physical-aircraft-v1.md` for current authority. Only the tracker creates delivery evidence; diagnostic records never qualify it. No qualified production fault/position adapter or maintenance facility is enabled. Legacy title/model tracking remains unassigned; do not migrate it to a physical GUID by inference.
+
+## Existing domain and safety instructions
 
 Read docs/TECHNICAL_STATUS.md, docs/DESIGN_DECISIONS.md and docs/BACKLOG.md before changing the pipeline. Inspect Git status and preserve pending work. This repository is nested in a ChatGPT project mirror; sources/ outside this repository is read-only. Installed SDK samples are also read-only.
 
@@ -8,7 +28,7 @@ Never weaken avatar capture safeguards or substitute aircraft/camera data. Quali
 
 Do not modify FPT1 or FPSC, prior evidence or unrelated Community content. Desktop replacement requires an intact ownership receipt and matching hashes; never adopt an unknown existing package. Keep backups and fail safely if MSFS is running. Do not delete installed packages to make tests pass.
 
-Build/test with .tools/dotnet/dotnet.exe; set DOTNET_CLI_HOME=.tools/home and NUGET_PACKAGES=.tools/nuget. Run focused tests and a solution build. Tests use temporary packages, never the real Community folder. Local UI launch uses scripts/Start-Desktop.ps1. Commit implementation and accurate evidence; distinguish automated tests from live simulator verification. The private origin repository is https://github.com/MoneyWithMatt/frontier-pilot.git. Keep personal saves and generated distributions out of source control.
+Build/test locally with .tools/dotnet/dotnet.exe; set DOTNET_CLI_HOME=.tools/home and NUGET_PACKAGES=.tools/nuget. Clean hosted Windows uses the provisioned exact SDK via the verification entry point above. Run focused tests and a solution build. Tests use temporary packages, never the real Community folder. Local UI launch uses scripts/Start-Desktop.ps1. Commit implementation and accurate evidence; distinguish automated tests from live simulator verification. The public origin repository is https://github.com/MoneyWithMatt/frontier-pilot.git. Keep credentials, private configuration, personal saves/telemetry and generated distributions out of source control.
 
 The normal local test distribution is a self-contained Windows x64 single-file build at dist/FrontierPilot/FrontierPilot.exe. Recreate it with scripts/Publish-Development.ps1; dist is intentionally untracked. See docs/development-distribution.md. Do not commit generated runtime binaries.
 

@@ -1,41 +1,32 @@
 # Frontier Pilot
 
-Frontier Pilot is a Windows/MSFS 2024 prototype with a WPF desktop interface, site/airport authoring, aircraft tracking and cargo loading, jobs, operations and a persistent economy. Career Onboarding V1 adds resumable pilot/region/employer exploration; all three starting employers remain Coming Soon. Latest verified solution: 616 tests pass, Release build has zero warnings/errors.
+A Windows x64 WPF/.NET 8 prototype for MSFS 2024: saved sites and airport authoring, aircraft/avatar tracking, career/employment, verified cargo delivery, persistent economy and physical-aircraft foundations. Some features have live acceptance; others are synthetic-tested or awaiting aircraft-specific qualification. See [current status and roadmap](ROADMAP.md).
 
-**Continuing on a new PC:** read [new-PC setup and save migration](docs/new-pc-setup.md). Current architecture and limitations are in [Technical Status](docs/TECHNICAL_STATUS.md), [Design Decisions](docs/DESIGN_DECISIONS.md) and [Backlog](docs/BACKLOG.md). The project started as Frontier Airport Builder, so solution/project names retain that name.
+## Build and test
 
-The original Frontier Test Strip (FPT1) compilation proof uses MSFS 2024 SDK 1.2.4. Reports below describe that historical milestone, not the full current feature set.
-
-See [the implementation and verification report](docs/prototype-0.1.md), [the compiled package](artifacts/fpt1/frontier-airport-fpt1.zip), and [template provenance](src/MsfsSdk/Templates/PROVENANCE.md). Earlier baseline investigations remain in [the diagnosis](docs/toolchain-diagnosis.md) and [the original experiment](docs/sample-build-report.md).
-
-## Projects
-
-- `src/App`: CLI commands to inspect the SDK, generate an isolated project, or generate and compile it.
-- `src/Core`: airstrip data/validation, heading and runway-number logic, WGS84 runway geometry.
-- `src/MsfsSdk`: embedded working template, deterministic System.Xml.Linq generation, SDK invocation and package validation.
-- `tests/Tests`: xUnit coverage of geometry, validation, generated XML, determinism and build-result checks.
-
-## Development
-
-The repository-local .NET SDK is `.tools/dotnet/dotnet.exe`, version 8.0.424. It is excluded from Git. On another PC install .NET SDK 8.0.424 (or a compatible patch selected by `global.json`) and use `dotnet` instead.
+Install Git, PowerShell 7.2+ and the exact .NET SDK in `global.json` (8.0.424) from Microsoft. Clone this public repository and run:
 
 ```powershell
-& .\.tools\dotnet\dotnet.exe build FrontierAirportBuilder.sln -c Release
-& .\.tools\dotnet\dotnet.exe test FrontierAirportBuilder.sln -c Release
-& .\.tools\dotnet\dotnet.exe run --project src/App -- inspect 'C:\Users\mattr\Desktop\MSFS 2024 SDK'
-& .\.tools\dotnet\dotnet.exe run --project src/App -- generate examples/frontier-test-strip.json workspaces/new-source
-& .\.tools\dotnet\dotnet.exe run --project src/App -- build examples/frontier-test-strip.json workspaces/new-build
+git clone https://github.com/MoneyWithMatt/frontier-pilot.git
+cd frontier-pilot
+./scripts/Invoke-Verification.ps1 -DotnetPath dotnet
 ```
 
-Run `scripts/Test-SimpleAirport.ps1` from PowerShell 7 to copy and build a fresh untouched sample in `workspaces/`. This invokes the official tool and may launch the simulator through Steam. Each run saves its command, invocation, process observations, logs, file inventories, hashes and result under `evidence/`. It uses the project directory, project path and `-nopause`, with the correct SDK environment set only for the child process. Inspect validation errors and the generated package; exit 0 alone is insufficient proof.
+On a clean committed Windows checkout this restores dependencies, builds Release, runs the complete xUnit suite and separate WPF smoke tests, and publishes a self-contained development bundle under `.ci-output/development`. No MSFS or proprietary SDK is needed. WPF smoke needs a usable Windows desktop; use hosted CI for isolated execution. See [TESTING.md](TESTING.md) for individual stages, local `.tools` SDK use, fresh output directories and precise limitations.
 
-Use a new output directory each time. The CLI refuses existing folders and requires existing MSFS/Package Tool sessions to finish before an isolated build. The user-level MSFS2024_SDK override now points to the verified SDK root; an explicit fourth argument to `build` can select another root. Current process environment is also overridden for the child tool.
+## Obtain a development executable
 
-Disposable runs stay in ignored workspaces. The successful FPT1 package and evidence are committed. The minimal embedded template retains SDK-derived asphalt/thumbnail dependencies with provenance and the accompanying license; those assets are not original Frontier artwork. Installed SDK files and synced project sources remain unchanged.
+Open [Actions -> Windows CI](https://github.com/MoneyWithMatt/frontier-pilot/actions/workflows/windows-ci.yml), select a successful run, and download `FrontierPilot-development-<commit>` under Artifacts (GitHub sign-in may be required). Artifacts expire after seven days. Extract the complete bundle: `application/FrontierPilot.exe` includes the .NET runtime. `build.json`, test results and `SHA256SUMS.txt` identify the exact tested source and files.
 
-FPT1 retains the original sample-location baseline and is installed separately in Community2024. The Namibia spike **Skeleton Coast Test Strip (FPSC)** now completes live walking-avatar capture, empirical automatic ground elevation, dirt airport generation, compilation and installation. Matt's visual test reported no rocks, bumps or buried/floating edges and good terrain fit. See [the result and limitations](docs/skeleton-coast-test.md), [live capture](docs/live-survey.md), and [elevation qualification](docs/avatar-elevation-validation.md). The earlier direct-coordinate API investigation remains historical evidence; the working approach samples the avatar's current location. No WPF UI, settlements, economy or multiplayer are implemented.
+These are unsigned development builds, not installers or live MSFS acceptance. Downloading a changed executable does not authorize running it on the gaming PC. No automatic installation, public Release or deployment occurs.
 
-## Guided Windows interface
-Run scripts/Start-Desktop.ps1 after building the solution. The WPF window guides you through connecting, capturing your walking-avatar runway centre, defining a strip, compiling and safely installing it. Keep the builder open while closing MSFS between capture and compilation. See docs/TECHNICAL_STATUS.md for supported versions, evidence and current limitations.
+For explicitly requested local development, `scripts/Start-Desktop.ps1` launches the Release build; `-DryRun` uses the isolated airport-builder backend. `scripts/Publish-Development.ps1` retains the usual `dist/FrontierPilot/FrontierPilot.exe` distribution. The simulator/SDK are needed for live integration and scenery compilation, not ordinary application CI. Synthetic dry-run scenery must never enter real Community.
 
-Offline regression workflow: scripts/Start-Desktop.ps1 -DryRun. Build Release first; no simulator or SDK is required in this mode. The compiler is simulated and its packages must never be copied to MSFS. See docs/offline-workflow.md for the complete procedure.
+## Project guide
+
+- [ARCHITECTURE.md](ARCHITECTURE.md): Core, MsfsSdk, Workflow, Desktop and CLI responsibilities, storage and integration boundaries.
+- [AGENTS.md](AGENTS.md): safety instructions, branch/PR conventions and escalation.
+- [Feature specification](docs/templates/feature-spec.md), [task continuity](docs/task-continuity.md), and [recommended branch protection](docs/repository-protection.md).
+- [Design decisions](docs/DESIGN_DECISIONS.md), [historical technical reports](docs/TECHNICAL_STATUS.md), and [new-PC/save transfer guidance](docs/new-pc-setup.md).
+
+The solution retains the original `FrontierAirportBuilder` name. Historical FPT1/FPSC packages and evidence are preserved; installed SDK samples and unrelated Community content must remain untouched. Embedded SDK-derived template assets retain their [provenance](src/MsfsSdk/Templates/PROVENANCE.md) and accompanying license. Personal saves, credentials, generated distributions and local tool caches do not belong in Git.

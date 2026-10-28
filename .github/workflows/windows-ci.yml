@@ -1,0 +1,57 @@
+name: Windows CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows build, regression and WPF
+    runs-on: windows-2022
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Restore, Release build and xUnit
+        run: ./scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath dotnet
+      - name: WPF smoke (synthetic data only)
+        timeout-minutes: 6
+        run: ./scripts/Invoke-Verification.ps1 -Stage Smoke -DotnetPath dotnet
+      - name: Publish traceable development bundle
+        run: ./scripts/Invoke-Verification.ps1 -Stage Package -DotnetPath dotnet
+      - name: Upload development build
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: FrontierPilot-development-${{ github.sha }}
+          path: .ci-output/development/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload diagnostics even on failure
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: verification-${{ github.sha }}
+          path: |
+            .ci-output/*.log
+            .ci-output/*.json
+            .ci-output/tests/*.trx
+            .ci-output/screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 7
