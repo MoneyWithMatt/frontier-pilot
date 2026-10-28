@@ -31,6 +31,8 @@ jobs:
           global-json-file: global.json
       - name: Restore, Release build and xUnit
         run: ./scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath dotnet
+      - name: Verification script failure guards (simulated commands)
+        run: pwsh -NoProfile -File ./scripts/Test-VerificationGuards.ps1
       - name: WPF smoke (synthetic data only)
         timeout-minutes: 6
         run: ./scripts/Invoke-Verification.ps1 -Stage Smoke -DotnetPath dotnet

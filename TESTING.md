@@ -26,6 +26,10 @@ From the repository root, run on an inspected branch:
 
 Choose a fresh output directory for each full run. Evidence is not overwritten. A dirty-tree BuildTest/Smoke run is useful during development, but cannot be packaged as a commit-traceable build. Commit reviewed changes, then run all stages again for a bundle. Do not edit source between stages. SDK pin changes require explicit dependency review.
 
+Smoke allows one attempt per output directory. After success, failure or interruption, repeating Smoke is refused before any build, process or evidence overwrite. To retry, run BuildTest and Smoke in a fresh output directory. A failed or interrupted attempt has no passing smoke receipt and cannot be packaged. A refused duplicate attempt leaves the original evidence intact.
+
+Run `pwsh -NoProfile -File ./scripts/Test-VerificationGuards.ps1` for the verification script's nine synthetic guard scenarios. This uses the actual entry point in an isolated fixture with simulated Git, SDK and process commands; it does not execute WPF or publish an application. CI runs these checks in addition to the application suite and real WPF smoke programs.
+
 Equivalent focused commands with the repository SDK:
 
 ```powershell

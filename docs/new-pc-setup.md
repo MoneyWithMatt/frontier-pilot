@@ -4,7 +4,7 @@ Current development entry points and CI are in [TESTING.md](../TESTING.md), with
 
 ## Source and development
 
-Clone the private [MoneyWithMatt/frontier-pilot](https://github.com/MoneyWithMatt/frontier-pilot) repository into a writable folder on Windows x64 while signed into the owning GitHub account:
+Clone the public [MoneyWithMatt/frontier-pilot](https://github.com/MoneyWithMatt/frontier-pilot) repository into a writable folder on Windows x64:
 
 ```powershell
 git clone https://github.com/MoneyWithMatt/frontier-pilot.git
@@ -30,7 +30,7 @@ dotnet publish src/Desktop/FrontierAirportBuilder.Desktop.csproj -c Release -r w
 
 Close Frontier Pilot before republishing. The existing `Publish-Development.ps1` expects a repository-local SDK at `.tools/dotnet/dotnet.exe`; use the standard `dotnet publish` command above on a fresh machine, or provision that local SDK layout before using the script. Do not commit tool caches or generated binaries.
 
-For Codex, open this cloned repository as the project. Start with `AGENTS.md`, `docs/TECHNICAL_STATUS.md`, `docs/DESIGN_DECISIONS.md` and `docs/BACKLOG.md`. The latest completed feature is Career Onboarding V1; see `docs/career-onboarding-v1.md`. Existing gameplay is preserved, while new careers intentionally stop at Coming Soon employers.
+For Codex, open this cloned repository as the project. Start with `AGENTS.md`, `ARCHITECTURE.md`, `TESTING.md` and `ROADMAP.md`; the technical status, design decisions and backlog retain historical context. Current foundations include four employers with employment acceptance, airport lookup, wages and physical aircraft. Live acceptance and aircraft-specific qualification remain feature-dependent; use `ROADMAP.md` for the current boundaries.
 
 ## Run without development prerequisites
 

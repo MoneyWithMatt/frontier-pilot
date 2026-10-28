@@ -64,6 +64,19 @@ try {
     }
     if ($Stage -in 'All', 'Smoke') {
         if (-not (Test-Path -LiteralPath $output)) { throw 'Run BuildTest first.' }
+        # One attempt per output directory, including failed/interrupted and legacy attempts.
+        # Never overwrite logs while leaving a previous passing receipt eligible for packaging.
+        $previousSmoke = Get-ChildItem -LiteralPath $output -Force | Where-Object {
+            $_.Name -in 'smoke.json', 'smoke-attempt.json', 'screenshots' -or
+            $_.Name -like 'LoadingWpfSmoke*' -or $_.Name -like 'SiteUiSmoke*'
+        }
+        if ($previousSmoke) { throw 'Smoke was already attempted; run BuildTest and Smoke in a new OutputDirectory.' }
+        # CreateNew also prevents two Smoke invocations from claiming the same directory.
+        $attempt = [IO.File]::Open((Join-Path $output 'smoke-attempt.json'), [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+        try {
+            $bytes = [Text.Encoding]::UTF8.GetBytes((@{ sourceCommit = $commit; startedUtc = [DateTimeOffset]::UtcNow.ToString('o') } | ConvertTo-Json))
+            $attempt.Write($bytes, 0, $bytes.Length)
+        } finally { $attempt.Dispose() }
         foreach ($name in @('LoadingWpfSmoke', 'SiteUiSmoke')) {
             Invoke-Dotnet "$name-build.log" @('build', "tests/$name/$name.csproj", '-c', 'Release')
             $tfm = if ($name -eq 'SiteUiSmoke') { 'net8.0-windows10.0.19041' } else { 'net8.0-windows' }
