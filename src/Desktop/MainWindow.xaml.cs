@@ -53,7 +53,7 @@ public partial class MainWindow : Window
         };
         CareerPilotLabel.Text=career?.PilotName??"Prototype pilot";
         var employer=CareerCatalogue.Employers.SingleOrDefault(x=>x.Id==career?.Profile.Employment?.EmployerId);
-        EmploymentLabel.Text=employer is null?"Legacy prototype career: existing gameplay remains available.":$"{employer.Name} · {employer.Role}\n{employer.WageDisplay}\nBase: {CareerCatalogue.Bases.Single(x=>x.Id==employer.BaseId).Name}\nCompany fleet access (not ownership): {employer.Aircraft}";
+        EmploymentLabel.Text=employer is null?"Legacy prototype career: existing gameplay remains available.":$"{employer.Name} · {employer.Role}\n{employer.WageDisplay}\nBase: {CareerCatalogue.Bases.Single(x=>x.Id==employer.BaseId).Name}\nCompany-owned fleet assigned to you: {employer.Aircraft}";
         employmentDescription=EmploymentLabel.Text;
         if(employerCatalogue is not null)ShowAirportSummary();
         CompanyType.ItemsSource=CompanyAircraft.Types.Where(x=>x.Enabled&&employer?.Fleet.Contains(x.Id)==true).ToArray();

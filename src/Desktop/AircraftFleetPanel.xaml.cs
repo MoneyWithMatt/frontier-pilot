@@ -31,6 +31,13 @@ public partial class AircraftFleetPanel : UserControl
         if(MessageBox.Show("Declare the selected aircraft's currently unknown components healthy for Frontier modelling? Historical hours stay unknown. This is your explicit baseline, not an inspection result or a simulator repair.","Establish baseline",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No)==MessageBoxResult.Yes)
             viewModel.EstablishBaseline();
     }
+    private void ConfirmLegacyAssignment(object sender,RoutedEventArgs e)
+    {
+        if(viewModel?.SelectedLegacyCandidate is not {} a)return;
+        if(MessageBox.Show($"Confirm existing aircraft {a.Registration} ({a.Id}) as company-owned and assigned to this player, using the selected company type? Existing identity, condition, location and history are retained. No simulator state changes.",
+            "Reconcile legacy company assignment",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No)==MessageBoxResult.Yes)
+            viewModel.ConfirmLegacyAssignment();
+    }
     private async void BookMaintenance(object sender,RoutedEventArgs e)
     {
         if(viewModel is null)return;

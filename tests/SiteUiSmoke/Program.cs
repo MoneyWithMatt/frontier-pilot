@@ -111,6 +111,7 @@ internal static partial class Program
                     var accepted=false;control.EmploymentAccepted+=()=>accepted=true;
                     Descendants<Button>(control).Single(b=>b.Content?.ToString()=="Accept employment").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
                     Check(accepted&&isolated.Load().Employment?.EmployerId==employer.Id,"Actual acceptance button persists "+employer.Name);host.Close();
+                    await CheckEmployerFleet(isolated,employer,folder);
                 }
                 CareerButton("Explore employment opportunities").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
                 ((ListBox)screen.FindName("EmployersList")).SelectedIndex=1;

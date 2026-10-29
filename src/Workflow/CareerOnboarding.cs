@@ -9,6 +9,7 @@ public enum CareerStage { New, PilotName, Region, Opportunities, LegacyActive, E
 public sealed record CareerEmployment(string EmployerId, string Role, string BaseId, string[] FleetAccess);
 public sealed record CareerProfile(int SchemaVersion, CareerStage Stage, string PilotName, string? RegionId)
 {
+    public Guid? PlayerId { get; init; }
     public CareerEmployment? Employment { get; init; }
     public AircraftTypeBinding[] AircraftBindings {get;init;}=[];
     [JsonIgnore] public bool IsActive => Stage is CareerStage.LegacyActive or CareerStage.Employed;
@@ -16,11 +17,11 @@ public sealed record CareerProfile(int SchemaVersion, CareerStage Stage, string 
         name.Trim().Any(char.IsLetter)&&!name.Any(c=>char.IsControl(c)||char.IsSurrogate(c)||c is '<' or '>');
     public CareerProfile Validate()
     {
-        if(SchemaVersion is <1 or >2||!Enum.IsDefined(Stage))throw new IOException("Unsupported career profile. File preserved.");
+        if(SchemaVersion is <1 or >3||!Enum.IsDefined(Stage) || PlayerId==Guid.Empty)throw new IOException("Unsupported career profile. File preserved.");
         if (Stage==CareerStage.Employed)
         {
             var employer=CareerCatalogue.Employers.SingleOrDefault(x=>x.Id==Employment?.EmployerId);
-            if(SchemaVersion!=2||!ValidName(PilotName)||employer is null||RegionId!=employer.RegionId||Employment!.Role!=employer.Role||Employment.BaseId!=employer.BaseId||Employment.FleetAccess is null||!Employment.FleetAccess.SequenceEqual(employer.Fleet))
+            if(SchemaVersion<2 || SchemaVersion==3&&PlayerId is null || !ValidName(PilotName)||employer is null||RegionId!=employer.RegionId||Employment!.Role!=employer.Role||Employment.BaseId!=employer.BaseId||Employment.FleetAccess is null||!Employment.FleetAccess.SequenceEqual(employer.Fleet))
                 throw new IOException("Invalid employment assignment. File preserved.");
         }
         else if(Employment is not null)throw new IOException("Unexpected employment assignment. File preserved.");
@@ -70,6 +71,18 @@ public static class CareerCatalogue
 /// <summary>Career shell, separate from authoritative gameplay ledgers. Reset executes before gameplay services start.</summary>
 public sealed class CareerStore
 {
+    private sealed class ProfileLock : IDisposable
+    {
+        private readonly Mutex mutex;
+        public ProfileLock(string path)
+        {
+            var hash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(path.ToUpperInvariant())));
+            mutex=new(false,"Local\\Frontier-Career-"+hash[..24]);
+            try {if(!mutex.WaitOne(TimeSpan.FromSeconds(10))){mutex.Dispose();throw new IOException("Career busy in another process.");}}
+            catch(AbandonedMutexException) { }
+        }
+        public void Dispose(){mutex.ReleaseMutex();mutex.Dispose();}
+    }
     public static string DefaultRoot=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"FrontierAirportBuilder","desktop");
     private readonly string root;
     public string StorageRoot=>root;
@@ -92,9 +105,16 @@ public sealed class CareerStore
     }
     public CareerProfile Load()
     {
+        using var lease=new ProfileLock(ProfilePath);
         Safe(ProfilePath);
         CompletePendingReset();
-        if(File.Exists(ProfilePath))return (JsonSerializer.Deserialize<CareerProfile>(File.ReadAllText(ProfilePath),Json)??throw new IOException("Career profile is empty. File preserved.")).Validate();
+        if(File.Exists(ProfilePath))
+        {
+            var profile=(JsonSerializer.Deserialize<CareerProfile>(File.ReadAllText(ProfilePath),Json)??throw new IOException("Career profile is empty. File preserved.")).Validate();
+            if(profile.Stage==CareerStage.Employed && profile.PlayerId is null)
+            {profile=(profile with{SchemaVersion=3,PlayerId=Guid.NewGuid()}).Validate();Write(ProfilePath,profile);}
+            return profile;
+        }
         // Presence of legacy gameplay files protects existing users, including unreadable saves.
         if(ResetFiles.Skip(1).Any(f=>File.Exists(Path.Combine(root,f))))
         {var legacy=new CareerProfile(1,CareerStage.LegacyActive,"Pilot",null);Write(ProfilePath,legacy);return legacy;}
@@ -102,20 +122,30 @@ public sealed class CareerStore
     }
     public CareerProfile SaveDraft(CareerStage stage,string name,string? regionId)
     {
+        using var lease=new ProfileLock(ProfilePath);
         if(stage is CareerStage.LegacyActive or CareerStage.Employed)throw new IOException("Use explicit employment acceptance to activate a career.");
         if(Load().IsActive)throw new IOException("Existing careers cannot be replaced by onboarding.");
         var profile=new CareerProfile(1,stage,name.Trim(),regionId).Validate();Write(ProfilePath,profile);return profile;
     }
     public CareerProfile AcceptEmployment(string employerId)
     {
+        using var lease=new ProfileLock(ProfilePath);
         var draft=Load();
         if(draft.Stage!=CareerStage.Opportunities)throw new IOException("Select a region before accepting employment; active careers cannot change employer.");
         var employer=CareerCatalogue.Employers.SingleOrDefault(x=>x.Id==employerId&&x.RegionId==draft.RegionId)??throw new IOException("Unknown employer for this region.");
-        var profile=(draft with {SchemaVersion=2,Stage=CareerStage.Employed,Employment=new(employer.Id,employer.Role,employer.BaseId,employer.Fleet.ToArray())}).Validate();
-        Write(ProfilePath,profile);return profile;
+        var profile=(draft with {SchemaVersion=3,PlayerId=draft.PlayerId??Guid.NewGuid(),Stage=CareerStage.Employed,Employment=new(employer.Id,employer.Role,employer.BaseId,employer.Fleet.ToArray())}).Validate();
+        Write(ProfilePath,profile);EnsureEmployerFleet();return profile;
+    }
+    public EmployerFleetResult? EnsureEmployerFleet()
+    {
+        using var lease=new ProfileLock(ProfilePath);
+        var profile=Load();if(profile.Employment is not {} employment)return null;
+        var path=Path.Combine(root,"fleet","aircraft-fleet.json");Safe(path);
+        return EmployerFleetProvisioning.Ensure(new(path),profile.PlayerId!.Value,CareerCatalogue.Employers.Single(e=>e.Id==employment.EmployerId),DateTimeOffset.UtcNow);
     }
     public void BindAircraft(FlightAircraftIdentity identity,string typeId)
     {
+        using var lease=new ProfileLock(ProfilePath);
         identity.EnsureValid();var profile=Load();
         if(profile.Employment is null||!profile.Employment.FleetAccess.Contains(typeId)||!CompanyAircraft.Types.Any(x=>x.Id==typeId&&x.Enabled))throw new IOException("Choose an available company aircraft type.");
         var binding=new AircraftTypeBinding(identity.Title,identity.Type,typeId);

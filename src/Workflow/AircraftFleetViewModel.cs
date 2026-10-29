@@ -29,10 +29,75 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
     private bool maintenanceBusy;
     private string status = "Select a physical aircraft. Unmatched telemetry stays observation-only.";
     private string registration = "", package = "";
+    private CareerEmployer? employer;
+    private Guid? playerId;
+    private IReadOnlyList<string> allocationProblems=[];
+    private bool Authorized(PhysicalAirframe a)=>employer is null ? a.OwnerEntityId is null :
+        a.OwnerEntityId==employer.Id&&a.AssignedPlayerId==playerId&&employer.Fleet.Contains(a.CompanyTypeId!);
+    public bool CanEnrolPersonal => employer is null;
+    public string AllocationStatus => employer is null ? "Legacy fleet; ownership is not inferred." :
+        $"{employer.Name} owns this allocation; assigned to your persistent player profile. No purchase or registration required.\n"+string.Join("\n",allocationProblems);
+    public string SelectedInstructions => Selected is not {} a ? "Select an assigned aircraft." :
+        a.CompanyTypeId is {} type && CompanyAircraft.Types.SingleOrDefault(x=>x.Id==type)?.Enabled==false ? "This aircraft is allocated but its mission capability is disabled / Coming Soon." :
+        $"Load {a.AllocatedTypeName??a.Identity.SimulatorModel} in MSFS at {(a.Latest is null ? a.AllocatedBase?.Identifier??"its recorded location" : a.LocationLabel)}. Confirm its exact company type in Career / Settings. Selection never moves an aircraft. Unknown historical condition/hours are not assumed healthy or zero.";
+    public Func<string>? MissionEligibilityProvider {get;set;}
+    public string MissionEligibility=>MissionEligibilityProvider?.Invoke()??"Select a job in Jobs to inspect its eligible aircraft types.";
+    public void RefreshMissionEligibility()=>Notify();
+    public void ReconcileTransportArrivals(EconomyWorld state)
+    {
+        lock(gate)
+        {
+            if(blocked||closed||maintenanceBusy)return;
+            try
+            {
+                foreach(var receipt in state.CargoAirframes.SelectMany(m=>m.Legs.Where(l=>l.Flight?.DeliveryProof is not null).Select(l=>(Id:m.AirframeId,Destination:l.Destination,Flight:l.Flight!)))
+                    .Concat(state.PassengerTransfers.Where(t=>t.AirframeId is not null&&t.Flight?.DeliveryProof is not null).Select(t=>(Id:t.AirframeId!.Value,Destination:t.Destination,Flight:t.Flight!))).OrderBy(r=>r.Flight.DeliveryProof!.ReadyUtc))
+                {
+                    var a=fleet.Aircraft.SingleOrDefault(x=>x.Id==receipt.Id);var proof=receipt.Flight.DeliveryProof!;
+                    if(a is null||!Authorized(a)||a.LastTransportStop?.Arrival.ObservedUtc>=proof.ReadyUtc || !a.Bindings.Any(b=>b.Title==receipt.Flight.Aircraft.Title&&b.Model==receipt.Flight.Aircraft.Type))continue;
+                    var p=proof.ArrivalPosition;
+                    a=a with{LastTransportStop=new(receipt.Flight.Id,receipt.Destination.Id,receipt.Destination.Name,p)};
+                    if(a.Latest is null||a.Latest.Telemetry.ObservedUtc<=p.ObservedUtc)
+                    {
+                        var t=new AircraftTelemetry(p.ObservedUtc,receipt.Flight.Aircraft.Title,receipt.Flight.Aircraft.Type,p.Latitude,p.Longitude,p.AltitudeFeet,p.TrueHeadingDegrees,p.GroundSpeedKnots,p.IsOnGround);
+                        a=a with{Latest=new(t,null,AirframePositionState.LastKnown,"tracker-qualified transport arrival","Last known; not qualified parking or spawn permission",a.OpenSession??Guid.NewGuid())};
+                    }
+                    var eventId=new Guid(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("transport-stop/"+receipt.Flight.Id))[..16]);
+                    Update(FleetOperations.Event(a,eventId,p.ObservedUtc,"Transport arrival",receipt.Destination.Name+"; existing tracker proof recorded. No new flight evidence, hours, money or simulator placement."),true);
+                }
+            }
+            catch(Exception ex){status="Transport arrival projection pending: "+ex.Message;}
+        }
+        Notify();
+    }
+    public IReadOnlyList<PhysicalAirframe> LegacyCandidates=>fleet.Aircraft.Where(a=>employer is not null&&a.AssignedPlayerId is null&&(a.OwnerEntityId is null&&a.Operator==employer.Id||a.OwnerEntityId==employer.Id)).ToArray();
+    public PhysicalAirframe? SelectedLegacyCandidate {get;set;}
+    public CompanyAircraftType? SelectedLegacyType {get;set;}
+    public IReadOnlyList<CompanyAircraftType> EmployerTypes=>CompanyAircraft.Types.Where(t=>employer?.Fleet.Contains(t.Id)==true).ToArray();
+    public void ConfigureEmployment(Guid player, CareerEmployer company, IReadOnlyList<string>? problems=null)
+    {
+        lock(gate)
+        {
+            EndSession("Employment authorization configured");playerId=player;employer=company;OperatorId=company.Id;allocationProblems=problems??[];
+            if(!blocked && (fleet.Selected is not {} current || !Authorized(current)))
+            {fleet=fleet with{SelectedId=Aircraft.FirstOrDefault(a=>CompanyAircraft.Types.Any(t=>t.Id==a.CompanyTypeId&&t.Enabled))?.Id??Aircraft.FirstOrDefault()?.Id};dirty=true;Save();}
+        }
+        Notify();
+    }
+    public void ConfirmLegacyAssignment()=>Run(()=>
+    {
+        if(employer is null||playerId is null||SelectedLegacyCandidate is not {} candidate)throw new InvalidOperationException("Choose a preserved legacy company record.");
+        var updated=EmployerFleetProvisioning.ConfirmLegacy(candidate,playerId.Value,employer,DateTimeOffset.UtcNow,SelectedLegacyType?.Id);
+        if(fleet.Aircraft.Any(a=>a.Id!=candidate.Id&&a.OwnerEntityId==employer.Id&&a.AssignedPlayerId==playerId&&a.CompanyTypeId==updated.CompanyTypeId))throw new InvalidOperationException("An allocated aircraft already exists for this type; nothing replaced.");
+        fleet=fleet with{SchemaVersion=2,Aircraft=fleet.Aircraft.Select(a=>a.Id==updated.Id?updated:a).ToArray(),SelectedId=updated.Id};dirty=true;Save();
+        var provisioned=EmployerFleetProvisioning.Provision(fleet,playerId.Value,employer,DateTimeOffset.UtcNow);allocationProblems=provisioned.Reconciliation;
+        if(!fleet.Aircraft.SequenceEqual(provisioned.Fleet.Aircraft)){fleet=provisioned.Fleet;dirty=true;Save();}
+        status="Legacy company assignment confirmed; all prior aircraft history retained.";
+    });
     public AircraftFleetViewModel(AircraftFleetStore? store, Func<IAircraftConditionSource> sourceFactory)
     {
         this.store = store; this.sourceFactory = sourceFactory;
-        EnrolCommand = new(() => Run(Enrol), () => !blocked && !closed && world is not null && Registration.Trim().Length > 0 && PackageVersion.Trim().Length > 0);
+        EnrolCommand = new(() => Run(Enrol), () => CanEnrolPersonal && !blocked && !closed && world is not null && Registration.Trim().Length > 0 && PackageVersion.Trim().Length > 0);
         RenameCommand = new(() => Run(() => Update(FleetOperations.Rename(Selected!, Registration, DateTimeOffset.UtcNow), true)), () => !blocked && Selected is not null && Registration.Trim().Length > 0);
         BindCommand = new(() => Run(Bind), () => !blocked && Selected is not null && world is not null && PackageVersion.Trim().Length > 0);
         ReturnCommand = new(() => { status = ReturnInstructions; Notify(); }, () => Selected?.Latest is not null);
@@ -48,7 +113,7 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
     }
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? FleetChanged;
-    public IReadOnlyList<PhysicalAirframe> Aircraft => fleet.Aircraft;
+    public IReadOnlyList<PhysicalAirframe> Aircraft => fleet.Aircraft.Where(Authorized).ToArray();
     public Guid? SelectedAirframeId
     {
         get=>fleet.SelectedId;
@@ -56,8 +121,8 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
     }
     public PhysicalAirframe? Selected
     {
-        get => fleet.Selected;
-        set { Run(()=>{ if (value?.Id == fleet.SelectedId || blocked || closed || maintenanceBusy) return; EndSession("Aircraft selection changed"); bindingConfirmationRequired=false; fleet = fleet with { SelectedId = value?.Id }; dirty = true; Save(); Reconcile(); }); }
+        get => fleet.Selected is {} selected&&Authorized(selected)?selected:null;
+        set { Run(()=>{ if(value is not null&&!Authorized(value))throw new InvalidOperationException("This aircraft is not assigned by your current employer.");if (value?.Id == fleet.SelectedId || blocked || closed || maintenanceBusy) return; EndSession("Aircraft selection changed"); bindingConfirmationRequired=false; fleet = fleet with { SelectedId = value?.Id }; dirty = true; Save(); Reconcile(); }); }
     }
     public string Registration { get => registration; set { registration = value; Notify(); } }
     public string PackageVersion { get => package; set { package = value; Notify(); } }
@@ -138,6 +203,8 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
     }
     private void Bind()
     {
+        if(Selected is {} company && company.OwnerEntityId is not null && (ResolveCompanyType?.Invoke(world!.Aircraft)!=company.CompanyTypeId || !CompanyAircraft.Types.Any(t=>t.Id==company.CompanyTypeId&&t.Enabled)))
+            throw new InvalidOperationException("The exact simulator type must match this enabled company aircraft before binding.");
         EndSession("Binding changed");
         bindingConfirmationRequired=false;
         var a = Selected!; var t = world!.Aircraft;
@@ -154,6 +221,22 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
             try
             {
                 sample?.EnsureValid(); world = sample; location = recognized;
+                if(sample is not null && Selected is {} company && company.OwnerEntityId is not null)
+                {
+                    if(!CompanyAircraft.Types.Any(t=>t.Id==company.CompanyTypeId&&t.Enabled) || ResolveCompanyType?.Invoke(sample.Aircraft)!=company.CompanyTypeId)
+                    {EndSession("Company type mismatch");status="Observation-only: load the selected enabled company type and confirm its exact simulator identity in Career / Settings.";Notify();return;}
+                    var last=company.Latest?.Telemetry;
+                    var lat=last?.Latitude??company.AllocatedBase?.Latitude;var lon=last?.Longitude??company.AllocatedBase?.Longitude;
+                    if(previousPosition is null && lat is {} latitude && lon is {} longitude && WorldTracking.DistanceMeters(latitude,longitude,sample.Aircraft.Latitude,sample.Aircraft.Longitude)>2778)
+                    {EndSession("Unobserved company relocation");status="Company aircraft remains at its saved location. Loading another airport or selecting an airframe is not a relocation. Use only explicit developer recovery for an unobserved move.";Notify();return;}
+                    if(company.Bindings.Count==0 && !bindingConfirmationRequired)
+                    {
+                        company=FleetOperations.Event(company with {Identity=company.Identity with {SimulatorTitle=sample.Aircraft.AircraftTitle,SimulatorModel=sample.Aircraft.AircraftType},
+                            Bindings=[new(sample.Aircraft.AircraftTitle,sample.Aircraft.AircraftType,"Type confirmed; package version unverified","standard-simvars-v0",null)]},
+                            Guid.NewGuid(),sample.Aircraft.ObservedUtc,"Company type associated","Selected allocation matched an explicitly confirmed simulator title/model at its recorded location; no compatibility or condition inferred.");
+                        Update(company,true);
+                    }
+                }
                 if(sample is not null && observingId is not null && sample.AircraftObjectId!=observingObject)
                 {EndSession("Simulator aircraft object changed");bindingConfirmationRequired=true;}
                 if(bindingConfirmationRequired){status="Observation-only · aircraft object changed. Confirm the loaded livery against the selected airframe.";Notify();return;}
@@ -282,6 +365,7 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
         lock(gate)
         {
             var a=Selected;
+            if(a?.CompanyTypeId is {} type && a.OwnerEntityId is not null && (!Authorized(a) || world is null || !CompanyAircraft.Types.Any(t=>t.Id==type&&t.Enabled) || ResolveCompanyType?.Invoke(world.Aircraft)!=type))return "Selected company airframe is unauthorised, disabled or does not match the confirmed live type.";
             if(blocked||a is null||world is null||!a.Bindings.Any(b=>b.Title==identity.Title&&b.Model==identity.Type))return "Select and bind an individual aircraft in Aircraft / Fleet before a new load.";
             if(a.LocationReconciliationRequired)return "Review and acknowledge the aircraft's external relocation before new dispatch. Existing cargo is not moved by this acknowledgement.";
             if(assignments.Any(j=>j.TypeId is {} type && type!=a.CompanyTypeId))return "This physical airframe's company type does not match the assigned job.";

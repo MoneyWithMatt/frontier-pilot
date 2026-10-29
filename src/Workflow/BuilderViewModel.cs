@@ -90,7 +90,11 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     {
         this.services = services; this.sdkRoot = sdkRoot;
         var careerRoot=careerStore?.StorageRoot??CareerStore.DefaultRoot;
-        Fleet = new(services.IsDryRun ? null : new AircraftFleetStore(Path.Combine(careerRoot,"fleet","aircraft-fleet.json")), () => new FrontierAirportBuilder.MsfsSdk.LiveAircraftCondition(this.sdkRoot));
+        var profile=careerStore?.Load();
+        EmployerFleetResult? allocation=null;string? allocationError=null;
+        try{allocation=careerStore?.EnsureEmployerFleet();}catch(IOException ex){allocationError="Company allocation blocked; existing fleet preserved: "+ex.Message;}
+        Fleet = new(services.IsDryRun && careerStore is null ? null : new AircraftFleetStore(Path.Combine(careerRoot,"fleet","aircraft-fleet.json")), () => new FrontierAirportBuilder.MsfsSdk.LiveAircraftCondition(this.sdkRoot));
+        if(profile?.Employment is {} assigned)Fleet.ConfigureEmployment(profile.PlayerId!.Value,CareerCatalogue.Employers.Single(e=>e.Id==assigned.EmployerId),allocationError is null?allocation?.Reconciliation??[]:[allocationError]);
         Fleet.OperatorId = careerStore?.Load().Employment?.EmployerId ?? EmployedCargoPrototype.PlayerId;
         Fleet.ResolveCompanyType = t => CompanyAircraft.Resolve(FlightAircraftIdentity.From(t), careerStore?.Load().AircraftBindings ?? []);
         var customTrackingStore = aircraftStateStore is not null;
@@ -110,6 +114,8 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         IFlightAttemptStore attemptStore = services.IsDryRun ? new MemoryFlightAttemptStore() : new LocalFlightAttemptStore(Path.Combine(careerRoot,"economy","flight-attempts.json"));
         flightAttemptTracker ??= new FlightAttemptTracker(economyStore, attemptStore) {AdditionalLocationResolver=employerDestinations is null?null:employerDestinations.Find};
         Jobs = new(employedCargoJobs, flightAttemptTracker);
+        Fleet.MissionEligibilityProvider=()=>Jobs.SelectedOffer is {} job ? $"Selected job {job.JobId}: eligible types {string.Join(", ",Jobs.CompanyAircraftChoices.Select(t=>t.Name))}. Aircraft allocation does not enable unfinished mission capabilities." : "Select an offer in Jobs to inspect eligible company types. Passenger transfers retain their own endpoint/configuration gates.";
+        Jobs.PropertyChanged+=(_,e)=>{if(e.PropertyName is nameof(Jobs.SelectedOffer) or nameof(Jobs.CompanyAircraftChoices))Fleet.RefreshMissionEligibility();};
         IAircraftLoadingStore loadingStore = services.IsDryRun ? new MemoryAircraftLoadingStore() : new LocalAircraftLoadingStore(Path.Combine(careerRoot,"economy","aircraft-loading.json"));
         var passengerService = new PassengerTransfersService(economyStore, employer, employerDestinations ?? new(),
             () => careerStore?.Load().AircraftBindings ?? [])
@@ -151,6 +157,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             })
         {
             AuthorizeHandling = loadingCoordinator.AuthorizeCargoHandling,
+            WorldObserved = Fleet.ReconcileTransportArrivals,
             LegacyRecoveryGuard = async token =>
             {
                 var manifests = await loadingStore.LoadManifestsAsync(token).ConfigureAwait(false);

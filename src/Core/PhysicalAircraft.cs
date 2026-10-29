@@ -27,11 +27,19 @@ public sealed record MaintenanceWork(Guid Id, Guid ComponentId, MaintenanceActio
 }
 public sealed record AircraftCommandIntent(Guid Id, Guid? FaultId, string Action, bool Desired, string AdapterEvidence,
     bool Attempted, FaultSyncState State, string Detail);
+public sealed record CompanyAircraftBase(string Id, string Name, string Identifier, double Latitude, double Longitude);
+public sealed record AirframeTransportStop(string FlightId, string LocationId, string Name, FlightPosition Arrival);
 public sealed record PhysicalAirframe(AircraftConditionRecord Identity, string Registration, string Operator,
     string? CompanyTypeId, IReadOnlyList<AirframeBinding> Bindings, IReadOnlyList<ComponentLife> Components,
     IReadOnlyList<AirframeFault> Faults, IReadOnlyList<MaintenanceWork> Work, IReadOnlyList<AirframeEvent> History)
 {
     public Guid Id => Identity.AirframeId;
+    public string? OwnerEntityId { get; init; }
+    public Guid? AssignedPlayerId { get; init; }
+    public string? AllocationKey { get; init; }
+    public CompanyAircraftBase? AllocatedBase { get; init; }
+    public string? AllocatedTypeName { get; init; }
+    public AirframeTransportStop? LastTransportStop { get; init; }
     public AirframePosition? Latest { get; init; }
     public AirframePosition? LastStationary { get; init; }
     public Guid? OpenSession { get; init; }
@@ -43,28 +51,39 @@ public sealed record PhysicalAirframe(AircraftConditionRecord Identity, string R
     public bool LocationReconciliationRequired { get; init; }
     public string Availability => Work.Any(x => x.State != WorkOrderState.Completed) ? "In maintenance" :
         Faults.Any(x => !x.Resolved && x.GroundsAircraft) ? "Grounded" :
-        Latest is null || LocationReconciliationRequired || Components.Any(x => !x.Removed && (x.InspectionRequired || x.Health is null)) || Faults.Any(x => !x.Resolved) ? "Attention" : "Ready";
-    public string LocationLabel => Latest is null ? "Unknown location" :
+        Latest is null || LocationReconciliationRequired || Components.Count==0 || Components.Any(x => !x.Removed && (x.InspectionRequired || x.Health is null)) || Faults.Any(x => !x.Resolved) ? "Attention" : "Ready";
+    public string LocationLabel => Latest is null ? AllocatedBase is {} b ? $"Assigned base: {b.Name} ({b.Identifier}) · company allocation, not simulator observation" : "Unknown location" :
         $"{Latest.State} · {Latest.Context?.AirportIdentifier ?? "unrecognized location"} · {Latest.Telemetry.ObservedUtc:u}";
-    public string Overview => $"{Registration} · {Identity.SimulatorModel} · {Availability}\n{LocationLabel}\n" +
+    public string Overview => $"{Registration} · {AllocatedTypeName ?? Identity.SimulatorModel} · {Availability}\n{LocationLabel}\n" +
+        (OwnerEntityId is {} owner ? $"Owned by {owner} · assigned player {AssignedPlayerId}\nCompany property; not a personal asset.\n" : "Legacy ownership/assignment unconfirmed.\n") +
+        (LastTransportStop is {} stop ? $"Last qualified transport stop: {stop.Name} · {stop.Arrival.ObservedUtc:u} (not parking/spawn authority)\n" : "") +
         $"Lifetime hours: {(Identity.AirframeHours?.ToString("F1") ?? "Unknown")} · observed airborne hours: {ObservedAirborneSeconds / 3600:F2} · landings since enrolment: {ObservedLandingCycles}";
-    public override string ToString() => $"{Registration} · {Identity.SimulatorModel} · {Availability} · {LocationLabel}";
+    public override string ToString() => $"{Registration} · {AllocatedTypeName ?? Identity.SimulatorModel} · {Availability} · {LocationLabel}";
 }
 public sealed record AircraftFleet(int SchemaVersion, long Revision, Guid? SelectedId, IReadOnlyList<PhysicalAirframe> Aircraft)
 {
     public bool RandomFailuresEnabled { get; init; }
     public bool AutomaticSimulatorEffectsEnabled { get; init; }
-    public static AircraftFleet Empty => new(1, 0, null, []);
+    public static AircraftFleet Empty => new(2, 0, null, []);
     public PhysicalAirframe? Selected => Aircraft.SingleOrDefault(x => x.Id == SelectedId);
     public AircraftFleet Validate()
     {
-        if (SchemaVersion != 1 || Revision < 0 || Aircraft is null || Aircraft.Count > 1000 ||
+        if (SchemaVersion is < 1 or > 2 || Revision < 0 || Aircraft is null || Aircraft.Count > 10000 ||
             Aircraft.Select(x => x.Id).Distinct().Count() != Aircraft.Count ||
             Aircraft.Select(x => x.Registration).Distinct(StringComparer.OrdinalIgnoreCase).Count() != Aircraft.Count ||
             SelectedId is not null && Selected is null) throw new InvalidDataException("Invalid or unsupported fleet; preserve the original.");
         foreach (var a in Aircraft)
         {
+            if (a.AssignedPlayerId is not null && a.OwnerEntityId is null || a.AssignedPlayerId == Guid.Empty ||
+                a.AllocationKey is not null && (SchemaVersion < 2 || a.OwnerEntityId is null || a.AssignedPlayerId is null || a.CompanyTypeId is null || a.AllocatedBase is null || string.IsNullOrWhiteSpace(a.AllocatedTypeName)))
+                throw new InvalidDataException("Company aircraft ownership/assignment is incomplete.");
+            if (a.OwnerEntityId is {} owner) Text(owner);
+            if (a.AllocationKey is {} key) Text(key);
+            if (a.AllocatedBase is {} basis && (string.IsNullOrWhiteSpace(basis.Id) || string.IsNullOrWhiteSpace(basis.Identifier) ||
+                !double.IsFinite(basis.Latitude) || basis.Latitude is <= -90 or >= 90 || !double.IsFinite(basis.Longitude) || basis.Longitude is < -180 or > 180))
+                throw new InvalidDataException("Invalid company allocation base.");
             a.Identity.Validate(); Text(a.Registration); Text(a.Operator);
+            if(a.LastTransportStop is {} stop){Text(stop.FlightId);Text(stop.LocationId);Text(stop.Name);stop.Arrival.EnsureValid();if(!stop.Arrival.IsOnGround)throw new InvalidDataException("Transport stop is not a ground arrival.");}
             if (a.Registration != a.Registration.Trim().ToUpperInvariant() || a.Bindings is null || a.Components is null || a.Faults is null || a.Work is null || a.History is null || a.CommandIntents is null || a.DispatchJobIds is null ||
                 a.Components.Count>256 || a.Bindings.Count>128 || a.DispatchJobIds.Distinct().Count()!=a.DispatchJobIds.Count || a.DispatchJobIds.Any(string.IsNullOrWhiteSpace) ||
                 a.ObservedLandingCycles < 0 || !Valid(a.ObservedAirborneSeconds) || a.Components.Select(x => x.Id).Distinct().Count() != a.Components.Count ||
@@ -88,6 +107,8 @@ public sealed record AircraftFleet(int SchemaVersion, long Revision, Guid? Selec
             foreach (var pos in new[] { a.Latest, a.LastStationary }.OfType<AirframePosition>())
             { pos.Telemetry.EnsureValid(); pos.Context?.EnsureValid(); Text(pos.Source); Text(pos.Confidence); if(pos.SessionId == Guid.Empty || !Enum.IsDefined(pos.State) || pos.Context is {} context && context.ObservedUtc!=pos.Telemetry.ObservedUtc) throw new InvalidDataException("Invalid location."); }
         }
+        if (Aircraft.Where(a=>a.AllocationKey is not null).Select(a=>a.AllocationKey).Distinct().Count()!=Aircraft.Count(a=>a.AllocationKey is not null))
+            throw new InvalidDataException("Duplicate company aircraft allocation.");
         return this;
     }
     private static bool Valid(double value) => double.IsFinite(value) && value >= 0;

@@ -13,6 +13,7 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
     public Func<CancellationToken, Task>? LegacyRecoveryGuard { get; init; }
     public Func<FlightAircraftIdentity, IReadOnlyList<string>, string?>? DispatchGuard { get; init; }
     public Action<AircraftLoadingSnapshot, bool>? AuthorizeHandling { get; init; }
+    public Action<EconomyWorld>? WorldObserved { get; init; }
     public string Reason { get; private set; } = "Read aircraft and select explicit consignments. Operational weight and balance remain the pilot's responsibility.";
     public EconomyWorld? World { get; private set; }
     public AircraftLoadingSnapshot? Live { get; private set; }
@@ -301,6 +302,7 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
         try
         {
             World = await store.LoadAsync(token).ConfigureAwait(false);
+            if(World is {} observed)WorldObserved?.Invoke(observed);
             if (Manifest is not {} m || m.Legs.SingleOrDefault(x => x.SettledUtc is null) is not {} leg) return;
             if (sample is null) { monitor.Reset(); Reason = "Tracking disconnected. Cargo and proven progress retained; no gap time accrues."; Changed?.Invoke(); return; }
             NoPassengers(World!);
@@ -324,6 +326,7 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
                         CargoJourneyKernel.SettleLeg(updated with { Revision = w.Revision }, changed, changed.Legs.Single(x => x.Id == leg.Id), sample.ObservedUtc);
                 }, token).ConfigureAwait(false)).World;
             }
+            if(World is {} completed)WorldObserved?.Invoke(completed);
             Changed?.Invoke();
         }
         catch (Exception ex) { monitor.Reset(); Reason = ex.Message; Changed?.Invoke(); }
