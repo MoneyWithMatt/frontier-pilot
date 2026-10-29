@@ -146,8 +146,14 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
     public void AcknowledgeRelocation() => Run(()=>
     {
         if(Selected is not {} a || !a.LocationReconciliationRequired)return;
+        if(a.OwnerEntityId is not null)
+        {
+            if(world is null || DateTimeOffset.UtcNow-world.Aircraft.ObservedUtc>TimeSpan.FromSeconds(3) || !world.Aircraft.IsOnGround || world.Aircraft.GroundSpeedKnots>1 || ResolveCompanyType?.Invoke(world.Aircraft)!=a.CompanyTypeId)
+                throw new InvalidOperationException("Developer recovery needs fresh stopped telemetry for the confirmed company type. No simulator aircraft is moved.");
+            a=a with {Latest=new(world.Aircraft,location,AirframePositionState.Uncertain,"explicit developer relocation recovery","Unobserved move acknowledged; not a flown journey or spawn authority",a.OpenSession??Guid.NewGuid())};
+        }
         Update(FleetOperations.Event(a with {LocationReconciliationRequired=false},Guid.NewGuid(),DateTimeOffset.UtcNow,
-            "Relocation acknowledged","Player acknowledged external simulator location. No shipment, inventory, flight evidence or payment changed."),true);
+            a.OwnerEntityId is null?"Relocation acknowledged":"Developer relocation acknowledged","Player acknowledged external simulator location. No shipment, inventory, flight evidence or payment changed."),true);
     });
     public async Task BookMaintenanceAsync()
     {
@@ -205,6 +211,8 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
     {
         if(Selected is {} company && company.OwnerEntityId is not null && (ResolveCompanyType?.Invoke(world!.Aircraft)!=company.CompanyTypeId || !CompanyAircraft.Types.Any(t=>t.Id==company.CompanyTypeId&&t.Enabled)))
             throw new InvalidOperationException("The exact simulator type must match this enabled company aircraft before binding.");
+        if(Selected is {} allocated && allocated.OwnerEntityId is not null && !AtRecordedLocation(allocated,world!.Aircraft))
+            throw new InvalidOperationException("Load the company aircraft at its recorded location before binding. Binding cannot relocate it.");
         EndSession("Binding changed");
         bindingConfirmationRequired=false;
         var a = Selected!; var t = world!.Aircraft;
@@ -212,6 +220,11 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
             a = FleetOperations.Event(a with { Bindings = a.Bindings.Append(new(t.AircraftTitle,t.AircraftType,PackageVersion.Trim(),"standard-simvars-v0",null)).ToArray() },
                 Guid.NewGuid(),DateTimeOffset.UtcNow,"Explicit binding","User associated this exact loaded title/model/package declaration with the selected physical airframe. Compatibility remains unverified.");
         Update(a,true); Reconcile();
+    }
+    private static bool AtRecordedLocation(PhysicalAirframe a,AircraftTelemetry t)
+    {
+        var latitude=a.Latest?.Telemetry.Latitude??a.AllocatedBase?.Latitude;var longitude=a.Latest?.Telemetry.Longitude??a.AllocatedBase?.Longitude;
+        return latitude is null || longitude is null || WorldTracking.DistanceMeters(latitude.Value,longitude.Value,t.Latitude,t.Longitude)<=2778;
     }
     public void ObserveTracking(TrackingWorldState? sample, AircraftLocationContext? recognized)
     {
@@ -228,7 +241,11 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
                     var last=company.Latest?.Telemetry;
                     var lat=last?.Latitude??company.AllocatedBase?.Latitude;var lon=last?.Longitude??company.AllocatedBase?.Longitude;
                     if(previousPosition is null && lat is {} latitude && lon is {} longitude && WorldTracking.DistanceMeters(latitude,longitude,sample.Aircraft.Latitude,sample.Aircraft.Longitude)>2778)
-                    {EndSession("Unobserved company relocation");status="Company aircraft remains at its saved location. Loading another airport or selecting an airframe is not a relocation. Use only explicit developer recovery for an unobserved move.";Notify();return;}
+                    {
+                        EndSession("Unobserved company relocation");
+                        if(company.Latest is not null&&!company.LocationReconciliationRequired)Update(FleetOperations.Event(Selected! with{LocationReconciliationRequired=true},Guid.NewGuid(),sample.Aircraft.ObservedUtc,"Company location conflict","Unobserved move; saved position retained pending explicit developer recovery."),true);
+                        status="Company aircraft remains at its saved location. Loading another airport or selecting an airframe is not a relocation. Use only explicit developer recovery for an unobserved move.";Notify();return;
+                    }
                     if(company.Bindings.Count==0 && !bindingConfirmationRequired)
                     {
                         company=FleetOperations.Event(company with {Identity=company.Identity with {SimulatorTitle=sample.Aircraft.AircraftTitle,SimulatorModel=sample.Aircraft.AircraftType},
@@ -276,6 +293,7 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
     private void Reconcile()
     {
         if (closed || blocked || bindingConfirmationRequired || world is null || Selected is not {} a || !a.Bindings.Any(b=>b.Matches(world.Aircraft))) return;
+        if(a.OwnerEntityId is not null && (!CompanyAircraft.Types.Any(t=>t.Id==a.CompanyTypeId&&t.Enabled) || ResolveCompanyType?.Invoke(world.Aircraft)!=a.CompanyTypeId || previousPosition is null&&!AtRecordedLocation(a,world.Aircraft)))return;
         if (observingId==a.Id) return;
         if (!observer.IsCompleted) return; // cancellation must close old native connection before replacement
         observingId=a.Id; session=Guid.NewGuid(); cancellation?.Dispose(); cancellation=new();

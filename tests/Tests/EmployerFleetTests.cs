@@ -116,6 +116,7 @@ public sealed class EmployerFleetTests : IDisposable
         v.ResolveCompanyType=_=>"c208";var t=At(Employer("Offshore"));v.ObserveTracking(World(t),null);Assert.Empty(v.Selected!.Bindings);
         Assert.NotNull(v.CheckDispatch(FlightAircraftIdentity.From(t),[]));
         v.ResolveCompanyType=_=>"vision-jet";v.ObserveTracking(World(t with{Latitude=t.Latitude+3}),null);Assert.Null(v.Selected.Latest);Assert.Empty(v.Selected.Bindings);
+        v.PackageVersion="synthetic";v.BindCommand.Execute(null);Assert.Empty(v.Selected.Bindings);Assert.Contains("recorded location",v.Status);
         v.Selected=v.Aircraft.Single(a=>a.CompanyTypeId=="h125");v.ResolveCompanyType=_=>"h125";v.ObserveTracking(World(t),null);
         Assert.Empty(v.Selected!.Bindings);Assert.Contains("disabled",v.SelectedInstructions);Assert.NotNull(v.CheckPassengerDispatch(FlightAircraftIdentity.From(t),new("synthetic","employer","player",new("a","A",-23,15),new("b","B",-23,16),1,["h125"],800,Epoch,Epoch.AddHours(1))));
         await v.ShutdownAsync();
@@ -126,6 +127,18 @@ public sealed class EmployerFleetTests : IDisposable
         v.ObserveTracking(null,null);v.ObserveTracking(World(t with{ObservedUtc=t.ObservedUtc.AddSeconds(1)},99),null);Assert.Equal(id,v.Selected!.Id);
         v.ResolveCompanyType=_=>"pa28";v.ObserveTracking(World(t with{AircraftTitle="Incompatible"},100),null);Assert.Equal(id,v.Selected!.Id);Assert.DoesNotContain(v.Selected.Bindings,b=>b.Title=="Incompatible");
         await v.ShutdownAsync();
+    }
+    [Fact] public async Task UnobservedCompanyMoveNeedsExplicitDeveloperRecoveryAndCannotStartObservationByBinding()
+    {
+        var p=Join("Missionary");var v=View(p);v.ResolveCompanyType=_=>v.Selected!.CompanyTypeId;var t=At(Employer("Missionary"),DateTimeOffset.UtcNow.AddSeconds(-12));
+        for(var i=0;i<=11;i++)v.ObserveTracking(World(t with{ObservedUtc=t.ObservedUtc.AddSeconds(i)}),null);
+        var original=v.Selected!.Latest!;v.ObserveTracking(null,null);
+        var moved=t with{ObservedUtc=DateTimeOffset.UtcNow,Latitude=t.Latitude+3};v.ObserveTracking(World(moved),null);
+        Assert.True(v.Selected!.LocationReconciliationRequired);Assert.Equal(original.Telemetry.Latitude,v.Selected.Latest!.Telemetry.Latitude);
+        Assert.NotNull(v.CheckDispatch(FlightAircraftIdentity.From(moved),[]));v.AcknowledgeRelocation();
+        Assert.False(v.Selected.LocationReconciliationRequired);Assert.Equal(moved.Latitude,v.Selected.Latest!.Telemetry.Latitude);
+        Assert.Equal(AirframePositionState.Uncertain,v.Selected.Latest.State);Assert.Contains(v.Selected.History,e=>e.Kind=="Developer relocation acknowledged");
+        Assert.Equal(0,v.Selected.ObservedAirborneSeconds);await v.ShutdownAsync();
     }
     [Fact] public void CorruptFleetAndFutureCareerArePreservedWithoutReplacement()
     {

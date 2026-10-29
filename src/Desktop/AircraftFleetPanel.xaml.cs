@@ -47,7 +47,7 @@ public partial class AircraftFleetPanel : UserControl
     private void AcknowledgeRelocation(object sender,RoutedEventArgs e)
     {
         if(viewModel?.Selected?.LocationReconciliationRequired!=true)return;
-        if(MessageBox.Show("Acknowledge this external simulator relocation? This records the change only; cargo, flight evidence and payments are unchanged.","Location reconciliation",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No)==MessageBoxResult.Yes)
+        if(MessageBox.Show("Developer/testing recovery: acknowledge this external simulator relocation as an unobserved move? This records the change only; cargo, flight evidence and payments are unchanged. This is not normal aircraft transport or simulator placement.","Developer location recovery",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No)==MessageBoxResult.Yes)
             viewModel.AcknowledgeRelocation();
     }
 }
