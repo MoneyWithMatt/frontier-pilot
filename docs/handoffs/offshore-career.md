@@ -23,6 +23,7 @@ Career adapters keep Offshore $800/hr and Missionary $400/hr. Missionary adds a 
 - Final count = 774 previous + 20 additions (16 physical payload cases, four mission reuse/recovery/save cases). Existing passenger tests use production coordinator with synthetic profiles; cargo assertions retained. SiteUiSmoke drives actual manifest and transfer controls with a synthetic guarded simulator, no installed simulator dependency.
 - Preserved arrival timing run: 18/2/0; corrected read-only check timing and explicit physical post-gap timer start. Full run 3: 792/1/0 because a cargo command assertion ran before async lease acquisition finished. Corrected bounded completion waits, preserving every mass/idempotence assertion. No skips/weakened production guards.
 - No local WPF, published executable, MSFS, Package Tool or live payload write. No personal save/Community modifications, SDK install, repository settings or merge. Hosted checks must cover guards, both WPF programs, publication and uploads before claiming success.
+- [Run 12](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40902840515), head `f42c239ad9416ee65880168193c18bfe1d70998c` / clean merge `9c2b8bf9069f0534f451824c3bc36bce16cd64a0`: 794/0/0, nine guards and LoadingWpfSmoke passed; SiteUiSmoke compilation failed because linked synthetic fixture lacked explicit `System.IO` under WPF implicit usings. Added the import; no runtime/assertion changes. Packaging/development upload correctly blocked. Failure diagnostics linked in report; repair CI pending.
 
 ## Exact next steps
 
