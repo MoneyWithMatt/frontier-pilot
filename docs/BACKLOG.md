@@ -1,5 +1,9 @@
 # Backlog
 
+## Employer starting fleets — 2026-10-29
+
+[Automatic employer-owned starting allocation](employer-starting-fleets.md), [approved scope](specs/employer-starting-fleets.md), [handoff](handoffs/employer-starting-fleets.md). Finish exact-source hosted WPF/package evidence and separately approved live type/location/condition/mission checks. Future work: explicit active-career employer/economy transition, ownership/assignment transfers and authenticated shared-world registration/allocation authority. Allocation does not enable H125/platform/passenger/configuration/fault/placement capabilities.
+
 ## Multi-stop cargo — 2026-10-29
 
 Latest authorized implementation: [scope](specs/multistop-cargo.md), [production workflow/live procedure](multistop-cargo.md), [resume status](handoffs/multistop-cargo.md). Hosted runtime WPF/package evidence passed at 816/0/0; exact-aircraft live acceptance remains separate. Preserve PR #3. Follow-up: common mixed cargo/passenger claim accounting (not enabled), explicit disposition/cancellation, long-career archival, optional print/PDF and pilot-operated planning worksheet. None may introduce automatic MTOW/CG/performance refusal.

@@ -1,5 +1,9 @@
 # Technical status — 2026-09-07
 
+## Employer-owned starting fleets — 2026-10-29
+
+[Automatic starting allocations](employer-starting-fleets.md) extend the existing physical fleet, with career schema 3 local player identity and fleet schema 2 company ownership/assignment. All catalogue types provision once; disabled types remain disabled. Existing saves/history/condition/location are preserved, ambiguous records require explicit reconciliation, exact type/position guards and current mission capabilities remain authoritative. Local full regression 835/0/0; hosted WPF/package/current source evidence belongs in the [handoff](handoffs/employer-starting-fleets.md). No live acceptance or shared-world authority is claimed.
+
 ## Multi-stop cargo — 2026-10-29
 
 [New production cargo dispatch/manifest](multistop-cargo.md) adds explicit independent consignment quantities, persistent GUID station ownership, retained native readback/recovery, intermediate delivery/pickup and once-per-leg wage settlement. Schema 13 preserves prior saves without inferring physical ownership. MTOW/CG/overall payload and company fixture budgets are advisory for cargo/passengers. Clean runtime `8b56d6f` passed hosted full Release regression: 816 passed, zero failed/skipped, both WPF programs, nine guards and packaging. [Evidence/screenshots](../evidence/multistop-cargo/verification.md); final documentation-checkpoint status is in [PR #6](https://github.com/MoneyWithMatt/frontier-pilot/pull/6). No new live simulator acceptance or mixed transport qualification is claimed.

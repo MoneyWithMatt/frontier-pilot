@@ -1,5 +1,11 @@
 # Design decisions
 
+## Persistent employer starting fleets — 2026-10-29
+
+Matt authorized automatic one-per-catalogue-type employer allocations without purchase/registration. Extend the existing physical GUID fleet, never a parallel ownership system. Ownership, assignment and operation are separate; company property has no player ledger/net-worth value. Local career player GUIDs scope idempotent company/type allocation receipts. Full-GUID FP dispatch registrations are not native/civil/global registry claims.
+
+Preserve unknown history/condition, disabled capabilities and explicit simulator type/binding/location safeguards. Initial base metadata never becomes manufactured telemetry or placement authority. Reconcile ambiguous legacy company records explicitly; preserve IDs, condition, maintenance and history. Repeated same-employer acceptance repairs/reuses its allocation. Different-employer changes remain blocked by existing career/economy policy; historical records are reusable at the allocation boundary without enabling a new switching mechanic. Tracker proof may project last-known named arrival stops, never create new evidence, hours or spawn permission. [Scope](specs/employer-starting-fleets.md), [implementation/migration/live boundaries](employer-starting-fleets.md).
+
 ## Multi-stop logistics and pilot responsibility — 2026-10-29
 
 Matt explicitly authorized [multi-stop implementation](specs/multistop-cargo.md) following PR #5. Each consignment retains job/resource/origin/destination identity; MSFS receives aggregate station mass only. Selection names jobs and quantities directly, never FIFO inference. Handling intent and immutable carried-leg snapshots live with the economy in schema 13; delivery, inventory and job completion are atomic after retained readback. Existing legacy loads recover through their original workflow rather than guessed ownership migration.
