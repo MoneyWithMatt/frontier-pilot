@@ -21,9 +21,16 @@ public sealed partial class FlightAttemptTracker
         new FlightDeliveryProof(FlightAttemptIds.DeliveryEvidence(flight.ShipmentId), sample.ObservedUtc, FlightPosition.From(sample),
             flight.FirstAirborneUtc!.Value, flight.MovementObservedUtc!.Value, flight.MaximumDistanceFromOriginNauticalMiles).EnsureValid();
 
-    /// <summary>Passenger observations retain the existing flight-attempt proof/identity/distance rules.
-    /// Only this tracker component creates passenger flight proof; UI and diagnostics cannot do so.</summary>
-    internal sealed class PassengerMonitor
+    internal sealed record TransportFlightContext(string Id, PassengerEndpoint Origin, PassengerEndpoint Destination,
+        FlightAttempt? Flight, bool Active = true)
+    {
+        public static TransportFlightContext From(PassengerTransfer transfer) => new(transfer.Id, transfer.Origin, transfer.Destination,
+            transfer.Flight, transfer.State is PassengerTransferState.Reserved or PassengerTransferState.Boarded);
+    }
+
+    /// <summary>Common transport route observations retain flight-attempt proof/identity/distance rules.
+    /// No cargo, passenger inventory, mission purpose or payment policy belongs to this monitor.</summary>
+    internal sealed class TransportMonitor
     {
         private readonly FlightAttemptTrackerOptions policy = new FlightAttemptTrackerOptions().EnsureValid();
         private AircraftTelemetry? latest, paidSample, anchor;
@@ -42,15 +49,17 @@ public sealed partial class FlightAttemptTracker
         private bool Stopped(AircraftTelemetry sample, PassengerEndpoint endpoint) =>
             endpoint.CanGenerate && sample.IsOnGround && sample.GroundSpeedKnots <= policy.MaximumGroundSpeedKnots && Distance(sample, endpoint) <= policy.AirportRadiusNauticalMiles;
 
-        public bool Ready(PassengerTransfer transfer, DateTimeOffset utc, bool boarding)
+        public bool Ready(PassengerTransfer transfer, DateTimeOffset utc, bool boarding) => Ready(TransportFlightContext.From(transfer), utc, boarding);
+        public bool Ready(TransportFlightContext transfer, DateTimeOffset utc, bool boarding)
         {
-            return transferId == transfer.Id && valid && latest is not null && utc >= latest.ObservedUtc && utc - latest.ObservedUtc <= policy.MaximumSampleGap &&
+            return transfer.Active && transferId == transfer.Id && valid && latest is not null && utc >= latest.ObservedUtc && utc - latest.ObservedUtc <= policy.MaximumSampleGap &&
                 Stopped(latest, boarding ? transfer.Origin : transfer.Destination) &&
                 (transfer.Flight is null || !transfer.Flight.Aircraft.ClearlyDiffersFrom(FlightAircraftIdentity.From(latest))) &&
                 (boarding ? stationarySince is {} since && latest.ObservedUtc - since >= policy.RequiredStationaryDuration : transfer.Flight?.DeliveryProof is not null);
         }
 
-        public FlightAttempt Board(PassengerTransfer transfer, DateTimeOffset utc)
+        public FlightAttempt Board(PassengerTransfer transfer, DateTimeOffset utc) => Board(TransportFlightContext.From(transfer), utc);
+        public FlightAttempt Board(TransportFlightContext transfer, DateTimeOffset utc)
         {
             if (!Ready(transfer, utc, true) || latest is null) throw new InvalidOperationException("Boarding needs ten continuous stopped seconds at the origin with fresh tracking.");
             var routeNm = WorldTracking.DistanceMeters(transfer.Origin.Latitude, transfer.Origin.Longitude, transfer.Destination.Latitude, transfer.Destination.Longitude) / 1852;
@@ -59,10 +68,11 @@ public sealed partial class FlightAttemptTracker
                 RequiredMaximumDistanceNauticalMiles: RequiredDistanceForRoute(routeNm), TransitBeginsAtDeparture: true).EnsureValid();
         }
 
-        public FlightAttempt? Observe(PassengerTransfer transfer, AircraftTelemetry? telemetry)
+        public FlightAttempt? Observe(PassengerTransfer transfer, AircraftTelemetry? telemetry) => Observe(TransportFlightContext.From(transfer), telemetry);
+        public FlightAttempt? Observe(TransportFlightContext transfer, AircraftTelemetry? telemetry)
         {
             if (transferId != transfer.Id) { Reset(); anchor = null; transferId = transfer.Id; }
-            if (transfer.State is not (PassengerTransferState.Reserved or PassengerTransferState.Boarded)) { Reset(); return transfer.Flight; }
+            if (!transfer.Active) { Reset(); return transfer.Flight; }
             if (telemetry is null) { Reset(); Reason = "Tracking disconnected; passengers and proven flight progress are retained."; return transfer.Flight; }
             AircraftTelemetry sample;
             try { sample = telemetry.EnsureValid(); _ = FlightAircraftIdentity.From(sample); }

@@ -38,7 +38,16 @@ internal static partial class Program
         await Click("Prepare preview (outside)");Check(vm.ManifestText.Contains("PROPOSED / PENDING"),"Pending printout is distinct from committed cargo: "+vm.Status);
         Check(physical.Weights[5]==33,"Preview does not write the simulator");Save(host,Path.Combine(folder,"cargo-dispatch-proposed.png"));
         await Click("Apply / retry (seated)");Check(physical.Weights[5]==68&&service.Manifest!.Cargo.Length==2,"Real bound apply command confirms 35 kg: "+vm.Status);
+        foreach(var item in vm.Consignments)
+        {
+            var row=(DataGridRow)cargoGrid.ItemContainerGenerator.ContainerFromItem(item);
+            var destination=Descendants<TextBlock>(row).Single(t=>t.Text=="TO: "+item.Destination);
+            var bounds=destination.TransformToAncestor(row).TransformBounds(new Rect(0,0,destination.ActualWidth,destination.ActualHeight));
+            Check(bounds.Bottom<=row.ActualHeight,"Cargo destination text is not clipped by inherited global row height");
+        }
         Check(vm.ManifestText.Contains("TOTAL COMMITTED CARGO: 35"),"Printout reflects committed 35 kg");Save(host,Path.Combine(folder,"cargo-dispatch-35kg.png"));
+        var loadingScroll=Descendants<ScrollViewer>(control).Single(s=>s.Content is StackPanel);loadingScroll.ScrollToBottom();Pump();
+        Save(host,Path.Combine(folder,"cargo-stations-and-actions.png"));loadingScroll.ScrollToTop();Pump();
         async Task Observe(PassengerEndpoint p,bool ground)
         {
             physical.Sample=physical.Sample with{ObservedUtc=physical.Sample.ObservedUtc.AddSeconds(1),Latitude=p.Latitude,Longitude=p.Longitude,IsOnGround=ground,GroundSpeedKnots=ground?0:100};

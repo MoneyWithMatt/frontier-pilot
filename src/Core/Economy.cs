@@ -398,7 +398,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
                 var m = CargoAirframes.SingleOrDefault(x => x.ManagedJobs.Contains(job.Id));
                 var leg = m?.Legs.SingleOrDefault(x => x.Id == legId && x.SettledUtc is not null);
                 if (leg is null || leg.Destination.Id != shipment.DestinationLocationId || !leg.Carried.Any(x => x.JobId == job.Id) ||
-                    job.CompletedWage is not null || FinancialLedger.Any(x => x.JobId == job.Id) || Businesses.Single(x => x.Id == job.EmployerBusinessId).PilotHourlyRate is null || LogisticsContracts.Any(x => x.JobId == job.Id))
+                    job.CompletedWage is not null || FinancialLedger.Any(x => x.JobId == job.Id) || !FinancialLedger.Any(x=>x.Kind==FinancialTransactionKind.CargoLegWage&&x.EvidenceId==legId) || Businesses.Single(x => x.Id == job.EmployerBusinessId).PilotHourlyRate is null || LogisticsContracts.Any(x => x.JobId == job.Id))
                     throw new InvalidDataException("Completed consignment leg settlement is inconsistent.");
                 continue;
             }

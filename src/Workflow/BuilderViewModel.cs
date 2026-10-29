@@ -142,7 +142,8 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
                     yield return new(place.Id, site.Name + " (" + site.AirportIdentifier + ")", site.Latitude, site.Longitude);
             }
         }
-        var cargoJourneyService = new CargoJourneyService(economyStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(), () => this.sdkRoot,
+        var cargoJourneyService = new CargoJourneyService(economyStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(),
+            () => services.IsDryRun ? throw new InvalidOperationException("Physical cargo is unavailable in dry-run. Automated cargo scenarios use an isolated synthetic simulator adapter; no native simulator call was made.") : this.sdkRoot,
             () => Fleet.Selected?.Id, (w, p) =>
             {
                 var matches = CargoLocations(w).Where(e => WorldTracking.DistanceMeters(e.Latitude, e.Longitude, p.Latitude, p.Longitude) <= 2778).ToArray();

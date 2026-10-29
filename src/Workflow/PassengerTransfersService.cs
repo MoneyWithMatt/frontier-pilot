@@ -11,7 +11,7 @@ public sealed class PassengerTransfersService
     private readonly Func<IReadOnlyList<AircraftTypeBinding>> bindings;
     private readonly Func<DateTimeOffset> utcNow;
     private readonly SemaphoreSlim gate = new(1, 1);
-    private readonly FlightAttemptTracker.PassengerMonitor monitor = new();
+    private readonly FlightAttemptTracker.TransportMonitor monitor = new();
     private EconomyWorld? world;
     public bool Enabled => employer?.Category is "Offshore" or "Missionary";
     public PassengerPayloadCoordinator? Payload { get; init; }

@@ -8,7 +8,7 @@
   <TextBlock Text="{Binding AircraftStatus}" TextWrapping="Wrap" Margin="0,6"/>
   <TextBlock Text="Available here and cargo aboard" FontSize="17" FontWeight="SemiBold"/>
   <TextBlock Text="Edit Desired aboard kg for each job. Leave through-cargo unchanged; set only the consignment being delivered to zero (or a smaller partial quantity)." TextWrapping="Wrap"/>
-  <DataGrid x:Name="CargoConsignments" ItemsSource="{Binding Consignments}" AutoGenerateColumns="False" CanUserAddRows="False" MinHeight="150" MaxHeight="310" Margin="0,8" SelectionUnit="Cell">
+  <DataGrid x:Name="CargoConsignments" ItemsSource="{Binding Consignments}" AutoGenerateColumns="False" CanUserAddRows="False" RowHeight="NaN" MinRowHeight="70" MinHeight="150" MaxHeight="310" Margin="0,8" SelectionUnit="Cell">
    <DataGrid.Columns>
     <DataGridTemplateColumn Header="Consignment / destination" Width="*" MinWidth="175" IsReadOnly="True"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Margin="5,7" ToolTip="{Binding Origin}">
      <TextBlock Text="{Binding Description}" FontWeight="SemiBold" TextWrapping="Wrap"/>
@@ -25,7 +25,7 @@
   <TextBlock Text="Enter the TOTAL desired Frontier cargo per station. Its sum must match the selected consignments. Unrelated occupants, payload and fuel are preserved. No station maximum is invented when MSFS does not report one." TextWrapping="Wrap"/>
   <Button Content="Suggest station mass for selected consignments" Command="{Binding MatchMassCommand}" HorizontalAlignment="Left"/>
   <TextBlock Text="For a pickup, select its writable station below before suggesting. A delivery removes only owned cargo mass; review the suggested distribution before preparing." TextWrapping="Wrap"/>
-  <DataGrid x:Name="CargoStations" ItemsSource="{Binding Stations}" SelectedItem="{Binding SelectedStation}" AutoGenerateColumns="False" CanUserAddRows="False" MinHeight="130" MaxHeight="270" Margin="0,8">
+  <DataGrid x:Name="CargoStations" ItemsSource="{Binding Stations}" SelectedItem="{Binding SelectedStation}" AutoGenerateColumns="False" CanUserAddRows="False" RowHeight="NaN" MinRowHeight="62" MinHeight="130" MaxHeight="270" Margin="0,8">
    <DataGrid.Columns>
     <DataGridTextColumn Header="#" Binding="{Binding Index}" IsReadOnly="True" Width="30"/>
     <DataGridTemplateColumn Header="MSFS station" IsReadOnly="True" Width="*" MinWidth="140"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Margin="4,5">
@@ -41,7 +41,7 @@
   <TextBlock Text="1. Exit near the aircraft and prepare a preview. 2. Review the pending targets on the dispatch sheet. 3. Board the same aircraft and apply. Failed writes retain the intent; retry only after reviewing the recovery message." TextWrapping="Wrap"/>
   <WrapPanel><Button Content="Prepare preview (outside)" Command="{Binding PrepareCommand}"/><Button Content="Apply / retry (seated)" Command="{Binding ApplyCommand}"/><Button Content="Renew outside authorization" Command="{Binding RenewCommand}"/><Button Content="Discard unapplied / unarmed plan" Command="{Binding CancelPlanCommand}"/></WrapPanel>
   <TextBlock Text="Next flight leg" FontSize="17" FontWeight="SemiBold" Margin="0,12,0,5"/>
-  <TextBlock Text="Plan the next stop, remain stopped for ten tracking seconds and arm BEFORE departure. Through-cargo gets a new leg; accepting new jobs in flight does not grant them earlier flight evidence. Employed wages settle once per qualified leg." TextWrapping="Wrap"/>
+  <TextBlock Text="Plan the next stop, remain stopped for ten tracking seconds and arm BEFORE departure. Through-cargo gets a new leg; new jobs cannot inherit earlier evidence. Successful full delivery releases eligible leg wages once, including earlier through-legs." TextWrapping="Wrap"/>
   <ComboBox ItemsSource="{Binding Stops}" SelectedItem="{Binding SelectedStop}" Margin="0,6"/>
   <WrapPanel><Button Content="Plan next stop" Command="{Binding PlanLegCommand}"/><Button Content="Arm flight leg" Command="{Binding ArmLegCommand}"/></WrapPanel>
   <TextBlock Text="{Binding Warnings}" TextWrapping="Wrap" Margin="0,8" Foreground="#E4BA76"/>

@@ -7,7 +7,7 @@ Approved by: Matt's explicit implementation instruction, 2026-10-29.
 Accept several jobs, choose individual consignment quantities, carry different destinations together and continue after independent deliveries/pickups. Frontier tracks logical resources/jobs; MSFS receives aggregate station mass. Pilot controls weight, balance and performance.
 
 ## Gameplay behavior
-10 kg A + 25 kg B loaded at origin; deliver A, retain B; optionally collect a new accepted consignment at A; continue to B and settle each job independently. Each planned/armed leg has its own immutable carried snapshot and tracker evidence. Wages use the existing employer rate once per eligible leg, never once per consignment. Freelance/player contract rewards retain their existing semantics.
+10 kg A + 25 kg B loaded at origin; deliver A, retain B; optionally collect a new accepted consignment at A; continue to B and settle each job independently. Each planned/armed leg has its own immutable carried snapshot and tracker evidence. Wages use the existing employer rate once per eligible leg after successful full delivery, never once per consignment or merely for arrival. Earlier through-legs release with the completed consignment. Freelance/player contract rewards retain their existing semantics.
 
 The existing outside-avatar authorization and seated verification workflow remains. Explicit preview before writing; no automatic restore or adoption of manually edited mass. New jobs can be accepted in flight but their cargo cannot inherit evidence before loading. Station limits/interfaces, stock, ownership, identity and readback are hard constraints. MTOW, overall payload, CG and company prototype mass budgets are advisory.
 

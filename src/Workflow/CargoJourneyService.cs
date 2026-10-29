@@ -8,7 +8,7 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
     Func<DateTimeOffset>? clock = null, Func<CancellationToken, Task>? retention = null)
 {
     private readonly SemaphoreSlim gate = new(1, 1);
-    private readonly FlightAttemptTracker.PassengerMonitor monitor = new();
+    private readonly FlightAttemptTracker.TransportMonitor monitor = new();
     private DateTimeOffset Now => clock?.Invoke() ?? DateTimeOffset.UtcNow;
     public Func<CancellationToken, Task>? LegacyRecoveryGuard { get; init; }
     public Func<FlightAircraftIdentity, IReadOnlyList<string>, string?>? DispatchGuard { get; init; }
@@ -99,7 +99,8 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
             var total = (m?.Cargo.Sum(x => x.Kilograms) ?? 0) + changes.Sum(x => x.After - x.Before);
             foreach (var allocation in allocations) allocation.EnsureValid();
             if (Math.Abs(allocations.Sum(x => x.CargoKilograms) - total) > .001m) throw new InvalidOperationException("Station cargo distribution must equal explicit desired consignment mass.");
-            var baselineSnapshot = live with { PayloadStations = live.PayloadStations.Select(s => s with { CurrentWeightKilograms = baselines[s.Index] }).ToArray() };
+            var baselineSnapshot = live with { PayloadStations = live.PayloadStations.Select(s => s with { CurrentWeightKilograms = baselines[s.Index] }).ToArray(),
+                Weights=live.Weights with { CurrentGrossWeightKilograms=live.Weights.CurrentGrossWeightKilograms-(m?.Cargo.Sum(c=>c.Kilograms)??0) } };
             // Existing planner enforces only actual station limits. MTOW/CG are advisory.
             var plan = total > 0 ? AircraftLoadPlan.Create(baselineSnapshot, total, allocations) :
                 new AircraftLoadPlan(0, live.PayloadStations.Select(s => new PlannedPayloadStation(s.Index, baselines[s.Index], 0, baselines[s.Index])).ToArray(), baselines.Values.Sum(), null, null, []);
@@ -247,9 +248,8 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
         finally { gate.Release(); }
     }
 
-    private static PassengerTransfer Context(CargoAirframeManifest m, CargoFlightLeg leg) => new(leg.Id,
-        leg.EmployerId ?? "cargo", m.PlayerId, leg.Origin, leg.Destination, 1, ["cargo"], leg.HourlyRate ?? 1,
-        leg.CreatedUtc, leg.CreatedUtc.AddDays(1), leg.Flight is null ? PassengerTransferState.Reserved : PassengerTransferState.Boarded, Flight: leg.Flight);
+    private static FlightAttemptTracker.TransportFlightContext Context(CargoAirframeManifest m, CargoFlightLeg leg) =>
+        new(leg.Id, leg.Origin, leg.Destination, leg.Flight);
 
     public async Task PlanLegAsync(PassengerEndpoint destination, CancellationToken token = default)
     {
@@ -307,7 +307,9 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
             Live = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid(); Claims(m, Live);
             if (Live.Aircraft != FlightAircraftIdentity.From(sample) || Math.Abs((Live.ObservedUtc - sample.ObservedUtc).TotalSeconds) > 3)
                 throw new InvalidOperationException("Payload and tracking observations disagree; qualification paused.");
-            var flight = monitor.Observe(Context(m, leg), sample); Reason = monitor.Reason.Replace("Passengers", "Cargo").Replace("passengers", "cargo");
+            var flight = monitor.Observe(Context(m, leg), sample);
+            Reason = flight?.DeliveryProof is not null ? "Qualified arrival persisted. Successful consignment delivery releases eligible leg wages once; through-cargo stays aboard." :
+                monitor.Reason.Replace("Passengers", "Cargo").Replace("passengers", "cargo").Replace("before boarding", "before arming the leg");
             if (flight is not null && flight != leg.Flight)
             {
                 World = (await store.ApplyAsync(w =>

@@ -107,8 +107,6 @@ public static class CargoJourneyKernel
                     l.Flight.OriginDepartedUtc is null || l.Flight.MaximumDistanceFromOriginNauticalMiles<l.Flight.RequiredMaximumDistanceNauticalMiles || l.SettledUtc < proof.ReadyUtc))
                     throw new InvalidDataException("Cargo leg arrival proof does not qualify at its endpoint.");
                 if (l.SettledUtc is not null && l.Flight?.DeliveryProof is null) throw new InvalidDataException("Settled cargo leg lacks qualified flight proof.");
-                if (l.SettledUtc is not null && l.EmployerId is not null && !w.FinancialLedger.Any(t => t.Kind == FinancialTransactionKind.CargoLegWage && t.EvidenceId == l.Id))
-                    throw new InvalidDataException("Settled employed cargo leg lacks its wage receipt.");
             }
         }
     }
@@ -120,10 +118,14 @@ public static class CargoJourneyKernel
         if (owner is null || leg?.SettledUtc is null || leg.Flight?.DeliveryProof is null || t.Wage is not {} wage ||
             wage.FlightId != leg.Id || wage.EmployerId != leg.EmployerId || wage.HourlyRate != leg.HourlyRate || wage.AirborneTicks != leg.Flight.VerifiedAirborneTicks ||
             t.Id != EconomyIds.Derive("leg-wage-", leg.Id) || t.JobId is not null || t.SiteId is not null || t.ToEntityId != owner.PlayerId ||
-            t.FromEntityId != leg.EmployerId || t.Amount != wage.Amount || t.OccurredUtc != leg.SettledUtc ||
+            t.FromEntityId != leg.EmployerId || t.Amount != wage.Amount || t.OccurredUtc < leg.SettledUtc ||
             t.CurrencyCode != w.Players.Single(x => x.Id == owner.PlayerId).CurrencyCode || w.FinancialLedger.Count(x => x.Kind == t.Kind && x.EvidenceId == leg.Id) != 1)
             throw new InvalidDataException("Cargo leg wage audit is inconsistent.");
         wage.EnsureValid();
+        if (!leg.Carried.Any(c => w.Jobs.Single(j=>j.Id==c.JobId).State==EconomyJobState.Completed ||
+            owner.Pending is {Verified:true} p && p.LocationId==w.Shipments.Single(s=>s.JobId==c.JobId).DestinationLocationId &&
+            p.Changes.Any(change=>change.JobId==c.JobId && change.After==0 && w.Shipments.Single(s=>s.JobId==c.JobId) is {} shipment && shipment.DeliveredQuantity+change.Before>=shipment.Quantity)))
+            throw new InvalidDataException("Cargo leg wages require successful full consignment delivery.");
     }
 
     public static EconomyTransition SettleLeg(EconomyWorld w, CargoAirframeManifest m, CargoFlightLeg leg, DateTimeOffset utc)
@@ -132,17 +134,24 @@ public static class CargoJourneyKernel
         if (m.Legs.Single(x => x.Id == leg.Id).SettledUtc is not null) return new(w, false);
         var completed = leg with { SettledUtc = utc };
         m = m with { LocationId = leg.Destination.Id, Revision = m.Revision + 1, Legs = m.Legs.Select(x => x.Id == leg.Id ? completed : x).ToArray() };
-        var updated = w with { CargoAirframes = w.CargoAirframes.Select(x => x.Id == m.Id ? m : x).ToArray() };
-        if (leg.EmployerId is {} employer)
+        return new((w with { Revision=w.Revision+1, CargoAirframes = w.CargoAirframes.Select(x => x.Id == m.Id ? m : x).ToArray() }).EnsureValid(), true);
+    }
+
+    private static EconomyWorld ReleaseDeliveryWages(EconomyWorld w, CargoAirframeManifest m, string jobId, DateTimeOffset utc)
+    {
+        var updated=w;
+        foreach (var leg in m.Legs.Where(l=>l.SettledUtc is not null && l.EmployerId is not null && l.Carried.Any(c=>c.JobId==jobId) &&
+            !w.FinancialLedger.Any(t=>t.Kind==FinancialTransactionKind.CargoLegWage&&t.EvidenceId==l.Id)))
         {
+            var employer=leg.EmployerId!;
             var player = w.Players.Single(x => x.Id == m.PlayerId);
-            var wage = new PilotWage(leg.Id, employer, w.Businesses.Single(x => x.Id == employer).Name, leg.Flight.VerifiedAirborneTicks, leg.HourlyRate!.Value);
+            var wage = new PilotWage(leg.Id, employer, w.Businesses.Single(x => x.Id == employer).Name, leg.Flight!.VerifiedAirborneTicks, leg.HourlyRate!.Value);
             var receipt = new FinancialTransaction(EconomyIds.Derive("leg-wage-", leg.Id), FinancialTransactionKind.CargoLegWage, null, leg.Id,
                 employer, m.PlayerId, wage.Amount, player.CurrencyCode, utc) { Wage = wage };
             updated = updated with { FinancialLedger = updated.FinancialLedger.Append(receipt).ToArray() };
             updated = updated with { Players = updated.Players.Select(x => x.Id == player.Id ? x with { CachedBalance = EconomyLedger.Balance(updated, x.Id, x.CurrencyCode) } : x).ToArray() };
         }
-        return new((updated with { Revision = w.Revision + 1 }).EnsureValid(), true);
+        return updated;
     }
 
     public static CargoFlightLeg DeliveryLeg(EconomyWorld w, string manifestId, string jobId)
@@ -162,6 +171,10 @@ public static class CargoJourneyKernel
         var p = m.Pending is { Verified: true } verified && verified.Id == operationId ? verified : throw new InvalidOperationException("Payload operation has not been verified.");
         foreach (var c in p.Changes)
         {
+            var shipment=w.Shipments.Single(s=>s.JobId==c.JobId);
+            if (c.After==0 && c.Before>0 && p.LocationId==shipment.DestinationLocationId && shipment.DeliveredQuantity+c.Before>=shipment.Quantity &&
+                w.Businesses.Single(b=>b.Id==w.Jobs.Single(j=>j.Id==c.JobId).EmployerBusinessId).PilotHourlyRate is not null && !w.LogisticsContracts.Any(contract=>contract.JobId==c.JobId))
+                w=ReleaseDeliveryWages(w,m,c.JobId,p.CreatedUtc);
             var request = new ShipmentCargoTransferRequest(EconomyIds.Derive("transfer-", p.Id + c.JobId),
                 EconomyIds.Derive("cargo-command-", p.Id + c.JobId), c.JobId, c.After, p.LocationId,
                 p.Position.Latitude, p.Position.Longitude, p.CreatedUtc, CompletionEvidence: evidence(w, c.JobId)) { AirframeManifestId = m.Id };

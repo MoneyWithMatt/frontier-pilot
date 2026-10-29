@@ -41,14 +41,20 @@ public static class CargoDispatchDocument
         void Rule() => b.AppendLine("--------------------------------------------------------");
         b.AppendLine("FRONTIER PILOT        CARGO / PASSENGER MANIFEST"); Rule();
         b.AppendLine("DISPATCH: " + m.Id); b.AppendLine($"REVISION: {m.Revision} / ECONOMY {w.Revision}");
-        var stamped = m.History.LastOrDefault()?.Utc ?? m.Legs.LastOrDefault()?.CreatedUtc ?? m.Pending?.CreatedUtc;
+        var stamped = new DateTimeOffset?[] { m.History.LastOrDefault()?.Utc, m.Legs.LastOrDefault()?.CreatedUtc,
+            m.Legs.LastOrDefault()?.Flight?.WageObservedUtc, m.Legs.LastOrDefault()?.SettledUtc, m.Pending?.CreatedUtc }.Max();
         b.AppendLine($"RECORDED UTC: {stamped:u}");
         b.AppendLine($"AIRCRAFT: {m.Aircraft.Title} / {m.Aircraft.Type}");
         b.AppendLine($"REG: {registration} / AIRFRAME: {m.AirframeId}");
         var operators = m.ManagedJobs.Select(id => w.Jobs.Single(j => j.Id == id).EmployerBusinessId).Distinct().Select(id => w.Businesses.Single(x => x.Id == id).Name);
         b.AppendLine("OPERATOR: " + string.Join("; ", operators));
         b.AppendLine("LAST COMMITTED STOP: " + w.Locations.Single(x => x.Id == m.LocationId).Name);
-        if (m.Legs.LastOrDefault() is {} leg) b.AppendLine($"LEG: {leg.Origin.Name} -> {leg.Destination.Name}\n{leg.Id} / {(leg.SettledUtc is null ? leg.Flight is null ? "PLANNED / NOT ARMED" : "IN PROGRESS" : "ARRIVED / SETTLED")}");
+        if (m.Legs.LastOrDefault() is {} leg)
+        {
+            b.AppendLine($"LEG: {leg.Origin.Name} -> {leg.Destination.Name}\n{leg.Id} / {(leg.SettledUtc is null ? leg.Flight is null ? "PLANNED / NOT ARMED" : "IN PROGRESS" : "ARRIVED / QUALIFIED")}");
+            if (leg.EmployerId is not null) b.AppendLine(w.FinancialLedger.SingleOrDefault(t=>t.Kind==FinancialTransactionKind.CargoLegWage&&t.EvidenceId==leg.Id) is {} paid ?
+                $"LEG WAGES: {DollarDisplay.Format(paid.Amount)} paid once / {paid.OccurredUtc:u}" : "LEG WAGES: pending successful consignment delivery.");
+        }
         Rule(); b.AppendLine("CONFIRMED ABOARD / LOGICAL CONSIGNMENTS");
         foreach (var c in m.Cargo)
         {
@@ -95,7 +101,9 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     public string Status => status;
     public string ManifestText => CargoDispatchDocument.Render(service.World, service.Manifest, registration(), service.Live);
     public string AircraftStatus => service.Live is {} l ? $"{l.Aircraft.Title} / {registration()} / {service.Here?.Name ?? "location unrecognised"} / actual payload {l.PayloadStations.Sum(x=>x.CurrentWeightKilograms):0.###} kg" : "No current simulator readback.";
-    public string Warnings => service.Live is {} l ? string.Join("\n", AircraftLoadPlan.EvaluateWarnings(l.Weights, l.Weights.CurrentGrossWeightKilograms, l.Weights.CurrentCgPercent)) + "\nGross weight, CG and aircraft performance are pilot decisions. Actual station limits and verified ownership remain enforced." : "";
+    public string Warnings => service.Live is {} l ? string.Join("\n", AircraftLoadPlan.EvaluateWarnings(l.Weights, l.Weights.CurrentGrossWeightKilograms, l.Weights.CurrentCgPercent)) +
+        (l.Weights.CurrentGrossWeightKilograms is null ? "\nTotal gross is not reported; physical verification uses retained station readback without an independent gross delta." : "") +
+        "\nGross weight, CG and aircraft performance are pilot decisions. Actual station limits and verified ownership remain enforced." : "";
     public ActionCommand ReadCommand { get; }
     public ActionCommand PrepareCommand { get; }
     public ActionCommand ApplyCommand { get; }

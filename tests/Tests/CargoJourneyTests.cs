@@ -69,6 +69,7 @@ public sealed class CargoJourneyTests : IDisposable
         Assert.Equal(originInventory,(await Store.LoadAsync())!.Inventories);
         var writes=sim.Writes; await Assert.ThrowsAsync<InvalidOperationException>(()=>s.ApplyAsync()); Assert.Equal(writes,sim.Writes);
         await Fly(s, Origin, A);
+        Assert.Empty((await Store.LoadAsync())!.FinancialLedger);
         s=NewService(); await s.RefreshAsync();
         await Handle(s,new(){{"job-mine",0}},new CargoStationAllocation(6,25));
         Assert.Equal(58,sim.Weights[5]); Assert.Equal("job-community",Assert.Single(s.Manifest!.Cargo).JobId);
@@ -102,6 +103,33 @@ public sealed class CargoJourneyTests : IDisposable
         Assert.Empty((await Store.LoadAsync())!.FinancialLedger);
         await Handle(s,new(){{"job-mine",0}},new CargoStationAllocation(6,25)); Assert.Equal(58,sim.Weights[5]);
         Assert.Single((await Store.LoadAsync())!.FinancialLedger);
+    }
+    [Theory][InlineData(false)][InlineData(true)]
+    public async Task ThroughStopAndPartialDeliveryDeferWagesUntilFullDeliveryThenReleaseEachEligibleLegOnce(bool cFirst)
+    {
+        var s=await Create(true);await Handle(s,new(){{"job-community",25}},new CargoStationAllocation(6,25));
+        await Fly(s,Origin,A);Assert.Empty((await Store.LoadAsync())!.FinancialLedger);
+        await Store.ApplyAsync(w=>EconomyKernel.AcceptJob(w,"job-lodge",sim.Sample.ObservedUtc));
+        await Handle(s,new(){{"job-lodge",7}},new CargoStationAllocation(6,32));await Fly(s,A,B);
+        Assert.Empty((await Store.LoadAsync())!.FinancialLedger);
+        if(cFirst)await Handle(s,new(){{"job-lodge",0}},new CargoStationAllocation(6,25));
+        Assert.Equal(cFirst?1:0,(await Store.LoadAsync())!.FinancialLedger.Count);
+        await Handle(s,new(){{"job-community",15}},new CargoStationAllocation(6,cFirst?15:22));
+        Assert.Equal(cFirst?1:0,(await Store.LoadAsync())!.FinancialLedger.Count);
+        await Handle(s,new(){{"job-community",0}},cFirst?[]:[new CargoStationAllocation(6,7)]);
+        if(!cFirst)await Handle(s,new(){{"job-lodge",0}});
+        var w=(await Store.LoadAsync())!;Assert.Equal(2,w.FinancialLedger.Count);Assert.Equal(2.44m,w.Players.Single().CachedBalance);
+        Assert.Equal(2,w.FinancialLedger.Select(t=>t.EvidenceId).Distinct().Count());
+    }
+    [Fact] public async Task ArrivalCannotAuthorizeEarlyWageAndCompletedLegAuditCannotLoseOrChangeReceipt()
+    {
+        var s=await Create(true);await Handle(s,new(){{"job-mine",10}},new CargoStationAllocation(6,10));await Fly(s,Origin,A);
+        var before=(await Store.LoadAsync())!;
+        await Handle(s,new(){{"job-mine",0}});var w=(await Store.LoadAsync())!;var paid=w.FinancialLedger.Single();
+        Assert.Throws<InvalidDataException>(()=>(before with {FinancialLedger=[paid],Players=before.Players.Select(p=>p with{CachedBalance=paid.Amount}).ToArray()}).EnsureValid());
+        Assert.Throws<InvalidDataException>(()=>(w with {FinancialLedger=[]}).EnsureValid());
+        Assert.Throws<InvalidDataException>(()=>(w with {FinancialLedger=[paid with{Amount=paid.Amount+1}]}).EnsureValid());
+        Assert.Throws<InvalidDataException>(()=>(w with {FinancialLedger=[paid with{Wage=paid.Wage! with{HourlyRate=800}}]}).EnsureValid());
     }
     [Fact] public async Task PartialSetterDisconnectRestartCompletesOnlyRemainingTargets()
     {
@@ -230,11 +258,29 @@ public sealed class CargoJourneyTests : IDisposable
         s=NewService(); await Observe(s,-23,15.2,false,3600); await Observe(s,-23,15.2,false);
         Assert.Equal(TimeSpan.FromSeconds(3).Ticks,s.Manifest!.Legs.Last().Flight!.VerifiedAirborneTicks);
         for(var i=0;i<=10;i++)await Observe(s,A.Latitude,A.Longitude);
+        Assert.Empty((await Store.LoadAsync())!.FinancialLedger);
+        await Handle(s,new(){{"job-mine",0}},new CargoStationAllocation(6,25));
         Assert.Single((await Store.LoadAsync())!.FinancialLedger);
         await Store.ApplyAsync(w=>EconomyKernel.AcceptJob(w,"job-lodge",sim.Sample.ObservedUtc));
         await Assert.ThrowsAsync<InvalidOperationException>(()=>s.PrepareAsync(new Dictionary<string,decimal>{{"job-lodge",-1}},[new CargoStationAllocation(6,35)]));
         Assert.DoesNotContain(s.Manifest!.Legs.Last().Carried,c=>c.JobId=="job-lodge");
         Assert.Equal(.33m,(await Store.LoadAsync())!.Players.Single().CachedBalance);
+    }
+    [Fact] public async Task AcceptingAnotherJobInFlightDoesNotChangeTheArmedCargoOrGrantEarlierProof()
+    {
+        var s=await Create(true);await Handle(s,new(){{"job-mine",10}},new CargoStationAllocation(6,10));await Depart(s,A);
+        await Observe(s,-23,15.1,false);
+        await Store.ApplyAsync(w=>EconomyKernel.AcceptJob(w,"job-lodge",sim.Sample.ObservedUtc));
+        await Observe(s,A.Latitude,A.Longitude,false);for(var i=0;i<=10;i++)await Observe(s,A.Latitude,A.Longitude);
+        var w=(await Store.LoadAsync())!;Assert.Equal(EconomyJobState.Accepted,w.Jobs.Single(x=>x.Id=="job-lodge").State);
+        Assert.Equal("job-mine",Assert.Single(s.Manifest!.Legs.Last().Carried).JobId);
+        Assert.Null(w.Shipments.Single(x=>x.JobId=="job-lodge").DeliveryEvidenceId);
+        await Handle(s,new(){{"job-mine",0}});
+        await Handle(s,new(){{"job-lodge",7}},new CargoStationAllocation(6,7));
+        // A later ground observation at B is not proof of a post-loading flight leg.
+        sim.Sample=sim.Sample with{ObservedUtc=sim.Sample.ObservedUtc.AddSeconds(1),Latitude=B.Latitude,Longitude=B.Longitude};
+        await Assert.ThrowsAsync<InvalidOperationException>(()=>s.PrepareAsync(new Dictionary<string,decimal>{{"job-lodge",0}},[]));
+        Assert.Equal(7,(await Store.LoadAsync())!.Shipments.Single(x=>x.JobId=="job-lodge").LoadedQuantity);
     }
     [Fact] public async Task PayloadAuthorityMustBeReauthorizedAfterExpiryAndSeatedGuardIsRequired()
     {
