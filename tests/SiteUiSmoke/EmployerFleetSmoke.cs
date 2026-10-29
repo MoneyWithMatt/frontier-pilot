@@ -14,8 +14,8 @@ internal static partial class Program
         var vm=new AircraftFleetViewModel(store,()=>throw new Exception("Company fleet UI smoke must not connect to simulator"));vm.ConfigureEmployment(profile.PlayerId!.Value,company);
         var panel=new AircraftFleetPanel{DataContext=vm};var host=new Window{Content=panel,Width=1200,Height=900,ShowInTaskbar=false};host.Show();Pump();
         var list=Descendants<ListBox>(panel).Single();Check(list.Items.Count==company.Fleet.Length,"Fleet control shows current player's allocated aircraft");
-        Check(!Descendants<Button>(panel).Single(b=>b.Content?.ToString()=="Enrol loaded aircraft · unknown history").IsVisible,"Employed onboarding requires no manual registration control");
-        var selected=vm.Aircraft.First(a=>CompanyAircraft.Types.Single(t=>t.Id==a.CompanyTypeId).Enabled);list.SelectedValue=selected.Id;Pump();
+        Check(Descendants<Expander>(panel).Single(e=>e.Header?.ToString()=="Legacy / personal registration").Visibility==Visibility.Collapsed,"Employed onboarding requires no manual registration control");
+        var selected=vm.Aircraft.Last(a=>CompanyAircraft.Types.Single(t=>t.Id==a.CompanyTypeId).Enabled);list.SelectedValue=selected.Id;Pump();
         Check(vm.Selected?.Id==selected.Id&&store.Load().SelectedId==selected.Id,"Actual fleet selector persists company aircraft GUID");
         Check(vm.Selected!.Latest is null&&vm.Selected.AllocatedBase is not null,"Assigned base does not invent observed simulator placement");
         Check(vm.Overview.Contains("Company property")&&vm.Overview.Contains("Unknown"),"Ownership and unknown historical condition/hours are explicit");
