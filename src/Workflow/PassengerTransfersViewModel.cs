@@ -19,7 +19,12 @@ public sealed class PassengerTransfersViewModel : INotifyPropertyChanged
     public bool IsBusy => busy;
     public string Error => error;
     public string Description => Enabled ? "Offshore specialist transfers · $800 per verified airborne hour, paid on disembarkation. One prototype passenger per transfer. Boarding is simulated; MSFS payload and passenger animations are unchanged. Platform destinations remain unavailable until live qualification." : "Passenger transfers are available in the Offshore career.";
-    public string Status => service.Reason;
+    public string Status => SelectedTransfer?.State switch
+    {
+        PassengerTransferState.Delivered => "Transfer completed. Passenger disembarked; hourly wages were paid once.",
+        PassengerTransferState.Offered => "Choose the company aircraft and reserve this transfer.",
+        _ => service.Reason
+    };
     public string Balance => DollarDisplay.Format(service.Balance);
     public IReadOnlyList<PassengerTransfer> Transfers => service.VisibleTransfers;
     public PassengerTransfer? SelectedTransfer

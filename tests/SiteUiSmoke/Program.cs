@@ -171,6 +171,7 @@ internal static class Program
         var disembark = (Button)control.FindName("DisembarkPassengers"); Check(disembark.Command.CanExecute(null), "Passenger disembark control requires qualified arrival");
         disembark.Command.Execute(null); while (vm.IsBusy) await Task.Delay(10); Pump();
         Check(vm.SelectedTransfer?.State == PassengerTransferState.Delivered && service.Balance == 13.33m, "Passenger completion renders one hourly wage: " + vm.Error);
+        Check(vm.Status.Contains("Transfer completed") && !vm.Status.Contains("Disembark to complete"), "Completed passenger status no longer prompts delivery");
         Check(!disembark.Command.CanExecute(null), "Completed passenger control prevents repeated disembarkation");
         Save(host, Path.Combine(folder, "offshore-passenger-completed.png")); host.Close();
     }

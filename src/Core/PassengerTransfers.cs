@@ -28,7 +28,9 @@ public sealed record PassengerTransfer(string Id, string EmployerId, string Play
     public string Route => Origin.Name + " → " + Destination.Name;
     public string People => $"{PassengerCount} specialist passenger (prototype)";
     public string Status => State == PassengerTransferState.Boarded ? Flight?.DeliveryProof is null ? "Aboard / flight in progress" : "Ready to disembark" : State.ToString();
-    public string Pay => CompletedWage?.Summary ?? DollarDisplay.Format(HourlyRate) + " / flight hour";
+    public string Pay => CompletedWage is {} wage
+        ? $"{DollarDisplay.Format(wage.Amount)} · {TimeSpan.FromTicks(wage.AirborneTicks).TotalMinutes:0.##} min @ {DollarDisplay.Format(wage.HourlyRate)}/hr"
+        : DollarDisplay.Format(HourlyRate) + " / flight hour";
 
     public void EnsureValid()
     {
