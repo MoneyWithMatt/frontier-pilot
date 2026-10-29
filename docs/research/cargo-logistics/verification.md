@@ -43,6 +43,14 @@ git diff origin/master -- src tests ARCHITECTURE.md TESTING.md ROADMAP.md
 
 Read official Microsoft MSFS 2024 [payload SimVars](https://docs.flightsimulator.com/msfs2024/flighting/programming-apis/simvars/aircraft-simvars/aircraft-system-variables/), [station/weight configuration](https://docs.flightsimulator.com/msfs2024/retail/content-configuration/cfg-files/flight_model.cfg/) and [setter API](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/events-and-data/simconnect_setdataonsimobject/). A legacy documentation URL returned 404; the canonical retail setter page above was found and inspected. No SDK installation/sample modification or aircraft write was used to infer support. Existing source/historical loading reports establish the implementation and observed older aircraft-specific behavior; this task confers **no new simulator acceptance**.
 
-## Pending
+## Documentation PR hosted checkpoint
+
+[Draft PR #5](https://github.com/MoneyWithMatt/frontier-pilot/pull/5), report head `dd0d5f4217ead5f30e3c7a92eeb74f6ec744f2d3`, passed [run 18](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40934268493) on clean tested merge `44122eb6e6b4fb3f648f1e2881155a933d64a1c5`. **744 passed / 0 failed / 0 skipped**, SDK 8.0.424, Release zero warnings/errors, nine script guards, both WPF smoke programs, publication and both uploads. This is master's unchanged 744-case runtime, distinct from the isolated development snapshot's 794-case run. No cases were removed to obtain the lower count.
+
+Exact hosted commands: `./scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath dotnet`; `pwsh -NoProfile -File ./scripts/Test-VerificationGuards.ps1`; verification entry point with `-Stage Smoke -DotnetPath dotnet` and `-Stage Package -DotnetPath dotnet`.
+
+[Diagnostics](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40934268493/artifacts/12924660577), SHA256 `d0039bfd4ed4060d15a74ce0ef9701223c83d33603dc14474f34cd1f304d7745`, independently downloaded/checksummed; clean source receipts and 744-case TRX inspected. [Automatic development artifact](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40934268493/artifacts/12924740364), archive SHA256 `ea8dcebd9a6fd4e623901da6224c3cf22517b9f473daba1d7466068ecc45e89e`, not downloaded/executed and not a cargo upgrade. Seven-day retention. The final report/handoff-only follow-up has no application/test changes; exact final-head CI is recorded in PR #5 to avoid a self-referential evidence commit loop.
+
+## Remaining review
 
 Owner reviews report/manifest and decides the stage-specific product questions. Only then should an implementation slice be authorized. Every proposed stage lists automated and approved exact-aircraft simulator acceptance separately. Existing Offshore PR #3, destination-research PR #4, platform qualification and merge boundaries remain unchanged.
