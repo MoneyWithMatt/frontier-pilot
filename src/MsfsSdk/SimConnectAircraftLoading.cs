@@ -5,7 +5,7 @@ using FrontierAirportBuilder.Core;
 namespace FrontierAirportBuilder.MsfsSdk;
 
 /// <summary>SDK 1.2.4 SimConnect payload/fuel adapter. Structural station limits and arms are not exposed by SimVars.</summary>
-public sealed class SimConnectAircraftLoading : IAircraftLoadingSimulator
+public sealed class SimConnectAircraftLoading : IGuardedPassengerPayloadSimulator
 {
     private const uint UserAircraft = 0, Once = 1, Float64 = 4, String128 = 8;
     private static readonly (string Id, string Label, string Token)[] LegacyTanks =
@@ -23,6 +23,10 @@ public sealed class SimConnectAircraftLoading : IAircraftLoadingSimulator
         Task.Run(() => WithSession(sdkRoot, cancellationToken, session => { session.WritePayload(targetKilograms); Thread.Sleep(250); return session.Read(); }), cancellationToken);
     public Task<AircraftLoadingSnapshot> WriteFuelAsync(string sdkRoot, IReadOnlyDictionary<string, decimal> targetGallons, CancellationToken cancellationToken = default) =>
         Task.Run(() => WithSession(sdkRoot, cancellationToken, session => { session.WriteFuel(targetGallons); Thread.Sleep(250); return session.Read(); }), cancellationToken);
+    public Task<AircraftLoadingSnapshot> WritePassengerPayloadAsync(string sdkRoot, AircraftLoadingSnapshot expected, IReadOnlyDictionary<int, decimal> targetKilograms, CancellationToken token = default) =>
+        Task.Run(() => WithSession(sdkRoot, token, session => {
+            PassengerLoadPlanner.CheckUnchangedBeforeWrite(expected, session.Read()); token.ThrowIfCancellationRequested();
+            session.WritePayload(targetKilograms); Thread.Sleep(250); return session.Read(); }), token);
 
     private static T WithSession<T>(string sdkRoot, CancellationToken token, Func<Session, T> action)
     {
@@ -37,7 +41,7 @@ public sealed class SimConnectAircraftLoading : IAircraftLoadingSimulator
 
     private sealed class Session : IDisposable
     {
-        private readonly IntPtr library; private IntPtr connection; private readonly string details; private uint requestId = 500;
+        private readonly IntPtr library; private IntPtr connection; private readonly string details; private uint requestId = 500, nextDefinition = 1000;
         private readonly Add add; private readonly Request request; private readonly Dispatch dispatch; private readonly SetData set;
         public Session(string dll, string details)
         {
@@ -48,7 +52,7 @@ public sealed class SimConnectAircraftLoading : IAircraftLoadingSimulator
         }
         public AircraftLoadingSnapshot Read()
         {
-            const uint baseDef = 100;
+            var baseDef = nextDefinition++;
             Add(baseDef, "TITLE", null, String128); Add(baseDef, "ATC MODEL", null, String128);
             foreach (var field in new[] { ("PLANE LATITUDE", "degrees"), ("PLANE LONGITUDE", "degrees"), ("PLANE ALTITUDE", "feet"), ("PLANE HEADING DEGREES TRUE", "degrees"),
                 ("GROUND VELOCITY", "knots"), ("SIM ON GROUND", "bool"), ("PAYLOAD STATION COUNT", "number"), ("EMPTY WEIGHT", "pounds"), ("MAX GROSS WEIGHT", "pounds"),
@@ -59,7 +63,7 @@ public sealed class SimConnectAircraftLoading : IAircraftLoadingSimulator
             var position = new FlightPosition(observed, numbers[0], numbers[1], numbers[2], numbers[3], numbers[4], numbers[5] != 0).EnsureValid();
             int stationCount = Math.Clamp((int)Math.Round(numbers[6]), 0, 15); int engineCount = Math.Clamp((int)Math.Round(numbers[15]), 0, 4);
 
-            const uint stationDef = 101; for (int i = 1; i <= stationCount; i++) { Add(stationDef, $"PAYLOAD STATION NAME:{i}", null, String128); Add(stationDef, $"PAYLOAD STATION WEIGHT:{i}", "pounds", Float64); }
+            var stationDef = nextDefinition++; for (int i = 1; i <= stationCount; i++) { Add(stationDef, $"PAYLOAD STATION NAME:{i}", null, String128); Add(stationDef, $"PAYLOAD STATION WEIGHT:{i}", "pounds", Float64); }
             var stations = new List<PayloadStationReading>();
             if (stationCount > 0)
             {
@@ -68,7 +72,7 @@ public sealed class SimConnectAircraftLoading : IAircraftLoadingSimulator
                     stations.Add(new(i, string.IsNullOrWhiteSpace(name) ? $"Station {i}" : name, LoadingUnits.PoundsToKilograms((decimal)pounds), null, null, true)); }
             }
 
-            const uint systemsDef = 102;
+            var systemsDef = nextDefinition++;
             foreach (var tank in LegacyTanks) { Add(systemsDef, $"FUEL TANK {tank.Token} CAPACITY", "gallons", Float64); Add(systemsDef, $"FUEL TANK {tank.Token} QUANTITY", "gallons", Float64); }
             for (int i = 1; i <= Math.Max(1, engineCount); i++) Add(systemsDef, $"GENERAL ENG COMBUSTION:{i}", "bool", Float64);
             var systems = Request(systemsDef, (LegacyTanks.Length * 2 + Math.Max(1, engineCount)) * 8); var values = Doubles(systems, 0, systems.Length / 8);

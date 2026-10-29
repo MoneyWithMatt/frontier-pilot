@@ -18,7 +18,7 @@ public interface IEconomyStateStore
 /// inventory and ledger changes cannot become independently visible.</summary>
 public sealed class LocalEconomyStateStore : IEconomyStateStore
 {
-    public const int CurrentSchemaVersion = 11;
+    public const int CurrentSchemaVersion = 12;
     private sealed record Document(int SchemaVersion, EconomyWorld World);
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -196,11 +196,23 @@ public sealed class EconomyService(IEconomyStateStore store)
     public Task<EconomyTransition> MarkShipmentsInTransitAsync(IReadOnlyList<string> jobIds, CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => EconomyKernel.MarkShipmentsInTransit(world, jobIds), cancellationToken);
     public Task<EconomyTransition> MarkShipmentLoadedAsync(string jobId, CancellationToken cancellationToken = default) =>
-        store.ApplyAsync(world => EconomyKernel.MarkShipmentLoaded(world, jobId), cancellationToken);
+        store.ApplyAsync(world => { RequireNoPassengerLoad(world); return EconomyKernel.MarkShipmentLoaded(world, jobId); }, cancellationToken);
     public Task<EconomyTransition> ApplyCargoTransferAsync(ShipmentCargoTransferRequest request, CancellationToken cancellationToken = default) =>
-        store.ApplyAsync(world => EconomyKernel.ApplyCargoTransfer(world, request), cancellationToken);
+        store.ApplyAsync(world => { GuardPositiveCargo(world, [request]); return EconomyKernel.ApplyCargoTransfer(world, request); }, cancellationToken);
     public Task<EconomyTransition> ApplyCargoTransfersAsync(IReadOnlyList<ShipmentCargoTransferRequest> requests, CancellationToken cancellationToken = default) =>
-        store.ApplyAsync(world => EconomyKernel.ApplyCargoTransfers(world, requests), cancellationToken);
+        store.ApplyAsync(world => { GuardPositiveCargo(world, requests); return EconomyKernel.ApplyCargoTransfers(world, requests); }, cancellationToken);
+    private static void GuardPositiveCargo(EconomyWorld world, IReadOnlyList<ShipmentCargoTransferRequest> requests)
+    {
+        if (requests.Any(r => world.Jobs.FirstOrDefault(x => x.Id == r.JobId) is {} job && world.Shipments.FirstOrDefault(x => x.Id == job.ShipmentId) is {} shipment && r.DesiredLoadedQuantity > shipment.LoadedQuantity + .001m))
+            RequireNoPassengerLoad(world);
+    }
+    private static void RequireNoPassengerLoad(EconomyWorld world)
+    {
+        // Interim workflow policy; the shared domain deliberately permits future mixed/disjoint carriage.
+        if (world.PassengerTransfers.Any(x => x.State == PassengerTransferState.Boarded) ||
+            world.PassengerTransports.Any(x => x.State is PassengerCarriageState.Boarding or PassengerCarriageState.Aboard or PassengerCarriageState.Arrived or PassengerCarriageState.Disembarking))
+            throw new InvalidOperationException("Finish the passenger load before loading Frontier cargo. Mixed-load workflow/recovery is not yet qualified.");
+    }
     public Task<EconomyTransition> AbandonIncompletePrototypeShipmentAsync(string jobId, DateTimeOffset cancelledUtc, CancellationToken cancellationToken = default) =>
         store.ApplyAsync(world => EconomyKernel.AbandonIncompletePrototypeShipment(world, jobId, cancelledUtc), cancellationToken);
     public Task<EconomyTransition> CompleteDeliveryAsync(VerifiedDeliveryEvidence evidence, CancellationToken cancellationToken = default) =>

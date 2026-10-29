@@ -23,10 +23,11 @@ public sealed record PassengerTransfer(string Id, string EmployerId, string Play
     PassengerEndpoint Destination, int PassengerCount, string[] EligibleAircraftTypes, decimal HourlyRate,
     DateTimeOffset OfferedUtc, DateTimeOffset ExpiresUtc, PassengerTransferState State = PassengerTransferState.Offered,
     string? AircraftTypeId = null, DateTimeOffset? AcceptedUtc = null, FlightAttempt? Flight = null,
-    DateTimeOffset? DisembarkedUtc = null, PilotWage? CompletedWage = null, Guid? AirframeId = null)
+    DateTimeOffset? DisembarkedUtc = null, PilotWage? CompletedWage = null, Guid? AirframeId = null,
+    string? TransportId = null, string? Purpose = null, FlightAttempt? BoardingAuthorization = null)
 {
     public string Route => Origin.Name + " → " + Destination.Name;
-    public string People => $"{PassengerCount} specialist passenger (prototype)";
+    public string People => $"{PassengerCount} passenger(s) · {Purpose ?? "legacy specialist transfer"}";
     public string Status => State == PassengerTransferState.Boarded ? Flight?.DeliveryProof is null ? "Aboard / flight in progress" : "Ready to disembark" : State.ToString();
     public string Pay => CompletedWage is {} wage
         ? $"{DollarDisplay.Format(wage.Amount)} · {TimeSpan.FromTicks(wage.AirborneTicks).TotalMinutes:0.##} min @ {DollarDisplay.Format(wage.HourlyRate)}/hr"
@@ -38,10 +39,18 @@ public sealed record PassengerTransfer(string Id, string EmployerId, string Play
         if (Origin is null || Destination is null) throw new InvalidDataException("Passenger endpoints are missing.");
         Origin.EnsureValid(); Destination.EnsureValid();
         if (!Enum.IsDefined(State) || !Origin.CanGenerate || !Destination.CanGenerate || Origin.Id == Destination.Id ||
-            PassengerCount != 1 || HourlyRate <= 0 || OfferedUtc == default || ExpiresUtc <= OfferedUtc ||
+            PassengerCount is < 1 or > 1000 || HourlyRate <= 0 || OfferedUtc == default || ExpiresUtc <= OfferedUtc ||
             EligibleAircraftTypes is null || EligibleAircraftTypes.Length == 0 || EligibleAircraftTypes.Distinct().Count() != EligibleAircraftTypes.Length)
             throw new InvalidDataException("Passenger transfer route, count or policy is invalid. Platforms remain unavailable.");
         foreach (var type in EligibleAircraftTypes) EconomyValidation.Id(type, "passenger aircraft type");
+        if (TransportId is not null) EconomyValidation.Id(TransportId, "passenger transport reference");
+        if (Purpose is not null) EconomyValidation.Text(Purpose, "passenger mission purpose", 256);
+        if (BoardingAuthorization is {} authorization)
+        {
+            authorization.EnsureValid();
+            if (TransportId is null || State != PassengerTransferState.Reserved || authorization.JobId != Id || authorization.DeliveryProof is not null || authorization.FirstAirborneUtc is not null)
+                throw new InvalidDataException("Passenger boarding authorization is inconsistent.");
+        }
         if (State is PassengerTransferState.Offered or PassengerTransferState.Expired)
         {
             if (AircraftTypeId is not null || AcceptedUtc is not null || Flight is not null || DisembarkedUtc is not null || CompletedWage is not null || AirframeId is not null)
@@ -92,6 +101,20 @@ public static class PassengerTransferKernel
         foreach (var t in world.PassengerTransfers)
         {
             t.EnsureValid();
+            if (t.TransportId is {} transportId)
+            {
+                var carriage = world.PassengerTransports.SingleOrDefault(x => x.Id == transportId);
+                if (carriage is null || carriage.Group.Count != t.PassengerCount || transportId != PassengerTransportKernel.TransportId(t.Id) ||
+                    t.State == PassengerTransferState.Boarded && carriage.State is not (PassengerCarriageState.Aboard or PassengerCarriageState.Arrived or PassengerCarriageState.Disembarking or PassengerCarriageState.Disembarked) ||
+                    t.State == PassengerTransferState.Delivered && carriage.State != PassengerCarriageState.Disembarked)
+                    throw new InvalidDataException("Mission and shared passenger carriage are inconsistent.");
+                if (carriage.Payload is {} payload && (payload.Configuration.AircraftTypeId != t.AircraftTypeId ||
+                    t.AirframeId is {} airframe && payload.AirframeId != airframe || t.Flight is {} flight && payload.Configuration.Aircraft != flight.Aircraft))
+                    throw new InvalidDataException("Mission and passenger payload aircraft differ.");
+                if (t.State == PassengerTransferState.Delivered && carriage.Payload is {} receipt &&
+                    (receipt.VerifiedUtc < t.Flight!.DeliveryProof!.ReadyUtc || WorldTracking.DistanceMeters(receipt.VerifiedPosition!.Latitude, receipt.VerifiedPosition.Longitude, t.Destination.Latitude, t.Destination.Longitude) > 2778))
+                    throw new InvalidDataException("Completed passenger mission lacks its destination payload receipt.");
+            }
             if (world.Jobs.Any(x => x.Id == t.Id) || !world.Businesses.Any(x => x.Id == t.EmployerId) ||
                 !world.Players.Any(x => x.Id == t.PlayerId && x.EmployerBusinessId == t.EmployerId))
                 throw new InvalidDataException("Passenger assignment identity/employment is inconsistent.");
@@ -103,9 +126,6 @@ public static class PassengerTransferKernel
             }
             else if (payments.Length != 0) throw new InvalidDataException("Undelivered passengers cannot be paid.");
         }
-        foreach (var group in world.PassengerTransfers.Where(x => x.State == PassengerTransferState.Boarded).GroupBy(x => x.PlayerId))
-            if (group.Count() > 1 || world.Jobs.Any(j => j.PlayerId == group.Key && world.Shipments.Any(s => s.JobId == j.Id && s.State is ShipmentState.Loaded or ShipmentState.InTransit)))
-                throw new InvalidDataException("Complete the current passenger or cargo flight before boarding another load.");
     }
 
     public static void ValidatePayment(EconomyWorld world, PassengerTransfer t, FinancialTransaction payment)
@@ -133,7 +153,11 @@ public static class PassengerTransferKernel
         world.EnsureValid(); var t = world.PassengerTransfers.Single(x => x.Id == id);
         if (t.State == PassengerTransferState.Boarded) return new(world, false);
         if (t.State != PassengerTransferState.Reserved) throw new InvalidOperationException("Reserve the passenger transfer before boarding.");
-        return Replace(world, t with { State = PassengerTransferState.Boarded, Flight = flight, AirframeId = airframeId });
+        if (t.TransportId is {} transport && world.PassengerTransports.Single(x => x.Id == transport) is not { State: PassengerCarriageState.Aboard, Payload: not null })
+            throw new InvalidOperationException("Passenger payload has not been verified aboard.");
+        if (t.TransportId is {} linked && world.PassengerTransports.Single(x => x.Id == linked).Payload!.AirframeId != airframeId)
+            throw new InvalidOperationException("Passenger payload belongs to another airframe.");
+        return Replace(world, t with { State = PassengerTransferState.Boarded, Flight = flight, AirframeId = airframeId, BoardingAuthorization = null });
     }
 
     public static EconomyTransition Complete(EconomyWorld world, string id, DateTimeOffset utc)
@@ -142,6 +166,14 @@ public static class PassengerTransferKernel
         if (t.State == PassengerTransferState.Delivered) return new(world, false);
         if (t.State != PassengerTransferState.Boarded || t.Flight?.DeliveryProof is not {} proof || utc < proof.ReadyUtc)
             throw new InvalidOperationException("Passenger disembarkation requires the persisted qualified arrival.");
+        if (t.TransportId is {} transport && world.PassengerTransports.Single(x => x.Id == transport) is not { State: PassengerCarriageState.Disembarked, Payload.VerifiedPosition: not null })
+            throw new InvalidOperationException("Physical disembarkation has not been confirmed.");
+        if (t.TransportId is {} completed)
+        {
+            var receipt = world.PassengerTransports.Single(x => x.Id == completed).Payload!;
+            if (receipt.VerifiedUtc < proof.ReadyUtc || WorldTracking.DistanceMeters(receipt.VerifiedPosition!.Latitude, receipt.VerifiedPosition.Longitude, t.Destination.Latitude, t.Destination.Longitude) > 2778)
+                throw new InvalidOperationException("Passenger unloading receipt does not qualify at the destination.");
+        }
         var employer = world.Businesses.Single(x => x.Id == t.EmployerId);
         var wage = new PilotWage(t.Flight.Id, t.EmployerId, employer.Name, t.Flight.VerifiedAirborneTicks, t.HourlyRate).EnsureValid();
         var player = world.Players.Single(x => x.Id == t.PlayerId);

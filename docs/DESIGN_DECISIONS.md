@@ -1,5 +1,13 @@
 # Design decisions
 
+## Shared passengers / physical loading — 2026-10-29
+
+Matt explicitly superseded the one-person simulated Offshore prototype with shared person/group carriage and actual MSFS payload loading. [Approved objective/spec](specs/shared-passengers.md), [implementation/capability/recovery/live boundaries](shared-passengers.md). Mission purpose, tracker proof and career settlement remain separate; Offshore $800/hour and Missionary $400/hour are unchanged. Missionary adds a two-person community visit through existing catalogue eligibility, with no invented medical facility or simulation.
+
+Capacity comes from reviewed aircraft-specific seat areas, never station count, cargo dispatch fixtures or aircraft-name guesses. Only the exact reviewed Caravan Professional 0.1.2 gear configuration has a production candidate profile; unknown stock/streamed configuration blocks loading. Missing station maxima/arms are exposed, available limits enforced; this is not certification/live acceptance. Physical payload does not imply visible seated people or animation. No supported visual mechanism established, no unrelated NPC substitution.
+
+Persist passenger weights, ownership and absolute intent targets before native writes; compare current aircraft/payload immediately before writing and require readback before carriage transition. Partial/manual conflicts retain recoverable intent without guessed rollback or adoption. Schema-11 aboard saves finish as legacy simulated transfers without invented mass/GUID. The shared domain permits future mixed/disjoint carriage; interim career workflow checks atomically refuse mixed Frontier cargo/passenger assignments until accounting/recovery is qualified. Shared native operation serialization preserves existing cargo behavior. Platforms remain disabled; H125 cargo/survey/inspection deferred.
+
 ## Offshore passenger transfers — 2026-10-29
 
 - Matt selected passenger transfers before H125 platform cargo or survey/inspection. [Approved scope](specs/offshore-passenger-transfers.md): one simulated specialist passenger on eligible airport routes; no people in cargo stock and no native passenger/payload claim.

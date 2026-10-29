@@ -2,7 +2,7 @@
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
  <UserControl.Resources><Style x:Key="PassengerCell" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}"><Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Margin" Value="3,6"/><Setter Property="VerticalAlignment" Value="Center"/></Style></UserControl.Resources>
  <Grid Margin="20"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <StackPanel><TextBlock Text="Offshore passenger transfers" FontSize="23" FontWeight="SemiBold"/>
+  <StackPanel><TextBlock Text="Passenger transfers" FontSize="23" FontWeight="SemiBold"/>
    <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Margin="0,8"/>
    <WrapPanel><Button Content="Refresh transfers" Command="{Binding RefreshCommand}"/><TextBlock Text="{Binding Balance, StringFormat='Balance: {0}'}" VerticalAlignment="Center" Margin="15,0"/></WrapPanel>
   </StackPanel>
@@ -13,9 +13,14 @@
    <TextBlock Text="{Binding SelectedTransfer.AircraftTypeId, StringFormat='Assigned aircraft type: {0}'}"/>
    <WrapPanel><ComboBox x:Name="PassengerAircraft" ItemsSource="{Binding AircraftChoices}" SelectedItem="{Binding SelectedAircraft, Mode=TwoWay}" MinWidth="180"><ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate></ComboBox>
     <Button x:Name="AcceptTransfer" Content="Reserve transfer" Command="{Binding AcceptCommand}"/>
-    <Button x:Name="BoardPassengers" Content="Board passenger (simulated)" Command="{Binding BoardCommand}"/>
+    <Button x:Name="BoardPassengers" Content="Board / retry physical loading" Command="{Binding BoardCommand}"/>
     <Button x:Name="DisembarkPassengers" Content="Disembark and complete" Command="{Binding DisembarkCommand}"/>
    </WrapPanel>
+   <WrapPanel><TextBlock Text="Manifest weights (kg, comma separated):" VerticalAlignment="Center"/><TextBox x:Name="PassengerManifestWeights" Text="{Binding ManifestWeights, UpdateSourceTrigger=PropertyChanged}" MinWidth="140"/><Button x:Name="ConfirmPassengerManifest" Content="Confirm manifest" Command="{Binding ManifestCommand}"/><Button Content="Check payload after reconnect" Command="{Binding CheckPayloadCommand}"/></WrapPanel>
+   <TextBlock Text="Black Square Caravan Professional package directory (read-only configuration check):"/>
+   <TextBox Text="{Binding AircraftPackageDirectory, UpdateSourceTrigger=PropertyChanged}"/>
+   <TextBlock Text="{Binding SupportSummary}" TextWrapping="Wrap" Margin="0,6"/>
+   <TextBlock Text="{Binding PayloadStatus}" TextWrapping="Wrap"/>
    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,8"/><TextBlock Text="{Binding Error}" Foreground="#FF9999" TextWrapping="Wrap"/>
    <TextBlock Text="{Binding SelectedTransfer.CompletedWage.Summary}" TextWrapping="Wrap" Margin="0,4"/>
    <TextBlock Text="Interrupted flights retain the passenger and proven progress. Reconnect in the recorded aircraft; fresh destination telemetry is required to disembark. Disconnected time is unpaid. Finish this flight before loading another passenger or cargo assignment." TextWrapping="Wrap" FontSize="12"/>

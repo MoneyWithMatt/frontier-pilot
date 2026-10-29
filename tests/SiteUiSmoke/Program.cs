@@ -140,8 +140,9 @@ internal static class Program
         var now = DateTimeOffset.Parse("2026-10-29T12:00:00Z"); var clock = now;
         var employer = CareerCatalogue.Employers.Single(x => x.Category == "Offshore");
         var destinations = new EmployerDestinationCatalogue([new("FYWB", "Approved", "FYWB", -23, 15, "Synthetic WPF passenger fixture", now, [])]);
-        var service = new PassengerTransfersService(new MemoryEconomyStateStore(), employer, destinations,
-            () => [new("Synthetic Vision Jet", "SF50", "vision-jet")], () => clock);
+        var store = new MemoryEconomyStateStore(); var physical = new FrontierAirportBuilder.TestFixtures.SyntheticPassengerAircraft(); var airframe = Guid.NewGuid();
+        var service = new PassengerTransfersService(store, employer, destinations,
+            () => [new("Synthetic Vision Jet", "SF50", "vision-jet")], () => clock) { SelectedAirframe = () => airframe, Payload = new(store, physical, physical, () => "synthetic") };
         var vm = new PassengerTransfersViewModel(service); var control = new PassengerTransfersControl { DataContext = vm };
         var host = new Window { Content = control, Width = 1250, Height = 850, ShowInTaskbar = false }; host.Show();
         await vm.RefreshAsync(); Pump();
@@ -153,11 +154,16 @@ internal static class Program
         Check(reserve.Command.CanExecute(null), "Passenger reserve command is bound to eligible aircraft"); reserve.Command.Execute(null);
         while (vm.IsBusy) await Task.Delay(10); Pump();
         Check(vm.SelectedTransfer?.State == PassengerTransferState.Reserved, "Passenger reservation uses the actual bound control: " + vm.Error);
+        ((TextBox)control.FindName("PassengerManifestWeights")).Text = "82"; Pump();
+        var manifest = (Button)control.FindName("ConfirmPassengerManifest"); Check(manifest.Command.CanExecute(null), "Manifest command is bound to the reserved passenger group");
+        manifest.Command.Execute(null); while (vm.IsBusy) await Task.Delay(10); Pump();
+        Check(service.SelectedTransport?.Group.WeightKilograms == 82, "Actual manifest input confirms declared passenger weight: " + vm.Error);
         async Task Sample(int second, bool destination = false, bool ground = true)
         {
             clock = now.AddSeconds(second);
-            await vm.ObserveAsync(new(clock, "Synthetic Vision Jet", "SF50", destination ? assigned.Destination.Latitude : assigned.Origin.Latitude,
-                destination ? assigned.Destination.Longitude : assigned.Origin.Longitude, ground ? 500 : 2000, 0, ground ? 0 : 100, ground)); Pump();
+            physical.Sample = new(clock, "Synthetic Vision Jet", "SF50", destination ? assigned.Destination.Latitude : assigned.Origin.Latitude,
+                destination ? assigned.Destination.Longitude : assigned.Origin.Longitude, ground ? 500 : 2000, 0, ground ? 0 : 100, ground);
+            await vm.ObserveAsync(physical.Sample); Pump();
         }
         for (var i = 0; i <= 10; i++) await Sample(i);
         Check(vm.SelectedTransfer?.Id == assigned.Id && (grid.SelectedItem as PassengerTransfer)?.Id == assigned.Id,
@@ -166,11 +172,13 @@ internal static class Program
         var board = (Button)control.FindName("BoardPassengers"); Check(board.Command.CanExecute(null), "Passenger boarding control qualifies at origin"); board.Command.Execute(null);
         while (vm.IsBusy) await Task.Delay(10); Pump();
         Check(vm.SelectedTransfer?.State == PassengerTransferState.Boarded, "Passenger boarding persists via production command: " + vm.Error);
+        Check(physical.Weights[2] == 82 && physical.Weights[5] == 33 && physical.FuelWrites == 0, "Synthetic physical boarding preserves cargo and fuel");
         for (var i = 11; i <= 71; i++) await Sample(i, i > 11, false);
         for (var i = 72; i <= 82; i++) await Sample(i, true);
         var disembark = (Button)control.FindName("DisembarkPassengers"); Check(disembark.Command.CanExecute(null), "Passenger disembark control requires qualified arrival");
         disembark.Command.Execute(null); while (vm.IsBusy) await Task.Delay(10); Pump();
         Check(vm.SelectedTransfer?.State == PassengerTransferState.Delivered && service.Balance == 13.33m, "Passenger completion renders one hourly wage: " + vm.Error);
+        Check(physical.Weights[2] == 0 && physical.Weights[5] == 33 && physical.Writes == 2, "Synthetic physical unloading removes owned weight once");
         Check(vm.Status.Contains("Transfer completed") && !vm.Status.Contains("Disembark to complete"), "Completed passenger status no longer prompts delivery");
         Check(!disembark.Command.CanExecute(null), "Completed passenger control prevents repeated disembarkation");
         Save(host, Path.Combine(folder, "offshore-passenger-completed.png")); host.Close();

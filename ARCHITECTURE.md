@@ -24,7 +24,7 @@ Normal career data is under `%LOCALAPPDATA%/FrontierAirportBuilder/desktop`. Nev
 
 | Store | Current authority |
 |---|---|
-| `economy/economy-state.json` | Schema 11; ledger, cargo jobs/inventory, typed passenger transfers with embedded flight progress, real-time schedule, operations and maintenance charges |
+| `economy/economy-state.json` | Schema 12; ledger, cargo jobs/inventory, shared passenger groups/carriage/payload intents, employed assignments with embedded flight progress, real-time schedule, operations and maintenance charges |
 | `economy/flight-attempts.json` | Schema 5; persisted flight facts/proof and separate bounded diagnostics |
 | `economy/aircraft-loading.json` | Schema 5; managed cargo manifests, intents and fuel continuity |
 | `fleet/aircraft-fleet.json` | Schema 1; immutable airframe GUIDs, selected binding, condition, last-known location, history; `.previous` backup |
@@ -51,7 +51,9 @@ Native adapters load the installed SDK's `SimConnect.dll` dynamically; no propri
 
 `FlightAttemptTracker` (including its passenger monitor) alone assembles delivery proof. Arrival requires flight facts and continuous stopped presence; explicit cargo unload/verified transfer or passenger disembarkation commits economy consequences. Current route distance policy is `RequiredDistanceForRoute` (0.5–10 NM), alongside the separate two-NM movement gate; older V0 reports describe the historical fixed ten-NM rule. Completed deliveries cannot emit more progression events.
 
-`FlightAttemptTracker.PassengerMonitor` reuses the flight records, policy, airborne-time/proof helpers for typed Offshore airport transfers. `PassengerTransfersService` stores passenger progress and terminal disembarkation/wage atomically in the economy file; it never creates cargo shipments or inventory for people. Boarding is explicitly simulated. Shared fleet/endpoint guards apply, and pending cargo recovery blocks passenger boarding. Platform endpoint missions remain rejected until a future qualified adapter/registry is accepted. See [passenger transfer scope and live procedure](docs/offshore-passenger-transfers.md).
+`PassengerTransport` owns shared person/group identity, declared mass, reservation, boarding, carriage, arrival and disembarkation independently of employer/pay. `PassengerPayloadCoordinator` persists station ownership/absolute targets before writes through `IGuardedPassengerPayloadSimulator`, checks immediate/retained readback and preserves partial/conflicting state. A shared named lease serializes cargo/fuel/passenger operations. `IPassengerAircraftConfigurations` provides evidenced seat-area capacity; production has an exact-hash Black Square Caravan Professional 0.1.2 gear profile, not inferred stock seating. Missing structural limits/arms and unsupported visuals are explicit. Vision Jet physical boarding remains blocked until its streamed effective configuration can be reviewed; no aircraft has live passenger acceptance.
+
+`EmployedPassengerMissions` supplies Offshore specialist/executive and Missionary doctor/community-liaison visit policies. `PassengerTransfersService` reuses both-endpoint/fleet guards and `FlightAttemptTracker.PassengerMonitor` flight/time/proof rules, then commits mission completion and existing $800/$400 hourly wages atomically after verified disembarkation. It creates no cargo inventory for people. The interim cargo/passenger exclusion lives in workflow/atomic dispatch checks, not shared domain validation. Legacy simulated aboard saves retain their historical completion without invented payload ownership. Platforms remain rejected pending qualified adapter/registry. See [shared passengers and live procedure](docs/shared-passengers.md).
 
 Three clocks are distinct: economy uses real UTC; flight wages accumulate valid aircraft observation intervals; physical-airframe exposure uses validated simulator seconds and pause/slew/continuity guards. Do not merge their semantics.
 

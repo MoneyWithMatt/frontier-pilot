@@ -929,7 +929,7 @@ public sealed partial class FlightAttemptTracker : IFlightAttemptTracker
     private async Task RequireNoPassengerFlightAsync(CancellationToken token)
     {
         var current = await economy.LoadAsync(token).ConfigureAwait(false);
-        if (current?.PassengerTransfers.Any(x => x.State == PassengerTransferState.Boarded) == true)
+        if (current?.PassengerTransfers.Any(x => x.State == PassengerTransferState.Boarded) == true || current?.PassengerTransports.Any(x => x.State is PassengerCarriageState.Boarding or PassengerCarriageState.Aboard or PassengerCarriageState.Arrived or PassengerCarriageState.Disembarking) == true)
             throw new InvalidOperationException("Disembark the current passenger transfer before loading cargo.");
     }
     private EconomyJob? ActiveJob(EconomyWorld world)

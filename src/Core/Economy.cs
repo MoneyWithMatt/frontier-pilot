@@ -96,6 +96,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
     IReadOnlyList<FinancialTransaction> FinancialLedger)
 {
     public IReadOnlyList<PassengerTransfer> PassengerTransfers { get; init; } = [];
+    public IReadOnlyList<PassengerTransport> PassengerTransports { get; init; } = [];
     public IReadOnlyList<MaintenanceCharge> MaintenanceCharges { get; init; } = [];
     public IReadOnlyList<InventoryTransaction> InventoryLedger { get; init; } = [];
     public IReadOnlyList<RecurringDemandDefinition> RecurringDemand { get; init; } = [];
@@ -293,6 +294,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
                !Businesses.Any(b=>b.Id==c.Payee) || (!Players.Any(p=>p.Id==c.Payer) && !Businesses.Any(b=>b.Id==c.Payer)))
                 throw new InvalidDataException("Maintenance charge lacks its authoritative ledger entry or explicit payer.");
         }
+        PassengerTransportKernel.Validate(this);
         PassengerTransferKernel.Validate(this);
         foreach (var x in FinancialLedger)
         {

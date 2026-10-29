@@ -6,6 +6,12 @@ namespace FrontierAirportBuilder.Tests;
 
 public sealed class AircraftLoadingTests
 {
+    private static async Task WaitForLoadingCommand(AircraftLoadingViewModel vm)
+    {
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        while (vm.IsBusy && timer.Elapsed < TimeSpan.FromSeconds(15)) await Task.Delay(10);
+        Assert.False(vm.IsBusy, "The asynchronous loading command did not finish.");
+    }
     [Fact] public async Task Passenger_dispatch_guard_refuses_cargo_before_any_payload_or_tracker_write()
     {
         var h = Harness(transportGuard: _ => Task.FromException(new InvalidOperationException("Passenger aboard")));
@@ -460,10 +466,11 @@ public sealed class AircraftLoadingTests
         var h=Harness();var vm=new AircraftLoadingViewModel(h.coordinator);await vm.InitializeAsync();await h.coordinator.RefreshAsync();
         vm.PayloadStations[0].AssignedKilogramsText="75.25";vm.PayloadStations[1].AssignedKilogramsText="44.75";
         Assert.True(vm.ApplyCargoCommand.CanExecute(null));vm.ApplyCargoCommand.Execute(null);
+        await WaitForLoadingCommand(vm);
         Assert.Equal("",vm.Error);Assert.Equal(1,h.sim.PayloadWrites);Assert.Equal(1,h.tracker.Loads);
         Assert.Equal(85.25m,h.sim.Value.PayloadStations[0].CurrentWeightKilograms);
         Assert.Equal(64.75m,h.sim.Value.PayloadStations[1].CurrentWeightKilograms);
-        vm.ApplyCargoCommand.Execute(null);Assert.Equal(1,h.sim.PayloadWrites);Assert.Equal(1,h.tracker.Loads);
+        vm.ApplyCargoCommand.Execute(null);await WaitForLoadingCommand(vm);Assert.Equal(1,h.sim.PayloadWrites);Assert.Equal(1,h.tracker.Loads);
     }
 
     [Fact] public async Task Reading_loading_requests_tracking_reconnection()
@@ -570,7 +577,7 @@ public sealed class AircraftLoadingTests
     }
 
     [Fact] public async Task Committed_load_display_does_not_count_frontier_cargo_twice()
-    {var h=Harness();var vm=new AircraftLoadingViewModel(h.coordinator);await vm.InitializeAsync();await h.coordinator.RefreshAsync();vm.PayloadStations[0].AssignedKilogramsText="70";vm.PayloadStations[1].AssignedKilogramsText="50";vm.ApplyCargoCommand.Execute(null);Assert.Equal(10,vm.PayloadStations[0].CurrentKilograms);Assert.Equal(80,vm.PayloadStations[0].PlannedKilograms);Assert.Equal(20,vm.PayloadStations[1].CurrentKilograms);Assert.Equal(70,vm.PayloadStations[1].PlannedKilograms);Assert.Contains("Existing non-Frontier payload: 30.0 kg",vm.WeightAndBalance);Assert.Contains("Total planned payload: 150.0 kg",vm.WeightAndBalance);}
+    {var h=Harness();var vm=new AircraftLoadingViewModel(h.coordinator);await vm.InitializeAsync();await h.coordinator.RefreshAsync();vm.PayloadStations[0].AssignedKilogramsText="70";vm.PayloadStations[1].AssignedKilogramsText="50";vm.ApplyCargoCommand.Execute(null);await WaitForLoadingCommand(vm);Assert.Equal(10,vm.PayloadStations[0].CurrentKilograms);Assert.Equal(80,vm.PayloadStations[0].PlannedKilograms);Assert.Equal(20,vm.PayloadStations[1].CurrentKilograms);Assert.Equal(70,vm.PayloadStations[1].PlannedKilograms);Assert.Contains("Existing non-Frontier payload: 30.0 kg",vm.WeightAndBalance);Assert.Contains("Total planned payload: 150.0 kg",vm.WeightAndBalance);}
 
     [Fact] public async Task Unmanaged_seat_change_is_not_reported_as_detected_frontier_cargo()
     {

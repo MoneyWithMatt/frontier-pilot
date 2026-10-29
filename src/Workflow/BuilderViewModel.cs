@@ -113,6 +113,8 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         var passengerService = new PassengerTransfersService(economyStore, employer, employerDestinations ?? new(),
             () => careerStore?.Load().AircraftBindings ?? [])
             { AircraftGuard = Fleet.CheckPassengerDispatch, SelectedAirframe = () => Fleet.Selected?.Id,
+                Payload = new PassengerPayloadCoordinator(economyStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(),
+                    new PassengerAircraftConfigurations(() => Passengers?.AircraftPackageDirectory), () => this.sdkRoot),
                 BoardingRecoveryGuard = async token =>
                 {
                     var manifests = await loadingStore.LoadManifestsAsync(token).ConfigureAwait(false);

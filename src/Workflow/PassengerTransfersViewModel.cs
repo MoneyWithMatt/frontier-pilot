@@ -15,10 +15,17 @@ public sealed class PassengerTransfersViewModel : INotifyPropertyChanged
     public ActionCommand AcceptCommand { get; }
     public ActionCommand BoardCommand { get; }
     public ActionCommand DisembarkCommand { get; }
+    public ActionCommand ManifestCommand { get; }
+    public ActionCommand CheckPayloadCommand { get; }
+    private string manifestWeights = "", aircraftPackageDirectory = "";
+    public string ManifestWeights { get => manifestWeights; set { manifestWeights = value; Changed(); } }
+    public string AircraftPackageDirectory { get => aircraftPackageDirectory; set { aircraftPackageDirectory = value; Changed(); } }
+    public string PayloadStatus => service.PayloadStatus;
+    public string SupportSummary => service.SupportSummary;
     public bool Enabled => service.Enabled;
     public bool IsBusy => busy;
     public string Error => error;
-    public string Description => Enabled ? "Offshore specialist transfers · $800 per verified airborne hour, paid on disembarkation. One prototype passenger per transfer. Boarding is simulated; MSFS payload and passenger animations are unchanged. Platform destinations remain unavailable until live qualification." : "Passenger transfers are available in the Offshore career.";
+    public string Description => Enabled ? "Offshore specialist transfers / Missionary community visits. Existing career hourly wages are paid once after verified flight and disembarkation. Enter one declared kilogram weight per passenger. Boarding requires an evidenced aircraft configuration and actual payload readback. Platform destinations remain unavailable until live qualification." : "Passenger transfers are available in Offshore and Missionary careers.";
     public string Status => SelectedTransfer?.State switch
     {
         PassengerTransferState.Delivered => "Transfer completed. Passenger disembarked; hourly wages were paid once.",
@@ -47,11 +54,16 @@ public sealed class PassengerTransfersViewModel : INotifyPropertyChanged
         AcceptCommand = new(() => _ = AcceptAsync(), () => !busy && SelectedTransfer?.State == PassengerTransferState.Offered && SelectedAircraft is not null);
         BoardCommand = new(() => _ = BoardAsync(), () => !busy && service.CanBoard);
         DisembarkCommand = new(() => _ = DisembarkAsync(), () => !busy && service.CanDisembark);
+        ManifestCommand = new(() => _ = SetManifestAsync(), () => !busy && SelectedTransfer?.State == PassengerTransferState.Reserved);
+        CheckPayloadCommand = new(() => _ = CheckPayloadAsync(), () => !busy && SelectedTransfer?.State == PassengerTransferState.Boarded);
     }
     public Task RefreshAsync() => Run(() => service.RefreshAsync());
     public Task AcceptAsync() => Run(() => service.AcceptAsync(selectedType ?? ""));
     public Task BoardAsync() => Run(() => service.BoardAsync());
     public Task DisembarkAsync() => Run(() => service.DisembarkAsync());
+    public Task CheckPayloadAsync() => Run(() => service.CheckPayloadAsync());
+    public Task SetManifestAsync() => Run(() => service.SetManifestAsync(manifestWeights.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+        .Select(x => decimal.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToArray()));
     public async Task ObserveAsync(AircraftTelemetry? sample)
     {
         try { await service.ObserveAsync(sample).ConfigureAwait(false); }
@@ -68,7 +80,7 @@ public sealed class PassengerTransfersViewModel : INotifyPropertyChanged
     }
     private void Changed()
     {
-        void Notify() { PropertyChanged?.Invoke(this, new("")); RefreshCommand?.Refresh(); AcceptCommand?.Refresh(); BoardCommand?.Refresh(); DisembarkCommand?.Refresh(); }
+        void Notify() { PropertyChanged?.Invoke(this, new("")); RefreshCommand?.Refresh(); AcceptCommand?.Refresh(); BoardCommand?.Refresh(); DisembarkCommand?.Refresh(); ManifestCommand?.Refresh(); CheckPayloadCommand?.Refresh(); }
         if (context is not null && SynchronizationContext.Current != context) context.Post(_ => Notify(), null); else Notify();
     }
 }

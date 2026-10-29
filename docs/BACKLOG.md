@@ -2,6 +2,8 @@
 
 ## Current development priority — Offshore (2026-10-29)
 
+- Latest approved extension: [shared physical passenger transport](shared-passengers.md), [spec](specs/shared-passengers.md). Reusable multi-person carriage, native owned-station writes/readback/recovery and Missionary visit adapter implemented; existing $800/$400 hourly pay retained. Local 794-suite pass; continue exact hosted WPF/package/visual checkpoint from the handoff. Obtain exact artifact/scenario approval for isolated live Caravan qualification, establish legitimate effective Vision Jet seat/station configuration, and investigate aircraft-supported seated-model controls. No live acceptance is inferred; original simulated reports below are historical.
+
 - [Implementation, SDK capabilities and staged tasks](offshore-career.md); [resume handoff](handoffs/offshore-career.md). Airport-cargo dispatch fixes and seven new synthetic cases implemented; [751-suite hosted pass, WPF/package evidence](offshore-career-verification.md). Continue through [task #2](https://github.com/MoneyWithMatt/frontier-pilot/issues/2) / [draft PR #3](https://github.com/MoneyWithMatt/frontier-pilot/pull/3).
 - Matt selected Offshore passenger transfers: typed airport transfer loop implemented with simulated boarding, $800/hour, endpoint/fleet guards and atomic recovery/payment. [Scope/live procedure](offshore-passenger-transfers.md). [774 hosted tests, actual-control WPF/visual review and publish passed](offshore-passenger-verification.md); airport simulator acceptance remains pending separate approval. Platforms remain unavailable. H125 platform cargo and survey/inspection are deferred until this loop is established.
 

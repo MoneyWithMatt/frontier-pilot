@@ -80,7 +80,7 @@ public sealed partial class FlightAttemptTracker
             if (flight is null)
             {
                 if (Stopped(sample, transfer.Origin)) stationarySince ??= sample.ObservedUtc; else stationarySince = null;
-                Reason = stationarySince is {} since ? $"Stopped at origin for {(sample.ObservedUtc - since).TotalSeconds:0.#} / 10 seconds. Boarding is simulated; MSFS payload unchanged." : "Stop on the ground within 1.5 NM of the transfer origin.";
+                Reason = stationarySince is {} since ? $"Stopped at origin for {(sample.ObservedUtc - since).TotalSeconds:0.#} / 10 seconds. Confirm the manifest and verified payload configuration before boarding." : "Stop on the ground within 1.5 NM of the transfer origin.";
                 return null;
             }
             if (flight.DeliveryProof is not null) { paidSample = null; Reason = "Arrival proof retained; stop at the destination and explicitly disembark."; return flight; }

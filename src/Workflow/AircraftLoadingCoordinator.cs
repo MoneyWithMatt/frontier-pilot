@@ -243,6 +243,7 @@ public sealed class AircraftLoadingCoordinator
     {
         await gate.WaitAsync(token);try
         {
+            using var payloadLease = await AircraftPayloadOperationLease.AcquireAsync(token).ConfigureAwait(false);
             var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();
             var access=Access(live,false);if(access!="Ready.")throw new InvalidOperationException(access);
             var jobs=ActiveJobs();var job=jobs.FirstOrDefault();var existing=Current.Manifest;
@@ -378,6 +379,7 @@ public sealed class AircraftLoadingCoordinator
     {
         await gate.WaitAsync(token);try
         {
+            using var payloadLease = await AircraftPayloadOperationLease.AcquireAsync(token).ConfigureAwait(false);
             var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();
             if (TransportDispatchGuard is not null) await TransportDispatchGuard(token).ConfigureAwait(false);
             if(CompanyAircraftGuard?.Invoke(live.Aircraft,ActiveJobs()) is {} companyError)throw new InvalidOperationException(companyError);
@@ -394,6 +396,7 @@ public sealed class AircraftLoadingCoordinator
     {
         await gate.WaitAsync(token);try
         {
+            using var payloadLease = await AircraftPayloadOperationLease.AcquireAsync(token).ConfigureAwait(false);
             var manifest=Current.Manifest??throw new InvalidOperationException("No committed cargo manifest exists.");
             if(manifest.State==LoadManifestState.Completed)return;
             if(manifest.State is LoadManifestState.PendingAbandonment or LoadManifestState.Abandoned)
@@ -416,7 +419,7 @@ public sealed class AircraftLoadingCoordinator
 
     public async Task ApplyFuelAsync(IReadOnlyDictionary<string,decimal> planned,CancellationToken token=default)
     {
-        await gate.WaitAsync(token);try{var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var reason=Access(live,true);if(reason!="Ready.")throw new InvalidOperationException(reason);
+        await gate.WaitAsync(token);try{using var payloadLease = await AircraftPayloadOperationLease.AcquireAsync(token).ConfigureAwait(false);var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var reason=Access(live,true);if(reason!="Ready.")throw new InvalidOperationException(reason);
             foreach(var pair in planned){var tank=live.FuelTanks.SingleOrDefault(x=>x.Id==pair.Key)??throw new InvalidOperationException("Fuel plan contains an unavailable tank.");if(pair.Value<0||pair.Value>tank.CapacityGallons)throw new InvalidOperationException($"Fuel for {tank.Name} must remain within its reported capacity.");}
             var read=await simulator.WriteFuelAsync(sdkRoot(),planned,token);foreach(var pair in planned)if(Math.Abs(read.FuelTanks.Single(x=>x.Id==pair.Key).QuantityGallons-pair.Value)>options.FuelToleranceGallons)throw new IOException("MSFS fuel read-back did not match the requested quantities.");
             var saved=FuelState(read,FuelReconciliationState.ContinuousLive,"Free prototype fuel applied and verified through read-back.");await store.SaveFuelStateAsync(saved,token);Current=Current with{Live=read,SavedFuel=saved,FuelDecisionRequired=false,FuelActionReason="Fuel applied and verified. Prototype fuel has no financial cost."};Notify();
@@ -426,12 +429,13 @@ public sealed class AircraftLoadingCoordinator
     public async Task KeepSimulatorFuelAsync(CancellationToken token=default)
     { var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var saved=FuelState(live,FuelReconciliationState.KeptSimulatorFuel,"Player explicitly kept simulator fuel after reconciliation.");await store.SaveFuelStateAsync(saved,token);lastFuelCheckpoint=utcNow();Current=Current with{Live=live,SavedFuel=saved,FuelDecisionRequired=false};Notify(); }
     public async Task RestoreSavedFuelAsync(CancellationToken token=default)
-    { var saved=Current.SavedFuel??throw new InvalidOperationException("No saved fuel state exists.");var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var reason=RestoreReason(live,saved,true);if(reason!="Ready.")throw new InvalidOperationException(reason);
+    { using var payloadLease = await AircraftPayloadOperationLease.AcquireAsync(token).ConfigureAwait(false);var saved=Current.SavedFuel??throw new InvalidOperationException("No saved fuel state exists.");var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var reason=RestoreReason(live,saved,true);if(reason!="Ready.")throw new InvalidOperationException(reason);
       var targets=saved.Tanks.ToDictionary(x=>x.Id,x=>x.QuantityGallons);var read=await simulator.WriteFuelAsync(sdkRoot(),targets,token);foreach(var pair in targets)if(Math.Abs(read.FuelTanks.Single(x=>x.Id==pair.Key).QuantityGallons-pair.Value)>options.FuelToleranceGallons)throw new IOException("Saved fuel restoration was not verified.");saved=FuelState(read,FuelReconciliationState.RestoredVerified,"Saved fuel restored and verified through read-back.");await store.SaveFuelStateAsync(saved,token);lastFuelCheckpoint=utcNow();Current=Current with{Live=read,SavedFuel=saved,FuelDecisionRequired=false};Notify(); }
     public async Task RestoreCargoAsync(CancellationToken token=default)
     {
         await gate.WaitAsync(token);try
         {
+            using var payloadLease = await AircraftPayloadOperationLease.AcquireAsync(token).ConfigureAwait(false);
             var manifest=Current.Manifest??throw new InvalidOperationException("No cargo manifest exists.");
             if (TransportDispatchGuard is not null) await TransportDispatchGuard(token).ConfigureAwait(false);
             if(manifest.State is not (LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied or LoadManifestState.CommittedInTransit))
@@ -469,6 +473,7 @@ public sealed class AircraftLoadingCoordinator
     {
         await gate.WaitAsync(token);try
         {
+            using var payloadLease = await AircraftPayloadOperationLease.AcquireAsync(token).ConfigureAwait(false);
             var manifest=Current.Manifest??throw new InvalidOperationException("No outside cargo authorization exists.");
             if (manifest.CargoKilograms > 0 && TransportDispatchGuard is not null) await TransportDispatchGuard(token).ConfigureAwait(false);
             CargoJobDisplay? authorizedJob = null;
@@ -539,6 +544,7 @@ public sealed class AircraftLoadingCoordinator
     {
         await gate.WaitAsync(token); try
         {
+            using var payloadLease = await AircraftPayloadOperationLease.AcquireAsync(token).ConfigureAwait(false);
             var displayed = Current.Manifest ?? throw new InvalidOperationException("No persistent cargo manifest exists.");
             var manifest = (await store.LoadManifestsAsync(token)).Single(x => x.Id == displayed.Id);
             if (manifest.State == LoadManifestState.Abandoned) return;
