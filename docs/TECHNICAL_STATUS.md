@@ -2,7 +2,7 @@
 
 ## Employer-owned starting fleets — 2026-10-29
 
-[Automatic starting allocations](employer-starting-fleets.md) extend the existing physical fleet, with career schema 3 local player identity and fleet schema 2 company ownership/assignment. All catalogue types provision once; disabled types remain disabled. Existing saves/history/condition/location are preserved, ambiguous records require explicit reconciliation, exact type/position guards and current mission capabilities remain authoritative. Local full regression 835/0/0; hosted WPF/package/current source evidence belongs in the [handoff](handoffs/employer-starting-fleets.md). No live acceptance or shared-world authority is claimed.
+[Automatic starting allocations](employer-starting-fleets.md) extend the existing physical fleet, with career schema 3 local player identity and fleet schema 2 company ownership/assignment. All catalogue types provision once; disabled types remain disabled. Existing saves/history/condition/location are preserved, ambiguous records require explicit reconciliation, exact type/position guards and current mission capabilities remain authoritative. Draft PR #7: local and hosted full regression 836/0/0; hosted WPF/package and four employer screenshots verified. Exact source/evidence belongs in the [handoff](handoffs/employer-starting-fleets.md). No live acceptance or shared-world authority is claimed.
 
 ## Multi-stop cargo — 2026-10-29
 

@@ -44,9 +44,11 @@ Local player GUIDs, physical GUIDs, scoped allocation keys and stored registrati
 
 ## Automated verification
 
-`EmployerFleetTests` adds 19 cases: all four acceptance flows; one-per-type allocation; byte-stable idempotent startup/same-employer retry; unique player/aircraft/registrations including 100 local players; ownership filtering and employer return at the allocation boundary; schema migration and explicit legacy reconciliation; unknown condition and evidence-driven exposure; maintenance/location/history persistence; corrupt/future preservation; concurrent startup; type/location/disabled/disconnect guards; actual cargo/passenger loading with the allocated GUID; idempotent tracker-arrival projection; and interrupted acceptance repair.
+`EmployerFleetTests` adds 20 cases: all four acceptance flows; one-per-type allocation; byte-stable idempotent startup/same-employer retry; unique player/aircraft/registrations including 100 local players; ownership filtering and employer return at the allocation boundary; schema migration and explicit legacy reconciliation; unknown condition and evidence-driven exposure; maintenance/location/history persistence; corrupt/future preservation; concurrent startup; type/location/disabled/disconnect guards, including manual binding and explicit developer relocation recovery; actual cargo/passenger loading with the allocated GUID; idempotent tracker-arrival projection; and interrupted acceptance repair.
 
 `SiteUiSmoke.EmployerFleetSmoke` follows the actual employment acceptance button for all four employers, reads the persisted fleet, opens the production fleet panel, selects an assigned GUID, confirms company property/unknown history and hidden registration controls, and captures synthetic screenshots. Full regression, WPF and packaging use the established Windows scripts. [Handoff](handoffs/employer-starting-fleets.md) records exact commits, commands, counts, failures and hosted evidence.
+
+Runtime `b732211` passed [hosted Windows run 27](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40969271216): 836 passed / 0 failed / 0 skipped, Release zero warnings/errors, nine verification guards, both synthetic WPF programs and packaging. Clean merge checkout `261815df7cab33b936ca9b1ef6a173e90930b4a7`, SDK 8.0.424; all four company-fleet screenshots visually reviewed. These results establish automated behavior, not live simulator compatibility.
 
 ## Focused live MSFS acceptance
 
