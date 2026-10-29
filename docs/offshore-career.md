@@ -34,7 +34,7 @@ Inference: start with stationary, explicitly identified facilities if platform g
 
 ## Staged development tasks
 
-1. Airport-cargo baseline: implemented fixes plus seven synthetic regressions; local full suite 751 passed. Hosted CI/evidence status is maintained in the handoff.
+1. Airport-cargo baseline: implemented fixes plus seven synthetic regressions; local and hosted full suite 751 passed. Both hosted WPF smoke programs, guard scenarios and publish passed. [Exact evidence](offshore-career-verification.md); [task #2](https://github.com/MoneyWithMatt/frontier-pilot/issues/2) / [draft PR #3](https://github.com/MoneyWithMatt/frontier-pilot/pull/3).
 2. Mission choice/specification: pending Matt's choice of platform cargo, survey/inspection or passenger transfers. Specify only that slice; do not reinterpret the old illustrative 30-minute loiter as a requirement.
 3. Adapter/recording work: implement only observations needed by the selected mission; keep optional failures isolated from current aircraft/avatar tracking. Detail packets require strict framing/completeness tests. Recorded diagnostics cannot qualify deliveries.
 4. Live qualification: prepare an exact scenario with simulator/SDK hashes, aircraft identity, endpoint evidence and read/write scope. Obtain approval for the changed artifact and live scenario. Static deck and H125 compatibility must be demonstrated before activation.

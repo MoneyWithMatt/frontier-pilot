@@ -2,7 +2,7 @@
 
 ## Current development priority — Offshore (2026-10-29)
 
-- [Implementation, SDK capabilities and staged tasks](offshore-career.md); [resume handoff](handoffs/offshore-career.md). Airport-cargo dispatch fixes and seven new synthetic cases implemented; 751-suite local pass, hosted checks pending.
+- [Implementation, SDK capabilities and staged tasks](offshore-career.md); [resume handoff](handoffs/offshore-career.md). Airport-cargo dispatch fixes and seven new synthetic cases implemented; [751-suite hosted pass, WPF/package evidence](offshore-career-verification.md). Continue through [task #2](https://github.com/MoneyWithMatt/frontier-pilot/issues/2) / [draft PR #3](https://github.com/MoneyWithMatt/frontier-pilot/pull/3).
 - Select the next mission lifecycle before implementing platform/survey/passenger gameplay. H125 remains disabled pending design and live qualification.
 
 ## Employed wages acceptance
