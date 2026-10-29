@@ -273,22 +273,27 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
         catch { blocked=true;throw; }
     }
     public string? CheckDispatch(FlightAircraftIdentity identity,IReadOnlyList<CargoJobDisplay> jobs)
+        => CheckDispatchCore(identity, jobs.Select(j => new DispatchAssignment(j.JobId, j.CompanyAircraftTypeId, j.LoadedCargoKilograms > 0, j.OriginLatitude, j.OriginLongitude)).ToArray());
+    public string? CheckPassengerDispatch(FlightAircraftIdentity identity, PassengerTransfer transfer)
+        => CheckDispatchCore(identity, [new(transfer.Id, transfer.AircraftTypeId, false, transfer.Origin.Latitude, transfer.Origin.Longitude)]);
+    private sealed record DispatchAssignment(string Id, string? TypeId, bool AlreadyAboard, double? OriginLatitude, double? OriginLongitude);
+    private string? CheckDispatchCore(FlightAircraftIdentity identity, IReadOnlyList<DispatchAssignment> assignments)
     {
         lock(gate)
         {
             var a=Selected;
             if(blocked||a is null||world is null||!a.Bindings.Any(b=>b.Title==identity.Title&&b.Model==identity.Type))return "Select and bind an individual aircraft in Aircraft / Fleet before a new load.";
             if(a.LocationReconciliationRequired)return "Review and acknowledge the aircraft's external relocation before new dispatch. Existing cargo is not moved by this acknowledgement.";
-            if(jobs.Any(j=>j.CompanyAircraftTypeId is {} type && type!=a.CompanyTypeId))return "This physical airframe's company type does not match the assigned job.";
-            if(fleet.Aircraft.Any(other=>other.Id!=a.Id && jobs.Any(j=>other.DispatchJobIds.Contains(j.JobId))))return "A shipment is already associated with another physical airframe; reassignment requires explicit recovery support.";
+            if(assignments.Any(j=>j.TypeId is {} type && type!=a.CompanyTypeId))return "This physical airframe's company type does not match the assigned job.";
+            if(fleet.Aircraft.Any(other=>other.Id!=a.Id && assignments.Any(j=>other.DispatchJobIds.Contains(j.Id))))return "An assignment is already associated with another physical airframe; reassignment requires explicit recovery support.";
             if(a.Availability is "Grounded" or "In maintenance")return $"{a.Registration} is {a.Availability}. Existing cargo is preserved.";
             if(a.Latest is not {} p||!p.Telemetry.IsOnGround||DateTimeOffset.UtcNow-p.Telemetry.ObservedUtc>TimeSpan.FromSeconds(15))return "Aircraft needs a fresh saved ground location before dispatch.";
-            foreach(var job in jobs.Where(j=>j.LoadedCargoKilograms==0))
+            foreach(var job in assignments.Where(j=>!j.AlreadyAboard))
                 if(job.OriginLatitude is not {} lat||job.OriginLongitude is not {} lon||WorldTracking.DistanceMeters(p.Telemetry.Latitude,p.Telemetry.Longitude,lat,lon)>2778)
                     return "Selected aircraft is not at the required origin (existing 1.5 NM operational loading radius).";
-            var assigned=a.DispatchJobIds.Concat(jobs.Select(j=>j.JobId)).Distinct().ToArray();
+            var assigned=a.DispatchJobIds.Concat(assignments.Select(j=>j.Id)).Distinct().ToArray();
             if(assigned.Length!=a.DispatchJobIds.Count)
-                try {Update(FleetOperations.Event(a with {DispatchJobIds=assigned},Guid.NewGuid(),DateTimeOffset.UtcNow,"Dispatch association","Selected shipments associated with this physical airframe; existing loading verification still required."),true);}
+                try {Update(FleetOperations.Event(a with {DispatchJobIds=assigned},Guid.NewGuid(),DateTimeOffset.UtcNow,"Dispatch association","Selected transport assignments associated with this physical airframe; existing boarding/loading verification still required."),true);}
                 catch(Exception e){return "Cannot persist airframe dispatch association: "+e.Message;}
             return null;
         }

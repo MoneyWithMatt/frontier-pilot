@@ -80,7 +80,7 @@ public interface IFlightAttemptTracker
         Task.FromException(new NotSupportedException("Prototype shipment abandonment is unavailable."));
 }
 
-public sealed class FlightAttemptTracker : IFlightAttemptTracker
+public sealed partial class FlightAttemptTracker : IFlightAttemptTracker
 {
     private const double MetersPerNauticalMile = 1852;
     private readonly EconomyService economy;
@@ -321,15 +321,8 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             bool persist = false, recordedAirborne = false, recordedMovement = false, recordedMaximum = false, recordedReadyToUnload = false;
             if(!sample.IsOnGround)
             {
-                if(updated.WageFlightId is null){updated=updated with {WageFlightId=updated.Id};persist=true;}
-                if(continuous && previousWageSample is {IsOnGround:false} previousPaid &&
-                    sample.ObservedUtc>previousPaid.ObservedUtc && sample.ObservedUtc-previousPaid.ObservedUtc<=options.MaximumSampleGap &&
-                    (attempt.WageObservedUtc is null||previousPaid.ObservedUtc>=attempt.WageObservedUtc))
-                {
-                    updated=updated with {VerifiedAirborneTicks=checked(updated.VerifiedAirborneTicks+(sample.ObservedUtc-previousPaid.ObservedUtc).Ticks),
-                        WageObservedUtc=sample.ObservedUtc,WageFlightId=updated.WageFlightId??updated.Id};
-                    persist=true;
-                }
+                var timed = AccumulateAirborneTime(updated, sample, previousWageSample, continuous, options);
+                persist |= timed != updated; updated = timed;
                 wageSample=sample;
             }
             if (!sample.IsOnGround && updated.FirstAirborneUtc is null)
@@ -386,8 +379,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 }
                 if (sample.ObservedUtc - stationarySince >= options.RequiredStationaryDuration)
                 {
-                    var proof = new FlightDeliveryProof(FlightAttemptIds.DeliveryEvidence(attempt.ShipmentId), sample.ObservedUtc, FlightPosition.From(sample),
-                        attempt.FirstAirborneUtc!.Value, attempt.MovementObservedUtc!.Value, attempt.MaximumDistanceFromOriginNauticalMiles).EnsureValid();
+                    var proof = ArrivalProof(attempt, sample);
                     attempt = attempt with { State = FlightAttemptState.ReadyToUnload, DeliveryProof = proof }; persist = true;
                     observationReason = "Verified arrival is persisted. Unload cargo when ready.";
                     recordedReadyToUnload = true;
@@ -428,6 +420,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            await RequireNoPassengerFlightAsync(cancellationToken).ConfigureAwait(false);
             if (world is not null && attempt is not null)
             {
                 var existingJob = ActiveJob(world);
@@ -484,6 +477,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
             }
             var shipment = world.Shipments.Single(x => x.Id == job.ShipmentId);
             var loading = desiredLoadedKilograms > shipment.LoadedQuantity + .001m;
+            if (loading) await RequireNoPassengerFlightAsync(cancellationToken).ConfigureAwait(false);
             if (loading && attempt is null)
             {
                 UpdateStatus();
@@ -571,6 +565,7 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
                 throw new InvalidOperationException("Cargo sharing one flight must have the same origin and destination.");
             var shipments = jobs.Select(x => world.Shipments.Single(s => s.Id == x.ShipmentId)).ToArray();
             var loading = jobs.Select((job, index) => desiredLoadedByJob[job.Id] > shipments[index].LoadedQuantity + .001m).Any(x => x);
+            if (loading) await RequireNoPassengerFlightAsync(cancellationToken).ConfigureAwait(false);
             var stored = await store.LoadAsync(cancellationToken).ConfigureAwait(false);
             var primary = attempt;
             if (loading)
@@ -930,6 +925,12 @@ public sealed class FlightAttemptTracker : IFlightAttemptTracker
         if ((byJob is not null && byShipment is not null && byJob.Id != byShipment.Id) || (byJob is null && byShipment is not null))
             throw new IOException("Flight-attempt job and shipment identity are inconsistent. File preserved.");
         return byJob;
+    }
+    private async Task RequireNoPassengerFlightAsync(CancellationToken token)
+    {
+        var current = await economy.LoadAsync(token).ConfigureAwait(false);
+        if (current?.PassengerTransfers.Any(x => x.State == PassengerTransferState.Boarded) == true || current?.PassengerTransports.Any(x => x.State is PassengerCarriageState.Boarding or PassengerCarriageState.Aboard or PassengerCarriageState.Arrived or PassengerCarriageState.Disembarking) == true)
+            throw new InvalidOperationException("Disembark the current passenger transfer before loading cargo.");
     }
     private EconomyJob? ActiveJob(EconomyWorld world)
     {

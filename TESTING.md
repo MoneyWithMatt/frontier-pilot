@@ -1,5 +1,7 @@
 # Build and testing
 
+Current shared-passenger verification uses synthetic profiles/simulator readback, including partial writes, last-moment edits, explicit reconnect checks, save compatibility and both career adapters. SiteUiSmoke drives actual manifest/reserve/board/disembark controls with synthetic stations and checks unrelated cargo/fuel preservation. No installed aircraft, simulator, SDK or personal data is required. [Aircraft-specific live acceptance](docs/shared-passengers.md) remains separate; run WPF/package checks on hosted Windows for this task.
+
 ## Windows prerequisites
 
 Windows x64, Git, PowerShell 7.2+ and **.NET SDK 8.0.424**, pinned without roll-forward in `global.json`. Install the SDK from Microsoft's official distribution, or use GitHub's pinned `setup-dotnet` action. No MSFS installation, SDK, Community directory, private package source or personal save is needed for regression/build/publish.

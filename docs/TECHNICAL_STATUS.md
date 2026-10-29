@@ -1,5 +1,13 @@
 # Technical status — 2026-09-07
 
+## Shared physical passengers — 2026-10-29
+
+The later [shared passenger implementation](shared-passengers.md) supersedes the simulated/one-person Offshore slice. Schema 12 persists independent groups/carriage and payload intents. Real native payload integration has exact configuration checks, owned-station targets, pre-write comparison, readback, partial/restart conflict handling and atomic once-only career settlement. Offshore and Missionary use the same engine at unchanged rates. Local full Release verification passes 794/0/0; hosted WPF/package status is maintained in [task handoff](handoffs/offshore-career.md). No live passenger acceptance: Caravan Professional 0.1.2 gear is a reviewed candidate; Vision Jet streamed capacity/configuration remains blocked; seated models and animations are unsupported. Platforms/H125/survey remain deferred.
+
+## Offshore passenger transfers — 2026-10-29
+
+Typed airport specialist transfers now implement reservation, simulated boarding, tracker-created flight proof, explicit disembarkation and one $800/hour PilotWage receipt through the existing economy/ledger. Both endpoint aircraft eligibility and shared physical fleet dispatch guards apply. Schema 11 embeds passenger progress so delivery/payment/recovery commit atomically without cargo-inventory substitution. Platforms remain unavailable; H125 cargo and survey/inspection are deferred. [Approved scope and simulator acceptance boundaries](offshore-passenger-transfers.md). [774 hosted tests, WPF, visual review and publish passed](offshore-passenger-verification.md), zero failed/skipped and clean Release build. Initial WPF binding failure and repair are preserved in that report. No live acceptance claimed.
+
 ## Aircraft Condition Recorder V0 — 2026-10-19
 
 Implemented an optional read-only CLI recorder using an isolated native SimConnect session, per-field availability/validation and streaming JSONL diagnostics. Added create-only GUID-backed individual-aircraft documents with unknown initial estimates and explicit model binding; telemetry never updates those estimates. Standard/add-on profile boundaries, future fault synchronization and probabilistic-failure design are documented in [Aircraft Condition V0](aircraft-condition-v0.md). All aircraft capabilities remain unverified. 24 new tests / 719 total pass; Release build clean, CLI failure-path smoke passes and development distribution rebuilt. No simulator writes or gameplay changes. [Evidence](../evidence/aircraft-condition-v0/verification.md).

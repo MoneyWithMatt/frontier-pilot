@@ -3,7 +3,9 @@ using FrontierAirportBuilder.Core;
 namespace FrontierAirportBuilder.Workflow;
 
 public sealed record CompanyAircraftType(string Id,string Name,decimal PrototypeDispatchKilograms,bool Enabled=true)
-{ public override string ToString()=>Name+(Enabled?$" (dispatch fixture ≤{PrototypeDispatchKilograms:0} kg)":" (Coming Soon)"); }
+{
+    public override string ToString()=>Name+(Enabled?$" (dispatch fixture ≤{PrototypeDispatchKilograms:0} kg)":" (Coming Soon)");
+}
 public sealed record AircraftTypeBinding(string Title,string Model,string AircraftTypeId);
 public static class CompanyAircraft
 {
@@ -18,6 +20,7 @@ public static class CompanyAircraft
     }
     public static IReadOnlyList<CompanyAircraftType> Choices(CareerEmployer employer,DestinationDiagnostic destination,decimal kilograms)=>
         Types.Where(x=>x.Enabled&&employer.Fleet.Contains(x.Id)&&x.PrototypeDispatchKilograms>=kilograms&&
+            (destination.OriginCompatibleAircraft.Length==0||destination.OriginCompatibleAircraft.Contains(x.Id))&&
             (destination.CompatibleAircraft.Length==0||destination.CompatibleAircraft.Contains(x.Id))).ToArray();
     public static string? CheckDispatch(FlightAircraftIdentity identity,IReadOnlyList<CargoJobDisplay> jobs,IEnumerable<AircraftTypeBinding> bindings)
     {
