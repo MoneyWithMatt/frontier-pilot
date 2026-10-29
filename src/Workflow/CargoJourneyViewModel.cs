@@ -41,7 +41,7 @@ public static class CargoDispatchDocument
         void Rule() => b.AppendLine("--------------------------------------------------------");
         b.AppendLine("FRONTIER PILOT        CARGO / PASSENGER MANIFEST"); Rule();
         b.AppendLine("DISPATCH: " + m.Id); b.AppendLine($"REVISION: {m.Revision} / ECONOMY {w.Revision}");
-        var stamped = m.History.LastOrDefault()?.Utc ?? m.Legs.LastOrDefault()?.CreatedUtc;
+        var stamped = m.History.LastOrDefault()?.Utc ?? m.Legs.LastOrDefault()?.CreatedUtc ?? m.Pending?.CreatedUtc;
         b.AppendLine($"RECORDED UTC: {stamped:u}");
         b.AppendLine($"AIRCRAFT: {m.Aircraft.Title} / {m.Aircraft.Type}");
         b.AppendLine($"REG: {registration} / AIRFRAME: {m.AirframeId}");

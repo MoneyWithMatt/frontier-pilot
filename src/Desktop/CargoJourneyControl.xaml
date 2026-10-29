@@ -10,13 +10,15 @@
   <TextBlock Text="Edit Desired aboard kg for each job. Leave through-cargo unchanged; set only the consignment being delivered to zero (or a smaller partial quantity)." TextWrapping="Wrap"/>
   <DataGrid x:Name="CargoConsignments" ItemsSource="{Binding Consignments}" AutoGenerateColumns="False" CanUserAddRows="False" MinHeight="150" MaxHeight="310" Margin="0,8" SelectionUnit="Cell">
    <DataGrid.Columns>
-    <DataGridTextColumn Header="Job" Binding="{Binding JobId}" IsReadOnly="True" Width="130"/>
-    <DataGridTextColumn Header="Cargo" Binding="{Binding Description}" IsReadOnly="True" Width="*"/>
-    <DataGridTextColumn Header="Destination" Binding="{Binding Destination}" IsReadOnly="True" Width="*"/>
-    <DataGridTextColumn Header="Here kg" Binding="{Binding AvailableHere}" IsReadOnly="True"/>
-    <DataGridTextColumn Header="Aboard kg" Binding="{Binding Aboard}" IsReadOnly="True"/>
-    <DataGridTextColumn Header="Desired aboard kg" Binding="{Binding DesiredAboard, UpdateSourceTrigger=LostFocus}"/>
-    <DataGridTextColumn Header="Status" Binding="{Binding Status}" IsReadOnly="True" Width="110"/>
+    <DataGridTemplateColumn Header="Consignment / destination" Width="*" MinWidth="175" IsReadOnly="True"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Margin="5,7" ToolTip="{Binding Origin}">
+     <TextBlock Text="{Binding Description}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+     <TextBlock Text="{Binding Destination, StringFormat='TO: {0}'}" TextWrapping="Wrap"/>
+     <TextBlock Text="{Binding JobId}" FontSize="10" TextWrapping="Wrap"/>
+    </StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+    <DataGridTextColumn Header="Here kg" Binding="{Binding AvailableHere}" IsReadOnly="True" Width="65"/>
+    <DataGridTextColumn Header="Aboard kg" Binding="{Binding Aboard}" IsReadOnly="True" Width="75"/>
+    <DataGridTextColumn Header="Desired kg" Binding="{Binding DesiredAboard, UpdateSourceTrigger=LostFocus}" Width="90"/>
+    <DataGridTextColumn Header="Status" Binding="{Binding Status}" IsReadOnly="True" Width="95"/>
    </DataGrid.Columns>
   </DataGrid>
   <TextBlock Text="Station distribution" FontSize="17" FontWeight="SemiBold"/>
@@ -25,14 +27,15 @@
   <TextBlock Text="For a pickup, select its writable station below before suggesting. A delivery removes only owned cargo mass; review the suggested distribution before preparing." TextWrapping="Wrap"/>
   <DataGrid x:Name="CargoStations" ItemsSource="{Binding Stations}" SelectedItem="{Binding SelectedStation}" AutoGenerateColumns="False" CanUserAddRows="False" MinHeight="130" MaxHeight="270" Margin="0,8">
    <DataGrid.Columns>
-    <DataGridTextColumn Header="#" Binding="{Binding Index}" IsReadOnly="True"/>
-    <DataGridTextColumn Header="MSFS station" Binding="{Binding Name}" IsReadOnly="True" Width="*"/>
-    <DataGridTextColumn Header="Actual kg" Binding="{Binding Actual}" IsReadOnly="True"/>
-    <DataGridTextColumn Header="Unrelated kg" Binding="{Binding Unrelated}" IsReadOnly="True"/>
-    <DataGridTextColumn Header="Cargo kg" Binding="{Binding CargoAboard}" IsReadOnly="True"/>
-    <DataGridTextColumn Header="Desired cargo kg" Binding="{Binding DesiredCargo, UpdateSourceTrigger=LostFocus}"/>
-    <DataGridTextColumn Header="Limit kg" Binding="{Binding Limit}" IsReadOnly="True"/>
-    <DataGridCheckBoxColumn Header="Writable" Binding="{Binding Writable}" IsReadOnly="True"/>
+    <DataGridTextColumn Header="#" Binding="{Binding Index}" IsReadOnly="True" Width="30"/>
+    <DataGridTemplateColumn Header="MSFS station" IsReadOnly="True" Width="*" MinWidth="140"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Margin="4,5">
+     <TextBlock Text="{Binding Name}" TextWrapping="Wrap"/><TextBlock Text="{Binding CargoAboard, StringFormat='Cargo aboard: {0} kg'}" FontSize="10"/>
+     <TextBlock Text="{Binding Writable, StringFormat='Writable: {0}'}" FontSize="10"/>
+    </StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+    <DataGridTextColumn Header="Actual kg" Binding="{Binding Actual}" IsReadOnly="True" Width="70"/>
+    <DataGridTextColumn Header="Base kg" Binding="{Binding Unrelated}" IsReadOnly="True" Width="70"/>
+    <DataGridTextColumn Header="Desired kg" Binding="{Binding DesiredCargo, UpdateSourceTrigger=LostFocus}" Width="90"/>
+    <DataGridTextColumn Header="Limit kg" Binding="{Binding Limit}" IsReadOnly="True" Width="95"/>
    </DataGrid.Columns>
   </DataGrid>
   <TextBlock Text="1. Exit near the aircraft and prepare a preview. 2. Review the pending targets on the dispatch sheet. 3. Board the same aircraft and apply. Failed writes retain the intent; retry only after reviewing the recovery message." TextWrapping="Wrap"/>

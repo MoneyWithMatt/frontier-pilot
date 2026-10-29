@@ -32,7 +32,7 @@ internal static partial class Program
             grid.ScrollIntoView(row,grid.Columns[column]);grid.UpdateLayout();grid.CurrentCell=new(row,grid.Columns[column]);grid.Focus();Check(grid.BeginEdit(),"Begin real cargo quantity cell edit");Pump();
             var edit=Descendants<TextBox>(grid).Single(x=>x.IsVisible);edit.Text=value;grid.CommitEdit(DataGridEditingUnit.Cell,true);grid.CommitEdit(DataGridEditingUnit.Row,true);Pump();
         }
-        foreach(var row in vm.Consignments)Edit(cargoGrid,row,5,row.AvailableHere.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        foreach(var row in vm.Consignments)Edit(cargoGrid,row,3,row.AvailableHere.ToString(System.Globalization.CultureInfo.InvariantCulture));
         stationGrid.SelectedItem=vm.Stations.Single(x=>x.Index==6);Pump();
         await Click("Suggest station mass for selected consignments");
         await Click("Prepare preview (outside)");Check(vm.ManifestText.Contains("PROPOSED / PENDING"),"Pending printout is distinct from committed cargo: "+vm.Status);
@@ -53,11 +53,11 @@ internal static partial class Program
             Check(service.Manifest!.Legs.Last().SettledUtc is not null,"Cargo leg qualifies through production tracker: "+service.Reason);
         }
         await FlyTo(places[0],places[1]);await Click("Read aircraft / refresh consignments");
-        var a=vm.Consignments.Single(x=>x.Status=="DELIVER HERE");Edit(cargoGrid,a,5,"0");
+        var a=vm.Consignments.Single(x=>x.Status=="DELIVER HERE");Edit(cargoGrid,a,3,"0");
         await Click("Suggest station mass for selected consignments");await Click("Prepare preview (outside)");await Click("Apply / retry (seated)");
         Check(physical.Weights[5]==58&&service.Manifest!.Cargo.Single().Kilograms==25,"First UI delivery retains unrelated 25 kg");
         Check(vm.ManifestText.Contains("TOTAL COMMITTED CARGO: 25"),"In-flight dispatch sheet updates after partial journey");Save(host,Path.Combine(folder,"cargo-dispatch-through-cargo.png"));
-        await FlyTo(places[1],places[2]);await Click("Read aircraft / refresh consignments");Edit(cargoGrid,vm.Consignments.Single(),5,"0");
+        await FlyTo(places[1],places[2]);await Click("Read aircraft / refresh consignments");Edit(cargoGrid,vm.Consignments.Single(),3,"0");
         await Click("Suggest station mass for selected consignments");await Click("Prepare preview (outside)");await Click("Apply / retry (seated)");
         Check(physical.Weights[5]==33&&service.Manifest!.Cargo.Length==0,"Second UI delivery restores unrelated station baseline");
         Check((await store.LoadAsync())!.Jobs.Count(j=>j.State==EconomyJobState.Completed)==2,"Both UI consignments complete independently");
