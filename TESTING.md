@@ -1,5 +1,7 @@
 # Build and testing
 
+Multi-stop cargo: `CargoJourneyTests` exercises the persistent 35→25→0 kg journey plus intermediate pickup, failures/restarts, independent inventory/payment and manifest consistency. `SiteUiSmoke/CargoJourneySmoke.cs` edits actual quantity cells and exercises bound cargo controls with synthetic station readback, capturing proposed/aboard/through-cargo/delivered fax sheets. Hosted WPF/package evidence is separate from [live simulator acceptance](docs/multistop-cargo.md#live-simulator-acceptance); see the [handoff](docs/handoffs/multistop-cargo.md) for exact commands/source/results and preserved failures.
+
 Current shared-passenger verification uses synthetic profiles/simulator readback, including partial writes, last-moment edits, explicit reconnect checks, save compatibility and both career adapters. SiteUiSmoke drives actual manifest/reserve/board/disembark controls with synthetic stations and checks unrelated cargo/fuel preservation. No installed aircraft, simulator, SDK or personal data is required. [Aircraft-specific live acceptance](docs/shared-passengers.md) remains separate; run WPF/package checks on hosted Windows for this task.
 
 ## Windows prerequisites

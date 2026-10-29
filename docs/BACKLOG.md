@@ -1,5 +1,9 @@
 # Backlog
 
+## Multi-stop cargo — 2026-10-29
+
+Latest authorized implementation: [scope](specs/multistop-cargo.md), [production workflow/live procedure](multistop-cargo.md), [resume status](handoffs/multistop-cargo.md). Complete hosted WPF/package evidence and exact-aircraft live acceptance separately. Preserve PR #3. Follow-up: common mixed cargo/passenger claim accounting (not enabled), explicit disposition/cancellation, long-career archival, optional print/PDF and pilot-operated planning worksheet. None may introduce automatic MTOW/CG/performance refusal.
+
 ## Current development priority — Offshore (2026-10-29)
 
 - Latest approved extension: [shared physical passenger transport](shared-passengers.md), [spec](specs/shared-passengers.md). Reusable multi-person carriage, native owned-station writes/readback/recovery and Missionary visit adapter implemented; existing $800/$400 hourly pay retained. Local 794-suite pass; continue exact hosted WPF/package/visual checkpoint from the handoff. Obtain exact artifact/scenario approval for isolated live Caravan qualification, establish legitimate effective Vision Jet seat/station configuration, and investigate aircraft-supported seated-model controls. No live acceptance is inferred; original simulated reports below are historical.

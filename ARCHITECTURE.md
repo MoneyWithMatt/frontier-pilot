@@ -2,6 +2,8 @@
 
 Current source map; historical implementation reports remain under `docs/` and `evidence/`. See [ROADMAP](ROADMAP.md) for acceptance boundaries and [TESTING](TESTING.md) for commands. The public repository integrates through `master` via reviewed pull requests.
 
+Multi-stop cargo adds `Core/CargoJourneys`, `Workflow/CargoJourneyService` and `CargoJourneyViewModel`, composed by `BuilderViewModel` into `Desktop/CargoJourneyControl`. Explicit consignment changes are independent of aggregate station targets. Economy schema 13 atomically owns GUID manifests, pending intents, handling receipts, immutable per-leg carried snapshots, tracker flight proof and once-per-leg employed wage receipts. Legacy attempts/loading stores remain intact; no mass/GUID adoption is inferred. The common guarded payload interface and operation lease are reused from shared passengers. MTOW/CG/overall payload and prototype mass budgets are advisory for both cargo and passengers; actual station constraints and readback remain enforced. [Implementation and evidence boundaries](docs/multistop-cargo.md).
+
 ## Projects and execution
 
 | Project | Responsibility |
@@ -24,7 +26,7 @@ Normal career data is under `%LOCALAPPDATA%/FrontierAirportBuilder/desktop`. Nev
 
 | Store | Current authority |
 |---|---|
-| `economy/economy-state.json` | Schema 12; ledger, cargo jobs/inventory, shared passenger groups/carriage/payload intents, employed assignments with embedded flight progress, real-time schedule, operations and maintenance charges |
+| `economy/economy-state.json` | Schema 13; prior ledger/jobs/inventory/passengers/operations plus aircraft cargo manifests, explicit handling intents/receipts, per-leg flight snapshots and wage receipts |
 | `economy/flight-attempts.json` | Schema 5; persisted flight facts/proof and separate bounded diagnostics |
 | `economy/aircraft-loading.json` | Schema 5; managed cargo manifests, intents and fuel continuity |
 | `fleet/aircraft-fleet.json` | Schema 1; immutable airframe GUIDs, selected binding, condition, last-known location, history; `.previous` backup |

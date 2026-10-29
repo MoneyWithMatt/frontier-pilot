@@ -1,5 +1,9 @@
 # Technical status — 2026-09-07
 
+## Multi-stop cargo — 2026-10-29
+
+[New production cargo dispatch/manifest](multistop-cargo.md) adds explicit independent consignment quantities, persistent GUID station ownership, retained native readback/recovery, intermediate delivery/pickup and once-per-leg wage settlement. Schema 13 preserves prior saves without inferring physical ownership. MTOW/CG/overall payload and company fixture budgets are advisory for cargo/passengers. Local full Release regression: 810 passed, zero failed/skipped; current hosted WPF/package and exact-commit status are in the [handoff](handoffs/multistop-cargo.md). No new live simulator acceptance or mixed transport qualification is claimed.
+
 ## Shared physical passengers — 2026-10-29
 
 The later [shared passenger implementation](shared-passengers.md) supersedes the simulated/one-person Offshore slice. Schema 12 persists independent groups/carriage and payload intents. Real native payload integration has exact configuration checks, owned-station targets, pre-write comparison, readback, partial/restart conflict handling and atomic once-only career settlement. Offshore and Missionary use the same engine at unchanged rates. Local full Release verification passes 794/0/0; hosted WPF/package status is maintained in [task handoff](handoffs/offshore-career.md). No live passenger acceptance: Caravan Professional 0.1.2 gear is a reviewed candidate; Vision Jet streamed capacity/configuration remains blocked; seated models and animations are unsupported. Platforms/H125/survey remain deferred.

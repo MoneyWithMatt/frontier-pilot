@@ -1,5 +1,13 @@
 # Design decisions
 
+## Multi-stop logistics and pilot responsibility — 2026-10-29
+
+Matt explicitly authorized [multi-stop implementation](specs/multistop-cargo.md) following PR #5. Each consignment retains job/resource/origin/destination identity; MSFS receives aggregate station mass only. Selection names jobs and quantities directly, never FIFO inference. Handling intent and immutable carried-leg snapshots live with the economy in schema 13; delivery, inventory and job completion are atomic after retained readback. Existing legacy loads recover through their original workflow rather than guessed ownership migration.
+
+The explicit product decision supersedes gross/overall-payload/CG and company prototype mass loading blocks for cargo **and passengers**. Those assessments belong to the pilot; simulator station/interface constraints, identity, stock, ownership and successful readback remain hard requirements. Available gross delta checks physical effect, not operational approval. Do not reintroduce MTOW/performance dispatch gates.
+
+One employed aircraft leg settles eligible contiguous airborne time once at qualified arrival, irrespective of consignment/destination count; job completion references that leg receipt. Existing rates and freelance/player contract rewards remain authoritative. No pre-loading or disconnected time is credited. Cargo and passengers share the guarded native operation/lease; concurrent mixed ownership remains explicitly refused pending coordinated accounting/recovery and live evidence. No new facilities, fares, medical simulation or seated passenger models are claimed. [Implementation, limitations and live procedure](multistop-cargo.md).
+
 ## Shared passengers / physical loading — 2026-10-29
 
 Matt explicitly superseded the one-person simulated Offshore prototype with shared person/group carriage and actual MSFS payload loading. [Approved objective/spec](specs/shared-passengers.md), [implementation/capability/recovery/live boundaries](shared-passengers.md). Mission purpose, tracker proof and career settlement remain separate; Offshore $800/hour and Missionary $400/hour are unchanged. Missionary adds a two-person community visit through existing catalogue eligibility, with no invented medical facility or simulation.
