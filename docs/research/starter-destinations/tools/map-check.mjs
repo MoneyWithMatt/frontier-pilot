@@ -1,0 +1,11 @@
+import fs from 'node:fs/promises';
+import vm from 'node:vm';
+const p='outputs/starter-destinations-20261029/destination-map.html';
+const html=await fs.readFile(p,'utf8');
+const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+if(!script||/__DATA__|__POINTS__|__SCORES__/.test(script))throw Error('Map data not embedded');
+new vm.Script(script,{filename:p});
+const geo=JSON.parse(await fs.readFile('outputs/starter-destinations-20261029/destinations.geojson','utf8'));
+const counts={};for(const f of geo.features)counts[f.properties.kind]=(counts[f.properties.kind]||0)+1;
+if(counts.base!==2||counts.custom!==3||counts['conflicting-simulator-point']!==5||counts['identity-conflict']!==5)throw Error('Map layer reconciliation failed');
+console.log(JSON.stringify({javascriptSyntax:'passed',layers:counts,browserInteraction:'Not exercised; GeoJSON supplied independently'}));

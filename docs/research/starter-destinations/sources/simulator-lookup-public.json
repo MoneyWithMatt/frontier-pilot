@@ -1,0 +1,175 @@
+{
+  "SchemaVersion": 1,
+  "Scan": {
+    "ObservedUtc": "2026-10-27T10:26:44.845042+00:00",
+    "Source": "SDK 1.2.4; simulator 1,9,21,0; SimConnect worldwide airport list",
+    "Airports": [
+      {
+        "Identifier": "FYKW",
+        "Latitude": -18.433678932487965,
+        "Longitude": 23.52996066212654
+      },
+      {
+        "Identifier": "FYAR",
+        "Latitude": -22.46666718274355,
+        "Longitude": 14.98333364725113
+      },
+      {
+        "Identifier": "FYUS",
+        "Latitude": -21.229777224361897,
+        "Longitude": 14.866988807916641
+      },
+      {
+        "Identifier": "FYEF",
+        "Latitude": -17.029266580939293,
+        "Longitude": 13.209797143936157
+      },
+      {
+        "Identifier": "FYKJ",
+        "Latitude": -19.52216561883688,
+        "Longitude": 14.821835160255432
+      },
+      {
+        "Identifier": "FYRC",
+        "Latitude": -17.422921657562256,
+        "Longitude": 14.379041343927383
+      },
+      {
+        "Identifier": "FYOP",
+        "Latitude": -18.058061376214027,
+        "Longitude": 13.852207213640213
+      },
+      {
+        "Identifier": "FYOH",
+        "Latitude": -17.881048657000065,
+        "Longitude": 15.076765269041061
+      },
+      {
+        "Identifier": "FYEN",
+        "Latitude": -17.48320698738098,
+        "Longitude": 16.32198214530945
+      },
+      {
+        "Identifier": "FYGF",
+        "Latitude": -19.60000030696392,
+        "Longitude": 18.133333325386047
+      },
+      {
+        "Identifier": "FYNP",
+        "Latitude": -17.76757076382637,
+        "Longitude": 18.45238521695137
+      },
+      {
+        "Identifier": "FYMO",
+        "Latitude": -18.81444364786148,
+        "Longitude": 17.051944881677628
+      },
+      {
+        "Identifier": "FYOO",
+        "Latitude": -19.148349165916443,
+        "Longitude": 15.91323897242546
+      },
+      {
+        "Identifier": "FYTM",
+        "Latitude": -19.266666769981384,
+        "Longitude": 17.733333259820938
+      },
+      {
+        "Identifier": "FYOS",
+        "Latitude": -17.797070033848286,
+        "Longitude": 15.699356496334076
+      },
+      {
+        "Identifier": "FYOJ",
+        "Latitude": -20.078285112977028,
+        "Longitude": 16.12660378217697
+      },
+      {
+        "Identifier": "FYKA",
+        "Latitude": -21.847027949988842,
+        "Longitude": 15.898046046495438
+      },
+      {
+        "Identifier": "FYME",
+        "Latitude": -21.02286759763956,
+        "Longitude": 16.453634351491928
+      },
+      {
+        "Identifier": "FYWH",
+        "Latitude": -22.479783855378628,
+        "Longitude": 17.470951080322266
+      },
+      {
+        "Identifier": "FYHO",
+        "Latitude": -23.866748437285423,
+        "Longitude": 17.9819418489933
+      },
+      {
+        "Identifier": "FYGK",
+        "Latitude": -24.629806391894817,
+        "Longitude": 15.939596593379974
+      },
+      {
+        "Identifier": "FYHV",
+        "Latitude": -24.190973863005638,
+        "Longitude": 18.160999417304993
+      },
+      {
+        "Identifier": "FYWE",
+        "Latitude": -22.607499919831753,
+        "Longitude": 17.079166620969772
+      },
+      {
+        "Identifier": "FYNG",
+        "Latitude": -24.61836375296116,
+        "Longitude": 15.998015999794006
+      },
+      {
+        "Identifier": "FYAD",
+        "Latitude": -24.822128489613533,
+        "Longitude": 18.76217544078827
+      },
+      {
+        "Identifier": "FYOG",
+        "Latitude": -28.584804385900497,
+        "Longitude": 16.446361541748047
+      },
+      {
+        "Identifier": "FYTK",
+        "Latitude": -19.581692554056644,
+        "Longitude": 20.452351570129395
+      },
+      {
+        "Identifier": "FYOE",
+        "Latitude": -18.030253909528255,
+        "Longitude": 22.189444452524185
+      },
+      {
+        "Identifier": "FYRU",
+        "Latitude": -17.956109941005707,
+        "Longitude": 19.720556437969208
+      },
+      {
+        "Identifier": "FYWB",
+        "Latitude": -22.979999408125877,
+        "Longitude": 14.645277857780457
+      },
+      {
+        "Identifier": "FYSM",
+        "Latitude": -22.65833280980587,
+        "Longitude": 14.566666781902313
+      },
+      {
+        "Identifier": "FYLZ",
+        "Latitude": -26.685278043150902,
+        "Longitude": 15.245554894208908
+      },
+      {
+        "Identifier": "FYKT",
+        "Latitude": -26.53888877481222,
+        "Longitude": 18.111667782068253
+      }
+    ]
+  },
+  "Note": "Read-only airport lookup extraction only; no save, fleet, telemetry or reviews."
+}

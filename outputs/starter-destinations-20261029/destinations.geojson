@@ -1,0 +1,2791 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          17.079002,
+          -22.60492
+        ]
+      },
+      "properties": {
+        "kind": "base",
+        "name": "Eros",
+        "careers": "Missionary / Safari / Industrial"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.64532,
+          -22.97972
+        ]
+      },
+      "properties": {
+        "kind": "base",
+        "name": "Walvis Bay",
+        "careers": "Offshore"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.852061,
+          -18.056022
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYOP",
+        "name": "Opuwa Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Referral/outreach hub; direct Eros sector exceeds two hours in C152.",
+        "offset_nm": 0.12
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            13.852061,
+            -18.056022
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYOP",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.64785,
+          -19.10185
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYSF",
+        "name": "Sesfontein Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "High-value purpose; absent identifier in recorded scan; no scenery approval.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            13.64785,
+            -19.10185
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYSF",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.210312,
+          -17.029332
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYEF",
+        "name": "Epupa Falls Airstrip.",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Clinic association credible; ground transfer required; long from Eros.",
+        "offset_nm": 0.03
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            13.210312,
+            -17.029332
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYEF",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.2782,
+          -17.43873
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "NA-0160",
+        "name": "Okangwati Airport",
+        "status": "Partially verified",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "App FYKW resolves roughly 590 NM east of this settlement. EIA describes military strip. NIP clinic latitude conflicts with settlement; do not use it as airport coordinate.",
+        "offset_nm": 588.56
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            13.2782,
+            -17.43873
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "NA-0160",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          23.52996066212654,
+          -18.433678932487965
+        ]
+      },
+      "properties": {
+        "kind": "conflicting-simulator-point",
+        "id": "NA-0160",
+        "name": "Cached FYKW (wrong association)",
+        "status": "Hold: location conflict"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            13.2782,
+            -17.43873
+          ],
+          [
+            23.52996066212654,
+            -18.433678932487965
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "identity-conflict",
+        "destination": "NA-0160",
+        "offset_nm": 588.56
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.836836,
+          -17.488
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "NA-0169",
+        "name": "Ehomba Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Strong education purpose; identifier is a database key; no runway evidence or MSFS lookup.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            13.836836,
+            -17.488
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "NA-0169",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.3717,
+          -17.420601
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYRC",
+        "name": "Ruacana Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [],
+        "notes": "Community association needs a named service recipient and verified ground transfer; reserve research candidate rather than generic medical demand.",
+        "offset_nm": 0.44
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          20.452801,
+          -19.584999
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYTK",
+        "name": "Tsumkwe Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Missionary",
+          "Safari"
+        ],
+        "notes": "Teacher, community liaison and supplies credible; medical evacuation equipment not established.",
+        "offset_nm": 0.2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            20.452801,
+            -19.584999
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYTK",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            20.452801,
+            -19.584999
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYTK",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          22.189699,
+          -18.0303
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYOE",
+        "name": "Omega Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Credible clinic endpoint but well beyond two-hour direct starter envelope; retain as extended research.",
+        "offset_nm": 0.01
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            22.189699,
+            -18.0303
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYOE",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          18.452,
+          -17.768
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYNP",
+        "name": "Nepara clinic / Nkurenkuru health network",
+        "status": "Partially verified",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Long Eros leg. Field absent in current OurAirports snapshot; X-Plane has a historical FYNP datum, not real-world or MSFS acceptance. Closure lead needs investigation; no contemporary runway proof.",
+        "offset_nm": 0.03
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            18.452,
+            -17.768
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYNP",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          19.7194,
+          -17.956499
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYRU",
+        "name": "Rundu Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Referral hub rather than small village; extended C208 sector.",
+        "offset_nm": 0.07
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            19.7194,
+            -17.956499
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYRU",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.322001,
+          -17.483
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYEN",
+        "name": "Eenhana Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Named hospital and community personnel/supplies; no claim of poor-road access from runway alone.",
+        "offset_nm": 0.01
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.322001,
+            -17.483
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYEN",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15.007946,
+          -17.574847
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "NA-0171",
+        "name": "Outapi Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Hospital documented; field dimensions and simulator identity unknown; long Eros leg.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            15.007946,
+            -17.574847
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "NA-0171",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15.076249,
+          -17.881137
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYOH",
+        "name": "Okahao Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Specific health/education purpose; runway condition/measurements unknown.",
+        "offset_nm": 0.03
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            15.076249,
+            -17.881137
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYOH",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.8233,
+          -19.520599
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYKJ",
+        "name": "Kamanjab Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Useful intermediate sector; runway data required before either type approval.",
+        "offset_nm": 0.13
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            14.8233,
+            -19.520599
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYKJ",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.124701,
+          -20.0753
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYOJ",
+        "name": "Outjo Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Regional outreach/referral hub; paved-road accessibility reduces remoteness.",
+        "offset_nm": 0.21
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.124701,
+            -20.0753
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYOJ",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15.6993,
+          -17.797
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYOS",
+        "name": "Oshakati Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Referral destination, not isolated village; direct Eros leg exceeds target on slower type.",
+        "offset_nm": 0.01
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            15.6993,
+            -17.797
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYOS",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          19.3517,
+          -23.6558
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYAM",
+        "name": "Aminuis Airstrip",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "High-value closer candidate: named services and partly gravel road connection. OSM clinic is about 1.3 NM from field; ground transfer inferred.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            19.3517,
+            -23.6558
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYAM",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          18.789507,
+          -23.51502
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "NA-0114",
+        "name": "Leonardville Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Strong shorter-route candidate with actual community services; no confirmed simulator identifier.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            18.789507,
+            -23.51502
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "NA-0114",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          17.639699935913086,
+          -22.95439910888672
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "NA-0014",
+        "name": "Dordabis Carpet Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Closer Eros opportunity: named clinic and community training programme. Private Carpet field access and usable runway unknown; facility exists but no real aviation contract is asserted.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            17.639699935913086,
+            -22.95439910888672
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "NA-0014",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          18.973101,
+          -22.5044
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYGB",
+        "name": "Gobabis Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Missionary"
+        ],
+        "notes": "Hospital/clinic staff and urgent supplies credible; established road access means this is a referral hub, not a road-isolated bush community.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            18.973101,
+            -22.5044
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Missionary",
+        "destination": "FYGB",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.979322,
+          -22.461875
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYAR",
+        "name": "Arandis Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Industrial"
+        ],
+        "notes": "Retain existing accepted airport and prototype economy role; road transfer to mine. No radioactive cargo proposed.",
+        "offset_nm": 0.36
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            14.979322,
+            -22.461875
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Industrial",
+        "destination": "FYAR",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.866888,
+          -21.230032
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYUS",
+        "name": "Uis Mine Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Industrial"
+        ],
+        "notes": "Retain existing accepted field and resource-economy role; no runway measurements established.",
+        "offset_nm": 0.02
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            14.866888,
+            -21.230032
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Industrial",
+        "destination": "FYUS",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          17.127671,
+          -19.992261
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYBM",
+        "name": "B2Gold Otjikoto Mine Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Industrial"
+        ],
+        "notes": "Open-pit phase ended 2025; underground/processing support remains plausible. Identifier absent in recorded MSFS response.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            17.127671,
+            -19.992261
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Industrial",
+        "destination": "FYBM",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.725565,
+          -20.062512
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYKR",
+        "name": "Okorusu Mine Airstrip",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Industrial"
+        ],
+        "notes": "Mine/airstrip association credible; current production and civil air access unresolved. Do not model active ore output.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.725565,
+            -20.062512
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Industrial",
+        "destination": "FYKR",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          17.732509,
+          -19.262079
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYTM",
+        "name": "Tsumeb Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Industrial"
+        ],
+        "notes": "2026 reporting says copper processing is in care and maintenance. Only maintenance/project specialists, not invented recurring active copper production.",
+        "offset_nm": 0.28
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            17.732509,
+            -19.262079
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Industrial",
+        "destination": "FYTM",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15.9028,
+          -21.847799
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYKA",
+        "name": "Karibib Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Industrial"
+        ],
+        "notes": "FYKA associated with air force base; civil permission and actual mine transfer need verification.",
+        "offset_nm": 0.27
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            15.9028,
+            -21.847799
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Industrial",
+        "destination": "FYKA",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.5681,
+          -22.6619
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYSM",
+        "name": "Swakopmund Municipal Aerodrome",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Industrial",
+          "Offshore"
+        ],
+        "notes": "Industrial spares/specialists plausible through city; mine is about 80 km east, not adjacent to runway.",
+        "offset_nm": 0.23
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            14.5681,
+            -22.6619
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Industrial",
+        "destination": "FYSM",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.64532,
+            -22.97972
+          ],
+          [
+            14.5681,
+            -22.6619
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Offshore",
+        "destination": "FYSM",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.647102,
+          -22.979332
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYWB",
+        "name": "Walvis Bay International Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Industrial"
+        ],
+        "notes": "Retain industrial destination; Offshore base/return only. Not a dedicated mine strip.",
+        "offset_nm": 0.11
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            14.647102,
+            -22.979332
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Industrial",
+        "destination": "FYWB",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.753901,
+          -27.9643
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYRP",
+        "name": "Rosh Pinah Zinc and southern mining town",
+        "status": "Partially verified",
+        "careers": [
+          "Industrial"
+        ],
+        "notes": "Legacy FYRP now uses NA-0180 in OurAirports; X-Plane marks old code deprecated/typically closed. Current landing status unresolved. Rosh Pinah Zinc produces; nearby Skorpion is care and maintenance. Do not conflate them.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.753901,
+            -27.9643
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Industrial",
+        "destination": "FYRP",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.44638,
+          -28.585318
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYOG",
+        "name": "Oranjemund Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Industrial",
+          "Offshore"
+        ],
+        "notes": "Airborne crew chain documented. Main runway only; two closed gravel runways excluded.",
+        "offset_nm": 0.03
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.44638,
+            -28.585318
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Industrial",
+        "destination": "FYOG",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.64532,
+            -22.97972
+          ],
+          [
+            16.44638,
+            -28.585318
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Offshore",
+        "destination": "FYOG",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15.242899894714355,
+          -26.687400817871094
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYLZ",
+        "name": "Luderitz Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Industrial",
+          "Offshore"
+        ],
+        "notes": "High-value dual-career hub. Airport to port needs road transfer; no airport deck assumed.",
+        "offset_nm": 0.19
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            15.242899894714355,
+            -26.687400817871094
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Industrial",
+        "destination": "FYLZ",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.64532,
+            -22.97972
+          ],
+          [
+            15.242899894714355,
+            -26.687400817871094
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Offshore",
+        "destination": "FYLZ",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          18.1227,
+          -19.6022
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYGF",
+        "name": "Grootfontein Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [],
+        "notes": "Existing pool member, but no specific industrial customer established in this pass; military access and purpose need research.",
+        "offset_nm": 0.62
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15.915003,
+          -19.328533
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYNG",
+        "name": "Ongava Lodge Airstrip",
+        "status": "Partially verified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Operator confirms 1,200 m strip; cached FYNG instead lies near Betesda in southern Namibia. Hold simulator association.",
+        "offset_nm": 317.64
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            15.915003,
+            -19.328533
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYNG",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15.998015999794006,
+          -24.61836375296116
+        ]
+      },
+      "properties": {
+        "kind": "conflicting-simulator-point",
+        "id": "FYNG",
+        "name": "Cached FYNG (wrong association)",
+        "status": "Hold: location conflict"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            15.915003,
+            -19.328533
+          ],
+          [
+            15.998015999794006,
+            -24.61836375296116
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "identity-conflict",
+        "destination": "FYNG",
+        "offset_nm": 317.64
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          17.059401,
+          -18.812799
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYMO",
+        "name": "Mokuti Lodge Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Historical Mokuti factsheet: 2200 x 30 m, approx first 1500 m concrete from 08, remaining gravel, 08/26, daylight only; recency and usable declared distances need verification.",
+        "offset_nm": 0.44
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            17.059401,
+            -18.812799
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYMO",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.35879,
+          -20.54424
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYTF",
+        "name": "Twyfelfontein Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Official EMP links lodge guest/flood access to strip 3 km north. Conflict: OurAirports approx 1996 m asphalt vs operator 2200 m gravel. Absent in recorded simulator list.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            14.35879,
+            -20.54424
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYTF",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.013599395751953,
+          -24.96310043334961
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "NA-0030",
+        "name": "Kerweder Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Real operator association; 45-minute ground transfer. Database key is not an MSFS identifier.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.013599395751953,
+            -24.96310043334961
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "NA-0030",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15.9392,
+          -24.629999
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYGK",
+        "name": "Farm Whitwater East Landing Strip",
+        "status": "Partially verified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "IDENTITY CONFLICT: AOPA calls FYGK Geluk; OurAirports calls it Farm Whitwater East. Separate NA-0067 Geluk exists about 8.5 NM away. Do not collapse the two records or assign lodge until reconciled.",
+        "offset_nm": 0.02
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            15.9392,
+            -24.629999
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYGK",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.000600814819336,
+          -25.116899490356445
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYWD",
+        "name": "Wolwedans Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "New database lead FYWD for previously identifierless row; must query exact geographic site, not silently approve.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.000600814819336,
+            -25.116899490356445
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYWD",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.105086,
+          -25.355245
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYAD",
+        "name": "Aandster Airstrip",
+        "status": "Partially verified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Major conflict: OurAirports 900 m vs 2022 EMP 1450 m vs old operator 1500 m; orientations conflict too. Cached FYAD is far east. No runway approval until authoritative reconciliation.",
+        "offset_nm": 147.98
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.105086,
+            -25.355245
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYAD",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          18.76217544078827,
+          -24.822128489613533
+        ]
+      },
+      "properties": {
+        "kind": "conflicting-simulator-point",
+        "id": "FYAD",
+        "name": "Cached FYAD (wrong association)",
+        "status": "Hold: location conflict"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            16.105086,
+            -25.355245
+          ],
+          [
+            18.76217544078827,
+            -24.822128489613533
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "identity-conflict",
+        "destination": "FYAD",
+        "offset_nm": 147.98
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.943931,
+          -19.873201
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "NA-0168",
+        "name": "Palmwag Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Gondwana factsheet gives strip position; reconcile precise operator coordinates and database reference before activation.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            13.943931,
+            -19.873201
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "NA-0168",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.287337,
+          -20.451007
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYDN",
+        "name": "Doro Nawas Airstrip",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "EMP prose 1550 m; embedded chart 1490 m with LDA 1320/1330 m; preserve conflict. Airport absent in recorded simulator list.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            14.287337,
+            -20.451007
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYDN",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          12.254745,
+          -17.377134
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYHV",
+        "name": "Hartmann Valley Airstrip",
+        "status": "Partially verified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "1600 m EMP vs 1550 m OurAirports. Cached FYHV is in southeast Namibia; requires geographic reconciliation. Extended for current slow safari fleet.",
+        "offset_nm": 526.39
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            12.254745,
+            -17.377134
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYHV",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          18.160999417304993,
+          -24.190973863005638
+        ]
+      },
+      "properties": {
+        "kind": "conflicting-simulator-point",
+        "id": "FYHV",
+        "name": "Cached FYHV (wrong association)",
+        "status": "Hold: location conflict"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            12.254745,
+            -17.377134
+          ],
+          [
+            18.160999417304993,
+            -24.190973863005638
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "identity-conflict",
+        "destination": "FYHV",
+        "offset_nm": 526.39
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.1327,
+          -19.3864
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYHO",
+        "name": "Hoanib Airstrip",
+        "status": "Partially verified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Fly-in facility verified by operator. Cached FYHO near Bitterwasser, not Hoanib; do not use that endpoint.",
+        "offset_nm": 381.52
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            13.1327,
+            -19.3864
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYHO",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          17.9819418489933,
+          -23.866748437285423
+        ]
+      },
+      "properties": {
+        "kind": "conflicting-simulator-point",
+        "id": "FYHO",
+        "name": "Cached FYHO (wrong association)",
+        "status": "Hold: location conflict"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            13.1327,
+            -19.3864
+          ],
+          [
+            17.9819418489933,
+            -23.866748437285423
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "identity-conflict",
+        "destination": "FYHO",
+        "offset_nm": 381.52
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          12.743769,
+          -19.389049
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYMW",
+        "name": "Moewe Bay Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Operator documents fly/drive coastal excursion. Not interchangeable with Shipwreck Lodge/Westies. No dimensions established; absent in recorded list.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            12.743769,
+            -19.389049
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYMW",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15.7919,
+          -24.6733
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "NA-0067",
+        "name": "Geluk Airstrip",
+        "status": "Partially verified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "OurAirports separate field from FYGK; facility transfer association applies to Geluk name but correct runway remains unresolved. Hold both until geography/identifier reconciled.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            15.7919,
+            -24.6733
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "NA-0067",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15.9119,
+          -19.1492
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYOO",
+        "name": "Okaukuejo Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Real tourism/park service purpose. Confirm park air-access permission and exact runway; not a generic sightseeing landing.",
+        "offset_nm": 0.09
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            15.9119,
+            -19.1492
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYOO",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.4528007507,
+          -21.0233001709
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYME",
+        "name": "Mount Etjo Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Facility and field location corroborated; public runway details missing. Particularly useful short Eros sector.",
+        "offset_nm": 0.05
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.4528007507,
+            -21.0233001709
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYME",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.639363,
+          -20.866986
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYKN",
+        "name": "Okonjima Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Operator 1300 m dirt/sand, 05/23; elevation 5430 ft vs OurAirports 5357 ft. Mountains/power line/fence require review. Identifier newly researched, not queried.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.639363,
+            -20.866986
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYKN",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.4585,
+          -19.0285
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYHI",
+        "name": "Halali Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Tourism purpose verified; air access/permission not established by resort existence.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.4585,
+            -19.0285
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYHI",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.9272,
+          -18.8064
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYNA",
+        "name": "Namutoni Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Resort purpose documented; runway details and current visitor air access unverified.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.9272,
+            -18.8064
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYNA",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.127124,
+          -20.431705
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYDC",
+        "name": "Damaraland Wilderness Camp Airstrip",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Strong lodge/conservancy purpose; strip record alone does not establish current landing permission.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            14.127124,
+            -20.431705
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYDC",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.928163,
+          -19.803039
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYEA",
+        "name": "Etendeka Airstrip",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Secondary operator-hosted description: 1000 m gravel, 3000 ft; current usable length/width/orientation need operator confirmation.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            13.928163,
+            -19.803039
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYEA",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.816362,
+          -25.863598
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYHH",
+        "name": "Helmeringhausen Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Operator 900 m gravel; unregistered/unlicensed/unmanned and prior approval for guests. Hospitality/diversity reserve, not core wildlife lodge.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.816362,
+            -25.863598
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYHH",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16.00469970703125,
+          -23.900800704956055
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYSO",
+        "name": "Solitaire Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Safari"
+        ],
+        "notes": "Operator confirms fly-in tourism, lodge shuttle and airfield. Useful closer desert-network stop; aviation fuel only by prior arrangement, not guaranteed.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            17.079002,
+            -22.60492
+          ],
+          [
+            16.00469970703125,
+            -23.900800704956055
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Safari",
+        "destination": "FYSO",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          17.079002,
+          -22.60492
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYWE",
+        "name": "Eros Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Offshore"
+        ],
+        "notes": "Existing Offshore destination; airport supports corporate/specialist liaison by inference from real city office, not a claimed charter contract.",
+        "offset_nm": 0.16
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.64532,
+            -22.97972
+          ],
+          [
+            17.079002,
+            -22.60492
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Offshore",
+        "destination": "FYWE",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          17.4709,
+          -22.4799
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYWH",
+        "name": "Hosea Kutako International Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [
+          "Offshore"
+        ],
+        "notes": "Executive/international connections and petroleum specialists plausible; separate from Eros local-office role.",
+        "offset_nm": 0.01
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.64532,
+            -22.97972
+          ],
+          [
+            17.4709,
+            -22.4799
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Offshore",
+        "destination": "FYWH",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          18.111401,
+          -26.539801
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FYKT",
+        "name": "Keetmanshoop Airport",
+        "status": "Confirmed in MSFS 2024",
+        "careers": [],
+        "notes": "Existing Offshore member; no named petroleum/executive client or regular logistics chain established. Hold rather than invent demand.",
+        "offset_nm": 0.06
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          18.604333,
+          -33.97403
+        ]
+      },
+      "properties": {
+        "kind": "destination",
+        "id": "FACT",
+        "name": "Cape Town International Airport",
+        "status": "Confirmed real-world destination; MSFS status unverified",
+        "careers": [
+          "Offshore"
+        ],
+        "notes": "Documented Cape Town\u2013Oranjemund crew chain; extension from Walvis Bay is a proposed executive/specialist mission. Cross-border clearance, reserves and current aircraft implementation required.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            14.64532,
+            -22.97972
+          ],
+          [
+            18.604333,
+            -33.97403
+          ]
+        ]
+      },
+      "properties": {
+        "kind": "proposed-relationship",
+        "career": "Offshore",
+        "destination": "FACT",
+        "note": "Planning relationship only; not a navigation route or activated mission"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.025594,
+          -17.8675792
+        ]
+      },
+      "properties": {
+        "kind": "custom",
+        "id": "custom-etanga",
+        "name": "Etanga Clinic service area",
+        "status": "Speculative candidate",
+        "careers": [],
+        "notes": "Strong medical network need. First search for nearby existing strip; no runway absence established. Candidate landing survey needs terrain, drainage, land-use and ground-transfer review.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.234317,
+          -18.630306
+        ]
+      },
+      "properties": {
+        "kind": "custom",
+        "id": "custom-otjondeka",
+        "name": "Otjondeka Clinic service area",
+        "status": "Speculative candidate",
+        "careers": [],
+        "notes": "Named remote clinic and sample route. Nearer outreach network than northern border sites, but still long from Eros; do not relocate the operating base without design approval.",
+        "offset_nm": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14.1067336,
+          -18.9190037
+        ]
+      },
+      "properties": {
+        "kind": "custom",
+        "id": "custom-oruvandjei",
+        "name": "Oruvandjei Clinic service area",
+        "status": "Speculative candidate",
+        "careers": [],
+        "notes": "Named outreach clinic, potential community supply destination. Published point is clinic location only; slope/obstacles/land rights and alternative strips unresolved.",
+        "offset_nm": null
+      }
+    }
+  ]
+}

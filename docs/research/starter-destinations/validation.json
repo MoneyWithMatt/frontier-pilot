@@ -1,0 +1,102 @@
+{
+  "as_of": "2026-10-29",
+  "base_commit": "d5ff51650789e45e46c8828893acaba071d957e7",
+  "research_checks": [
+    {
+      "check": "unique master keys",
+      "passed": true
+    },
+    {
+      "check": "unique career memberships",
+      "passed": true
+    },
+    {
+      "check": "scoring references known destination",
+      "passed": true
+    },
+    {
+      "check": "all 53 original memberships accounted for",
+      "passed": true
+    },
+    {
+      "check": "all five gross identity conflicts withheld",
+      "passed": true
+    },
+    {
+      "check": "ineligible pairs have no suitability score",
+      "passed": true
+    },
+    {
+      "check": "score bounds",
+      "passed": true
+    },
+    {
+      "check": "all located coordinates in plausible Southern Africa range",
+      "passed": true
+    },
+    {
+      "check": "all GeoJSON point/line coordinates valid",
+      "passed": true
+    },
+    {
+      "check": "three custom areas, no generated airport",
+      "passed": true
+    },
+    {
+      "check": "mobile/development offshore coordinates not invented",
+      "passed": true
+    },
+    {
+      "check": "xlsx ZIP package integrity",
+      "passed": true
+    },
+    {
+      "check": "five workbook sheets",
+      "passed": true
+    },
+    {
+      "check": "no saved Excel error cells",
+      "passed": true
+    },
+    {
+      "check": "score formulas exported",
+      "passed": true
+    },
+    {
+      "check": "dynamic ranking formulas exported",
+      "passed": true
+    },
+    {
+      "check": "independent scorer agrees with workbook checks",
+      "passed": true
+    }
+  ],
+  "counts": {
+    "Missionary": {
+      "purpose": 19,
+      "shortlist": 17
+    },
+    "Safari": {
+      "purpose": 25,
+      "shortlist": 17
+    },
+    "Industrial": {
+      "purpose": 11,
+      "shortlist": 7
+    },
+    "Offshore": {
+      "purpose": 7,
+      "shortlist": 5
+    }
+  },
+  "status_counts": {
+    "Confirmed in MSFS 2024": 26,
+    "Confirmed real-world destination; MSFS status unverified": 25,
+    "Partially verified": 10,
+    "Unsuitable or rejected": 2,
+    "Speculative candidate": 3
+  },
+  "destinations": 66,
+  "career_assessments": 68,
+  "notes": "Research QA only. All formula, ranking and sensitivity assertions in workbook.mjs passed. Native Excel application behavior and manual browser interaction not tested. No application tests or simulator execution in this task."
+}
