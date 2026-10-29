@@ -39,13 +39,15 @@ public sealed class CompanyEmploymentTests : IDisposable
         Assert.All(diagnostics.Where(x=>x.Resolved is null),x=>Assert.False(x.Enabled));
     }
     [Theory][InlineData("Missionary")][InlineData("Industrial")][InlineData("Safari")][InlineData("Offshore")]
-    public void AcceptancePersistsAssignmentAndAccessWithoutCreatingOwnedAircraft(string category)
+    public void AcceptancePersistsAssignmentAndAccessWithCompanyOwnedAllocation(string category)
     {
         var store=new CareerStore(root);var vm=new CareerViewModel(store);vm.Continue();vm.PilotName="Test Pilot";vm.Continue();vm.SelectedRegion=vm.Regions[0];vm.Continue();
         vm.SelectedEmployer=Employer(category);vm.AcceptEmployment();var saved=new CareerStore(root).Load();
         Assert.True(saved.IsActive);Assert.Equal("namibia",saved.RegionId);Assert.Equal(Employer(category).Id,saved.Employment!.EmployerId);
         Assert.Equal(Employer(category).Fleet,saved.Employment.FleetAccess);Assert.False(Directory.Exists(Path.Combine(root,"tracking")));
-        Assert.False(Directory.Exists(Path.Combine(root,"economy")));Assert.Throws<IOException>(()=>store.AcceptEmployment(Employer("Industrial").Id));
+        Assert.False(Directory.Exists(Path.Combine(root,"economy")));
+        Assert.Equal(saved.PlayerId,store.AcceptEmployment(Employer(category).Id).PlayerId);
+        Assert.Throws<IOException>(()=>store.AcceptEmployment(CareerCatalogue.Employers.First(e=>e.Id!=saved.Employment.EmployerId).Id));
     }
     [Theory][InlineData("Missionary","FYOJ")][InlineData("Industrial","FYAR")][InlineData("Safari","FYNG")][InlineData("Offshore","FYWE")]
     public async Task SharedGeneratorUsesEmployerPoolCategoriesAndNormalReservation(string category,string destination)
@@ -97,7 +99,7 @@ public sealed class CompanyEmploymentTests : IDisposable
         var catalogue=new EmployerDestinationCatalogue([Synthetic("FYNG",aircraft:["savage-cub"])]);
         var destination=catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYNG");
         Assert.Equal("savage-cub",Assert.Single(CompanyAircraft.Choices(Employer("Safari"),destination,10)).Id);
-        Assert.Empty(CompanyAircraft.Choices(Employer("Safari"),destination,20));
+        Assert.Equal("savage-cub",Assert.Single(CompanyAircraft.Choices(Employer("Safari"),destination,20)).Id);
         Assert.Null(CompanyAircraft.Resolve(new("Addon Caravan","C208"),[]));
         AircraftTypeBinding[] mappings=[new("Addon Caravan","C208","c208")];
         Assert.Equal("c208",CompanyAircraft.Resolve(new("Addon Caravan","C208"),mappings));
@@ -149,13 +151,13 @@ public sealed class CompanyEmploymentTests : IDisposable
         var completed=(await store.LoadAsync())!;Assert.Single(completed.FinancialLedger);Assert.Equal(ShipmentState.Delivered,Assert.Single(completed.Shipments).State);
         Assert.Equal(.11m,completed.Players.Single().CachedBalance); Assert.Equal(FinancialTransactionKind.PilotWage,completed.FinancialLedger.Single().Kind);
     }
-    [Fact] public async Task DispatchRefusesDifferentTypesAndOverBudgetGroupedLoads()
+    [Fact] public async Task DispatchRefusesDifferentTypesButDoesNotEnforcePrototypeMassBudget()
     {
         var service=new EmployedCargoJobsService(new MemoryEconomyStateStore(),utcNow:()=>Now,employer:Employer("Industrial"));
         var job=(await service.LoadAsync()).Offers.First(x=>x.CargoMassKilograms==80) with {CompanyAircraftTypeId="baron-g58"};
         AircraftTypeBinding[] bindings=[new("Synthetic Baron","BE58","baron-g58")];var identity=new FlightAircraftIdentity("Synthetic Baron","BE58");
         Assert.Null(CompanyAircraft.CheckDispatch(identity,[job],bindings));
-        Assert.NotNull(CompanyAircraft.CheckDispatch(identity,[job,job],bindings));
+        Assert.Null(CompanyAircraft.CheckDispatch(identity,[job,job],bindings));
         Assert.NotNull(CompanyAircraft.CheckDispatch(identity,[job with {CompanyAircraftTypeId="c208"}],bindings));
         Assert.NotNull(CompanyAircraft.CheckDispatch(identity,[job],[]));
     }

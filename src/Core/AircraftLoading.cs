@@ -119,8 +119,6 @@ public sealed record AircraftLoadPlan(decimal CargoKilograms, IReadOnlyList<Plan
         }
         if (allocations.Any(x => snapshot.PayloadStations.All(s => s.Index != x.StationIndex))) throw new InvalidOperationException("Cargo was assigned to an unavailable station.");
         var existingPayload = snapshot.PayloadStations.Sum(x => x.CurrentWeightKilograms); var totalPayload = existingPayload + cargoKilograms;
-        if (snapshot.Weights.MaximumPayloadKilograms is { } maximumPayload && totalPayload > maximumPayload + .001m)
-            throw new InvalidOperationException("Planned payload exceeds the aircraft's authoritative maximum-payload value.");
         decimal? gross = snapshot.Weights.CurrentGrossWeightKilograms + cargoKilograms;
         var warnings = EvaluateWarnings(snapshot.Weights, gross, plannedCgPercent);
         if (snapshot.PayloadStations.Any(x => x.AuthoritativeMaximumKilograms is null)) warnings.Add("One or more structural station limits are unavailable from the aircraft.");
@@ -169,12 +167,8 @@ public sealed record AircraftLoadPlan(decimal CargoKilograms, IReadOnlyList<Plan
             planned.Add(new(station.Index, baseline, desired, target));
         }
         var totalPayload = planned.Sum(x => x.TargetKilograms);
-        if (snapshot.Weights.MaximumPayloadKilograms is { } maximumPayload && totalPayload > maximumPayload + .001m)
-            throw new InvalidOperationException("Planned payload exceeds the aircraft's authoritative maximum-payload value.");
         var cargoDelta = desiredTotal - currentManagedTotal;
         decimal? gross = snapshot.Weights.CurrentGrossWeightKilograms + cargoDelta;
-        if (gross is { } plannedGross && snapshot.Weights.MaximumGrossWeightKilograms is { } maximumGross && plannedGross > maximumGross + .001m)
-            throw new InvalidOperationException("Planned gross weight exceeds the aircraft's authoritative maximum-gross-weight value.");
         var warnings = EvaluateWarnings(snapshot.Weights, gross, plannedCgPercent);
         if (snapshot.PayloadStations.Any(x => x.AuthoritativeMaximumKilograms is null)) warnings.Add("One or more structural station limits are unavailable from the aircraft.");
         if (snapshot.Weights.MaximumPayloadKilograms is null) warnings.Add("Authoritative overall maximum payload is unavailable from the aircraft.");

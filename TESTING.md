@@ -1,5 +1,11 @@
 # Build and testing
 
+Employer starting fleets: `EmployerFleetTests` covers all company catalogues, scoped player/aircraft identity, 100-player allocations, idempotent/recovered startup, legacy/corrupt saves, condition/location/history/maintenance preservation, authorization and cargo/passenger integration. `SiteUiSmoke.EmployerFleetSmoke` follows actual acceptance buttons for all four employers and exercises production fleet selection without registration. [Current evidence/handoff](docs/handoffs/employer-starting-fleets.md); mocked/WPF checks remain separate from the focused live MSFS procedure.
+
+Multi-stop cargo: `CargoJourneyTests` exercises the persistent 35→25→0 kg journey plus intermediate pickup, failures/restarts, independent inventory/payment and manifest consistency. `SiteUiSmoke/CargoJourneySmoke.cs` edits actual quantity cells and exercises bound cargo controls with synthetic station readback, capturing proposed/aboard/through-cargo/delivered fax sheets. Hosted WPF/package evidence is separate from [live simulator acceptance](docs/multistop-cargo.md#live-simulator-acceptance); see the [handoff](docs/handoffs/multistop-cargo.md) for exact commands/source/results and preserved failures.
+
+Current shared-passenger verification uses synthetic profiles/simulator readback, including partial writes, last-moment edits, explicit reconnect checks, save compatibility and both career adapters. SiteUiSmoke drives actual manifest/reserve/board/disembark controls with synthetic stations and checks unrelated cargo/fuel preservation. No installed aircraft, simulator, SDK or personal data is required. [Aircraft-specific live acceptance](docs/shared-passengers.md) remains separate; run WPF/package checks on hosted Windows for this task.
+
 ## Windows prerequisites
 
 Windows x64, Git, PowerShell 7.2+ and **.NET SDK 8.0.424**, pinned without roll-forward in `global.json`. Install the SDK from Microsoft's official distribution, or use GitHub's pinned `setup-dotnet` action. No MSFS installation, SDK, Community directory, private package source or personal save is needed for regression/build/publish.

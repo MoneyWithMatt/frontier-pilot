@@ -2,6 +2,10 @@
 
 Current source map; historical implementation reports remain under `docs/` and `evidence/`. See [ROADMAP](ROADMAP.md) for acceptance boundaries and [TESTING](TESTING.md) for commands. The public repository integrates through `master` via reviewed pull requests.
 
+Starting employment automatically provisions the existing physical fleet through `EmployerFleetProvisioning`, called by `CareerStore.AcceptEmployment` and startup repair. Career schema 3 supplies a durable local player GUID; fleet schema 2 separates company ownership from player assignment, with idempotent allocation/base metadata. `AircraftFleetViewModel` filters authorization, associates only an explicitly confirmed exact simulator type at the recorded location and retains existing condition/dispatch/maintenance guards. A base allocation is not observed telemetry or spawn authority. Existing tracker-qualified cargo/passenger arrivals project last-known stops idempotently; no proof or hours are invented. [Implementation/migrations/live procedure](docs/employer-starting-fleets.md).
+
+Multi-stop cargo adds `Core/CargoJourneys`, `Workflow/CargoJourneyService` and `CargoJourneyViewModel`, composed by `BuilderViewModel` into `Desktop/CargoJourneyControl`. Explicit consignment changes are independent of aggregate station targets. Economy schema 13 atomically owns GUID manifests, pending intents, handling receipts, immutable per-leg carried snapshots, tracker flight proof and once-per-leg employed wage receipts. Legacy attempts/loading stores remain intact; no mass/GUID adoption is inferred. The common guarded payload interface and operation lease are reused from shared passengers. MTOW/CG/overall payload and prototype mass budgets are advisory for both cargo and passengers; actual station constraints and readback remain enforced. [Implementation and evidence boundaries](docs/multistop-cargo.md).
+
 ## Projects and execution
 
 | Project | Responsibility |
@@ -24,10 +28,10 @@ Normal career data is under `%LOCALAPPDATA%/FrontierAirportBuilder/desktop`. Nev
 
 | Store | Current authority |
 |---|---|
-| `economy/economy-state.json` | Schema 10; ledger, jobs, inventory, real-time schedule, operations and maintenance charges |
+| `economy/economy-state.json` | Schema 13; prior ledger/jobs/inventory/passengers/operations plus aircraft cargo manifests, explicit handling intents/receipts, per-leg flight snapshots and wage receipts |
 | `economy/flight-attempts.json` | Schema 5; persisted flight facts/proof and separate bounded diagnostics |
 | `economy/aircraft-loading.json` | Schema 5; managed cargo manifests, intents and fuel continuity |
-| `fleet/aircraft-fleet.json` | Schema 1; immutable airframe GUIDs, selected binding, condition, last-known location, history; `.previous` backup |
+| `fleet/aircraft-fleet.json` | Schema 2; existing GUID/binding/condition/history plus employer ownership/player assignment/allocation base and last transport stop; schema-1 data retained, `.previous` backup |
 | `tracking/aircraft-state.json` | Preserved unassigned legacy observations; not authoritative physical identity |
 | Saved airports/sites | Editable JSON source of truth; scenery packages are derived artifacts |
 | Career/catalogue/cache/receipts | Career and employer choices, authored routes, simulator lookup cache, verified workspace/package ownership |
@@ -49,7 +53,11 @@ Native adapters load the installed SDK's `SimConnect.dll` dynamically; no propri
 | `LiveAirportCatalogue.ReadAsync` | Complete worldwide facility list; lookup is not runway/scenery acceptance |
 | `PackageBuilder.BuildAsync`, `CommunityInstaller` | Official scenery compiler, output validation, exact receipt/hash ownership, backups and simulator-closed guards |
 
-`FlightAttemptTracker.ObserveAsync` alone assembles delivery proof. Arrival requires flight facts and continuous stopped presence; explicit unload/verified cargo transfer commits economy consequences. Current route distance policy is `RequiredDistanceForRoute` (0.5–10 NM), alongside the separate two-NM movement gate; older V0 reports describe the historical fixed ten-NM rule. Completed deliveries cannot emit more progression events.
+`FlightAttemptTracker` (including its passenger monitor) alone assembles delivery proof. Arrival requires flight facts and continuous stopped presence; explicit cargo unload/verified transfer or passenger disembarkation commits economy consequences. Current route distance policy is `RequiredDistanceForRoute` (0.5–10 NM), alongside the separate two-NM movement gate; older V0 reports describe the historical fixed ten-NM rule. Completed deliveries cannot emit more progression events.
+
+`PassengerTransport` owns shared person/group identity, declared mass, reservation, boarding, carriage, arrival and disembarkation independently of employer/pay. `PassengerPayloadCoordinator` persists station ownership/absolute targets before writes through `IGuardedPassengerPayloadSimulator`, checks immediate/retained readback and preserves partial/conflicting state. A shared named lease serializes cargo/fuel/passenger operations. `IPassengerAircraftConfigurations` provides evidenced seat-area capacity; production has an exact-hash Black Square Caravan Professional 0.1.2 gear profile, not inferred stock seating. Missing structural limits/arms and unsupported visuals are explicit. Vision Jet physical boarding remains blocked until its streamed effective configuration can be reviewed; no aircraft has live passenger acceptance.
+
+`EmployedPassengerMissions` supplies Offshore specialist/executive and Missionary doctor/community-liaison visit policies. `PassengerTransfersService` reuses both-endpoint/fleet guards and `FlightAttemptTracker.TransportMonitor` flight/time/proof rules, then commits mission completion and existing $800/$400 hourly wages atomically after verified disembarkation. It creates no cargo inventory for people. The interim cargo/passenger exclusion lives in workflow/atomic dispatch checks, not shared domain validation. Legacy simulated aboard saves retain their historical completion without invented payload ownership. Platforms remain rejected pending qualified adapter/registry. See [shared passengers and live procedure](docs/shared-passengers.md).
 
 Three clocks are distinct: economy uses real UTC; flight wages accumulate valid aircraft observation intervals; physical-airframe exposure uses validated simulator seconds and pause/slew/continuity guards. Do not merge their semantics.
 
