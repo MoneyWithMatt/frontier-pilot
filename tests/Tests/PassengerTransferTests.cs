@@ -242,5 +242,18 @@ public sealed class PassengerTransferTests : IDisposable
         Assert.Empty((await store.LoadAsync())!.FinancialLedger);
     }
 
+    [Fact] public async Task BindingRefreshKeepsSelectedTransferAndAircraftWithoutRecursiveNotifications()
+    {
+        await Setup(); var vm = new PassengerTransfersViewModel(service); var notifications = 0;
+        vm.PropertyChanged += (_, _) => notifications++;
+        vm.SelectedTransfer = transfer; vm.SelectedAircraft = vm.AircraftChoices.Single();
+        var count = notifications;
+        vm.SelectedTransfer = null; vm.SelectedTransfer = transfer;
+        vm.SelectedAircraft = null; vm.SelectedAircraft = vm.AircraftChoices.Single();
+        Assert.Equal(count, notifications);
+        Assert.Equal(transfer.Id, vm.SelectedTransfer!.Id); Assert.Equal("vision-jet", vm.SelectedAircraft!.Id);
+        await vm.RefreshAsync(); Assert.Equal(transfer.Id, vm.SelectedTransfer!.Id); Assert.Equal("vision-jet", vm.SelectedAircraft!.Id);
+    }
+
     public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }
 }

@@ -160,7 +160,9 @@ internal static class Program
                 destination ? assigned.Destination.Longitude : assigned.Origin.Longitude, ground ? 500 : 2000, 0, ground ? 0 : 100, ground)); Pump();
         }
         for (var i = 0; i <= 10; i++) await Sample(i);
-        Check(vm.SelectedTransfer?.Id == assigned.Id, "Passenger selection survives telemetry snapshot refresh");
+        Check(vm.SelectedTransfer?.Id == assigned.Id && (grid.SelectedItem as PassengerTransfer)?.Id == assigned.Id,
+            "Actual passenger row selection survives telemetry snapshot refresh");
+        Check((aircraft.SelectedItem as CompanyAircraftType)?.Id == "vision-jet", "Passenger aircraft selection survives telemetry refresh");
         var board = (Button)control.FindName("BoardPassengers"); Check(board.Command.CanExecute(null), "Passenger boarding control qualifies at origin"); board.Command.Execute(null);
         while (vm.IsBusy) await Task.Delay(10); Pump();
         Check(vm.SelectedTransfer?.State == PassengerTransferState.Boarded, "Passenger boarding persists via production command: " + vm.Error);

@@ -25,11 +25,15 @@ public sealed class PassengerTransfersViewModel : INotifyPropertyChanged
     public PassengerTransfer? SelectedTransfer
     {
         get => service.Selected;
-        set { if (value is null) return; service.SelectedId = value.Id; Changed(); }
+        set { if (value is null || value.Id == service.SelectedId) return; service.SelectedId = value.Id; Changed(); }
     }
     public IReadOnlyList<CompanyAircraftType> AircraftChoices => service.AircraftChoices;
     private string? selectedType;
-    public CompanyAircraftType? SelectedAircraft { get => AircraftChoices.FirstOrDefault(x => x.Id == selectedType); set { selectedType = value?.Id; Changed(); } }
+    public CompanyAircraftType? SelectedAircraft
+    {
+        get => AircraftChoices.FirstOrDefault(x => x.Id == selectedType);
+        set { if (value is null || value.Id == selectedType) return; selectedType = value.Id; Changed(); }
+    }
     public bool HasBoardedPassengers => service.HasBoardedPassengers;
     public PassengerTransfersViewModel(PassengerTransfersService service, Action? connect = null)
     {
