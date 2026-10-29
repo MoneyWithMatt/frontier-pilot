@@ -3,6 +3,14 @@ using FrontierAirportBuilder.Core;
 
 namespace FrontierAirportBuilder.Workflow;
 
+public sealed record FleetAircraftRow(PhysicalAirframe Aircraft)
+{
+    public Guid Id=>Aircraft.Id;
+    public string Registration=>Aircraft.Registration;
+    public string Type=>Aircraft.AllocatedTypeName??Aircraft.Identity.SimulatorModel;
+    public string Status=>CompanyAircraft.Types.SingleOrDefault(t=>t.Id==Aircraft.CompanyTypeId)?.Enabled==false ? "Coming Soon · mission capability disabled" : Aircraft.Availability;
+    public string Location=>Aircraft.LocationLabel;
+}
 public sealed class AircraftFleetViewModel : INotifyPropertyChanged
 {
     private readonly AircraftFleetStore? store;
@@ -114,6 +122,7 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? FleetChanged;
     public IReadOnlyList<PhysicalAirframe> Aircraft => fleet.Aircraft.Where(Authorized).ToArray();
+    public IReadOnlyList<FleetAircraftRow> AircraftRows=>Aircraft.Select(a=>new FleetAircraftRow(a)).ToArray();
     public Guid? SelectedAirframeId
     {
         get=>fleet.SelectedId;
@@ -186,14 +195,14 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
     public string Status => status;
     public string SaveStatus => blocked ? "Save blocked · previous durable snapshot preserved" : dirty ? "Automatic checkpoint pending (up to 10 seconds)" :
         savedUtc==default ? $"Loaded fleet revision {fleet.Revision}" : $"Saved fleet revision {fleet.Revision} · {savedUtc:u}";
-    public string ConnectionStatus => world is not null && Selected is {} a && observingId==a.Id && !bindingConfirmationRequired && DateTimeOffset.UtcNow-world.Aircraft.ObservedUtc<=TimeSpan.FromSeconds(5)
+    public string ConnectionStatus => Selected is {OwnerEntityId:not null,Latest:null} ? "ASSIGNED BASE · no simulator observation yet" : world is not null && Selected is {} a && observingId==a.Id && !bindingConfirmationRequired && DateTimeOffset.UtcNow-world.Aircraft.ObservedUtc<=TimeSpan.FromSeconds(5)
         ? "LIVE · selected aircraft matches explicit binding" : "LAST KNOWN / observation-only";
     public string Overview => Selected?.Overview ?? "No physical aircraft enrolled. Enrol the loaded aircraft explicitly; historical condition remains Unknown.";
     public string Components => Selected is null ? "" : string.Join("\n", Selected.Components.Where(x => !x.Removed).Select(x => $"{x.Key} · {x.Authority} · {(x.Health is {} h ? h.ToString("P1") : "Unknown")} · {x.ObservedSeconds / 3600:F2} observed hours · {(x.InspectionRequired ? "Inspection required" : "No inspection flag")}"));
     public string History => Selected is null ? "" : string.Join("\n", Selected.History.Reverse().Select(x => $"{x.Utc:u} · {x.Kind} · {x.Detail}"));
     public string MaintenanceSummary => Selected is null ? "Select an aircraft." : string.Join("\n", Selected.Components.Where(c=>!c.Removed && c.InspectionRequired).Select(c=>c.Key + " · Inspection required · condition unknown")) + "\n" + string.Join("\n", Selected.Work.Select(w=>$"{w.Action} · {w.State} · {w.Payer} · due {w.DueUtc:u}"));
     public string Observations => Selected?.LastObservation is {} f ? $"Last condition receipt {f.CompletedUtc:u} · {f.Readings.Count} fields · compatibility unverified. Exposure requires running/unpaused simulator time; wear profiles and fault effects are not qualified." : "No condition observations yet.";
-    public string ReturnInstructions => Selected?.Latest is not {} p ? "Location unknown." :
+    public string ReturnInstructions => Selected?.Latest is not {} p ? Selected?.AllocatedBase is {} basis ? $"Company allocation at {basis.Name} ({basis.Identifier}); load the selected type there. No simulator position was observed or written. Automatic placement is unavailable." : "Location unknown." :
         $"Return to {Selected.Registration}: {p.Telemetry.Latitude:F6}, {p.Telemetry.Longitude:F6}; altitude {p.Telemetry.AltitudeFeet:F1} ft; heading {p.Telemetry.TrueHeadingDegrees:F1}°. {p.State}.\nLoad the correct aircraft and location in MSFS, then select this airframe. Automatic placement is unavailable: no verified terrain/platform initialization adapter. An airborne or uncertain point is not a safe spawn. Cargo is not relocated.";
     public ActionCommand EnrolCommand { get; }
     public ActionCommand RenameCommand { get; }

@@ -4,7 +4,7 @@
 <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="0,0,16,0">
 <TextBlock Text="Physical fleet" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="Select the individual aircraft you intend to operate." TextWrapping="Wrap" Margin="0,4,0,10"/>
 <TextBlock Text="{Binding AllocationStatus}" TextWrapping="Wrap" Margin="0,4,0,10"/>
-<ListBox ItemsSource="{Binding Aircraft}" SelectedValuePath="Id" SelectedValue="{Binding SelectedAirframeId}" Height="190"><ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Width="260"/></DataTemplate></ListBox.ItemTemplate></ListBox>
+<ListBox ItemsSource="{Binding AircraftRows}" SelectedValuePath="Id" SelectedValue="{Binding SelectedAirframeId}" Height="240" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="4,7"><TextBlock Text="{Binding Type}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding Registration}" FontFamily="Consolas" FontSize="10" TextWrapping="Wrap"/><TextBlock Text="{Binding Status}" TextWrapping="Wrap"/><TextBlock Text="{Binding Location}" FontSize="11" TextWrapping="Wrap"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
 <TextBlock Text="{Binding SelectedInstructions}" TextWrapping="Wrap" Margin="0,8"/>
 <TextBlock Text="{Binding MissionEligibility}" TextWrapping="Wrap" Margin="0,8"/>
 <Expander Header="Legacy / personal registration" Visibility="{Binding CanEnrolPersonal,Converter={StaticResource BoolVisibility}}"><StackPanel>
@@ -12,9 +12,11 @@
 <Button Content="Enrol loaded aircraft · unknown history" Command="{Binding EnrolCommand}" Margin="0,8,0,0"/>
 <Button Content="Change selected registration" Command="{Binding RenameCommand}"/>
 </StackPanel></Expander>
+<Expander Header="Identity / livery confirmation"><StackPanel><TextBlock Text="Optional for an explicit livery/object change; not required to create your company allocation." TextWrapping="Wrap"/>
 <TextBlock Text="Installed package / version (your declaration)" TextWrapping="Wrap"/><TextBox Text="{Binding PackageVersion,UpdateSourceTrigger=PropertyChanged}"/>
 <Button Content="Bind loaded livery to selected airframe" Command="{Binding BindCommand}"/>
 <TextBlock Text="Binding explicitly associates this simulator title/model with the selected physical aircraft. It does not verify compatibility or import vendor health." TextWrapping="Wrap" FontSize="11" Margin="0,8"/>
+</StackPanel></Expander>
 <Expander Header="Preserved legacy company records"><StackPanel><TextBlock Text="Ambiguous records are never replaced automatically. Choose an existing record and confirm its company type/assignment to reuse its identity and history." TextWrapping="Wrap"/>
 <ComboBox ItemsSource="{Binding LegacyCandidates}" SelectedItem="{Binding SelectedLegacyCandidate}"/>
 <ComboBox ItemsSource="{Binding EmployerTypes}" SelectedItem="{Binding SelectedLegacyType}"/>
