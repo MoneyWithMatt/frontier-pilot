@@ -49,7 +49,8 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
         var destination=destinations!.Diagnose(Employer.Category).SingleOrDefault(x=>x.Resolved?.StableId==job.DestinationLocationId&&x.Enabled);
         return destination is null?[]:CompanyAircraft.Choices(Employer,destination,job.CargoMassKilograms);
     }
-    public string EmploymentStatus=>Employer is null?"Legacy / freelance board":$"{Employer.Name} · {Employer.WageDisplay} · paid for verified airborne time on successful delivery. {destinations!.Diagnose(Employer.Category).Count(x=>x.Enabled)} eligible destinations. Cargo only; passengers deferred.";
+    public string EmploymentStatus=>Employer is null?"Legacy / freelance board":$"{Employer.Name} · {Employer.WageDisplay} · paid for verified airborne time on successful delivery. {destinations!.Diagnose(Employer.Category).Count(x=>x.Enabled)} eligible destinations. "+
+        (Employer.Category=="Offshore"?"Cargo board; specialist transfers are on Passenger transfers.":"Cargo only; passenger transfers deferred.");
     private readonly EconomyService economy;
     private readonly NamibiaLocationCatalogueDocument catalogue;
     private readonly EmployedCargoPrototypeOptions options;

@@ -35,6 +35,7 @@ public sealed class AircraftLoadingCoordinator
     private readonly AircraftLoadingOptions options; private readonly SemaphoreSlim gate = new(1,1);
     public Func<CargoLoadManifest, CancellationToken, Task>? RecoverManifestJobsAsync { get; init; }
     public Func<FlightAircraftIdentity,IReadOnlyList<CargoJobDisplay>,string?>? CompanyAircraftGuard {get;init;}
+    public Func<CancellationToken, Task>? TransportDispatchGuard { get; init; }
     private bool continuouslyConnected; private DateTimeOffset? lastFuelCheckpoint;
     public AircraftLoadingStatus Current { get; private set; } = AircraftLoadingStatus.Empty;
     public event Action<AircraftLoadingStatus>? Changed;
@@ -252,6 +253,7 @@ public sealed class AircraftLoadingCoordinator
             var previouslyVerifiedSimulatorApplication=existing?.State==LoadManifestState.SimulatorApplied;
             var currentCargo=recoveringIntent?(jobs.Count>0?jobs.Sum(x=>x.LoadedCargoKilograms):existing!.PriorCargoKilograms):(existing?.CargoKilograms??jobs.Sum(x=>x.LoadedCargoKilograms));
             var delta=plan.CargoKilograms-currentCargo;
+            if (delta > 0 && TransportDispatchGuard is not null) await TransportDispatchGuard(token).ConfigureAwait(false);
             if(delta>0&&CompanyAircraftGuard?.Invoke(live.Aircraft,jobs) is {} companyError)throw new InvalidOperationException(companyError);
             var resettingUncommitted=CanResetUncommittedIntent(job,existing)&&plan.CargoKilograms<=.001m;
             if(Math.Abs(delta)<=.001m&&!resettingUncommitted)throw new InvalidOperationException("The requested Frontier cargo already matches the persistent aircraft state.");
@@ -377,6 +379,7 @@ public sealed class AircraftLoadingCoordinator
         await gate.WaitAsync(token);try
         {
             var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();
+            if (TransportDispatchGuard is not null) await TransportDispatchGuard(token).ConfigureAwait(false);
             if(CompanyAircraftGuard?.Invoke(live.Aircraft,ActiveJobs()) is {} companyError)throw new InvalidOperationException(companyError);
             if(Access(live,false)!="Ready."||!flight.Current.CanLoadCargo)throw new InvalidOperationException(Access(live,false)=="Ready."?flight.Current.Reason:Access(live,false));
             var job=activeJob()!;var attemptId=FlightAttemptIds.Attempt(job.ShipmentId!);var id=AircraftLoadingIds.Manifest(attemptId);
@@ -430,6 +433,7 @@ public sealed class AircraftLoadingCoordinator
         await gate.WaitAsync(token);try
         {
             var manifest=Current.Manifest??throw new InvalidOperationException("No cargo manifest exists.");
+            if (TransportDispatchGuard is not null) await TransportDispatchGuard(token).ConfigureAwait(false);
             if(manifest.State is not (LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied or LoadManifestState.CommittedInTransit))
                 throw new InvalidOperationException("This cargo manifest cannot be authorized for aircraft restoration.");
             var live=(await simulator.ReadAsync(sdkRoot(),token)).EnsureValid();var reason=RestoreReason(live,manifest,false);
@@ -466,6 +470,7 @@ public sealed class AircraftLoadingCoordinator
         await gate.WaitAsync(token);try
         {
             var manifest=Current.Manifest??throw new InvalidOperationException("No outside cargo authorization exists.");
+            if (manifest.CargoKilograms > 0 && TransportDispatchGuard is not null) await TransportDispatchGuard(token).ConfigureAwait(false);
             CargoJobDisplay? authorizedJob = null;
             if (manifest.State is LoadManifestState.PendingApplication or LoadManifestState.SimulatorApplied)
             {

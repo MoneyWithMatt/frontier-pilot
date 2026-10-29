@@ -1,5 +1,12 @@
 # Design decisions
 
+## Offshore passenger transfers — 2026-10-29
+
+- Matt selected passenger transfers before H125 platform cargo or survey/inspection. [Approved scope](specs/offshore-passenger-transfers.md): one simulated specialist passenger on eligible airport routes; no people in cargo stock and no native passenger/payload claim.
+- Reuse existing flight identity/distance/stationary rules and the same contiguous airborne-time helper at $800/hour. One passenger flight excludes cargo/other passenger boarding; unresolved physical cargo intents must be recovered first.
+- Schema 11 stores typed assignments and their flight progress in the atomic economy aggregate. Explicit disembarkation commits delivery, terminal proof and one PilotWage receipt/balance together. Restart cannot infer missing time or pay twice.
+- Both endpoint restrictions apply before new boarding. Accepted snapshots and proof survive later exclusions. Platform kind is explicitly unavailable, even with coordinates; live evidence plus a reviewed qualified adapter/registry and deck-specific rules are required before activation. [Acceptance procedure](offshore-passenger-transfers.md).
+
 ## Aircraft condition foundation — 2026-10-19
 
 - Condition recording is opt-in and read-only in the existing CLI, with an independent SimConnect diagnostic session. Optional-variable failures cannot terminate the existing position source or feed delivery evidence.

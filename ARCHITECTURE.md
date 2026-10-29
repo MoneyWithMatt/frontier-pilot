@@ -24,7 +24,7 @@ Normal career data is under `%LOCALAPPDATA%/FrontierAirportBuilder/desktop`. Nev
 
 | Store | Current authority |
 |---|---|
-| `economy/economy-state.json` | Schema 10; ledger, jobs, inventory, real-time schedule, operations and maintenance charges |
+| `economy/economy-state.json` | Schema 11; ledger, cargo jobs/inventory, typed passenger transfers with embedded flight progress, real-time schedule, operations and maintenance charges |
 | `economy/flight-attempts.json` | Schema 5; persisted flight facts/proof and separate bounded diagnostics |
 | `economy/aircraft-loading.json` | Schema 5; managed cargo manifests, intents and fuel continuity |
 | `fleet/aircraft-fleet.json` | Schema 1; immutable airframe GUIDs, selected binding, condition, last-known location, history; `.previous` backup |
@@ -49,7 +49,9 @@ Native adapters load the installed SDK's `SimConnect.dll` dynamically; no propri
 | `LiveAirportCatalogue.ReadAsync` | Complete worldwide facility list; lookup is not runway/scenery acceptance |
 | `PackageBuilder.BuildAsync`, `CommunityInstaller` | Official scenery compiler, output validation, exact receipt/hash ownership, backups and simulator-closed guards |
 
-`FlightAttemptTracker.ObserveAsync` alone assembles delivery proof. Arrival requires flight facts and continuous stopped presence; explicit unload/verified cargo transfer commits economy consequences. Current route distance policy is `RequiredDistanceForRoute` (0.5–10 NM), alongside the separate two-NM movement gate; older V0 reports describe the historical fixed ten-NM rule. Completed deliveries cannot emit more progression events.
+`FlightAttemptTracker` (including its passenger monitor) alone assembles delivery proof. Arrival requires flight facts and continuous stopped presence; explicit cargo unload/verified transfer or passenger disembarkation commits economy consequences. Current route distance policy is `RequiredDistanceForRoute` (0.5–10 NM), alongside the separate two-NM movement gate; older V0 reports describe the historical fixed ten-NM rule. Completed deliveries cannot emit more progression events.
+
+`FlightAttemptTracker.PassengerMonitor` reuses the flight records, policy, airborne-time/proof helpers for typed Offshore airport transfers. `PassengerTransfersService` stores passenger progress and terminal disembarkation/wage atomically in the economy file; it never creates cargo shipments or inventory for people. Boarding is explicitly simulated. Shared fleet/endpoint guards apply, and pending cargo recovery blocks passenger boarding. Platform endpoint missions remain rejected until a future qualified adapter/registry is accepted. See [passenger transfer scope and live procedure](docs/offshore-passenger-transfers.md).
 
 Three clocks are distinct: economy uses real UTC; flight wages accumulate valid aircraft observation intervals; physical-airframe exposure uses validated simulator seconds and pause/slew/continuity guards. Do not merge their semantics.
 

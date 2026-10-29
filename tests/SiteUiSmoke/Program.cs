@@ -126,12 +126,51 @@ internal static class Program
                 Save(employedWindow,Path.Combine(folder,"company-jobs.png"));
                 var reserve=Descendants<Button>(employedWindow).Single(x=>x.Content?.ToString()=="Accept and reserve job");reserve.Command.Execute(reserve.CommandParameter);await Task.Delay(250);Pump();
                 Check(employedModel.Jobs.ReservedJobs.Count==1&&employedModel.Jobs.ReservedJobs[0].CompanyAircraftTypeId=="c208","Aircraft selector and bound accept command reserve company dispatch: "+employedModel.Jobs.Error);
-                employedWindow.Close();result=0;
+                employedWindow.Close();
+                await CheckPassengerTransfers(folder);
+                result=0;
             }
             catch(Exception e){Console.Error.WriteLine(e);}
             finally{app.Shutdown(result);}
         };
         app.Run();return result;
+    }
+    private static async Task CheckPassengerTransfers(string folder)
+    {
+        var now = DateTimeOffset.Parse("2026-10-29T12:00:00Z"); var clock = now;
+        var employer = CareerCatalogue.Employers.Single(x => x.Category == "Offshore");
+        var destinations = new EmployerDestinationCatalogue([new("FYWB", "Approved", "FYWB", -23, 15, "Synthetic WPF passenger fixture", now, [])]);
+        var service = new PassengerTransfersService(new MemoryEconomyStateStore(), employer, destinations,
+            () => [new("Synthetic Vision Jet", "SF50", "vision-jet")], () => clock);
+        var vm = new PassengerTransfersViewModel(service); var control = new PassengerTransfersControl { DataContext = vm };
+        var host = new Window { Content = control, Width = 1250, Height = 850, ShowInTaskbar = false }; host.Show();
+        await vm.RefreshAsync(); Pump();
+        var grid = (DataGrid)control.FindName("TransfersGrid");
+        grid.SelectedItem = vm.Transfers.First(x => x.Destination.Name.Contains("FYAR")); Pump();
+        var assigned = vm.SelectedTransfer!;
+        var aircraft = (ComboBox)control.FindName("PassengerAircraft"); aircraft.SelectedIndex = 0; Pump();
+        var reserve = (Button)control.FindName("AcceptTransfer");
+        Check(reserve.Command.CanExecute(null), "Passenger reserve command is bound to eligible aircraft"); reserve.Command.Execute(null);
+        while (vm.IsBusy) await Task.Delay(10); Pump();
+        Check(vm.SelectedTransfer?.State == PassengerTransferState.Reserved, "Passenger reservation uses the actual bound control: " + vm.Error);
+        async Task Sample(int second, bool destination = false, bool ground = true)
+        {
+            clock = now.AddSeconds(second);
+            await vm.ObserveAsync(new(clock, "Synthetic Vision Jet", "SF50", destination ? assigned.Destination.Latitude : assigned.Origin.Latitude,
+                destination ? assigned.Destination.Longitude : assigned.Origin.Longitude, ground ? 500 : 2000, 0, ground ? 0 : 100, ground)); Pump();
+        }
+        for (var i = 0; i <= 10; i++) await Sample(i);
+        Check(vm.SelectedTransfer?.Id == assigned.Id, "Passenger selection survives telemetry snapshot refresh");
+        var board = (Button)control.FindName("BoardPassengers"); Check(board.Command.CanExecute(null), "Passenger boarding control qualifies at origin"); board.Command.Execute(null);
+        while (vm.IsBusy) await Task.Delay(10); Pump();
+        Check(vm.SelectedTransfer?.State == PassengerTransferState.Boarded, "Passenger boarding persists via production command: " + vm.Error);
+        for (var i = 11; i <= 71; i++) await Sample(i, i > 11, false);
+        for (var i = 72; i <= 82; i++) await Sample(i, true);
+        var disembark = (Button)control.FindName("DisembarkPassengers"); Check(disembark.Command.CanExecute(null), "Passenger disembark control requires qualified arrival");
+        disembark.Command.Execute(null); while (vm.IsBusy) await Task.Delay(10); Pump();
+        Check(vm.SelectedTransfer?.State == PassengerTransferState.Delivered && service.Balance == 13.33m, "Passenger completion renders one hourly wage: " + vm.Error);
+        Check(!disembark.Command.CanExecute(null), "Completed passenger control prevents repeated disembarkation");
+        Save(host, Path.Combine(folder, "offshore-passenger-completed.png")); host.Close();
     }
     private static void Pump()=>Dispatcher.CurrentDispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
     private static void Check(bool ok,string message){if(!ok)throw new Exception(message);Console.WriteLine("PASS: "+message);}

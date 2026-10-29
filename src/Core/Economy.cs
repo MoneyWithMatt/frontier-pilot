@@ -95,6 +95,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
     IReadOnlyList<EconomyJob> Jobs, IReadOnlyList<Shipment> Shipments,
     IReadOnlyList<FinancialTransaction> FinancialLedger)
 {
+    public IReadOnlyList<PassengerTransfer> PassengerTransfers { get; init; } = [];
     public IReadOnlyList<MaintenanceCharge> MaintenanceCharges { get; init; } = [];
     public IReadOnlyList<InventoryTransaction> InventoryLedger { get; init; } = [];
     public IReadOnlyList<RecurringDemandDefinition> RecurringDemand { get; init; } = [];
@@ -116,6 +117,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         EconomyValidation.Collection(Resources, nameof(Resources)); EconomyValidation.Collection(Inventories, nameof(Inventories));
         EconomyValidation.Collection(Needs, nameof(Needs)); EconomyValidation.Collection(Requirements, nameof(Requirements));
         EconomyValidation.Collection(Players, nameof(Players)); EconomyValidation.Collection(Jobs, nameof(Jobs));
+        EconomyValidation.Collection(PassengerTransfers, nameof(PassengerTransfers));
         EconomyValidation.Collection(Shipments, nameof(Shipments)); EconomyValidation.Collection(FinancialLedger, nameof(FinancialLedger));
         EconomyValidation.Collection(InventoryLedger, nameof(InventoryLedger)); EconomyValidation.Collection(RecurringDemand, nameof(RecurringDemand));
         EconomyValidation.Collection(Sites, nameof(Sites)); EconomyValidation.Collection(Operations, nameof(Operations)); EconomyValidation.Collection(OperationTicks, nameof(OperationTicks));
@@ -291,6 +293,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
                !Businesses.Any(b=>b.Id==c.Payee) || (!Players.Any(p=>p.Id==c.Payer) && !Businesses.Any(b=>b.Id==c.Payer)))
                 throw new InvalidDataException("Maintenance charge lacks its authoritative ledger entry or explicit payer.");
         }
+        PassengerTransferKernel.Validate(this);
         foreach (var x in FinancialLedger)
         {
             if(x.Kind!=FinancialTransactionKind.PilotWage && x.Wage is not null)throw new InvalidDataException("Only pilot wage entries may contain wage audit details.");
@@ -299,6 +302,11 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
             if(x.Kind==FinancialTransactionKind.PilotWage)EconomyValidation.NonNegative(x.Amount,"wage amount");
             else EconomyValidation.Positive(x.Amount, "transaction amount"); EconomyValidation.Currency(x.CurrencyCode);
             if (x.OccurredUtc == default) throw new InvalidDataException("Financial transaction timestamp is missing.");
+            if (x.Kind == FinancialTransactionKind.PilotWage && PassengerTransfers.SingleOrDefault(t => t.Id == x.JobId) is {} passenger)
+            {
+                PassengerTransferKernel.ValidatePayment(this, passenger, x);
+                continue;
+            }
             if (x.Kind is FinancialTransactionKind.JobPayment or FinancialTransactionKind.PilotWage)
             {
                 EconomyValidation.Reference(jobs, x.JobId!, "transaction job");

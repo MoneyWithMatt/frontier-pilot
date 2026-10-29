@@ -1,5 +1,9 @@
 # Technical status — 2026-09-07
 
+## Offshore passenger transfers — 2026-10-29
+
+Typed airport specialist transfers now implement reservation, simulated boarding, tracker-created flight proof, explicit disembarkation and one $800/hour PilotWage receipt through the existing economy/ledger. Both endpoint aircraft eligibility and shared physical fleet dispatch guards apply. Schema 11 embeds passenger progress so delivery/payment/recovery commit atomically without cargo-inventory substitution. Platforms remain unavailable; H125 cargo and survey/inspection are deferred. [Approved scope and simulator acceptance boundaries](offshore-passenger-transfers.md). Local Release build clean; 773 tests pass, zero failed/skipped; hosted expanded WPF/CI pending. No live acceptance claimed.
+
 ## Aircraft Condition Recorder V0 — 2026-10-19
 
 Implemented an optional read-only CLI recorder using an isolated native SimConnect session, per-field availability/validation and streaming JSONL diagnostics. Added create-only GUID-backed individual-aircraft documents with unknown initial estimates and explicit model binding; telemetry never updates those estimates. Standard/add-on profile boundaries, future fault synchronization and probabilistic-failure design are documented in [Aircraft Condition V0](aircraft-condition-v0.md). All aircraft capabilities remain unverified. 24 new tests / 719 total pass; Release build clean, CLI failure-path smoke passes and development distribution rebuilt. No simulator writes or gameplay changes. [Evidence](../evidence/aircraft-condition-v0/verification.md).

@@ -2,6 +2,8 @@
 
 Updated 2026-10-29. Scope/authority: [feature specification](specs/offshore-career.md). Resume from [handoff](handoffs/offshore-career.md).
 
+Passenger follow-up selected and implemented: [approved transfer spec](specs/offshore-passenger-transfers.md), [operation, recovery and live qualification procedure](offshore-passenger-transfers.md). This supersedes the pending mission-choice items below. H125 platform cargo and survey/inspection remain deferred; platforms cannot generate missions. The earlier airport-cargo verification remains historical evidence for that slice only.
+
 ## Current implementation
 
 Skeleton Coast Petroleum employs the pilot at FYWB with Vision Jet cargo access and $800 per verified airborne hour. H125 is listed but disabled. The shared company generator uses three existing prototype equipment/document cargo categories, a four-destination board limit and 120 kt planning bias. It feeds ordinary reservation, physical cargo coordination, tracker proof and ledger settlement; there is no separate Offshore mission engine.
@@ -35,7 +37,7 @@ Inference: start with stationary, explicitly identified facilities if platform g
 ## Staged development tasks
 
 1. Airport-cargo baseline: implemented fixes plus seven synthetic regressions; local and hosted full suite 751 passed. Both hosted WPF smoke programs, guard scenarios and publish passed. [Exact evidence](offshore-career-verification.md); [task #2](https://github.com/MoneyWithMatt/frontier-pilot/issues/2) / [draft PR #3](https://github.com/MoneyWithMatt/frontier-pilot/pull/3).
-2. Mission choice/specification: pending Matt's choice of platform cargo, survey/inspection or passenger transfers. Specify only that slice; do not reinterpret the old illustrative 30-minute loiter as a requirement.
+2. Mission choice/specification: Matt selected passenger transfers. Typed airport transfers with simulated boarding, existing hourly pay/recovery and platform gating are implemented; verify hosted UI/CI next. Do not reinterpret the old illustrative 30-minute loiter as a requirement.
 3. Adapter/recording work: implement only observations needed by the selected mission; keep optional failures isolated from current aircraft/avatar tracking. Detail packets require strict framing/completeness tests. Recorded diagnostics cannot qualify deliveries.
 4. Live qualification: prepare an exact scenario with simulator/SDK hashes, aircraft identity, endpoint evidence and read/write scope. Obtain approval for the changed artifact and live scenario. Static deck and H125 compatibility must be demonstrated before activation.
 5. Mission implementation: add authoritative state, restart/reconciliation, domain tests and UI through existing project boundaries. Compensation and failure/cancellation rules need an approved spec. Preserve tracker-only delivery evidence.

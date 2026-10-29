@@ -6,6 +6,29 @@ namespace FrontierAirportBuilder.Tests;
 
 public sealed class AircraftLoadingTests
 {
+    [Fact] public async Task Passenger_dispatch_guard_refuses_cargo_before_any_payload_or_tracker_write()
+    {
+        var h = Harness(transportGuard: _ => Task.FromException(new InvalidOperationException("Passenger aboard")));
+        await h.coordinator.InitializeAsync(); await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,70),new(2,50)]);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => h.coordinator.ApplyCargoAsync());
+        Assert.Equal(0, h.sim.PayloadWrites); Assert.Equal(0, h.tracker.Loads);
+        Assert.Null(h.coordinator.Current.Manifest);
+    }
+    [Theory][InlineData(false)][InlineData(true)]
+    public async Task Passenger_guard_also_protects_cargo_restoration_and_post_boarding_recovery(bool postBoarding)
+    {
+        var blocked = false;
+        var h = Harness(requireBoarded: postBoarding, transportGuard: _ => blocked
+            ? Task.FromException(new InvalidOperationException("Passenger aboard")) : Task.CompletedTask);
+        await h.coordinator.InitializeAsync(); await h.coordinator.RefreshAsync();
+        h.coordinator.CreatePlan([new(1,70),new(2,50)]); await h.coordinator.ApplyCargoAsync();
+        h.sim.Value = Snapshot(); blocked = true; var writes = h.sim.PayloadWrites;
+        if (postBoarding)
+            await Assert.ThrowsAsync<InvalidOperationException>(() => h.coordinator.ApplyAuthorizedCargoAfterBoardingAsync());
+        else await Assert.ThrowsAsync<InvalidOperationException>(() => h.coordinator.RestoreCargoAsync());
+        Assert.Equal(writes, h.sim.PayloadWrites);
+    }
     [Fact] public void Unit_conversions_are_explicit_and_round_trip()
     { Assert.Equal(220.46226218487757m,LoadingUnits.KilogramsToPounds(100));Assert.Equal(100,LoadingUnits.PoundsToKilograms(LoadingUnits.KilogramsToPounds(100)));Assert.Equal(3.785411784m,LoadingUnits.GallonsToLitres(1)); }
 
@@ -722,8 +745,8 @@ public sealed class AircraftLoadingTests
     }
     private static ShipmentCargoTransferRequest Transfer(string id,string jobId,decimal desired,string? location,DateTimeOffset time,bool confirm=false,VerifiedDeliveryEvidence? evidence=null)=>
         new("transfer-"+id,"command-"+id,jobId,desired,location,-22.5,17.1,time,confirm,evidence);
-    private static (AircraftLoadingCoordinator coordinator,MemoryAircraftLoadingStore store,FakeSimulator sim,FakeTracker tracker,Action<TrackingWorldState?> setWorld) Harness(AircraftLoadingSnapshot? snapshot=null,TrackingWorldState? world=null,bool noActiveJob=false,bool requireBoarded=false,CargoJobDisplay? cargoJob=null)
-    {var now=new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);snapshot??=Snapshot(now:now);world??=World(now:now);var currentWorld=world;var sim=new FakeSimulator(snapshot);var tracker=new FakeTracker();var store=new MemoryAircraftLoadingStore();var job=cargoJob??new CargoJobDisplay("job-test","Employer","Origin","Destination","Purpose","General Supplies",120,240,"TPC","Test","shipment-test",ShipmentState.Reserved,"origin-test","destination-test",-22.5,15,-21,15);var c=new AircraftLoadingCoordinator(store,sim,tracker,()=>"sdk",()=>currentWorld,()=>noActiveJob?null:job,new(TelemetryMaximumAge:TimeSpan.FromHours(1),RequirePostBoardingCargoVerification:requireBoarded),()=>now,(_,_)=>Task.CompletedTask);return(c,store,sim,tracker,value=>currentWorld=value);}
+    private static (AircraftLoadingCoordinator coordinator,MemoryAircraftLoadingStore store,FakeSimulator sim,FakeTracker tracker,Action<TrackingWorldState?> setWorld) Harness(AircraftLoadingSnapshot? snapshot=null,TrackingWorldState? world=null,bool noActiveJob=false,bool requireBoarded=false,CargoJobDisplay? cargoJob=null,Func<CancellationToken,Task>? transportGuard=null)
+    {var now=new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);snapshot??=Snapshot(now:now);world??=World(now:now);var currentWorld=world;var sim=new FakeSimulator(snapshot);var tracker=new FakeTracker();var store=new MemoryAircraftLoadingStore();var job=cargoJob??new CargoJobDisplay("job-test","Employer","Origin","Destination","Purpose","General Supplies",120,240,"TPC","Test","shipment-test",ShipmentState.Reserved,"origin-test","destination-test",-22.5,15,-21,15);var c=new AircraftLoadingCoordinator(store,sim,tracker,()=>"sdk",()=>currentWorld,()=>noActiveJob?null:job,new(TelemetryMaximumAge:TimeSpan.FromHours(1),RequirePostBoardingCargoVerification:requireBoarded),()=>now,(_,_)=>Task.CompletedTask){TransportDispatchGuard=transportGuard};return(c,store,sim,tracker,value=>currentWorld=value);}
     private static AircraftLoadingSnapshot Snapshot(DateTimeOffset? now=null,IReadOnlyList<PayloadStationReading>? stations=null,IReadOnlyList<FuelTankReading>? fuel=null,IReadOnlyList<AircraftEngineReading>? engines=null,AircraftWeightReading? weights=null)
     {var t=now??new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);return new AircraftLoadingSnapshot(t,new("Piper PA28","PA28"),new(t,-22.5,15,100,90,0,true),stations??[new(1,"Front",10),new(2,"Rear",20)],fuel??[new("left","Left",20,50)],engines??[new(1,false)],2.72m,weights??new(700,1300,900,null,25,20,30),"test adapter").EnsureValid();}
     private static TrackingWorldState World(DateTimeOffset? now=null,double avatarLat=-22.5,bool seated=false)

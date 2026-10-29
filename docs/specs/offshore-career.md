@@ -1,6 +1,6 @@
 # Feature: OFFSHORE — career completion
 
-Status: Approved technical investigation and airport-cargo hardening; next mission design pending.
+Status: Approved technical investigation/airport-cargo hardening; passenger transfer follow-up approved in [OFFSHORE-PASSENGERS](offshore-passenger-transfers.md).
 Approved by / date: Matt's 2026-10-29 instruction to prioritize Offshore, investigate capabilities, implement/test autonomously and maintain GitHub continuity. Material gameplay changes and live simulator testing require further input.
 
 ## Objective
@@ -35,4 +35,4 @@ Offshore dispatch/assignment, endpoint intersection/disjoint sets, base exclusio
 No simulator required for this implementation slice. Synthetic transfer tests call the real tracker/economy boundary with supplied values; they do not test native payload writes, H125 behavior or live flight acceptance. Follow the separately approved live procedure before activating platform work or executing changed published artifacts locally.
 
 ## Open design decisions
-Select the next Offshore mission: H125 cargo/platform operations, survey/inspection with return, or a separate passenger lifecycle. Then agree endpoints, completion rules, continuity/recovery and compensation implications. The historical example of a 30-minute loiter is not an approved requirement.
+Matt selected passenger transfers in the 2026-10-29 follow-up; see the approved linked spec. H125 platform cargo and survey/inspection are deferred. Platform activation requires live qualification. The historical example of a 30-minute loiter is not an approved requirement.

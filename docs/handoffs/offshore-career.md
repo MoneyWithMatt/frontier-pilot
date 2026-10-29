@@ -1,30 +1,29 @@
-# Handoff: offshore-career
+# Handoff: offshore-career — passenger transfers
 
-- Approved specification: [OFFSHORE](../specs/offshore-career.md), Matt's 2026-10-29 autonomous development request; further mission design remains pending.
-- Branch: `codex/offshore-career`, based on merged Phase 1 master `d5ff51650789e45e46c8828893acaba071d957e7`; [draft PR #3](https://github.com/MoneyWithMatt/frontier-pilot/pull/3), [task #2](https://github.com/MoneyWithMatt/frontier-pilot/issues/2). Reuse these; do not duplicate them.
-- Last validated implementation commit: `961b1dcba55d2ac6c62a651854cca83b1835e08a`; tested clean merge `402392b88805d506587944d45165694076a78bda` in successful [hosted run 6](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40850041388).
-- Status: airport-cargo slice ready for review; remaining career mission design awaits human input. Documentation-only evidence checkpoint follows; inspect its latest CI in task #2 / PR #3. No merge authorized.
+- Authority: Matt's 2026-10-29 follow-up selected passengers before H125 cargo/survey. [Approved passenger spec](../specs/offshore-passenger-transfers.md).
+- Branch `codex/offshore-career`; reuse [draft PR #3](https://github.com/MoneyWithMatt/frontier-pilot/pull/3) and [task #2](https://github.com/MoneyWithMatt/frontier-pilot/issues/2). Never merge without human approval.
+- Previous validated checkpoint: `7545922da50c52e656d8af0c3552deed6ab791f6`, hosted run 7 passed 751 tests and WPF/package. New passenger implementation is currently dirty on that base, preparing a coherent commit and hosted run. Exact new implementation/validation SHA will follow.
 
-## Completed work
+## Completed
 
-Inspected implementation, current master and merged PR #1. Researched official SDK facility/deck/relative-motion capabilities. Corrected base+destination aircraft intersection and actual-origin route-time estimate. Added seven Offshore regressions, including persisted grouped partial delivery, proof/restart and exactly one wage. Published assessment: [Offshore career](../offshore-career.md).
+Inspected the repository: there was no passenger runtime, only metadata. Implemented typed one-passenger prototype transfers, simulated boarding, existing flight-attempt identity/distance/timing rules, shared airborne-time/proof helpers, explicit disembarkation and atomic $800/hour wage. Passengers never enter cargo inventory. Added both-endpoint/type and shared fleet eligibility, explicit boarded GUID, UTC offer cadence/expiry with accepted-state retention, crash/restart/idempotency handling and mixed-load guards including pending/authorized/restored cargo. Schema 11 defaults old worlds to no passenger assignments. Added Passenger transfers UI and an actual-control synthetic WPF lifecycle scenario.
 
-## Tests and evidence
+Platform endpoint kind is prepared but explicitly unavailable; no platform missions or H125 enabled. [Live airport and platform qualification procedures](../offshore-passenger-transfers.md) state separate artifact/scenario approval and isolated-data prerequisites. No general live-data-root switch or new native passenger adapter is claimed.
 
-- `.tools/dotnet/dotnet.exe test tests/Tests/FrontierAirportBuilder.Tests.csproj -c Release --filter FullyQualifiedName~OffshoreCareerTests --logger 'trx;LogFileName=offshore.trx' --results-directory .ci-output-offshore-focused`, with repository `DOTNET_CLI_HOME`/`NUGET_PACKAGES`: 7 passed, 0 failed/skipped.
-- `./scripts/Invoke-Verification.ps1 -Stage BuildTest -OutputDirectory .ci-output-offshore-local`: SDK 8.0.424; Release solution 0 warnings/errors; 751 passed, 0 failed/skipped. Source dirty on `d5ff51650789e45e46c8828893acaba071d957e7`; seven added cases above the 744 baseline. Local TRX `.ci-output-offshore-local/tests/regression.trx`.
-- Final committed implementation: hosted 751 passed / 0 failed / 0 skipped, Release 0 warnings/errors, nine verification-guard scenarios, both WPF smoke programs, publish and both artifact uploads passed. [Exact commands/source/artifact evidence](../offshore-career-verification.md).
-- No MSFS, Package Tool, local WPF/published application, Community or personal save was used. Tracker transfer tests use synthetic supplied values, not a native simulator adapter.
+## Verification
 
-## Blockers and human input
+- Initial focused passenger run `.ci-output-passengers-focused-1/passengers.trx`: 15 passed, 1 failed, 0 skipped. Gap test's expected elapsed time was off by one; corrected the test to the unchanged existing ten-second policy. Failure evidence retained. Initial build also found an internal `EconomyIds` use from Workflow; moved offer-ID derivation behind the passenger domain API.
+- Focused passenger/wage/Offshore run: 46 passed; expanded passenger/loading run: 93 passed; 0 failed/skipped.
+- `./scripts/Invoke-Verification.ps1 -Stage BuildTest -OutputDirectory .ci-output-passengers-local-2`: SDK 8.0.424; dirty base `7545922`; full Release 0 warnings/errors; **773 passed, 0 failed/skipped** (751 prior + 19 passenger cases + 3 loading-guard cases). Local TRX `.ci-output-passengers-local-2/tests/regression.trx`.
+- `.tools/dotnet/dotnet.exe build tests/SiteUiSmoke/SiteUiSmoke.csproj -c Release` with repository caches: 0 warnings/errors. Local WPF runtime not invoked; await clean hosted runner.
+- Later edits to player-facing descriptions/docs still need final committed CI. No MSFS, Package Tool, personal saves/Community, installed SDK changes or changed published executable was run locally.
 
-Next gameplay slice needs Matt's choice: H125 platform cargo, survey/inspection with return, or separate passenger transfers. A question was sent during this task; do not assume an unanswered default is approval. Platform endpoints, loiter rules and passenger rules are unspecified. Live qualification and changed published artifact execution require approval.
+## Remaining / next actions
 
-GitHub connector writes returned HTTP 403. Configured Git authentication/API fallback successfully created issue #2 and draft PR #3, and the PR is attached to the task. Do not repeat creation. Ignored local `.ci-output-offshore-api/github.ps1` supports explicit metadata updates, without logging credentials; it is not a tracked runtime feature.
+1. Review status/diff, commit/push this passenger slice on the existing branch, update PR #3/title and task #2. Check state first; do not duplicate external actions.
+2. Complete hosted Windows regression, nine verification-guard scenarios, both WPF smoke programs (including passenger actual controls), publish/upload. Fix failures and inspect the synthetic passenger screenshot. Record exact head/merge SHA, run/artifact links and results.
+3. Commit/push evidence/roadmap/handoff checkpoint; check its final CI in task #2/PR #3. Do not create an endless documentation-only rerun loop; the issue may hold the final evidence-checkpoint result.
+4. Present reviewable results. No gameplay choice blocks this airport slice. Live simulator acceptance remains unperformed; follow the approved artifact/scenario and isolated-data procedure before any live action. Platform enablement requires successful empirical qualification plus reviewed adapter/registry/deck rules; the shipped Platform gate remains closed.
+5. H125 platform cargo and survey/inspection remain deferred until passenger loop acceptance. No automatic restart/quota mechanism introduced.
 
-## Exact next steps
-
-1. Inspect status/HEAD, task #2 and PR #3 before resuming. Preserve pending edits. Implementation/run-6 actions above are complete.
-2. Check the evidence-checkpoint CI if not already recorded as successful in task #2 / PR #3. Fix genuine failures without weakening assertions; do not repeat already successful checks without an invalidating change.
-3. Keep this single feature branch/PR for the coherent Offshore work. Human review/merge remains separate.
-4. On mission choice, write the concrete gameplay spec and identify any remaining material decisions; continue technical work through hosted tests. Before a live check, obtain exact artifact/scenario approval.
+GitHub connector writes were previously HTTP 403. Configured Git authentication/API fallback `.ci-output-offshore-api/github.ps1` successfully updates issue/PR; credentials are not logged and helper files are ignored. Do not blindly retry create actions. No merge or settings changes.

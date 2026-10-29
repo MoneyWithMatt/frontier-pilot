@@ -52,6 +52,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public TrackingViewModel Tracking { get; }
     public AircraftConditionSession ConditionRecording { get; }
     public EmployedCargoJobsViewModel Jobs { get; }
+    public PassengerTransfersViewModel Passengers { get; }
     public AircraftLoadingViewModel AircraftLoading { get; }
     public ProspectingOperationsViewModel Operations { get; }
     public double LayoutRunwayHeading => runwayHeading;
@@ -109,9 +110,19 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         flightAttemptTracker ??= new FlightAttemptTracker(economyStore, attemptStore) {AdditionalLocationResolver=employerDestinations is null?null:employerDestinations.Find};
         Jobs = new(employedCargoJobs, flightAttemptTracker);
         IAircraftLoadingStore loadingStore = services.IsDryRun ? new MemoryAircraftLoadingStore() : new LocalAircraftLoadingStore(Path.Combine(careerRoot,"economy","aircraft-loading.json"));
+        var passengerService = new PassengerTransfersService(economyStore, employer, employerDestinations ?? new(),
+            () => careerStore?.Load().AircraftBindings ?? [])
+            { AircraftGuard = Fleet.CheckPassengerDispatch, SelectedAirframe = () => Fleet.Selected?.Id,
+                BoardingRecoveryGuard = async token =>
+                {
+                    var manifests = await loadingStore.LoadManifestsAsync(token).ConfigureAwait(false);
+                    if (manifests.Any(x => x.CargoKilograms > .001m && x.State is not (LoadManifestState.Completed or LoadManifestState.Abandoned or LoadManifestState.ResetAtOrigin or LoadManifestState.SimulatorUnloaded)))
+                        throw new InvalidOperationException("Resolve the saved cargo load/recovery intent in Aircraft before boarding passengers. Existing cargo is preserved.");
+                } };
+        Passengers = new(passengerService, () => { if (!services.IsDryRun && Tracking.ConnectCommand.CanExecute(null)) _ = Tracking.ConnectAsync(); });
         var loadingCoordinator = new AircraftLoadingCoordinator(loadingStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(),
             flightAttemptTracker, () => this.sdkRoot, () => Tracking.World, () => Jobs.LoadingJobs)
-            { RecoverManifestJobsAsync = Jobs.RecoverManifestJobsAsync,CompanyAircraftGuard=(identity,jobs)=>
+            { RecoverManifestJobsAsync = Jobs.RecoverManifestJobsAsync, TransportDispatchGuard = passengerService.RequireNoBoardedPassengersAsync, CompanyAircraftGuard=(identity,jobs)=>
                 {
                     return CompanyAircraft.CheckDispatch(identity,jobs,careerStore?.Load().AircraftBindings??[]) ?? Fleet.CheckDispatch(identity,jobs);
                 } };
@@ -122,7 +133,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             ? new ProspectingOperationsService(economyStore, management, new GuardedAvatarSitePresence(() => Tracking.World))
             : new UnavailableProspectingOperations();
         Operations = new(prospectingOperations);
-        Tracking.TelemetryChanged += sample => { _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft); _ = AircraftLoading.ObserveAsync(sample); };
+        Tracking.TelemetryChanged += sample => { _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft); _ = AircraftLoading.ObserveAsync(sample); _ = Passengers.ObserveAsync(sample?.Aircraft); };
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading,runwayEast,runwayNorth),()=>hasRunway);
         Layout.Edited += (_,_)=>Invalidate();
         AddParkingCommand = new(()=>

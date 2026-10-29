@@ -1,0 +1,22 @@
+<UserControl x:Class="FrontierAirportBuilder.Desktop.PassengerTransfersControl"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Grid Margin="20"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <StackPanel><TextBlock Text="Offshore passenger transfers" FontSize="23" FontWeight="SemiBold"/>
+   <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Margin="0,8"/>
+   <WrapPanel><Button Content="Refresh transfers" Command="{Binding RefreshCommand}"/><TextBlock Text="{Binding Balance, StringFormat='Balance: {0}'}" VerticalAlignment="Center" Margin="15,0"/></WrapPanel>
+  </StackPanel>
+  <DataGrid x:Name="TransfersGrid" Grid.Row="1" Margin="0,10" ItemsSource="{Binding Transfers}" SelectedItem="{Binding SelectedTransfer, Mode=TwoWay}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single">
+   <DataGrid.Columns><DataGridTextColumn Header="Route" Binding="{Binding Route}" Width="3*"/><DataGridTextColumn Header="Passengers" Binding="{Binding People}" Width="2*"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="2*"/><DataGridTextColumn Header="Pay" Binding="{Binding Pay}" Width="2*"/></DataGrid.Columns>
+  </DataGrid>
+  <StackPanel Grid.Row="2" IsEnabled="{Binding Enabled}">
+   <TextBlock Text="{Binding SelectedTransfer.AircraftTypeId, StringFormat='Assigned aircraft type: {0}'}"/>
+   <WrapPanel><ComboBox x:Name="PassengerAircraft" ItemsSource="{Binding AircraftChoices}" SelectedItem="{Binding SelectedAircraft, Mode=TwoWay}" DisplayMemberPath="Name" MinWidth="180"/>
+    <Button x:Name="AcceptTransfer" Content="Reserve transfer" Command="{Binding AcceptCommand}"/>
+    <Button x:Name="BoardPassengers" Content="Board passenger (simulated)" Command="{Binding BoardCommand}"/>
+    <Button x:Name="DisembarkPassengers" Content="Disembark and complete" Command="{Binding DisembarkCommand}"/>
+   </WrapPanel>
+   <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,8"/><TextBlock Text="{Binding Error}" Foreground="#FF9999" TextWrapping="Wrap"/>
+   <TextBlock Text="Interrupted flights retain the passenger and proven progress. Reconnect in the recorded aircraft; fresh destination telemetry is required to disembark. Disconnected time is unpaid. Finish this flight before loading another passenger or cargo assignment." TextWrapping="Wrap" FontSize="12"/>
+  </StackPanel>
+ </Grid>
+</UserControl>

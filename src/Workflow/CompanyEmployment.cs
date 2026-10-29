@@ -3,14 +3,17 @@ using FrontierAirportBuilder.Core;
 namespace FrontierAirportBuilder.Workflow;
 
 public sealed record CompanyAircraftType(string Id,string Name,decimal PrototypeDispatchKilograms,bool Enabled=true)
-{ public override string ToString()=>Name+(Enabled?$" (dispatch fixture ≤{PrototypeDispatchKilograms:0} kg)":" (Coming Soon)"); }
+{
+    public int PrototypePassengerSeats { get; init; }
+    public override string ToString()=>Name+(Enabled?$" (dispatch fixture ≤{PrototypeDispatchKilograms:0} kg)":" (Coming Soon)");
+}
 public sealed record AircraftTypeBinding(string Title,string Model,string AircraftTypeId);
 public static class CompanyAircraft
 {
     // Dispatch fixture budgets, NOT certified payload capacity or performance limits.
     public static IReadOnlyList<CompanyAircraftType> Types {get;}=[new("c152","Cessna 152",10),new("c208","Cessna 208 Caravan",200),
         new("baron-g58","Beechcraft Baron G58",80),new("bonanza","Beechcraft Bonanza",60),new("pa28","PA-28",40),
-        new("savage-cub","Savage Cub",10),new("vision-jet","Cirrus Vision Jet",40),new("h125","H125",0,false)];
+        new("savage-cub","Savage Cub",10),new("vision-jet","Cirrus Vision Jet",40) { PrototypePassengerSeats = 1 },new("h125","H125",0,false)];
     public static string? Resolve(FlightAircraftIdentity identity,IEnumerable<AircraftTypeBinding> bindings)
     {
         identity.EnsureValid();
