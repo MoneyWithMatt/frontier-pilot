@@ -18,6 +18,7 @@ public static class CompanyAircraft
     }
     public static IReadOnlyList<CompanyAircraftType> Choices(CareerEmployer employer,DestinationDiagnostic destination,decimal kilograms)=>
         Types.Where(x=>x.Enabled&&employer.Fleet.Contains(x.Id)&&x.PrototypeDispatchKilograms>=kilograms&&
+            (destination.OriginCompatibleAircraft.Length==0||destination.OriginCompatibleAircraft.Contains(x.Id))&&
             (destination.CompatibleAircraft.Length==0||destination.CompatibleAircraft.Contains(x.Id))).ToArray();
     public static string? CheckDispatch(FlightAircraftIdentity identity,IReadOnlyList<CargoJobDisplay> jobs,IEnumerable<AircraftTypeBinding> bindings)
     {
