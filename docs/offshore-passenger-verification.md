@@ -40,6 +40,17 @@ SiteUiSmoke drives the actual passenger reserve/board/disembark commands through
 
 Diagnostics downloaded and archive checksum independently matched; development archive not downloaded/executed. Artifacts expire after seven days. The synthetic `offshore-passenger-completed.png` was visually inspected: functional completion was correct, but route/wage clipping, a cargo-oriented selector label and a stale completed-status instruction required presentation follow-up. That follow-up wraps rows, uses a passenger-specific selector template, shows a compact wage plus full receipt below, and corrects terminal status. Its subsequent hosted result belongs in task #2/PR #3 and the handoff; this run proves the earlier repaired implementation only.
 
+## Final implementation and visual verification
+
+[Run 10](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40855915342), implementation/presentation head `d1a9dfaf5d733569de6110f0fd18cb68f4cb0596`, clean tested merge `444f6220afdca35cf8d3dd22c94b1a3f776d2e97`, job `123386729479`: **774 passed, 0 failed/skipped**, Release 0 warnings/errors, nine guard scenarios, both WPF programs, publish and both uploads passed. Same workflow commands as above, SDK 8.0.424 on GitHub-hosted windows-2022. Terminal status, actual row and aircraft selection, bound reservation/boarding/disembarkation, one wage and repeated-action disablement all passed.
+
+- [Development artifact 12888977913](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40855915342/artifacts/12888977913): GitHub archive SHA256 `5707fce8a042073d84d5a686b1cf45c524d60ddb313cbfcd36f252cdcb440963`. Not downloaded/executed locally.
+- [Diagnostics artifact 12888444977](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40855915342/artifacts/12888444977): downloaded; independently matched archive SHA256 `effb33ca67b2a2e6b62e14bd6850800c687e8df104f0c68eb12be3ed6861945a`. Clean-source receipt inspected. Local `.ci-output-passengers-ci-run10/verified/`.
+- Final synthetic passenger screenshot inspected: full wrapped routes/identifiers, compact complete wage amount/rate, aircraft-name selector, terminal confirmation/full wage summary and disabled repeat action are readable. It shows $13.33 for one measured synthetic minute; no simulator observation is implied.
+- Presentation follow-up compiled locally and the 20-case passenger focused suite passed in `.ci-output-passengers-focused-5/passengers.trx`.
+
+The subsequent documentation-only checkpoint may have a distinct tested merge/artifact. Its final status is maintained in task #2 / PR #3 to avoid a self-referential handoff commit. The SHA above is the last validated runtime implementation. All generated artifacts retain seven-day expiry.
+
 ## Evidence boundary
 
 Synthetic observations and temporary stores do not establish live MSFS acceptance. Boarding is simulated, with no native passenger/payload/animation writes. Platform kind remains unavailable; exact platform/aircraft live qualification plus reviewed adapter/registry/deck rules must precede enablement. H125 platform cargo and survey/inspection are deferred. No personal saves, Community, Package Tool, SDK installation, repository settings or merge changed. Human merge and exact artifact/live-scenario approvals remain separate.

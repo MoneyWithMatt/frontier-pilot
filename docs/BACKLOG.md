@@ -3,7 +3,7 @@
 ## Current development priority — Offshore (2026-10-29)
 
 - [Implementation, SDK capabilities and staged tasks](offshore-career.md); [resume handoff](handoffs/offshore-career.md). Airport-cargo dispatch fixes and seven new synthetic cases implemented; [751-suite hosted pass, WPF/package evidence](offshore-career-verification.md). Continue through [task #2](https://github.com/MoneyWithMatt/frontier-pilot/issues/2) / [draft PR #3](https://github.com/MoneyWithMatt/frontier-pilot/pull/3).
-- Matt selected Offshore passenger transfers: typed airport transfer loop implemented with simulated boarding, $800/hour, endpoint/fleet guards and atomic recovery/payment. [Scope/live procedure](offshore-passenger-transfers.md). Full local 773 passed; expanded hosted WPF/CI pending. Platforms remain unavailable. H125 platform cargo and survey/inspection are deferred until this loop is established.
+- Matt selected Offshore passenger transfers: typed airport transfer loop implemented with simulated boarding, $800/hour, endpoint/fleet guards and atomic recovery/payment. [Scope/live procedure](offshore-passenger-transfers.md). [774 hosted tests, actual-control WPF/visual review and publish passed](offshore-passenger-verification.md); airport simulator acceptance remains pending separate approval. Platforms remain unavailable. H125 platform cargo and survey/inspection are deferred until this loop is established.
 
 ## Employed wages acceptance
 

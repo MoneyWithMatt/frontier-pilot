@@ -1,30 +1,32 @@
 # Handoff: offshore-career — passenger transfers
 
-- Authority: Matt's 2026-10-29 follow-up selected passengers before H125 cargo/survey. [Approved passenger spec](../specs/offshore-passenger-transfers.md).
-- Branch `codex/offshore-career`; reuse [draft PR #3](https://github.com/MoneyWithMatt/frontier-pilot/pull/3) and [task #2](https://github.com/MoneyWithMatt/frontier-pilot/issues/2). Never merge without human approval.
-- Passenger implementation `7b4f390bdec8b1230cc15a12761d291a590090f1` pushed; [run 8](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40854467605) passed 773 regression tests and loading WPF but failed SiteUiSmoke with stack overflow. Merge SHA `c0e2f8246461d60399add9b4b5e97b567f15b2b1`; no development artifact published. Current dirty follow-up fixes passenger selection binding reentrancy and strengthens actual-control selection tests. Exact new validation SHA will follow.
+- Authority: Matt's 2026-10-29 follow-up selected passenger transfers before H125 cargo/survey. [Approved spec](../specs/offshore-passenger-transfers.md), [operation/live procedure](../offshore-passenger-transfers.md).
+- Branch `codex/offshore-career`; reuse [draft PR #3](https://github.com/MoneyWithMatt/frontier-pilot/pull/3) and [task #2](https://github.com/MoneyWithMatt/frontier-pilot/issues/2). No merge authorized.
+- Last validated runtime implementation: `d1a9dfaf5d733569de6110f0fd18cb68f4cb0596`, clean tested merge `444f6220afdca35cf8d3dd22c94b1a3f776d2e97`, successful [run 10](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40855915342).
+- Status: airport passenger slice implemented and automated/visual verification complete; live simulator acceptance pending. This documentation-only checkpoint follows the validated runtime. Its final CI result is recorded in task #2/PR #3. No uncommitted runtime work remains.
 
 ## Completed
 
-Inspected the repository: there was no passenger runtime, only metadata. Implemented typed one-passenger prototype transfers, simulated boarding, existing flight-attempt identity/distance/timing rules, shared airborne-time/proof helpers, explicit disembarkation and atomic $800/hour wage. Passengers never enter cargo inventory. Added both-endpoint/type and shared fleet eligibility, explicit boarded GUID, UTC offer cadence/expiry with accepted-state retention, crash/restart/idempotency handling and mixed-load guards including pending/authorized/restored cargo. Schema 11 defaults old worlds to no passenger assignments. Added Passenger transfers UI and an actual-control synthetic WPF lifecycle scenario.
+No passenger runtime existed originally, only research metadata. Added typed one-passenger prototype assignments, simulated boarding, existing flight-attempt identity/distance/stationary rules and shared airborne-time/proof helpers, explicit disembarkation and atomic $800/hour PilotWage settlement. People never enter cargo inventory. Both-endpoint/type/fleet eligibility, selected physical GUID, UTC cadence/expiry with accepted-state retention, restart/failed-write/concurrent/idempotent recovery and mixed-load/pending-cargo guards are implemented. Schema 11 defaults old worlds to no passenger assignments without changing money/history. Actual-control WPF covers the complete synthetic transfer and stable row/aircraft selection.
 
-Platform endpoint kind is prepared but explicitly unavailable; no platform missions or H125 enabled. [Live airport and platform qualification procedures](../offshore-passenger-transfers.md) state separate artifact/scenario approval and isolated-data prerequisites. No general live-data-root switch or new native passenger adapter is claimed.
+Platform endpoint kind is prepared but explicitly unavailable, with no toggle/registry entry or guessed destinations. Future successful exact live qualification plus reviewed adapter/registry/deck rules is required before activation. H125 platform cargo and survey/inspection remain deferred. Boarding has no native passenger/payload/animation writes.
 
-## Verification
+## Verification and preserved failures
 
-- Initial focused passenger run `.ci-output-passengers-focused-1/passengers.trx`: 15 passed, 1 failed, 0 skipped. Gap test's expected elapsed time was off by one; corrected the test to the unchanged existing ten-second policy. Failure evidence retained. Initial build also found an internal `EconomyIds` use from Workflow; moved offer-ID derivation behind the passenger domain API.
-- Focused passenger/wage/Offshore run: 46 passed; expanded passenger/loading run: 93 passed; 0 failed/skipped.
-- `./scripts/Invoke-Verification.ps1 -Stage BuildTest -OutputDirectory .ci-output-passengers-local-2`: SDK 8.0.424; dirty base `7545922`; full Release 0 warnings/errors; **773 passed, 0 failed/skipped** (751 prior + 19 passenger cases + 3 loading-guard cases). Local TRX `.ci-output-passengers-local-2/tests/regression.trx`.
-- `.tools/dotnet/dotnet.exe build tests/SiteUiSmoke/SiteUiSmoke.csproj -c Release` with repository caches: 0 warnings/errors. Local WPF runtime not invoked; await clean hosted runner.
-- Run 8 failed SiteUiSmoke with exit -1073741571 / stack overflow in PassengerTransfersViewModel.SelectedAircraft -> Changed -> WPF writeback. Downloaded diagnostics artifact 12888138324, archive SHA256 `172ce84e9d69c93cfa5bb6c96affcb4fbdba61938ff6225d63dd58cc0bd0b4bc` matched; local `.ci-output-passengers-ci-run8/verified/SiteUiSmoke-error.log` preserves the stack. Neither smoke assertions nor timeouts were weakened. Same-value/null selection writebacks now do not emit recursive refreshes; added actual row/aircraft persistence assertions plus one VM regression (expected new total 774).
-- No MSFS, Package Tool, personal saves/Community, installed SDK changes or changed published executable was run locally.
+[Exact source, commands, counts, run/artifact links and failure/visual follow-ups](../offshore-passenger-verification.md).
 
-## Remaining / next actions
+- Initial focused test: 15 pass/1 fail/0 skip; corrected an off-by-one gap expectation to unchanged ten-second semantics. Initial compile caught a cross-project internal ID helper reference, corrected through the domain API. Evidence retained locally.
+- Run 8: 773 regression pass, loading WPF pass; SiteUiSmoke stack overflow in selection binding. Diagnostics downloaded/checksum matched; no development artifact. Fixed same-value/null writeback reentrancy, added a VM regression and strengthened actual selection assertions. No test/timeout/publication guard weakened.
+- Local full command `./scripts/Invoke-Verification.ps1 -Stage BuildTest -OutputDirectory .ci-output-passengers-local-3`: SDK 8.0.424, dirty `7b4f390` + repair; Release zero warnings/errors; 774/0/0. Count = 751 previous + 20 passenger + 3 cargo guard cases.
+- Runs 9 and 10 passed 774/0/0, nine guard scenarios, both WPF programs, publish and both uploads. Final screenshot visual review passed after fixing row/pay clipping, selector label and completed status. Run-10 diagnostic archive checksum independently verified; clean source receipt inspected. No published application executable ran locally.
+- No MSFS, Package Tool, personal save/Community changes, SDK installation, repository settings or merge. Automated verification is not simulator acceptance.
 
-1. Review status/diff, commit/push this passenger slice on the existing branch, update PR #3/title and task #2. Check state first; do not duplicate external actions.
-2. Complete hosted Windows regression, nine verification-guard scenarios, both WPF smoke programs (including passenger actual controls), publish/upload. Fix failures and inspect the synthetic passenger screenshot. Record exact head/merge SHA, run/artifact links and results.
-3. Commit/push evidence/roadmap/handoff checkpoint; check its final CI in task #2/PR #3. Do not create an endless documentation-only rerun loop; the issue may hold the final evidence-checkpoint result.
-4. Present reviewable results. No gameplay choice blocks this airport slice. Live simulator acceptance remains unperformed; follow the approved artifact/scenario and isolated-data procedure before any live action. Platform enablement requires successful empirical qualification plus reviewed adapter/registry/deck rules; the shipped Platform gate remains closed.
-5. H125 platform cargo and survey/inspection remain deferred until passenger loop acceptance. No automatic restart/quota mechanism introduced.
+## Remaining / exact next actions
 
-GitHub connector writes were previously HTTP 403. Configured Git authentication/API fallback `.ci-output-offshore-api/github.ps1` successfully updates issue/PR; credentials are not logged and helper files are ignored. Do not blindly retry create actions. No merge or settings changes.
+1. Inspect git status/HEAD, PR #3 and task #2. Implementation, failure repair, visual review and run-10 actions are complete. Reuse the branch/PR; never repeat external creation blindly.
+2. Check documentation-checkpoint CI only if its success is not already recorded in task #2/PR #3. No further source commit is needed merely to repeat the final issue checkpoint. Fix genuine failures without weakening assertions.
+3. Human review/merge remains separate. No unresolved gameplay choice blocks the implemented airport loop.
+4. Before any live action, obtain exact artifact/scenario approval and use the documented disposable Windows profile or reviewed isolated harness. No general data-root switch exists. Do not reset or use personal saves as fixtures. Execute airport transfer/recovery acceptance and record redacted evidence.
+5. Keep platforms unavailable until the exact qualification procedure succeeds and the subsequent reviewed adapter/registry/deck-specific rules are accepted. Defer H125 platform cargo and survey/inspection until the passenger loop is established.
+
+GitHub connector writes were HTTP 403; configured Git authentication/API fallback `.ci-output-offshore-api/github.ps1` updates issue/PR without logging credentials. Helpers and downloaded diagnostics are ignored, not runtime features. No automatic restart/quota bypass mechanism was introduced.

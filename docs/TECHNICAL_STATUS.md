@@ -2,7 +2,7 @@
 
 ## Offshore passenger transfers — 2026-10-29
 
-Typed airport specialist transfers now implement reservation, simulated boarding, tracker-created flight proof, explicit disembarkation and one $800/hour PilotWage receipt through the existing economy/ledger. Both endpoint aircraft eligibility and shared physical fleet dispatch guards apply. Schema 11 embeds passenger progress so delivery/payment/recovery commit atomically without cargo-inventory substitution. Platforms remain unavailable; H125 cargo and survey/inspection are deferred. [Approved scope and simulator acceptance boundaries](offshore-passenger-transfers.md). Local Release build clean; 773 tests pass, zero failed/skipped; hosted expanded WPF/CI pending. No live acceptance claimed.
+Typed airport specialist transfers now implement reservation, simulated boarding, tracker-created flight proof, explicit disembarkation and one $800/hour PilotWage receipt through the existing economy/ledger. Both endpoint aircraft eligibility and shared physical fleet dispatch guards apply. Schema 11 embeds passenger progress so delivery/payment/recovery commit atomically without cargo-inventory substitution. Platforms remain unavailable; H125 cargo and survey/inspection are deferred. [Approved scope and simulator acceptance boundaries](offshore-passenger-transfers.md). [774 hosted tests, WPF, visual review and publish passed](offshore-passenger-verification.md), zero failed/skipped and clean Release build. Initial WPF binding failure and repair are preserved in that report. No live acceptance claimed.
 
 ## Aircraft Condition Recorder V0 — 2026-10-19
 
