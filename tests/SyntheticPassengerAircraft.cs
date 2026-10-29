@@ -15,6 +15,8 @@ public sealed class SyntheticPassengerAircraft : IGuardedPassengerPayloadSimulat
     public bool AlterProtectedStation { get; set; }
     public bool ChangeBeforeWrite { get; set; }
     public int FuelWrites { get; private set; }
+    public int RetentionChecks { get; private set; }
+    public Task WaitForRetentionAsync(CancellationToken token) { token.ThrowIfCancellationRequested(); RetentionChecks++; return Task.CompletedTask; }
     public string SupportSummary => "SYNTHETIC passenger fixture; physical loading/visuals are not live accepted.";
     public PassengerAircraftConfiguration Resolve(string type, AircraftLoadingSnapshot snapshot) => new("synthetic-cabin", type, snapshot.Aircraft,
         6, [new(3, 1, 150), new(4, 1, 150), new(5, 1, 150)], 5000, 1000, new string('A', 64), "Synthetic individual seats, not production aircraft evidence", "Unsupported");

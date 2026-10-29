@@ -19,7 +19,7 @@ public sealed class PassengerTransferTests : IDisposable
     private IReadOnlyList<AircraftTypeBinding> mappings = [new("Synthetic Vision Jet", "SF50", "vision-jet")];
     private PassengerTransfersService NewService(EmployerDestinationCatalogue? catalogue = null, LocalEconomyStateStore? economy = null) =>
         new(economy ?? new LocalEconomyStateStore(store.StoragePath), Employer, catalogue ?? destinations, () => mappings, () => utc) {
-            SelectedAirframe = () => airframe, Payload = new(economy ?? new LocalEconomyStateStore(store.StoragePath), physical, physical, () => "synthetic") };
+            SelectedAirframe = () => airframe, Payload = new(economy ?? new LocalEconomyStateStore(store.StoragePath), physical, physical, () => "synthetic", physical.WaitForRetentionAsync) };
     private async Task Setup()
     {
         destinations = new([new("FYWB", "Approved", "FYWB", -23, 15, "Synthetic passenger fixture; not MSFS acceptance", Start, [])]);
@@ -275,7 +275,7 @@ public sealed class PassengerTransferTests : IDisposable
             new("FYOP", "Approved", "FYOP", -18.06, 13.85, "SYNTHETIC test route; no live scenery/facility evidence", Start, ["c208"])]);
         var id = Guid.NewGuid();
         var visiting = new PassengerTransfersService(memory, missionary, catalogue, () => [new("Synthetic Caravan", "C208", "c208")], () => utc) {
-            SelectedAirframe = () => id, Payload = new(memory, physical, physical, () => "synthetic") };
+            SelectedAirframe = () => id, Payload = new(memory, physical, physical, () => "synthetic", physical.WaitForRetentionAsync) };
         await visiting.RefreshAsync(); var mission = Assert.Single(visiting.Transfers); visiting.SelectedId = mission.Id;
         Assert.Equal(2, mission.PassengerCount); Assert.Contains("Doctor", mission.Purpose); Assert.Equal(400, mission.HourlyRate);
         Assert.DoesNotContain(visiting.AircraftChoices, x => x.Id == "c152");
@@ -328,7 +328,7 @@ public sealed class PassengerTransferTests : IDisposable
         await Setup(); await Board(); await Arrive();
         // Generic carriage reaches its durable physical receipt before mission settlement.
         var carriage = service.SelectedTransport!;
-        await new PassengerPayloadCoordinator(store, physical, physical, () => "synthetic").ApplyAsync(carriage.Id, "vision-jet", airframe!.Value, true, _ => { });
+        await new PassengerPayloadCoordinator(store, physical, physical, () => "synthetic", physical.WaitForRetentionAsync).ApplyAsync(carriage.Id, "vision-jet", airframe!.Value, true, _ => { });
         service = NewService(); await service.RefreshAsync(); Assert.True(service.CanDisembark);
         await service.DisembarkAsync(); await service.DisembarkAsync();
         Assert.Equal(2, physical.Writes); Assert.Single((await store.LoadAsync())!.FinancialLedger);

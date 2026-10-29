@@ -9,7 +9,7 @@ public sealed class PassengerPayloadTests
     private readonly MemoryEconomyStateStore store = new();
     private readonly SyntheticPassengerAircraft aircraft = new();
     private readonly Guid airframe = Guid.NewGuid();
-    private PassengerPayloadCoordinator Engine => new(store, aircraft, aircraft, () => "synthetic");
+    private PassengerPayloadCoordinator Engine => new(store, aircraft, aircraft, () => "synthetic", aircraft.WaitForRetentionAsync);
     private async Task<string> Reserve(params decimal[] weights)
     {
         var transport = PassengerTransportKernel.WithWeights(PassengerTransportKernel.Plan("independent-charter", weights.Length, true), weights);
@@ -28,6 +28,7 @@ public sealed class PassengerPayloadTests
         await Apply(id); Assert.Equal(1, aircraft.Writes);
         await Arrive(id); await Apply(id, true); await Apply(id, true);
         Assert.Equal(new decimal[] { 80, 30, 0, 0, 0, 33 }, aircraft.Weights); Assert.Equal(2, aircraft.Writes); Assert.Equal(0, aircraft.FuelWrites);
+        Assert.Equal(2, aircraft.RetentionChecks);
         var world = (await store.LoadAsync())!; Assert.Empty(world.PassengerTransfers); Assert.Empty(world.FinancialLedger);
     }
 

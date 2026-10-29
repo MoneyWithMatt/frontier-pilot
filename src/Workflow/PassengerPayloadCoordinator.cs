@@ -10,7 +10,7 @@ public interface IPassengerAircraftConfigurations
 
 /// <summary>Shared physical carriage; knows nothing about careers, destinations, flight proof or money.</summary>
 public sealed class PassengerPayloadCoordinator(IEconomyStateStore store, IAircraftLoadingSimulator simulator,
-    IPassengerAircraftConfigurations configurations, Func<string> sdkRoot)
+    IPassengerAircraftConfigurations configurations, Func<string> sdkRoot, Func<CancellationToken, Task>? waitForRetention = null)
 {
     public string SupportSummary => configurations.SupportSummary;
     public async Task<PassengerTransport> ApplyAsync(string transportId, string aircraftType, Guid airframeId,
@@ -58,7 +58,8 @@ public sealed class PassengerPayloadCoordinator(IEconomyStateStore store, IAircr
                     var immediate = await guarded.WritePassengerPayloadAsync(sdkRoot(), before, targets, token).ConfigureAwait(false);
                     Verify(intent, before, immediate, airframeId, configuration, delta);
                 }
-                // A separate read catches adapters/aircraft reverting an apparently successful write.
+                // Match the existing cargo retention interval; an immediate echo is insufficient.
+                await (waitForRetention?.Invoke(token) ?? Task.Delay(new AircraftLoadingOptions().RetentionDelay, token)).ConfigureAwait(false);
                 var retained = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid();
                 authorize(retained); Verify(intent, before, retained, airframeId, configuration, delta);
                 var verified = pending with { State = terminal, Payload = intent with { Stage = PassengerPayloadStage.Verified,

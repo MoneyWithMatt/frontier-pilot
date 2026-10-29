@@ -2,7 +2,7 @@
 
 - Authority: Matt's 2026-10-29 shared-passenger instruction; [approved objective/spec](../specs/shared-passengers.md), [implementation, SDK research and exact live procedure](../shared-passengers.md).
 - Branch `codex/offshore-career`; reuse [draft PR #3](https://github.com/MoneyWithMatt/frontier-pilot/pull/3), targeting `master`, and [task #2](https://github.com/MoneyWithMatt/frontier-pilot/issues/2). Never merge without human approval.
-- Previous clean checkpoint: head `22b9e32dda56a747b7025c66761462943f34fd24`, merge `3ed5d34adc167b59a000c35bf90368ad7941c890`, [run 11](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40856502864), 774/0/0 with guards/WPF/publish. The shared implementation is currently being committed from dirty changes on that baseline; hosted validation of its new exact commit is pending.
+- Last clean validated checkpoint: head `838c17626edf9da86ef6db0ae17a1a8f5283de27`, clean merge `9420671d333032c2ead2a652e38cb66b4b07fbd3`, [run 13](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40903400668): 794/0/0, zero Release warnings/errors, nine guards, both WPF programs, publish and both uploads passed. Final review then aligned passenger retention to cargo's existing three-second interval; the follow-up implementation commit is awaiting hosted exact-source verification.
 
 ## Completed implementation
 
@@ -24,6 +24,7 @@ Career adapters keep Offshore $800/hr and Missionary $400/hr. Missionary adds a 
 - Preserved arrival timing run: 18/2/0; corrected read-only check timing and explicit physical post-gap timer start. Full run 3: 792/1/0 because a cargo command assertion ran before async lease acquisition finished. Corrected bounded completion waits, preserving every mass/idempotence assertion. No skips/weakened production guards.
 - No local WPF, published executable, MSFS, Package Tool or live payload write. No personal save/Community modifications, SDK install, repository settings or merge. Hosted checks must cover guards, both WPF programs, publication and uploads before claiming success.
 - [Run 12](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/40902840515), head `f42c239ad9416ee65880168193c18bfe1d70998c` / clean merge `9c2b8bf9069f0534f451824c3bc36bce16cd64a0`: 794/0/0, nine guards and LoadingWpfSmoke passed; SiteUiSmoke compilation failed because linked synthetic fixture lacked explicit `System.IO` under WPF implicit usings. Added the import; no runtime/assertion changes. Packaging/development upload correctly blocked. Failure diagnostics linked in report; repair CI pending.
+- Repair run 13 passed every stage (above). Run-12 diagnostics were downloaded/checksummed and clean receipt/compile error inspected. Both WPF projects also compiled locally with explicit import, zero warnings/errors, without executing them. Local `./scripts/Invoke-Verification.ps1 -Stage BuildTest -OutputDirectory .ci-output-shared-passengers-full-7` passed **794/0/0**, zero warnings/errors on dirty `838c176` plus final retention change. Tests explicitly simulate the wait and assert it occurs; production uses the existing three-second cargo interval. Final hosted checks and screenshot review remain pending.
 
 ## Exact next steps
 

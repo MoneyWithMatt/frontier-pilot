@@ -142,7 +142,7 @@ internal static class Program
         var destinations = new EmployerDestinationCatalogue([new("FYWB", "Approved", "FYWB", -23, 15, "Synthetic WPF passenger fixture", now, [])]);
         var store = new MemoryEconomyStateStore(); var physical = new FrontierAirportBuilder.TestFixtures.SyntheticPassengerAircraft(); var airframe = Guid.NewGuid();
         var service = new PassengerTransfersService(store, employer, destinations,
-            () => [new("Synthetic Vision Jet", "SF50", "vision-jet")], () => clock) { SelectedAirframe = () => airframe, Payload = new(store, physical, physical, () => "synthetic") };
+            () => [new("Synthetic Vision Jet", "SF50", "vision-jet")], () => clock) { SelectedAirframe = () => airframe, Payload = new(store, physical, physical, () => "synthetic", physical.WaitForRetentionAsync) };
         var vm = new PassengerTransfersViewModel(service); var control = new PassengerTransfersControl { DataContext = vm };
         var host = new Window { Content = control, Width = 1250, Height = 850, ShowInTaskbar = false }; host.Show();
         await vm.RefreshAsync(); Pump();
