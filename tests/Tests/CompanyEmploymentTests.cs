@@ -39,13 +39,15 @@ public sealed class CompanyEmploymentTests : IDisposable
         Assert.All(diagnostics.Where(x=>x.Resolved is null),x=>Assert.False(x.Enabled));
     }
     [Theory][InlineData("Missionary")][InlineData("Industrial")][InlineData("Safari")][InlineData("Offshore")]
-    public void AcceptancePersistsAssignmentAndAccessWithoutCreatingOwnedAircraft(string category)
+    public void AcceptancePersistsAssignmentAndAccessWithCompanyOwnedAllocation(string category)
     {
         var store=new CareerStore(root);var vm=new CareerViewModel(store);vm.Continue();vm.PilotName="Test Pilot";vm.Continue();vm.SelectedRegion=vm.Regions[0];vm.Continue();
         vm.SelectedEmployer=Employer(category);vm.AcceptEmployment();var saved=new CareerStore(root).Load();
         Assert.True(saved.IsActive);Assert.Equal("namibia",saved.RegionId);Assert.Equal(Employer(category).Id,saved.Employment!.EmployerId);
         Assert.Equal(Employer(category).Fleet,saved.Employment.FleetAccess);Assert.False(Directory.Exists(Path.Combine(root,"tracking")));
-        Assert.False(Directory.Exists(Path.Combine(root,"economy")));Assert.Throws<IOException>(()=>store.AcceptEmployment(Employer("Industrial").Id));
+        Assert.False(Directory.Exists(Path.Combine(root,"economy")));
+        Assert.Equal(saved.PlayerId,store.AcceptEmployment(Employer(category).Id).PlayerId);
+        Assert.Throws<IOException>(()=>store.AcceptEmployment(CareerCatalogue.Employers.First(e=>e.Id!=saved.Employment.EmployerId).Id));
     }
     [Theory][InlineData("Missionary","FYOJ")][InlineData("Industrial","FYAR")][InlineData("Safari","FYNG")][InlineData("Offshore","FYWE")]
     public async Task SharedGeneratorUsesEmployerPoolCategoriesAndNormalReservation(string category,string destination)

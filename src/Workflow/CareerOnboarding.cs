@@ -131,6 +131,8 @@ public sealed class CareerStore
     {
         using var lease=new ProfileLock(ProfilePath);
         var draft=Load();
+        if(draft.Stage==CareerStage.Employed && draft.Employment?.EmployerId==employerId)
+        {EnsureEmployerFleet();return draft;}
         if(draft.Stage!=CareerStage.Opportunities)throw new IOException("Select a region before accepting employment; active careers cannot change employer.");
         var employer=CareerCatalogue.Employers.SingleOrDefault(x=>x.Id==employerId&&x.RegionId==draft.RegionId)??throw new IOException("Unknown employer for this region.");
         var profile=(draft with {SchemaVersion=3,PlayerId=draft.PlayerId??Guid.NewGuid(),Stage=CareerStage.Employed,Employment=new(employer.Id,employer.Role,employer.BaseId,employer.Fleet.ToArray())}).Validate();

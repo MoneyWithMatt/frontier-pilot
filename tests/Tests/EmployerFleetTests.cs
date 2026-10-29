@@ -41,6 +41,7 @@ public sealed class EmployerFleetTests : IDisposable
     {
         var p=Join("Missionary");var before=FleetStore.Load();var bytes=File.ReadAllText(FleetStore.StoragePath);
         for(var i=0;i<5;i++)new CareerStore(root).EnsureEmployerFleet();
+        Career.AcceptEmployment(Employer("Missionary").Id);
         var after=FleetStore.Load();Assert.Equal(before.Revision,after.Revision);Assert.Equal(bytes,File.ReadAllText(FleetStore.StoragePath));Assert.Equal(p.PlayerId,Career.Load().PlayerId);
     }
     [Fact] public void SeparatePlayersAndOneHundredAllocationsHaveDistinctDurableIdsAndRegistrations()
