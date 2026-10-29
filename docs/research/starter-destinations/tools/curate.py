@@ -82,7 +82,7 @@ def add(code,facility,keys,terrain,notes='',lookup=None,coord=None,name=None,lan
     state='Confirmed real-world destination; MSFS status unverified' if a or keys else 'Speculative candidate'
     if sim and delta is not None: state='Partially verified' if delta>5 else 'Confirmed in MSFS 2024'
     simnote='Not queried by this cache; absence cannot be inferred.'
-    if sim and delta is not None: simnote=f"Identifier returned in 2026-10-27 cache; offset {delta:.1f} NM from real-world point. " + ('WRONG-LOCATION ASSOCIATION; hold.' if delta>5 else 'Database presence only; scenery/runway uninspected.')
+    if sim and delta is not None: simnote=f"{sim['Identifier']} returned in 2026-10-27 cache; offset {delta:.1f} NM from real-world point. " + ('WRONG-LOCATION ASSOCIATION; hold.' if delta>5 else 'Database presence only; scenery/runway uninspected.')
     elif sim:
         simnote='Identifier returned but real-world coordinates missing; association unverified.'
         print('MISSING REAL COORDINATE',code)
@@ -92,6 +92,7 @@ def add(code,facility,keys,terrain,notes='',lookup=None,coord=None,name=None,lan
     if lat is not None: item['map_link']=f'https://www.openstreetmap.org/?mlat={lat:.6f}&mlon={lon:.6f}#map=13/{lat:.6f}/{lon:.6f}'
     else: item['map_link']=''
     rows.append(item)
+    item['sim_identifier']=sim['Identifier'] if sim else None
     item.update(length_m=round(float(r['length_ft'])*.3048,1) if r.get('length_ft') else None,width_m=round(float(r['width_ft'])*.3048,1) if r.get('width_ft') else None,surface=r.get('surface','Unknown'),orientation=(r.get('le_ident','')+'/'+r.get('he_ident','')).strip('/') or 'Unknown',true_heading=float(r['le_heading_degT']) if r.get('le_heading_degT') else None)
     return item
 def rate(item,career,purpose,fleet,parts,experience,decision='Priority validation',gate=True):
@@ -265,7 +266,7 @@ for d in rows:
         base=BASE['Walvis Bay' if career=='Offshore' else 'Eros']
         features.append(dict(type='Feature',geometry=dict(type='LineString',coordinates=[[base[1],base[0]],[d['longitude'],d['latitude']]]),properties=dict(kind='proposed-relationship',career=career,destination=d['id'],note='Planning relationship only; not a navigation route or activated mission')))
     if d['offset_nm'] and d['offset_nm']>5:
-        features.append(dict(type='Feature',geometry=dict(type='Point',coordinates=[d['sim_lon'],d['sim_lat']]),properties=dict(kind='conflicting-simulator-point',id=d['id'],name='Cached '+d['id']+' (wrong association)',status='Hold: location conflict')))
+        features.append(dict(type='Feature',geometry=dict(type='Point',coordinates=[d['sim_lon'],d['sim_lat']]),properties=dict(kind='conflicting-simulator-point',id=d['id'],name='Cached '+d['sim_identifier']+' (wrong association)',status='Hold: location conflict')))
         features.append(dict(type='Feature',geometry=dict(type='LineString',coordinates=[[d['longitude'],d['latitude']],[d['sim_lon'],d['sim_lat']]]),properties=dict(kind='identity-conflict',destination=d['id'],offset_nm=d['offset_nm'])))
 (OUT/'destinations.geojson').write_text(json.dumps(dict(type='FeatureCollection',features=features),indent=2)+'\n',encoding='utf-8')
 
