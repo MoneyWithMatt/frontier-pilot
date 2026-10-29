@@ -154,6 +154,18 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
                 if (p.AuthorizedUtc is not {} authorized || Now < authorized || Now - authorized > TimeSpan.FromMinutes(5)) throw new InvalidOperationException("Outside authorization expired. Exit near the same aircraft and renew the pending operation's authorization.");
                 AuthorizeHandling?.Invoke(before, false);
                 var targets = p.Targets.Where(x => Math.Abs(before.PayloadStations.Single(s => s.Index == x.StationIndex).CurrentWeightKilograms - x.TargetKilograms) > .25m).ToDictionary(x => x.StationIndex, x => x.TargetKilograms);
+                if (!p.WriteStarted)
+                {
+                    p = p with { WriteStarted=true, ExpectedGrossKilograms=before.Weights.CurrentGrossWeightKilograms + targets.Sum(t=>t.Value-before.PayloadStations.Single(s=>s.Index==t.Key).CurrentWeightKilograms) };
+                    World = (await store.ApplyAsync(w=>
+                    {
+                        NoPassengers(w);var current=w.CargoAirframes.Single(x=>x.Id==m.Id);
+                        if(current.Revision!=m.Revision || current.Pending?.Id!=p.Id)throw new IOException("Cargo intent changed before physical application.");
+                        return CargoJourneyKernel.Replace(w,current with {Revision=current.Revision+1,Pending=p});
+                    },token).ConfigureAwait(false)).World;
+                    m=World.CargoAirframes.Single(x=>x.Id==m.Id);
+                    Ground(before,m);AuthorizeHandling?.Invoke(before,false);
+                }
                 if (targets.Count > 0)
                 {
                     if (simulator is not IGuardedAircraftPayloadSimulator guarded) throw new InvalidOperationException("Cargo requires the shared immediate identity/payload comparison adapter.");
@@ -162,6 +174,8 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
                 }
                 await (retention?.Invoke(token) ?? Task.Delay(TimeSpan.FromSeconds(3), token)).ConfigureAwait(false);
                 Live = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid(); CheckOperation(m, p, Live, true); AuthorizeHandling?.Invoke(Live, false);
+                if (p.ExpectedGrossKilograms is {} expectedGross && (Live.Weights.CurrentGrossWeightKilograms is not {} actualGross || Math.Abs(actualGross-expectedGross)>1m))
+                    throw new InvalidOperationException("Retained total aircraft weight does not match the persisted physical loading intent. Retrying identical station echoes cannot qualify it.");
                 if (before.Weights.CurrentGrossWeightKilograms is {} grossBefore && Live.Weights.CurrentGrossWeightKilograms is {} grossAfter &&
                     Math.Abs(grossAfter - grossBefore - targets.Sum(t => t.Value - before.PayloadStations.Single(s => s.Index == t.Key).CurrentWeightKilograms)) > 1m)
                     throw new InvalidOperationException("Gross-weight change does not confirm the physical cargo delta. Intent retained; operational maximum gross remains advisory.");

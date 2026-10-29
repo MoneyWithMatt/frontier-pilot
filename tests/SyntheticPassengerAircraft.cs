@@ -20,6 +20,7 @@ public sealed class SyntheticPassengerAircraft : IGuardedPassengerPayloadSimulat
     public decimal MaximumPayload { get; set; } = 1000;
     public double CurrentCg { get; set; } = 25;
     public string StationPrefix { get; set; } = "Synthetic station ";
+    public bool SuppressGrossChange { get; set; }
     public int RetentionChecks { get; private set; }
     public Task WaitForRetentionAsync(CancellationToken token) { token.ThrowIfCancellationRequested(); RetentionChecks++; return Task.CompletedTask; }
     public string SupportSummary => "SYNTHETIC passenger fixture; physical loading/visuals are not live accepted.";
@@ -34,7 +35,7 @@ public sealed class SyntheticPassengerAircraft : IGuardedPassengerPayloadSimulat
     }
     private AircraftLoadingSnapshot Snapshot() => new(Sample.ObservedUtc, FlightAircraftIdentity.From(Sample), FlightPosition.From(Sample),
         Weights.Select((w, i) => new PayloadStationReading(i + 1, StationPrefix + (i + 1), w, AuthoritativeMaximumKilograms: StationMaximum)).ToArray(),
-        [new("main", "Synthetic fuel", 10, 100)], [new(1, false)], 3, new(1000, MaximumGross, 1030 + Weights.Sum(), MaximumPayload, CurrentCg, 10, 40), "Synthetic payload adapter");
+        [new("main", "Synthetic fuel", 10, 100)], [new(1, false)], 3, new(1000, MaximumGross, 1030 + (SuppressGrossChange ? 143 : Weights.Sum()), MaximumPayload, CurrentCg, 10, 40), "Synthetic payload adapter");
     public Task<AircraftLoadingSnapshot> WritePayloadAsync(string sdkRoot, IReadOnlyDictionary<int, decimal> targets, CancellationToken token = default)
     {
         Writes++; var applied = 0;

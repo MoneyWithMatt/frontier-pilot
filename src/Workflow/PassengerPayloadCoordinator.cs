@@ -133,6 +133,9 @@ public sealed class PassengerPayloadCoordinator(IEconomyStateStore store, IAircr
             throw new InvalidOperationException("Aircraft moved or readback time regressed during loading.");
         if (after.Weights.CurrentGrossWeightKilograms is {} gross && before.Weights.CurrentGrossWeightKilograms is {} priorGross && Math.Abs(gross - priorGross - delta) > 1m)
             throw new InvalidOperationException("Gross-weight readback does not confirm passenger loading. Intent retained.");
+        var expectedGross = intent.BeforeGrossKilograms + intent.OwnedStations.Sum(x=>x.PassengerKilograms) * (intent.Action==PassengerPayloadAction.Board ? 1 : -1);
+        if (expectedGross is {} expected && (after.Weights.CurrentGrossWeightKilograms is not {} actualGross || Math.Abs(actualGross-expected)>1m))
+            throw new InvalidOperationException("Retained gross weight conflicts with the saved passenger intent. Identical station echoes cannot qualify a retry.");
         PassengerLoadPlanner.CheckLimits(after, configuration, 0);
         if (!before.FuelTanks.Select(x => (x.Id, x.QuantityGallons)).SequenceEqual(after.FuelTanks.Select(x => (x.Id, x.QuantityGallons))))
             throw new InvalidOperationException("Fuel changed during passenger loading. No fuel write was requested; intent retained for review.");

@@ -178,6 +178,16 @@ public sealed class CargoJourneyTests : IDisposable
         Assert.Equal(43,sim.Weights[5]); Assert.Equal(1,sim.Writes);
         Assert.NotEmpty(AircraftLoadPlan.EvaluateWarnings(s.Live!.Weights,s.Live.Weights.CurrentGrossWeightKilograms,sim.CurrentCg));
     }
+    [Fact] public async Task StationEchoWithoutPhysicalGrossChangeCannotPassByRetryingIdenticalTargets()
+    {
+        var s=await Create();sim.SuppressGrossChange=true;
+        await s.PrepareAsync(new Dictionary<string,decimal>{{"job-mine",10}},[new CargoStationAllocation(6,10)]);
+        await Assert.ThrowsAsync<InvalidOperationException>(()=>s.ApplyAsync());Assert.Equal(43,sim.Weights[5]);
+        await Assert.ThrowsAsync<InvalidOperationException>(()=>NewService().ApplyAsync());
+        Assert.Equal(1,sim.Writes);Assert.Equal(0,(await Store.LoadAsync())!.Shipments.Single(x=>x.JobId=="job-mine").LoadedQuantity);
+        sim.SuppressGrossChange=false;await NewService().ApplyAsync();Assert.Equal(1,sim.Writes);
+        Assert.Equal(10,(await Store.LoadAsync())!.Shipments.Single(x=>x.JobId=="job-mine").LoadedQuantity);
+    }
     [Fact] public async Task CargoOwnershipBlocksPassengerBoardingAndExistingPassengerOwnershipBlocksCargo()
     {
         var s=await Create(); await s.PrepareAsync(new Dictionary<string,decimal>{{"job-mine",10}},[new CargoStationAllocation(6,10)]);

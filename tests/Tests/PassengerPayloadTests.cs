@@ -51,6 +51,15 @@ public sealed class PassengerPayloadTests
         Assert.Throws<InvalidOperationException>(() => PassengerLoadPlanner.Board(transport, aircraft.Resolve("fixture", live), live, airframe));
         Assert.Equal(0, aircraft.Writes);
     }
+    [Fact] public async Task GrossWeightFailureCannotBeQualifiedByRetryingUnchangedStationEchoes()
+    {
+        var id=await Reserve(80);aircraft.SuppressGrossChange=true;
+        await Assert.ThrowsAsync<InvalidOperationException>(()=>Apply(id));
+        Assert.Equal(80,aircraft.Weights[2]);
+        await Assert.ThrowsAsync<InvalidOperationException>(()=>Apply(id));Assert.Equal(1,aircraft.Writes);
+        aircraft.SuppressGrossChange=false;await Apply(id);Assert.Equal(1,aircraft.Writes);
+        Assert.Equal(PassengerCarriageState.Aboard,(await store.LoadAsync())!.PassengerTransports.Single().State);
+    }
 
     [Fact] public async Task IdentityLayoutAndStationRestrictionsRemainHardWhileOperationalWeightsArePilotResponsibility()
     {

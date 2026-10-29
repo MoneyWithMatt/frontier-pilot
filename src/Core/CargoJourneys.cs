@@ -9,6 +9,8 @@ public sealed record CargoOperation(string Id, string LocationId, DateTimeOffset
     public FuelTankReading[] FuelBefore { get; init; } = [];
     public DateTimeOffset? AuthorizedUtc { get; init; }
     public DateTimeOffset? VerifiedUtc { get; init; }
+    public bool WriteStarted { get; init; }
+    public decimal? ExpectedGrossKilograms { get; init; }
 }
 public sealed record CargoHandlingReceipt(string Id, string LocationId, DateTimeOffset Utc, CargoChange[] Changes, decimal KilogramsAboard);
 public sealed record CargoFlightLeg(string Id, PassengerEndpoint Origin, PassengerEndpoint Destination,
@@ -68,7 +70,7 @@ public static class CargoJourneyKernel
                     throw new InvalidDataException("Invalid pending cargo operation.");
                 EconomyValidation.Unique(p.Changes.Select(x => x.JobId), "cargo operation consignment");
                 EconomyValidation.Unique(p.Targets.Select(x => x.StationIndex.ToString()), "cargo operation station");
-                if (p.Verified && (p.VerifiedUtc is null || p.VerifiedUtc < p.CreatedUtc || p.Targets.Any(s=>s.ReadBackKilograms is not {} actual || Math.Abs(actual-s.TargetKilograms)>.25m)))
+                if (p.ExpectedGrossKilograms is <= 0 || p.Verified && (!p.WriteStarted || p.VerifiedUtc is null || p.VerifiedUtc < p.CreatedUtc || p.Targets.Any(s=>s.ReadBackKilograms is not {} actual || Math.Abs(actual-s.TargetKilograms)>.25m)))
                     throw new InvalidDataException("Verified cargo operation lacks retained station readback.");
                 if (!p.BeforeStations.Select(s => s.Index).Order().SequenceEqual(m.StationLayout.Select(s => s.Index).Order()) ||
                     !p.Targets.Select(s => s.StationIndex).Order().SequenceEqual(p.BeforeStations.Select(s=>s.Index).Order()) ||
