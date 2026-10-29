@@ -2,7 +2,7 @@
 
 ## Multi-stop cargo — 2026-10-29
 
-Latest authorized implementation: [scope](specs/multistop-cargo.md), [production workflow/live procedure](multistop-cargo.md), [resume status](handoffs/multistop-cargo.md). Complete hosted WPF/package evidence and exact-aircraft live acceptance separately. Preserve PR #3. Follow-up: common mixed cargo/passenger claim accounting (not enabled), explicit disposition/cancellation, long-career archival, optional print/PDF and pilot-operated planning worksheet. None may introduce automatic MTOW/CG/performance refusal.
+Latest authorized implementation: [scope](specs/multistop-cargo.md), [production workflow/live procedure](multistop-cargo.md), [resume status](handoffs/multistop-cargo.md). Hosted runtime WPF/package evidence passed at 816/0/0; exact-aircraft live acceptance remains separate. Preserve PR #3. Follow-up: common mixed cargo/passenger claim accounting (not enabled), explicit disposition/cancellation, long-career archival, optional print/PDF and pilot-operated planning worksheet. None may introduce automatic MTOW/CG/performance refusal.
 
 ## Current development priority — Offshore (2026-10-29)
 

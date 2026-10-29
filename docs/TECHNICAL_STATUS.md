@@ -2,7 +2,7 @@
 
 ## Multi-stop cargo — 2026-10-29
 
-[New production cargo dispatch/manifest](multistop-cargo.md) adds explicit independent consignment quantities, persistent GUID station ownership, retained native readback/recovery, intermediate delivery/pickup and once-per-leg wage settlement. Schema 13 preserves prior saves without inferring physical ownership. MTOW/CG/overall payload and company fixture budgets are advisory for cargo/passengers. Local full Release regression: 810 passed, zero failed/skipped; current hosted WPF/package and exact-commit status are in the [handoff](handoffs/multistop-cargo.md). No new live simulator acceptance or mixed transport qualification is claimed.
+[New production cargo dispatch/manifest](multistop-cargo.md) adds explicit independent consignment quantities, persistent GUID station ownership, retained native readback/recovery, intermediate delivery/pickup and once-per-leg wage settlement. Schema 13 preserves prior saves without inferring physical ownership. MTOW/CG/overall payload and company fixture budgets are advisory for cargo/passengers. Clean runtime `8b56d6f` passed hosted full Release regression: 816 passed, zero failed/skipped, both WPF programs, nine guards and packaging. [Evidence/screenshots](../evidence/multistop-cargo/verification.md); final documentation-checkpoint status is in [PR #6](https://github.com/MoneyWithMatt/frontier-pilot/pull/6). No new live simulator acceptance or mixed transport qualification is claimed.
 
 ## Shared physical passengers — 2026-10-29
 
