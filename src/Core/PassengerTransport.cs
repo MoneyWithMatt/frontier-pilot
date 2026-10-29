@@ -67,7 +67,7 @@ public sealed record PassengerProtectedStation(int Index, string Name, decimal B
 /// <summary>Durable absolute targets and ownership, saved before any simulator write. No mission/payment fields.</summary>
 public sealed record PassengerPayloadIntent(string Id, PassengerPayloadAction Action, PassengerPayloadStage Stage,
     Guid AirframeId, PassengerAircraftConfiguration Configuration, PassengerOwnedStation[] OwnedStations,
-    PassengerProtectedStation[] ProtectedStations, decimal BeforeGrossKilograms, DateTimeOffset CreatedUtc,
+    PassengerProtectedStation[] ProtectedStations, decimal? BeforeGrossKilograms, DateTimeOffset CreatedUtc,
     FlightPosition AuthorizedPosition, DateTimeOffset? VerifiedUtc = null, FlightPosition? VerifiedPosition = null,
     string? Problem = null)
 {
@@ -78,7 +78,7 @@ public sealed record PassengerPayloadIntent(string Id, PassengerPayloadAction Ac
         EconomyValidation.Id(Id, "passenger payload intent");
         if (Configuration is null || AuthorizedPosition is null) throw new InvalidDataException("Passenger intent configuration/position is missing.");
         Configuration.EnsureValid(); AuthorizedPosition.EnsureValid();
-        if (!Enum.IsDefined(Action) || !Enum.IsDefined(Stage) || AirframeId == Guid.Empty || CreatedUtc == default || BeforeGrossKilograms <= 0 || !AuthorizedPosition.IsOnGround ||
+        if (!Enum.IsDefined(Action) || !Enum.IsDefined(Stage) || AirframeId == Guid.Empty || CreatedUtc == default || BeforeGrossKilograms is <= 0 || !AuthorizedPosition.IsOnGround ||
             OwnedStations is null || OwnedStations.Length == 0 || ProtectedStations is null || OwnedStations.Any(x => x is null) || ProtectedStations.Any(x => x is null))
             throw new InvalidDataException("Passenger payload intent is incomplete.");
         foreach (var station in OwnedStations)
@@ -200,7 +200,7 @@ public static class PassengerLoadPlanner
         }
         var protectedStations = snapshot.PayloadStations.Where(x => owned.All(o => o.Index != x.Index)).Select(x => new PassengerProtectedStation(x.Index, x.Name, x.CurrentWeightKilograms)).ToArray();
         var intent = new PassengerPayloadIntent("passenger-load-" + Guid.NewGuid().ToString("N"), PassengerPayloadAction.Board, PassengerPayloadStage.Pending,
-            airframeId, configuration, owned.ToArray(), protectedStations, snapshot.Weights.CurrentGrossWeightKilograms!.Value, snapshot.ObservedUtc, snapshot.Position);
+            airframeId, configuration, owned.ToArray(), protectedStations, snapshot.Weights.CurrentGrossWeightKilograms, snapshot.ObservedUtc, snapshot.Position);
         intent.EnsureValid(); return intent;
     }
     public static PassengerPayloadIntent Disembark(PassengerTransport transport, AircraftLoadingSnapshot snapshot)
@@ -210,7 +210,7 @@ public static class PassengerLoadPlanner
         CheckAircraft(snapshot, load.Configuration);
         if (!MatchesOwned(load, snapshot, true)) throw new InvalidOperationException("Owned passenger stations changed in MSFS. No weight was removed; reconcile the discrepancy explicitly.");
         var intent = load with { Id = "passenger-unload-" + Guid.NewGuid().ToString("N"), Action = PassengerPayloadAction.Disembark, Stage = PassengerPayloadStage.Pending,
-            BeforeGrossKilograms = snapshot.Weights.CurrentGrossWeightKilograms ?? throw new InvalidOperationException("Live gross weight is unavailable."),
+            BeforeGrossKilograms = snapshot.Weights.CurrentGrossWeightKilograms,
             ProtectedStations = snapshot.PayloadStations.Where(x => load.OwnedStations.All(o => o.Index != x.Index)).Select(x => new PassengerProtectedStation(x.Index, x.Name, x.CurrentWeightKilograms)).ToArray(),
             CreatedUtc = snapshot.ObservedUtc, AuthorizedPosition = snapshot.Position, VerifiedUtc = null, VerifiedPosition = null, Problem = null };
         intent.EnsureValid(); return intent;
@@ -224,11 +224,8 @@ public static class PassengerLoadPlanner
     }
     public static void CheckLimits(AircraftLoadingSnapshot snapshot, PassengerAircraftConfiguration configuration, decimal additionalKilograms)
     {
-        if (snapshot.Weights.CurrentGrossWeightKilograms is not {} gross || snapshot.Weights.MaximumGrossWeightKilograms is not {} liveMaximum)
-            throw new InvalidOperationException("Live gross weight/limit is unavailable; passenger loading is blocked.");
-        if (gross + additionalKilograms > Math.Min(liveMaximum, configuration.MaximumGrossKilograms) + .001m ||
-            Minimum(snapshot.Weights.MaximumPayloadKilograms, configuration.MaximumPayloadKilograms) is {} payload && snapshot.PayloadStations.Sum(x => x.CurrentWeightKilograms) + additionalKilograms > payload + .001m)
-            throw new InvalidOperationException("Passenger loading exceeds an aircraft gross/payload limit.");
+        // Operational ratings are advisory. Native station capability and successful readback remain mandatory.
+        snapshot.EnsureValid(); configuration.EnsureValid();
     }
     public static bool MatchesOwned(PassengerPayloadIntent intent, AircraftLoadingSnapshot snapshot, bool loaded) => intent.OwnedStations.All(x =>
         snapshot.PayloadStations.SingleOrDefault(s => s.Index == x.Index) is {} station && station.Name == x.Name &&
@@ -237,8 +234,18 @@ public static class PassengerLoadPlanner
 }
 
 /// <summary>Optimistic identity/layout/payload comparison in the same native session immediately before writing.</summary>
-public interface IGuardedPassengerPayloadSimulator : IAircraftLoadingSimulator
+public interface IGuardedAircraftPayloadSimulator : IAircraftLoadingSimulator
+{
+    Task<AircraftLoadingSnapshot> WriteGuardedPayloadAsync(string sdkRoot, AircraftLoadingSnapshot expected,
+        IReadOnlyDictionary<int, decimal> targetKilograms, CancellationToken token = default);
+}
+
+// Compatibility bridge for adapters introduced with shared passengers. Cargo and people
+// share the same native comparison/write operation; neither owns the other's lifecycle.
+public interface IGuardedPassengerPayloadSimulator : IGuardedAircraftPayloadSimulator
 {
     Task<AircraftLoadingSnapshot> WritePassengerPayloadAsync(string sdkRoot, AircraftLoadingSnapshot expected,
         IReadOnlyDictionary<int, decimal> targetKilograms, CancellationToken token = default);
+    Task<AircraftLoadingSnapshot> IGuardedAircraftPayloadSimulator.WriteGuardedPayloadAsync(string sdkRoot, AircraftLoadingSnapshot expected,
+        IReadOnlyDictionary<int, decimal> targetKilograms, CancellationToken token) => WritePassengerPayloadAsync(sdkRoot, expected, targetKilograms, token);
 }

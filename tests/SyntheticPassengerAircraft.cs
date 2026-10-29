@@ -15,6 +15,11 @@ public sealed class SyntheticPassengerAircraft : IGuardedPassengerPayloadSimulat
     public bool AlterProtectedStation { get; set; }
     public bool ChangeBeforeWrite { get; set; }
     public int FuelWrites { get; private set; }
+    public decimal StationMaximum { get; set; } = 500;
+    public decimal MaximumGross { get; set; } = 5000;
+    public decimal MaximumPayload { get; set; } = 1000;
+    public double CurrentCg { get; set; } = 25;
+    public string StationPrefix { get; set; } = "Synthetic station ";
     public int RetentionChecks { get; private set; }
     public Task WaitForRetentionAsync(CancellationToken token) { token.ThrowIfCancellationRequested(); RetentionChecks++; return Task.CompletedTask; }
     public string SupportSummary => "SYNTHETIC passenger fixture; physical loading/visuals are not live accepted.";
@@ -28,8 +33,8 @@ public sealed class SyntheticPassengerAircraft : IGuardedPassengerPayloadSimulat
         return WritePayloadAsync(sdkRoot, targets, token);
     }
     private AircraftLoadingSnapshot Snapshot() => new(Sample.ObservedUtc, FlightAircraftIdentity.From(Sample), FlightPosition.From(Sample),
-        Weights.Select((w, i) => new PayloadStationReading(i + 1, "Synthetic station " + (i + 1), w, AuthoritativeMaximumKilograms: 500)).ToArray(),
-        [new("main", "Synthetic fuel", 10, 100)], [new(1, false)], 3, new(1000, 5000, 1030 + Weights.Sum(), 1000, 25, 10, 40), "Synthetic payload adapter");
+        Weights.Select((w, i) => new PayloadStationReading(i + 1, StationPrefix + (i + 1), w, AuthoritativeMaximumKilograms: StationMaximum)).ToArray(),
+        [new("main", "Synthetic fuel", 10, 100)], [new(1, false)], 3, new(1000, MaximumGross, 1030 + Weights.Sum(), MaximumPayload, CurrentCg, 10, 40), "Synthetic payload adapter");
     public Task<AircraftLoadingSnapshot> WritePayloadAsync(string sdkRoot, IReadOnlyDictionary<int, decimal> targets, CancellationToken token = default)
     {
         Writes++; var applied = 0;

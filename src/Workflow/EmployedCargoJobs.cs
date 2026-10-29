@@ -140,7 +140,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
                 destination.Latitude, destination.Longitude, shipment?.LoadedQuantity ?? 0, shipment?.DeliveredQuantity ?? 0) {
                     ExpiresUtc = job.ExpiresUtc,CompanyAircraftTypeId=job.CompanyAircraftTypeId,
                     HourlyWage=job.State==EconomyJobState.Completed||world.LogisticsContracts.Any(x=>x.JobId==job.Id)?null:employer.PilotHourlyRate,
-                    WageHistory=job.CompletedWage is {} wage?WageHistory(world,wage):null };
+                    WageHistory=job.CompletedCargoLegId is {} legId ? "Hourly wages settled once for flight leg " + legId + "; no separate job payment." : job.CompletedWage is {} wage?WageHistory(world,wage):null };
         }
 
         var operationNeedIds = world.Operations.SelectMany(x => new[] { ProspectingCampKernel.InboundNeed(x.Id), ProspectingCampKernel.OutboundNeed(x.Id) }).ToHashSet(StringComparer.Ordinal);

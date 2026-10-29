@@ -18,7 +18,7 @@ public interface IEconomyStateStore
 /// inventory and ledger changes cannot become independently visible.</summary>
 public sealed class LocalEconomyStateStore : IEconomyStateStore
 {
-    public const int CurrentSchemaVersion = 12;
+    public const int CurrentSchemaVersion = 13;
     private sealed record Document(int SchemaVersion, EconomyWorld World);
     private static readonly JsonSerializerOptions Json = new()
     {

@@ -52,18 +52,20 @@ public sealed class PassengerPayloadTests
         Assert.Equal(0, aircraft.Writes);
     }
 
-    [Fact] public async Task GrossPayloadIdentityStationLayoutAndWritableLimitsAreChecked()
+    [Fact] public async Task IdentityLayoutAndStationRestrictionsRemainHardWhileOperationalWeightsArePilotResponsibility()
     {
         var transport = PassengerTransportKernel.WithWeights(PassengerTransportKernel.Plan("limits", 1, true), [80]);
         var live = await aircraft.ReadAsync(""); var config = aircraft.Resolve("fixture", live);
         foreach (var invalid in new[] {
             live with { Aircraft = new("Other", "Other") },
             live with { PayloadStations = live.PayloadStations.Take(5).ToArray() },
-            live with { Weights = live.Weights with { CurrentGrossWeightKilograms = 4990 } },
-            live with { Weights = live.Weights with { MaximumPayloadKilograms = 200 } },
-            live with { PayloadStations = live.PayloadStations.Select(x => x.Index >= 3 ? x with { IsWritable = false } : x).ToArray() },
-            live with { Weights = live.Weights with { CurrentGrossWeightKilograms = null } } })
+            live with { PayloadStations = live.PayloadStations.Select(x => x.Index >= 3 ? x with { IsWritable = false } : x).ToArray() } })
             Assert.Throws<InvalidOperationException>(() => PassengerLoadPlanner.Board(transport, config, invalid, airframe));
+        foreach (var advisory in new[] {
+            live with { Weights = live.Weights with { CurrentGrossWeightKilograms = 4990, CurrentCgPercent = 90 } },
+            live with { Weights = live.Weights with { MaximumPayloadKilograms = 200 } },
+            live with { Weights = live.Weights with { CurrentGrossWeightKilograms = null } } })
+            Assert.Equal(80, PassengerLoadPlanner.Board(transport, config, advisory, airframe).OwnedStations.Sum(x=>x.PassengerKilograms));
     }
 
     [Fact] public async Task PartialBoardingIsDurableAndRestartAppliesOnlyRemainingAbsoluteTargets()

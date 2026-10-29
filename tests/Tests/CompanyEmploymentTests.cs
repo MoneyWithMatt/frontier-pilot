@@ -97,7 +97,7 @@ public sealed class CompanyEmploymentTests : IDisposable
         var catalogue=new EmployerDestinationCatalogue([Synthetic("FYNG",aircraft:["savage-cub"])]);
         var destination=catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYNG");
         Assert.Equal("savage-cub",Assert.Single(CompanyAircraft.Choices(Employer("Safari"),destination,10)).Id);
-        Assert.Empty(CompanyAircraft.Choices(Employer("Safari"),destination,20));
+        Assert.Equal("savage-cub",Assert.Single(CompanyAircraft.Choices(Employer("Safari"),destination,20)).Id);
         Assert.Null(CompanyAircraft.Resolve(new("Addon Caravan","C208"),[]));
         AircraftTypeBinding[] mappings=[new("Addon Caravan","C208","c208")];
         Assert.Equal("c208",CompanyAircraft.Resolve(new("Addon Caravan","C208"),mappings));
@@ -149,13 +149,13 @@ public sealed class CompanyEmploymentTests : IDisposable
         var completed=(await store.LoadAsync())!;Assert.Single(completed.FinancialLedger);Assert.Equal(ShipmentState.Delivered,Assert.Single(completed.Shipments).State);
         Assert.Equal(.11m,completed.Players.Single().CachedBalance); Assert.Equal(FinancialTransactionKind.PilotWage,completed.FinancialLedger.Single().Kind);
     }
-    [Fact] public async Task DispatchRefusesDifferentTypesAndOverBudgetGroupedLoads()
+    [Fact] public async Task DispatchRefusesDifferentTypesButDoesNotEnforcePrototypeMassBudget()
     {
         var service=new EmployedCargoJobsService(new MemoryEconomyStateStore(),utcNow:()=>Now,employer:Employer("Industrial"));
         var job=(await service.LoadAsync()).Offers.First(x=>x.CargoMassKilograms==80) with {CompanyAircraftTypeId="baron-g58"};
         AircraftTypeBinding[] bindings=[new("Synthetic Baron","BE58","baron-g58")];var identity=new FlightAircraftIdentity("Synthetic Baron","BE58");
         Assert.Null(CompanyAircraft.CheckDispatch(identity,[job],bindings));
-        Assert.NotNull(CompanyAircraft.CheckDispatch(identity,[job,job],bindings));
+        Assert.Null(CompanyAircraft.CheckDispatch(identity,[job,job],bindings));
         Assert.NotNull(CompanyAircraft.CheckDispatch(identity,[job with {CompanyAircraftTypeId="c208"}],bindings));
         Assert.NotNull(CompanyAircraft.CheckDispatch(identity,[job],[]));
     }

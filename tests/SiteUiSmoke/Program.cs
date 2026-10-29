@@ -8,7 +8,7 @@ using FrontierAirportBuilder.Core;
 using FrontierAirportBuilder.Workflow;
 using FrontierAirportBuilder.Desktop;
 
-internal static class Program
+internal static partial class Program
 {
     [STAThread] public static int Main(string[] args)
     {
@@ -122,12 +122,13 @@ internal static class Program
                 var offerGrid=Descendants<DataGrid>(employedWindow).Single(x=>x.GetBindingExpression(ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path=="Offers");
                 offerGrid.SelectedItem=employedModel.Jobs.Offers.First(x=>x.CargoMassKilograms==160);Pump();
                 var dispatch=Descendants<ComboBox>(employedWindow).Single(x=>x.GetBindingExpression(ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path=="CompanyAircraftChoices");
-                Check(dispatch.Items.Count==1,"160 kg industrial fixture permits Caravan only");dispatch.SelectedIndex=0;Pump();
+                Check(dispatch.Items.Cast<CompanyAircraftType>().Any(x=>x.Id=="c208"),"Company destination/type eligibility includes Caravan; mass budgets are advisory");dispatch.SelectedItem=dispatch.Items.Cast<CompanyAircraftType>().Single(x=>x.Id=="c208");Pump();
                 Save(employedWindow,Path.Combine(folder,"company-jobs.png"));
                 var reserve=Descendants<Button>(employedWindow).Single(x=>x.Content?.ToString()=="Accept and reserve job");reserve.Command.Execute(reserve.CommandParameter);await Task.Delay(250);Pump();
                 Check(employedModel.Jobs.ReservedJobs.Count==1&&employedModel.Jobs.ReservedJobs[0].CompanyAircraftTypeId=="c208","Aircraft selector and bound accept command reserve company dispatch: "+employedModel.Jobs.Error);
                 employedWindow.Close();
                 await CheckPassengerTransfers(folder);
+                await CheckCargoJourney(folder);
                 result=0;
             }
             catch(Exception e){Console.Error.WriteLine(e);}

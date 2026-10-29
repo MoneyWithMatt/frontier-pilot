@@ -146,10 +146,11 @@ public partial class MainWindow : Window
     {
         if(!IsInitialized || !ReferenceEquals(e.Source,MainTabs)||!careerReady)return;
         BuilderFooter.Visibility=ReferenceEquals(MainTabs.SelectedItem,BuilderTab)?Visibility.Visible:Visibility.Collapsed;
-        if(!model.IsDryRun && (MainTabs.SelectedIndex is 1 or 2 or 3 or 4 || ReferenceEquals(MainTabs.SelectedItem,PassengerTab)) && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
+        if(!model.IsDryRun && (MainTabs.SelectedIndex is 1 or 2 or 3 or 4 || ReferenceEquals(MainTabs.SelectedItem,PassengerTab) || ReferenceEquals(MainTabs.SelectedItem,CargoTab)) && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
             _=model.Tracking.ConnectAsync();
     }
     private void OpenAircraftLoading(object sender,RoutedEventArgs e)=>MainTabs.SelectedIndex=2;
+    private void OpenCargoDispatch(object sender,RoutedEventArgs e)=>MainTabs.SelectedItem=CargoTab;
     private async void PrepareReservedJobs(object sender,RoutedEventArgs e)
     {
         var selected=ReservedJobsList.SelectedItems.Cast<CargoJobDisplay>().ToArray();

@@ -139,6 +139,7 @@ public sealed partial class FlightAttemptTracker : IFlightAttemptTracker
             var distinct = jobIds.Distinct(StringComparer.Ordinal).ToArray();
             if (distinct.Length == 0) throw new InvalidOperationException("Select at least one reserved job.");
             var jobs = distinct.Select(id => world.Jobs.SingleOrDefault(x => x.Id == id) ?? throw new InvalidOperationException("Selected job does not exist.")).ToArray();
+            if (jobs.Any(x => CargoJourneyKernel.Manages(world, x.Id))) throw new InvalidOperationException("This cargo uses Cargo dispatch / manifest; its flight legs cannot be prepared by the legacy loader.");
             if (jobs.Any(x => x.State != EconomyJobState.Accepted)) throw new InvalidOperationException("Selected jobs must be accepted and reserved.");
             var routes = jobs.Select(x => world.Requirements.Single(r => r.Id == x.RequirementId)).Select(x => (x.OriginLocationId, x.DestinationLocationId)).Distinct().ToArray();
             if (routes.Length != 1) throw new InvalidOperationException("Jobs prepared together must have the same origin and destination.");
@@ -559,6 +560,7 @@ public sealed partial class FlightAttemptTracker : IFlightAttemptTracker
         {
             if (world is null) throw new InvalidOperationException("Economy state is unavailable.");
             var jobs = desiredLoadedByJob.Keys.Select(id => world.Jobs.SingleOrDefault(x => x.Id == id) ?? throw new InvalidOperationException("Selected cargo job does not exist.")).ToArray();
+            if (jobs.Any(x => CargoJourneyKernel.Manages(world, x.Id))) throw new InvalidOperationException("This cargo uses Cargo dispatch / manifest; its flight legs cannot be prepared by the legacy loader.");
             if (jobs.Any(x => x.State != EconomyJobState.Accepted)) throw new InvalidOperationException("Every batch shipment must remain accepted.");
             var requirements = jobs.Select(x => world.Requirements.Single(r => r.Id == x.RequirementId)).ToArray();
             if (requirements.Select(x => (x.OriginLocationId, x.DestinationLocationId)).Distinct().Count() != 1)
@@ -913,7 +915,7 @@ public sealed partial class FlightAttemptTracker : IFlightAttemptTracker
     private FlightAttempt? SelectAttempt(EconomyWorld? world, IReadOnlyList<FlightAttempt> attempts)
     {
         if (world is null) return null;
-        var accepted = world.Jobs.Where(x => x.State == EconomyJobState.Accepted).ToArray();
+        var accepted = world.Jobs.Where(x => x.State == EconomyJobState.Accepted && !CargoJourneyKernel.Manages(world, x.Id)).ToArray();
         var current = selectedJobIds.Select(id => accepted.SingleOrDefault(x => x.Id == id)).FirstOrDefault(x => x is not null) ??
             accepted.Where(x => world.Shipments.Single(s => s.Id == x.ShipmentId).State is ShipmentState.Loaded or ShipmentState.InTransit)
                 .OrderBy(x => x.AcceptedUtc).ThenBy(x => x.Id, StringComparer.Ordinal).FirstOrDefault() ??
@@ -929,6 +931,7 @@ public sealed partial class FlightAttemptTracker : IFlightAttemptTracker
     private async Task RequireNoPassengerFlightAsync(CancellationToken token)
     {
         var current = await economy.LoadAsync(token).ConfigureAwait(false);
+        if (current is not null && CargoJourneyKernel.Occupied(current)) throw new InvalidOperationException("Use Cargo dispatch / manifest for the active multi-stop journey.");
         if (current?.PassengerTransfers.Any(x => x.State == PassengerTransferState.Boarded) == true || current?.PassengerTransports.Any(x => x.State is PassengerCarriageState.Boarding or PassengerCarriageState.Aboard or PassengerCarriageState.Arrived or PassengerCarriageState.Disembarking) == true)
             throw new InvalidOperationException("Disembark the current passenger transfer before loading cargo.");
     }
@@ -937,9 +940,9 @@ public sealed partial class FlightAttemptTracker : IFlightAttemptTracker
         if (attempt is not null)
         {
             var attemptJob = world.Jobs.SingleOrDefault(x => x.Id == attempt.JobId);
-            if (attemptJob is not null) return attemptJob;
+            if (attemptJob is not null && !CargoJourneyKernel.Manages(world, attemptJob.Id)) return attemptJob;
         }
-        var accepted = world.Jobs.Where(x => x.State == EconomyJobState.Accepted).ToArray();
+        var accepted = world.Jobs.Where(x => x.State == EconomyJobState.Accepted && !CargoJourneyKernel.Manages(world, x.Id)).ToArray();
         return selectedJobIds.Select(id => accepted.SingleOrDefault(x => x.Id == id)).FirstOrDefault(x => x is not null) ??
             accepted.Where(x => world.Shipments.Single(s => s.Id == x.ShipmentId).State is ShipmentState.Loaded or ShipmentState.InTransit)
                 .OrderBy(x => x.AcceptedUtc).ThenBy(x => x.Id, StringComparer.Ordinal).FirstOrDefault() ??

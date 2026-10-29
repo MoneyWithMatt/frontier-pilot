@@ -606,6 +606,19 @@ public sealed class AircraftLoadingCoordinator
         finally { gate.Release(); }
     }
 
+    public void AuthorizeCargoHandling(AircraftLoadingSnapshot live, bool outside)
+    {
+        if (outside)
+        {
+            var reason = Access(live, false);
+            if (reason != "Ready.") throw new InvalidOperationException(reason);
+            return;
+        }
+        var world = tracking(); var now = utcNow();
+        if (world is null || now < world.Aircraft.ObservedUtc || now - world.Aircraft.ObservedUtc > options.MaximumAge ||
+            world.PlayerMode != PlayerControlMode.InAircraft || world.CurrentObjectId != world.AircraftObjectId || FlightAircraftIdentity.From(world.Aircraft) != live.Aircraft)
+            throw new InvalidOperationException("Board the same aircraft with fresh explicit aircraft tracking before applying cargo.");
+    }
     private string Access(AircraftLoadingSnapshot live,bool fuel,bool checkSnapshotFreshness=true)
     {
         var world=tracking();if(world is null)return "Validated live tracking is unavailable.";var now=utcNow();if(now-world.Aircraft.ObservedUtc>options.MaximumAge||(checkSnapshotFreshness&&now-live.ObservedUtc>options.MaximumAge))return "Aircraft telemetry is stale.";

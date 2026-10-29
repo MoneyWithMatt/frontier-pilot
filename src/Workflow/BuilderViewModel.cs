@@ -54,6 +54,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public EmployedCargoJobsViewModel Jobs { get; }
     public PassengerTransfersViewModel Passengers { get; }
     public AircraftLoadingViewModel AircraftLoading { get; }
+    public CargoJourneyViewModel CargoJourney { get; }
     public ProspectingOperationsViewModel Operations { get; }
     public double LayoutRunwayHeading => runwayHeading;
     public double LayoutRunwayLength => double.TryParse(length,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 200;
@@ -129,13 +130,46 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
                     return CompanyAircraft.CheckDispatch(identity,jobs,careerStore?.Load().AircraftBindings??[]) ?? Fleet.CheckDispatch(identity,jobs);
                 } };
         AircraftLoading = new(loadingCoordinator, () => { if (Tracking.ConnectCommand.CanExecute(null)) _ = Tracking.ConnectAsync(); });
+        var knownCatalogue = NamibiaLocationCatalogue.Load();
+        IEnumerable<PassengerEndpoint> CargoLocations(EconomyWorld w)
+        {
+            foreach (var place in w.Locations)
+            {
+                var authored = employerDestinations?.Find(place.Id) ?? knownCatalogue.Locations.SingleOrDefault(x => x.StableId == place.Id);
+                if (authored?.ApproximateCoordinates is {} c)
+                    yield return new(place.Id, authored.Name + " (" + authored.AirportIdentifier.Value + ")", c.Latitude, c.Longitude);
+                else if (w.Sites.SingleOrDefault(x => x.LocationId == place.Id) is {} site)
+                    yield return new(place.Id, site.Name + " (" + site.AirportIdentifier + ")", site.Latitude, site.Longitude);
+            }
+        }
+        var cargoJourneyService = new CargoJourneyService(economyStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(), () => this.sdkRoot,
+            () => Fleet.Selected?.Id, (w, p) =>
+            {
+                var matches = CargoLocations(w).Where(e => WorldTracking.DistanceMeters(e.Latitude, e.Longitude, p.Latitude, p.Longitude) <= 2778).ToArray();
+                return matches.Length == 1 ? matches[0] : null;
+            })
+        {
+            AuthorizeHandling = loadingCoordinator.AuthorizeCargoHandling,
+            LegacyRecoveryGuard = async token =>
+            {
+                var manifests = await loadingStore.LoadManifestsAsync(token).ConfigureAwait(false);
+                if (manifests.Any(x => x.State is not (LoadManifestState.Completed or LoadManifestState.Abandoned or LoadManifestState.ResetAtOrigin or LoadManifestState.SimulatorUnloaded)))
+                    throw new InvalidOperationException("Resolve the existing legacy cargo loading/recovery manifest in Aircraft first. It will not be adopted by inference.");
+            },
+            DispatchGuard = (identity, ids) =>
+            {
+                var jobs = ids.Select(id => Jobs.ReservedJobs.Single(x => x.JobId == id)).ToArray();
+                return CompanyAircraft.CheckDispatch(identity, jobs, careerStore?.Load().AircraftBindings ?? []) ?? Fleet.CheckDispatch(identity, jobs);
+            }
+        };
+        CargoJourney = new(cargoJourneyService, () => Jobs.RefreshLiveAsync(), CargoLocations, () => Fleet.Selected?.Registration ?? "unavailable");
         if (flightAttemptTracker is FlightAttemptTracker concreteFlightTracker) concreteFlightTracker.AircraftLoadingDiagnosticProvider = loadingCoordinator.CreateDiagnosticSnapshot;
         if (services is BuilderServices concrete) concrete.SetEconomyDependencyStore(economyStore);
         prospectingOperations ??= services is IAirportManagement management
             ? new ProspectingOperationsService(economyStore, management, new GuardedAvatarSitePresence(() => Tracking.World))
             : new UnavailableProspectingOperations();
         Operations = new(prospectingOperations);
-        Tracking.TelemetryChanged += sample => { _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft); _ = AircraftLoading.ObserveAsync(sample); _ = Passengers.ObserveAsync(sample?.Aircraft); };
+        Tracking.TelemetryChanged += sample => { _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft); _ = AircraftLoading.ObserveAsync(sample); _ = Passengers.ObserveAsync(sample?.Aircraft); _ = CargoJourney.ObserveAsync(sample?.Aircraft); };
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading,runwayEast,runwayNorth),()=>hasRunway);
         Layout.Edited += (_,_)=>Invalidate();
         AddParkingCommand = new(()=>

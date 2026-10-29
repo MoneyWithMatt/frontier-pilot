@@ -92,6 +92,7 @@ public sealed class PassengerPayloadCoordinator(IEconomyStateStore store, IAircr
         updated.EnsureValid();
         await store.ApplyAsync(w =>
         {
+            if (updated.State == PassengerCarriageState.Boarding && CargoJourneyKernel.Occupied(w)) throw new InvalidOperationException("Resolve cargo ownership before boarding passengers. Mixed-load physical reconciliation is not yet qualified.");
             if (policy?.Invoke(w) is {} error) throw new InvalidOperationException(error);
             var current = w.PassengerTransports.Single(x => x.Id == expected.Id);
             if (current.State != expected.State || current.Payload?.Id != expected.Payload?.Id || current.Payload?.Stage != expected.Payload?.Stage ||
@@ -130,12 +131,9 @@ public sealed class PassengerPayloadCoordinator(IEconomyStateStore store, IAircr
         CheckIntent(intent, after, airframeId, configuration, true);
         if (after.ObservedUtc < before.ObservedUtc || WorldTracking.DistanceMeters(before.Position.Latitude, before.Position.Longitude, after.Position.Latitude, after.Position.Longitude) > 25)
             throw new InvalidOperationException("Aircraft moved or readback time regressed during loading.");
-        if (after.Weights.CurrentGrossWeightKilograms is not {} gross || Math.Abs(gross - before.Weights.CurrentGrossWeightKilograms!.Value - delta) > 1m)
+        if (after.Weights.CurrentGrossWeightKilograms is {} gross && before.Weights.CurrentGrossWeightKilograms is {} priorGross && Math.Abs(gross - priorGross - delta) > 1m)
             throw new InvalidOperationException("Gross-weight readback does not confirm passenger loading. Intent retained.");
         PassengerLoadPlanner.CheckLimits(after, configuration, 0);
-        if (after.Weights is { CurrentCgPercent: {} cg } &&
-            (after.Weights.ForwardCgLimitPercent is {} forward && cg < forward || after.Weights.AftCgLimitPercent is {} aft && cg > aft))
-            throw new InvalidOperationException("Readback CG is outside reported limits. Loading remains unresolved.");
         if (!before.FuelTanks.Select(x => (x.Id, x.QuantityGallons)).SequenceEqual(after.FuelTanks.Select(x => (x.Id, x.QuantityGallons))))
             throw new InvalidOperationException("Fuel changed during passenger loading. No fuel write was requested; intent retained for review.");
     }

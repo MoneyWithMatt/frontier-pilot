@@ -36,13 +36,14 @@ public sealed class PassengerTransfersService
     public async Task RequireNoBoardedPassengersAsync(CancellationToken token)
     {
         var current = await store.LoadAsync(token).ConfigureAwait(false);
+        if (current is not null && CargoJourneyKernel.Occupied(current)) throw new InvalidOperationException("Use Cargo dispatch / manifest for the active multi-stop journey; legacy cargo writes are blocked.");
         if (current?.PassengerTransfers.Any(x => x.State == PassengerTransferState.Boarded) == true || current?.PassengerTransports.Any(x => x.State is PassengerCarriageState.Boarding or PassengerCarriageState.Aboard or PassengerCarriageState.Arrived or PassengerCarriageState.Disembarking) == true)
             throw new InvalidOperationException("Disembark the current passenger transfer before loading cargo. Passenger progress is retained.");
     }
     public IReadOnlyList<CompanyAircraftType> AircraftChoices => Selected is {} t ? CompanyAircraft.Types.Where(x => x.Enabled &&
         t.EligibleAircraftTypes.Contains(x.Id) && RouteEligible(t, x.Id)).ToArray() : [];
     public bool CanBoard => Selected is { State: PassengerTransferState.Reserved } t && !HasBoardedPassengers &&
-        world?.Shipments.Any(x => x.State is ShipmentState.Loaded or ShipmentState.InTransit) != true &&
+        world?.Shipments.Any(x => x.State is ShipmentState.Loaded or ShipmentState.InTransit) != true && (world is null || !CargoJourneyKernel.Occupied(world)) &&
         t.AircraftTypeId is {} type && RouteEligible(t, type) && monitor.Ready(t, utcNow(), true);
     public bool CanDisembark => Selected is { State: PassengerTransferState.Boarded } t &&
         (SelectedTransport?.State == PassengerCarriageState.Disembarked ||
@@ -133,7 +134,7 @@ public sealed class PassengerTransfersService
             var flight = physicalStarted ? t.BoardingAuthorization ?? throw new InvalidOperationException("Pending physical boarding lacks its saved flight authorization.") : monitor.Board(t, utcNow());
             if (CompanyAircraft.Resolve(flight.Aircraft, bindings()) != type)
                 throw new InvalidOperationException("Confirm this exact live aircraft's company type in Career / Settings before boarding.");
-            if (w.PassengerTransfers.Any(x => x.State == PassengerTransferState.Boarded) || w.Shipments.Any(x => x.State is ShipmentState.Loaded or ShipmentState.InTransit) ||
+            if (w.PassengerTransfers.Any(x => x.State == PassengerTransferState.Boarded) || w.Shipments.Any(x => x.State is ShipmentState.Loaded or ShipmentState.InTransit) || CargoJourneyKernel.Occupied(w) ||
                 w.PassengerTransports.Any(x => x.Id != t.TransportId && x.State is PassengerCarriageState.Boarding or PassengerCarriageState.Aboard or PassengerCarriageState.Arrived or PassengerCarriageState.Disembarking))
                 throw new InvalidOperationException("Complete the current passenger or cargo flight before boarding.");
             if (AircraftGuard?.Invoke(flight.Aircraft, t) is {} error) throw new InvalidOperationException(error);
@@ -149,7 +150,7 @@ public sealed class PassengerTransfersService
         {
             carriage = await engine.ApplyAsync(authorized.TransportId!, authorized.AircraftTypeId!, selected, false,
                 snapshot => { if (SelectedAirframe?.Invoke() != selected) throw new InvalidOperationException("Selected physical airframe changed during boarding."); Authorize(snapshot, authorized, true); }, token, BoardingRecoveryGuard,
-                w => w.Shipments.Any(x => x.State is ShipmentState.Loaded or ShipmentState.InTransit) ||
+                w => w.Shipments.Any(x => x.State is ShipmentState.Loaded or ShipmentState.InTransit) || CargoJourneyKernel.Occupied(w) ||
                     w.PassengerTransports.Any(x => x.Id != authorized.TransportId && x.State is PassengerCarriageState.Boarding or PassengerCarriageState.Aboard or PassengerCarriageState.Arrived or PassengerCarriageState.Disembarking)
                     ? "Interim career policy: finish the current Frontier load before boarding another assignment." : null).ConfigureAwait(false);
         }

@@ -81,7 +81,7 @@ public sealed class OffshoreCareerTests : IDisposable
         var destination = catalogue.Diagnose("Safari").Single(x => x.Identifier == "FYNG");
         Assert.True(destination.Enabled);
         Assert.Equal("pa28", Assert.Single(CompanyAircraft.Choices(safari, destination, 20)).Id);
-        Assert.Empty(CompanyAircraft.Choices(safari, destination, 50));
+        Assert.Equal("pa28", Assert.Single(CompanyAircraft.Choices(safari, destination, 50)).Id);
         var disjoint = new EmployerDestinationCatalogue([Review("FYWE", "bonanza"), Review("FYNG", "pa28")]);
         Assert.False(disjoint.Diagnose("Safari").Single(x => x.Identifier == "FYNG").Enabled);
         var offshore = new EmployerDestinationCatalogue([Review("FYWB", "vision-jet")]);

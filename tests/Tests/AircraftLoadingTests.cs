@@ -87,14 +87,14 @@ public sealed class AircraftLoadingTests
         Assert.Throws<InvalidOperationException>(()=>AircraftLoadPlan.CreateDesiredState(loaded,[new(5,101)],manifest,100));
     }
 
-    [Fact] public void Desired_state_enforces_authoritative_station_payload_and_gross_limits()
+    [Fact] public void Desired_state_enforces_station_limits_but_leaves_payload_and_gross_planning_to_pilot()
     {
         var stationLimited=Snapshot(stations:[new(1,"Cargo",20,null,50)]);
         Assert.Throws<InvalidOperationException>(()=>AircraftLoadPlan.CreateDesiredState(stationLimited,[new(1,40)],null,100));
         var payloadLimited=Snapshot(weights:new(700,1400,900,50,25,20,30));
-        Assert.Throws<InvalidOperationException>(()=>AircraftLoadPlan.CreateDesiredState(payloadLimited,[new(1,40),new(2,20)],null,100));
+        Assert.Equal(60,AircraftLoadPlan.CreateDesiredState(payloadLimited,[new(1,40),new(2,20)],null,100).CargoKilograms);
         var grossLimited=Snapshot(weights:new(700,940,900,null,25,20,30));
-        Assert.Throws<InvalidOperationException>(()=>AircraftLoadPlan.CreateDesiredState(grossLimited,[new(1,50)],null,100));
+        Assert.Contains(AircraftLoadPlan.CreateDesiredState(grossLimited,[new(1,50)],null,100).Warnings,x=>x.Contains("gross",StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact] public void Uncommitted_reset_restores_managed_baselines_and_preserves_current_unmanaged_payload()
