@@ -16,7 +16,7 @@ public sealed class CargoConsignmentRow
     public decimal Aboard { get; init; }
     public decimal Delivered { get; init; }
     public required string Status { get; init; }
-    public bool CanPickup=>AvailableHere>0;
+    public bool CanPickup=>AvailableHere>Math.Max(0,DesiredAboard-Aboard);
     public bool CanDeliver=>Status=="DELIVER HERE"&&Aboard>0;
     private decimal desiredAboard;
     public Action? Edited { get; init; }
@@ -134,7 +134,7 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
                 "3. Remain stopped for ten tracking seconds, then Start flight recording before takeoff.":
                 "Flight recording active. Fly to the planned stop; remaining cargo stays aboard.";
             return service.Manifest?.Cargo.Length>0?"Cargo confirmed aboard. Choose your next destination below, or select cargo for a pickup or delivery here.":
-                "1. Choose how much cargo to have aboard. Confirm the plan while walking near this aircraft.";
+                "1. Click Load beside cargo, then choose its station. Confirm the plan while walking near this aircraft.";
         }
     }
     public string DepartureActionText=>service.Manifest?.Legs.Any(l=>l.SettledUtc is null)==true?"Start flight recording":"Prepare departure";

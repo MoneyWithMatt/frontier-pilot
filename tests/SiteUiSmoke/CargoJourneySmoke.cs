@@ -40,6 +40,7 @@ internal static partial class Program
             button.BringIntoView();Pump();Check(button.IsVisible&&button.IsEnabled,"Actual station button is usable");button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
         }
         var first=vm.Consignments[0].JobId;ClickRow(first,"Load");Check(vm.IsChoosingStation,"Load opens the station chooser");
+        Save(host,Path.Combine(folder,"cargo-station-picker.png"));
         var amount=(TextBox)control.FindName("PickupQuantity");amount.Text="invalid";amount.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();ClickStation(6);
         Check(vm.Pickups.Count==0&&vm.IsChoosingStation,"Invalid text cannot silently load the previous amount");
         amount.Text=vm.Consignments.Single(c=>c.JobId==first).AvailableHere.ToString();amount.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();ClickStation(6);

@@ -13,7 +13,10 @@ public partial class CargoJourneyControl : UserControl
         {vm.BeginPickup(cargo);CargoStationPicker.UpdateLayout();if(CargoStationPicker.IsVisible)CargoStationPicker.BringIntoView();}
     }
     private void ChooseStation_Click(object sender,RoutedEventArgs e)
-    {if(DataContext is CargoJourneyViewModel vm && ((FrameworkElement)sender).DataContext is CargoStationRow station)vm.AddPickup(station);}
+    {
+        if(DataContext is CargoJourneyViewModel vm && ((FrameworkElement)sender).DataContext is CargoStationRow station)
+        {vm.AddPickup(station);if(!vm.IsChoosingStation)CargoWorkflowScroll.ScrollToTop();}
+    }
     private void DeliverCargo_Click(object sender,RoutedEventArgs e)
     {if(DataContext is CargoJourneyViewModel vm && ((FrameworkElement)sender).DataContext is CargoConsignmentRow cargo)vm.DeliverConsignment(cargo);}
     private void RemovePickup_Click(object sender,RoutedEventArgs e)
