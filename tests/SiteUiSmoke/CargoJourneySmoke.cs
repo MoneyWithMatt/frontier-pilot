@@ -78,7 +78,13 @@ internal static partial class Program
             Check(service.Manifest!.Legs.Last().SettledUtc is not null,"Cargo leg qualifies through production tracker: "+service.Reason);
         }
         await FlyTo(places[0],places[1]);await Click("Refresh aircraft & jobs");
-        var a=vm.Consignments.Single(x=>x.Status=="DELIVER HERE");ClickRow(a.JobId,"Deliver");
+        var a=vm.Consignments.Single(x=>x.Status=="DELIVER HERE");
+        var details=Descendants<Expander>(control).Single(e=>e.Header?.ToString()=="Station distribution / details");details.IsExpanded=true;Pump();
+        var overrides=(DataGrid)control.FindName("CargoQuantityOverrides");overrides.ScrollIntoView(a,overrides.Columns[2]);overrides.UpdateLayout();overrides.CurrentCell=new(a,overrides.Columns[2]);overrides.Focus();Check(overrides.BeginEdit(),"Partial-delivery override is still editable");Pump();
+        var edit=Descendants<TextBox>(overrides).Single(t=>t.IsVisible);edit.Text="5";overrides.CommitEdit(DataGridEditingUnit.Cell,true);overrides.CommitEdit(DataGridEditingUnit.Row,true);Pump();
+        details.IsExpanded=false;Pump();await Click("Confirm loading / unloading plan");await Click("Apply cargo in cockpit");
+        Check(physical.Weights[5]==63&&service.Manifest!.Cargo.Sum(c=>c.Kilograms)==30,"Partial UI delivery retains 5 kg plus 25 kg through-cargo");
+        ClickRow(a.JobId,"Deliver");
         await Click("Confirm loading / unloading plan");await Click("Apply cargo in cockpit");
         Check(physical.Weights[5]==58&&service.Manifest!.Cargo.Single().Kilograms==25,"First UI delivery retains unrelated 25 kg");
         Check(vm.ManifestText.Contains("TOTAL COMMITTED CARGO: 25"),"In-flight dispatch sheet updates after partial journey");Save(host,Path.Combine(folder,"cargo-dispatch-through-cargo.png"));

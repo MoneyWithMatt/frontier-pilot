@@ -41,6 +41,13 @@
    <Button Content="Remove" Click="RemovePickup_Click" DockPanel.Dock="Right"/><StackPanel><TextBlock Text="{Binding Summary}" TextWrapping="Wrap"/><TextBlock Text="{Binding Destination, StringFormat='DELIVER TO: {0}'}" FontSize="11"/></StackPanel>
   </DockPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
   <Expander Header="Station distribution / details" Margin="0,7"><StackPanel IsEnabled="{Binding CanEditCargo}">
+  <TextBlock Text="Partial delivery / manual quantities" FontWeight="SemiBold"/>
+  <TextBlock Text="For a partial delivery, set the amount to retain aboard for that job. Routine pickups use Load above." TextWrapping="Wrap"/>
+  <DataGrid x:Name="CargoQuantityOverrides" ItemsSource="{Binding Consignments}" AutoGenerateColumns="False" CanUserAddRows="False" MinHeight="90" MaxHeight="180" Margin="0,6"><DataGrid.Columns>
+   <DataGridTextColumn Header="Job" Binding="{Binding JobId}" IsReadOnly="True" Width="*"/>
+   <DataGridTextColumn Header="Aboard kg" Binding="{Binding Aboard}" IsReadOnly="True" Width="85"/>
+   <DataGridTextColumn Header="Retain / planned kg" Binding="{Binding DesiredAboard, UpdateSourceTrigger=LostFocus}" Width="135"/>
+  </DataGrid.Columns></DataGrid>
   <TextBlock Text="Unrelated payload is preserved. Only MSFS-reported station limits are enforced." TextWrapping="Wrap"/>
   <TextBlock Text="Station totals combine all managed cargo. New pickup choices appear above; deliveries reduce existing managed mass without removing unrelated payload." TextWrapping="Wrap"/>
   <DataGrid x:Name="CargoStations" ItemsSource="{Binding Stations}" SelectedItem="{Binding SelectedStation}" AutoGenerateColumns="False" CanUserAddRows="False" RowHeight="NaN" MinRowHeight="62" MinHeight="130" MaxHeight="270" Margin="0,8">
