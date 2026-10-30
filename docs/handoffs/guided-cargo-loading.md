@@ -2,6 +2,9 @@
 
 Approved scope: [spec](../specs/guided-cargo-loading.md), Matt requested a fix and a really simple loader after the failed outside Caravan preview. Branch `codex/guided-cargo-loading`, isolated worktree from PR #7 `b481d9824450d1004e687bbf3316b0bbd0ae42d8` (includes unmerged PRs #6/#3); original branches unchanged. [Draft PR #8](https://github.com/MoneyWithMatt/frontier-pilot/pull/8) targets master and is attached. Never merge without approval; inspect remote state before repeating external actions.
 
+## Current follow-up checkpoint
+After the validated runtime below, final review corrected the pickup shortcut so it preserves a delivery already selected at the same intermediate stop. Added an atomic combined delivery/pickup case: cargo for this stop becomes zero, through-cargo remains 25 kg, new pickup becomes 7 kg, and the physical target is 32 kg plus unrelated baseline. Focused cargo suite **29/0/0** (`combined-stop.trx`). Exact final full/hosted validation and installed executable status are recorded in PR #8; inspect that before repeating installation or execution.
+
 ## Implementation / last validation
 Runtime `4a9cc5798572e927b2d3fdcc0e3a1f4e3975c8f3`: guided production UI, primary action fixed at bottom of viewport, strict identity-transition read retry/refusal, stage-specific preview diagnostics, pending-edit locks, full pickup/deliver-here shortcuts, automatic aggregate station arithmetic and stateful departure. Reopened pending plans show saved proposed quantities without claiming them aboard. Departure explanation distinguishes stopped qualification from explicit start. No schema/pay/authority change or user save edits. [Findings, limits, live procedure](../guided-cargo-loading.md).
 

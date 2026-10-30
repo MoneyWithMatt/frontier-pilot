@@ -358,5 +358,17 @@ public sealed class CargoJourneyTests : IDisposable
         Assert.Null(s.Manifest.Legs.Last().Flight);await vm.PrepareDepartureAsync();Assert.NotNull(s.Manifest.Legs.Last().Flight);
         Assert.Contains("Flight recording active",vm.NextStep);Assert.False(vm.DepartureCommand.CanExecute(null));
     }
+    [Fact] public async Task PickupShortcutPreservesSelectedIntermediateDeliveryInTheSamePlan()
+    {
+        var s=await Create();await Handle(s,new(){{"job-mine",10},{"job-community",25}},new CargoStationAllocation(6,35));await Fly(s,Origin,A);
+        await Store.ApplyAsync(w=>EconomyKernel.AcceptJob(w,"job-lodge",sim.Sample.ObservedUtc));
+        var vm=new CargoJourneyViewModel(s,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        vm.DeliverHereCommand.Execute(null);vm.LoadAvailableCommand.Execute(null);
+        Assert.Equal(0,vm.Consignments.Single(c=>c.JobId=="job-mine").DesiredAboard);
+        Assert.Equal(25,vm.Consignments.Single(c=>c.JobId=="job-community").DesiredAboard);
+        Assert.Equal(7,vm.Consignments.Single(c=>c.JobId=="job-lodge").DesiredAboard);
+        await vm.HandleCargoAsync();await vm.HandleCargoAsync();Assert.Equal(65,sim.Weights[5]);
+        Assert.Equal(32,s.Manifest!.Cargo.Sum(c=>c.Kilograms));Assert.Equal(EconomyJobState.Completed,s.World!.Jobs.Single(j=>j.Id=="job-mine").State);
+    }
     public void Dispose() { if(Directory.Exists(root)) Directory.Delete(root,true); }
 }

@@ -163,7 +163,11 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     public Task RefreshAsync()=>Run(async()=>{await refreshJobs();await service.RefreshAsync();},true);
     private void SetQuantities(bool deliver)
     {
-        foreach(var c in Consignments) c.DesiredAboard=deliver?(c.Status=="DELIVER HERE"?0:c.Aboard):c.Aboard+c.AvailableHere;
+        foreach(var c in Consignments)
+        {
+            if(deliver&&c.Status=="DELIVER HERE")c.DesiredAboard=0;
+            else if(!deliver&&c.AvailableHere>0)c.DesiredAboard=c.Aboard+c.AvailableHere;
+        }
         var rows=Consignments.ToArray();Consignments.Clear();foreach(var c in rows)Consignments.Add(c);
         Update(false);
     }
