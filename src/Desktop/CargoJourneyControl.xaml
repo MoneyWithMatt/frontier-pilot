@@ -1,14 +1,15 @@
 <UserControl x:Class="FrontierAirportBuilder.Desktop.CargoJourneyControl"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <UserControl.Resources><BooleanToVisibilityConverter x:Key="VisibleWhenTrue"/></UserControl.Resources>
  <Grid Margin="18"><Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
  <Grid Margin="0,0,14,0"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
   <TextBlock Text="Cargo loading &amp; dispatch" FontSize="23" FontWeight="SemiBold"/>
   <TextBlock Text="Choose cargo here, confirm the plan outside, then board and apply it. Your dispatch sheet shows what is confirmed aboard." TextWrapping="Wrap" Margin="0,6"/>
   <Button Content="Refresh aircraft &amp; jobs" Command="{Binding ReadCommand}" HorizontalAlignment="Left"/>
   <TextBlock Text="{Binding AircraftStatus}" TextWrapping="Wrap" Margin="0,6"/>
-  <TextBlock Text="1. Choose cargo" FontSize="17" FontWeight="SemiBold"/><WrapPanel IsEnabled="{Binding CanEditCargo}"><Button Content="Load available cargo" Command="{Binding LoadAvailableCommand}"/><Button Content="Deliver cargo for this airport" Command="{Binding DeliverHereCommand}"/></WrapPanel>
-  <TextBlock Text="Use the buttons for a full pickup or delivery. Edit “After loading kg” for a partial load. Cargo for later stops stays aboard." TextWrapping="Wrap"/>
-  <DataGrid x:Name="CargoConsignments" ItemsSource="{Binding Consignments}" IsEnabled="{Binding CanEditCargo}" AutoGenerateColumns="False" CanUserAddRows="False" RowHeight="NaN" MinRowHeight="70" MinHeight="150" MaxHeight="310" Margin="0,8" SelectionUnit="Cell">
+  <TextBlock Text="1. Choose cargo" FontSize="17" FontWeight="SemiBold"/>
+  <TextBlock Text="Click Load on a consignment, then click its station. Deliver removes only cargo for this airport. Nothing changes in MSFS until you confirm and apply." TextWrapping="Wrap"/>
+  <DataGrid x:Name="CargoConsignments" ItemsSource="{Binding Consignments}" IsEnabled="{Binding CanEditCargo}" AutoGenerateColumns="False" CanUserAddRows="False" RowHeight="NaN" MinRowHeight="70" MinHeight="150" MaxHeight="310" Margin="0,8" SelectionUnit="FullRow" IsReadOnly="True">
    <DataGrid.Columns>
     <DataGridTemplateColumn Header="Consignment / destination" Width="*" MinWidth="175" IsReadOnly="True"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Margin="5,7" ToolTip="{Binding Origin}">
      <TextBlock Text="{Binding Description}" FontWeight="SemiBold" TextWrapping="Wrap"/>
@@ -17,17 +18,32 @@
     </StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
     <DataGridTextColumn Header="Here kg" Binding="{Binding AvailableHere}" IsReadOnly="True" Width="65"/>
     <DataGridTextColumn Header="Aboard kg" Binding="{Binding Aboard}" IsReadOnly="True" Width="75"/>
-    <DataGridTextColumn Header="After loading kg" Binding="{Binding DesiredAboard, UpdateSourceTrigger=LostFocus}" Width="90"/>
-    <DataGridTextColumn Header="Status" Binding="{Binding Status}" IsReadOnly="True" Width="95"/>
+    <DataGridTextColumn Header="Planned kg" Binding="{Binding DesiredAboard}" Width="75"/>
+    <DataGridTemplateColumn Header="Action" Width="85"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel>
+     <Button Content="Load" Click="LoadCargo_Click" Visibility="{Binding CanPickup, Converter={StaticResource VisibleWhenTrue}}"/>
+     <Button Content="Deliver" Click="DeliverCargo_Click" Visibility="{Binding CanDeliver, Converter={StaticResource VisibleWhenTrue}}"/>
+    </StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
    </DataGrid.Columns>
   </DataGrid>
   <TextBlock Text="{Binding CargoSummary}" FontWeight="SemiBold" Margin="0,6"/>
-  <TextBlock Text="Cargo compartment for pickups"/>
-  <ComboBox x:Name="CargoCompartment" ItemsSource="{Binding Stations}" SelectedItem="{Binding SelectedStation}" IsEnabled="{Binding CanEditCargo}" Margin="0,5"/>
-  <TextBlock Text="Choose the aircraft cargo area once. Station totals are calculated for you; use details to split a load." FontSize="11" TextWrapping="Wrap"/>
+  <Border x:Name="CargoStationPicker" Visibility="{Binding IsChoosingStation, Converter={StaticResource VisibleWhenTrue}}" Background="#203C35" Padding="10" Margin="0,5"><StackPanel>
+   <TextBlock Text="{Binding PickupHeading}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+   <TextBlock Text="{Binding PickupHelp}" TextWrapping="Wrap" Margin="0,4"/>
+   <WrapPanel><TextBlock Text="Amount (kg)" VerticalAlignment="Center"/><TextBox x:Name="PickupQuantity" Text="{Binding PickupQuantityText, UpdateSourceTrigger=PropertyChanged}" Width="95" Margin="8,3"/><Button Content="Close station choices" Click="ClosePicker_Click"/></WrapPanel>
+   <TextBlock Text="Choose an appropriate cargo area. These are the aircraft's reported stations; occupants and other payload are preserved." TextWrapping="Wrap" FontSize="11"/>
+   <ScrollViewer MaxHeight="235" VerticalScrollBarVisibility="Auto"><ItemsControl x:Name="PickupStations" ItemsSource="{Binding Stations}"><ItemsControl.ItemTemplate><DataTemplate>
+    <Button Click="ChooseStation_Click" IsEnabled="{Binding Writable}" HorizontalContentAlignment="Left" Margin="0,3" Padding="8"><StackPanel>
+     <TextBlock Text="{Binding StationLabel}" FontWeight="SemiBold"/><TextBlock Text="{Binding Detail}" FontSize="11" TextWrapping="Wrap"/>
+    </StackPanel></Button>
+   </DataTemplate></ItemsControl.ItemTemplate></ItemsControl></ScrollViewer>
+  </StackPanel></Border>
+  <ItemsControl x:Name="PickupPlan" ItemsSource="{Binding Pickups}" IsEnabled="{Binding CanEditCargo}"><ItemsControl.ItemTemplate><DataTemplate><DockPanel Margin="0,3">
+   <Button Content="Remove" Click="RemovePickup_Click" DockPanel.Dock="Right"/><StackPanel><TextBlock Text="{Binding Summary}" TextWrapping="Wrap"/><TextBlock Text="{Binding Destination, StringFormat='DELIVER TO: {0}'}" FontSize="11"/></StackPanel>
+  </DockPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
   <Expander Header="Station distribution / details" Margin="0,7"><StackPanel IsEnabled="{Binding CanEditCargo}">
   <TextBlock Text="Unrelated payload is preserved. Only MSFS-reported station limits are enforced." TextWrapping="Wrap"/>
-  <Button Content="Suggest distribution" Command="{Binding MatchMassCommand}" HorizontalAlignment="Left"/>  <DataGrid x:Name="CargoStations" ItemsSource="{Binding Stations}" SelectedItem="{Binding SelectedStation}" AutoGenerateColumns="False" CanUserAddRows="False" RowHeight="NaN" MinRowHeight="62" MinHeight="130" MaxHeight="270" Margin="0,8">
+  <TextBlock Text="Station totals combine all managed cargo. New pickup choices appear above; deliveries reduce existing managed mass without removing unrelated payload." TextWrapping="Wrap"/>
+  <DataGrid x:Name="CargoStations" ItemsSource="{Binding Stations}" SelectedItem="{Binding SelectedStation}" AutoGenerateColumns="False" CanUserAddRows="False" RowHeight="NaN" MinRowHeight="62" MinHeight="130" MaxHeight="270" Margin="0,8">
    <DataGrid.Columns>
     <DataGridTextColumn Header="#" Binding="{Binding Index}" IsReadOnly="True" Width="30"/>
     <DataGridTemplateColumn Header="MSFS station" IsReadOnly="True" Width="*" MinWidth="140"><DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Margin="4,5">

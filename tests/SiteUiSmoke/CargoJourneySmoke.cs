@@ -21,19 +21,34 @@ internal static partial class Program
         physical.Sample=physical.Sample with{Latitude=places[0].Latitude,Longitude=places[0].Longitude};
         var service=new CargoJourneyService(store,physical,()=>"synthetic",()=>airframe,(_,p)=>places.SingleOrDefault(e=>WorldTracking.DistanceMeters(e.Latitude,e.Longitude,p.Latitude,p.Longitude)<=2778),()=>physical.Sample.ObservedUtc,physical.WaitForRetentionAsync);
         var vm=new CargoJourneyViewModel(service,()=>Task.CompletedTask,_=>places,()=>"SYNTHETIC-CARGO");
-        var control=new CargoJourneyControl{DataContext=vm};var host=new Window{Content=control,Width=1550,Height=1000,ShowInTaskbar=false};host.Show();Pump();
-        Button Button(string content)=>Descendants<Button>(control).Single(b=>b.Content?.ToString()==content);
+        var control=new CargoJourneyControl{DataContext=vm};var host=new Window{Content=control,Width=1267,Height=854,ShowInTaskbar=false};host.Show();Pump();
+        Button FindButton(string content)=>Descendants<Button>(control).Single(b=>b.Content?.ToString()==content);
         async Task Click(string content)
-        {var b=Button(content);Check(b.Command?.CanExecute(null)==true,"Cargo command is bound: "+content);b.Command!.Execute(null);await Task.Delay(120);Pump();}
+        {var b=FindButton(content);Check(b.Command?.CanExecute(null)==true,"Cargo command is bound: "+content);b.Command!.Execute(null);await Task.Delay(120);Pump();}
         await Click("Refresh aircraft & jobs");Check(vm.Consignments.Count==2,"Cargo control lists both accepted destinations");
         var cargoGrid=(DataGrid)control.FindName("CargoConsignments");
-        void Edit(DataGrid grid,object row,int column,string value)
+        void ClickRow(string jobId,string action)
         {
-            grid.ScrollIntoView(row,grid.Columns[column]);grid.UpdateLayout();grid.CurrentCell=new(row,grid.Columns[column]);grid.Focus();Check(grid.BeginEdit(),"Begin real cargo quantity cell edit");Pump();
-            var edit=Descendants<TextBox>(grid).Single(x=>x.IsVisible);edit.Text=value;grid.CommitEdit(DataGridEditingUnit.Cell,true);grid.CommitEdit(DataGridEditingUnit.Row,true);Pump();
+            var item=vm.Consignments.Single(c=>c.JobId==jobId);cargoGrid.ScrollIntoView(item);cargoGrid.UpdateLayout();Pump();
+            var b=Descendants<Button>(cargoGrid).Single(b=>b.DataContext==item&&b.Content?.ToString()==action);
+            Check(b.IsVisible&&b.IsEnabled,"Consignment action is usable: "+action);b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
         }
-        await Click("Load available cargo");
-        ((ComboBox)control.FindName("CargoCompartment")).SelectedItem=vm.Stations.Single(x=>x.Index==6);Pump();
+        void ClickStation(int index)
+        {
+            var choices=(ItemsControl)control.FindName("PickupStations");
+            var button=Descendants<Button>(choices).Single(b=>b.DataContext is CargoStationRow s&&s.Index==index);
+            button.BringIntoView();Pump();Check(button.IsVisible&&button.IsEnabled,"Actual station button is usable");button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+        }
+        var first=vm.Consignments[0].JobId;ClickRow(first,"Load");Check(vm.IsChoosingStation,"Load opens the station chooser");
+        var amount=(TextBox)control.FindName("PickupQuantity");amount.Text="invalid";amount.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();ClickStation(6);
+        Check(vm.Pickups.Count==0&&vm.IsChoosingStation,"Invalid text cannot silently load the previous amount");
+        amount.Text=vm.Consignments.Single(c=>c.JobId==first).AvailableHere.ToString();amount.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();ClickStation(6);
+        Check(!vm.IsChoosingStation&&vm.Pickups.Count==1,"Full pickup chooses station without quantity arithmetic");
+        var remove=Descendants<Button>((ItemsControl)control.FindName("PickupPlan")).Single();remove.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+        Check(vm.RequestedKilograms==0,"Remove undoes only the proposed pickup");
+        foreach(var id in vm.Consignments.Select(c=>c.JobId).ToArray()){ClickRow(id,"Load");ClickStation(6);}
+        Check(vm.Pickups.Count==2&&vm.RequestedKilograms==35,"Two consignment station choices are previewed independently");
+        Save(host,Path.Combine(folder,"cargo-click-to-load-plan.png"));
 
         await Click("Confirm loading / unloading plan");Check(vm.ManifestText.Contains("PROPOSED / PENDING"),"Pending printout is distinct from committed cargo: "+vm.Status);
         Check(physical.Weights[5]==33,"Preview does not write the simulator");Check(!cargoGrid.IsEnabled,"Pending plan locks editable consignment controls");Check(Descendants<Expander>(control).All(e=>!e.IsExpanded),"Station and recovery details are collapsed in the simple flow");Save(host,Path.Combine(folder,"cargo-dispatch-proposed.png"));
@@ -62,11 +77,11 @@ internal static partial class Program
             Check(service.Manifest!.Legs.Last().SettledUtc is not null,"Cargo leg qualifies through production tracker: "+service.Reason);
         }
         await FlyTo(places[0],places[1]);await Click("Refresh aircraft & jobs");
-        var a=vm.Consignments.Single(x=>x.Status=="DELIVER HERE");Edit(cargoGrid,a,3,"0");
+        var a=vm.Consignments.Single(x=>x.Status=="DELIVER HERE");ClickRow(a.JobId,"Deliver");
         await Click("Confirm loading / unloading plan");await Click("Apply cargo in cockpit");
         Check(physical.Weights[5]==58&&service.Manifest!.Cargo.Single().Kilograms==25,"First UI delivery retains unrelated 25 kg");
         Check(vm.ManifestText.Contains("TOTAL COMMITTED CARGO: 25"),"In-flight dispatch sheet updates after partial journey");Save(host,Path.Combine(folder,"cargo-dispatch-through-cargo.png"));
-        await FlyTo(places[1],places[2]);await Click("Refresh aircraft & jobs");Edit(cargoGrid,vm.Consignments.Single(),3,"0");
+        await FlyTo(places[1],places[2]);await Click("Refresh aircraft & jobs");ClickRow(vm.Consignments.Single().JobId,"Deliver");
         await Click("Confirm loading / unloading plan");await Click("Apply cargo in cockpit");
         Check(physical.Weights[5]==33&&service.Manifest!.Cargo.Length==0,"Second UI delivery restores unrelated station baseline");
         Check((await store.LoadAsync())!.Jobs.Count(j=>j.State==EconomyJobState.Completed)==2,"Both UI consignments complete independently");

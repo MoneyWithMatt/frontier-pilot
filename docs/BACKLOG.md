@@ -2,7 +2,7 @@
 
 ## Immediate loading repair — 2026-10-30
 
-[Guided cargo loading](guided-cargo-loading.md), [draft PR #8](https://github.com/MoneyWithMatt/frontier-pilot/pull/8), [handoff](handoffs/guided-cargo-loading.md): simplified primary flow, bounded identity reads and source-specific preview errors. Exact Caravan live outside/seated loading must be re-established before expanding logistics features. Do not substitute synthetic acceptance or guessed model data.
+[Guided cargo loading](guided-cargo-loading.md), [draft PR #8](https://github.com/MoneyWithMatt/frontier-pilot/pull/8), [handoff](handoffs/guided-cargo-loading.md): live fleet identity latch diagnosed; transient recovery and consignment → station-card UI implemented for verification. Next, test the exact repaired artifact outside/seated with retained mass, restart and delivery checks. Do not substitute synthetic acceptance or guessed model data.
 
 ## Employer starting fleets — 2026-10-29
 

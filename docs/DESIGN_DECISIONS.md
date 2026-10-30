@@ -2,6 +2,8 @@
 
 ## Guided cargo repair — 2026-10-30
 
+Follow-up approved after live diagnosis: clicking a consignment's Load opens actual station cards with full available amount prefilled, optional partial amount, and removable pickup choices. Deliver names the individual consignment. This replaces the main station dropdown and routine numeric bookkeeping, without changing aggregate payload ownership, saves or career rules. Missing tracking identity is transient and resets observation continuity; complete later telemetry must recover through existing type/location/object guards. Persistence failures remain blocked. The successful old-build recognition/native reads are diagnostic evidence, not repaired-build loading acceptance.
+
 Matt requested a really simple loader after the live Caravan outside-preview failure. Reuse the persistent journey/ownership/flight system; expose a guided quantity/confirm/apply/departure flow, retain partial quantities and explicit actual compartment choice, and move advanced distribution/recovery out of the main path. Retry incomplete identity reads only, never fabricate a model or retry native writes automatically. Stage-specific failure details must identify the actual blocker. No pay, save schema, station limit, avatar or delivery authority changes. [Scope](specs/guided-cargo-loading.md), [implementation/live limits](guided-cargo-loading.md).
 
 ## Persistent employer starting fleets — 2026-10-29

@@ -7,6 +7,8 @@ Approved by / date: Matt requested fixing the failed outside preview and making 
 Restore a usable loading loop after the reported Black Square Caravan outside preview stopped with “Type is invalid”. Reduce routine loading to choose cargo, confirm outside, board/apply, then prepare departure.
 
 ## Gameplay behavior
+2026-10-30 follow-up explicitly approved by Matt after live diagnosis: click **Load** on an individual consignment, then choose a simulator station by clicking its station card. Default to the full available amount, allow a partial amount/split, and list removable proposed pickups. No station dropdown or routine station-total typing in the main flow. Deliver is an individual consignment action. Incomplete fleet tracking identity must pause observation and recover on a subsequent complete update without bypassing type, location, object-change or persistence guards. This supersedes the earlier compartment-dropdown interaction below.
+
 Use the existing cargo journey, payload ownership, tracker and settlement systems. One context-sensitive cargo button replaces the permanent prepare/apply toolbar. Full pickup and deliver-here shortcuts preserve through-cargo; quantities remain editable for partial operations. Select a real simulator compartment for pickups; advanced station splitting and recovery remain available in collapsed details. Preparing a plan remains read-only to MSFS; apply still requires actual seated authorization and retained readback. Departure uses one stateful button without automatic arming or invented flight proof.
 
 ## Acceptance criteria

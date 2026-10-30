@@ -370,5 +370,56 @@ public sealed class CargoJourneyTests : IDisposable
         await vm.HandleCargoAsync();await vm.HandleCargoAsync();Assert.Equal(65,sim.Weights[5]);
         Assert.Equal(32,s.Manifest!.Cargo.Sum(c=>c.Kilograms));Assert.Equal(EconomyJobState.Completed,s.World!.Jobs.Single(j=>j.Id=="job-mine").State);
     }
+    [Fact] public async Task ClickCargoThenStationPlansSeparateDestinationsAndRetainsBaseline()
+    {
+        var s=await Create();var vm=new CargoJourneyViewModel(s,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        var mine=vm.Consignments.Single(c=>c.JobId=="job-mine");vm.BeginPickup(mine);Assert.True(vm.IsChoosingStation);Assert.Equal("10",vm.PickupQuantityText);
+        vm.AddPickup(vm.Stations.Single(x=>x.Index==5));Assert.False(vm.IsChoosingStation);
+        vm.BeginPickup(vm.Consignments.Single(c=>c.JobId=="job-community"));vm.AddPickup(vm.Stations.Single(x=>x.Index==6));
+        Assert.Equal(2,vm.Pickups.Count);Assert.Equal(35,vm.RequestedKilograms);Assert.Equal(0,sim.Writes);
+        await vm.HandleCargoAsync();Assert.NotNull(s.Manifest!.Pending);Assert.Equal(33,sim.Weights[5]);
+        // Pending intent is immutable even through direct calls, not just disabled controls.
+        vm.RemovePickup(vm.Pickups[0]);vm.BeginPickup(mine);Assert.Equal(2,vm.Pickups.Count);Assert.False(vm.IsChoosingStation);
+        await vm.HandleCargoAsync();Assert.Equal(10,sim.Weights[4]);Assert.Equal(58,sim.Weights[5]);Assert.Empty(vm.Pickups);
+        await Fly(s,Origin,A);await vm.RefreshAsync();vm.DeliverConsignment(vm.Consignments.Single(c=>c.JobId=="job-mine"));
+        await vm.HandleCargoAsync();await vm.HandleCargoAsync();Assert.Equal(25,Assert.Single(s.Manifest.Cargo).Kilograms);
+        Assert.Equal(58,sim.Weights.Sum()-110); // 80 + 30 unrelated occupants, 33 baseline, 25 through-cargo.
+    }
+    [Fact] public async Task PartialPickupCanSplitAcrossStationsAndBeRemovedWithoutChangingOtherJobs()
+    {
+        var s=await Create();var vm=new CargoJourneyViewModel(s,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        var mine=vm.Consignments.Single(c=>c.JobId=="job-mine");vm.BeginPickup(mine);vm.PickupQuantityText="4";vm.AddPickup(vm.Stations.Single(x=>x.Index==5));
+        vm.BeginPickup(mine);Assert.Equal("6",vm.PickupQuantityText);vm.AddPickup(vm.Stations.Single(x=>x.Index==6));
+        vm.BeginPickup(vm.Consignments.Single(c=>c.JobId=="job-community"));vm.AddPickup(vm.Stations.Single(x=>x.Index==6));
+        vm.RemovePickup(vm.Pickups.Single(p=>p.JobId=="job-mine"&&p.StationIndex==5));
+        Assert.Equal(31,vm.RequestedKilograms);Assert.Equal(31,vm.Stations.Single(x=>x.Index==6).DesiredCargo);Assert.Equal(0,sim.Writes);
+        await vm.HandleCargoAsync();await vm.HandleCargoAsync();Assert.Equal(64,sim.Weights[5]);Assert.Equal(6,s.Manifest!.Cargo.Single(c=>c.JobId=="job-mine").Kilograms);
+    }
+    [Theory][InlineData("invalid")][InlineData("0")][InlineData("-1")][InlineData("11")]
+    public async Task InvalidPickupAmountCannotReusePreviousValidQuantity(string quantity)
+    {
+        var s=await Create();var vm=new CargoJourneyViewModel(s,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        vm.BeginPickup(vm.Consignments.Single(c=>c.JobId=="job-mine"));vm.PickupQuantityText=quantity;vm.AddPickup(vm.Stations.Single(x=>x.Index==6));
+        Assert.True(vm.IsChoosingStation);Assert.Empty(vm.Pickups);Assert.Equal(0,vm.RequestedKilograms);Assert.Equal(0,sim.Writes);
+    }
+    [Fact] public async Task StationPickerEnforcesOnlyActualStationLimitAndRejectsStaleOrReadOnlyStations()
+    {
+        var s=await Create();sim.Weights[0]=0;sim.Weights[1]=0;sim.StationMaximum=40;sim.MaximumGross=1;sim.MaximumPayload=1;sim.CurrentCg=90;
+        var vm=new CargoJourneyViewModel(s,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        vm.BeginPickup(vm.Consignments.Single(c=>c.JobId=="job-mine"));vm.AddPickup(vm.Stations.Single(x=>x.Index==6));
+        Assert.Contains("station limit",vm.Status);Assert.Empty(vm.Pickups); // 33 unrelated + 10 > 40.
+        vm.AddPickup(new(){Index=6,Name="stale",Writable=true});Assert.Contains("not writable",vm.Status);
+        vm.AddPickup(vm.Stations.Single(x=>x.Index==5));await vm.HandleCargoAsync();await vm.HandleCargoAsync();
+        Assert.Equal(10,sim.Weights[4]);Assert.Equal(33,sim.Weights[5]);Assert.NotEmpty(s.Manifest!.Cargo);
+    }
+    [Fact] public async Task IntermediateDeliveryCannotConsumeExplicitNewPickupStationTarget()
+    {
+        var s=await Create();await Handle(s,new(){{"job-mine",10},{"job-community",25}},new CargoStationAllocation(6,35));await Fly(s,Origin,A);
+        await Store.ApplyAsync(w=>EconomyKernel.AcceptJob(w,"job-lodge",sim.Sample.ObservedUtc));
+        var vm=new CargoJourneyViewModel(s,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        vm.DeliverConsignment(vm.Consignments.Single(c=>c.JobId=="job-mine"));vm.BeginPickup(vm.Consignments.Single(c=>c.JobId=="job-lodge"));
+        vm.AddPickup(vm.Stations.Single(x=>x.Index==5));await vm.HandleCargoAsync();await vm.HandleCargoAsync();
+        Assert.Equal(7,sim.Weights[4]);Assert.Equal(58,sim.Weights[5]);Assert.Equal(32,s.Manifest!.Cargo.Sum(c=>c.Kilograms));
+    }
     public void Dispose() { if(Directory.Exists(root)) Directory.Delete(root,true); }
 }
