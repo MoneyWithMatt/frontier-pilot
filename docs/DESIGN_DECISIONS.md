@@ -1,5 +1,40 @@
 # Design decisions
 
+## Guided cargo repair — 2026-10-30
+
+Follow-up approved after live diagnosis: clicking a consignment's Load opens actual station cards with full available amount prefilled, optional partial amount, and removable pickup choices. Deliver names the individual consignment. This replaces the main station dropdown and routine numeric bookkeeping, without changing aggregate payload ownership, saves or career rules. Missing tracking identity is transient and resets observation continuity; complete later telemetry must recover through existing type/location/object guards. Persistence failures remain blocked. The successful old-build recognition/native reads are diagnostic evidence, not repaired-build loading acceptance.
+
+Matt requested a really simple loader after the live Caravan outside-preview failure. Reuse the persistent journey/ownership/flight system; expose a guided quantity/confirm/apply/departure flow, retain partial quantities and explicit actual compartment choice, and move advanced distribution/recovery out of the main path. Retry incomplete identity reads only, never fabricate a model or retry native writes automatically. Stage-specific failure details must identify the actual blocker. No pay, save schema, station limit, avatar or delivery authority changes. [Scope](specs/guided-cargo-loading.md), [implementation/live limits](guided-cargo-loading.md).
+
+## Persistent employer starting fleets — 2026-10-29
+
+Matt authorized automatic one-per-catalogue-type employer allocations without purchase/registration. Extend the existing physical GUID fleet, never a parallel ownership system. Ownership, assignment and operation are separate; company property has no player ledger/net-worth value. Local career player GUIDs scope idempotent company/type allocation receipts. Full-GUID FP dispatch registrations are not native/civil/global registry claims.
+
+Preserve unknown history/condition, disabled capabilities and explicit simulator type/binding/location safeguards. Initial base metadata never becomes manufactured telemetry or placement authority. Reconcile ambiguous legacy company records explicitly; preserve IDs, condition, maintenance and history. Repeated same-employer acceptance repairs/reuses its allocation. Different-employer changes remain blocked by existing career/economy policy; historical records are reusable at the allocation boundary without enabling a new switching mechanic. Tracker proof may project last-known named arrival stops, never create new evidence, hours or spawn permission. [Scope](specs/employer-starting-fleets.md), [implementation/migration/live boundaries](employer-starting-fleets.md).
+
+## Multi-stop logistics and pilot responsibility — 2026-10-29
+
+Matt explicitly authorized [multi-stop implementation](specs/multistop-cargo.md) following PR #5. Each consignment retains job/resource/origin/destination identity; MSFS receives aggregate station mass only. Selection names jobs and quantities directly, never FIFO inference. Handling intent and immutable carried-leg snapshots live with the economy in schema 13; delivery, inventory and job completion are atomic after retained readback. Existing legacy loads recover through their original workflow rather than guessed ownership migration.
+
+The explicit product decision supersedes gross/overall-payload/CG and company prototype mass loading blocks for cargo **and passengers**. Those assessments belong to the pilot; simulator station/interface constraints, identity, stock, ownership and successful readback remain hard requirements. Available gross delta checks physical effect, not operational approval. Do not reintroduce MTOW/performance dispatch gates.
+
+Each employed leg records eligible contiguous airborne time at qualified arrival. Successful full cargo delivery releases each unpaid eligible leg receipt once, including through-legs; arrival alone and partial delivery do not release wages. Jobs sharing the same airborne period cannot multiply wages. Existing rates and freelance/player contract rewards remain authoritative. No pre-loading or disconnected time is credited. Cargo and passengers share the guarded native operation/lease; concurrent mixed ownership remains explicitly refused pending coordinated accounting/recovery and live evidence. No new facilities, fares, medical simulation or seated passenger models are claimed. [Implementation, limitations and live procedure](multistop-cargo.md).
+
+## Shared passengers / physical loading — 2026-10-29
+
+Matt explicitly superseded the one-person simulated Offshore prototype with shared person/group carriage and actual MSFS payload loading. [Approved objective/spec](specs/shared-passengers.md), [implementation/capability/recovery/live boundaries](shared-passengers.md). Mission purpose, tracker proof and career settlement remain separate; Offshore $800/hour and Missionary $400/hour are unchanged. Missionary adds a two-person community visit through existing catalogue eligibility, with no invented medical facility or simulation.
+
+Capacity comes from reviewed aircraft-specific seat areas, never station count, cargo dispatch fixtures or aircraft-name guesses. Only the exact reviewed Caravan Professional 0.1.2 gear configuration has a production candidate profile; unknown stock/streamed configuration blocks loading. Missing station maxima/arms are exposed, available limits enforced; this is not certification/live acceptance. Physical payload does not imply visible seated people or animation. No supported visual mechanism established, no unrelated NPC substitution.
+
+Persist passenger weights, ownership and absolute intent targets before native writes; compare current aircraft/payload immediately before writing and require readback before carriage transition. Partial/manual conflicts retain recoverable intent without guessed rollback or adoption. Schema-11 aboard saves finish as legacy simulated transfers without invented mass/GUID. The shared domain permits future mixed/disjoint carriage; interim career workflow checks atomically refuse mixed Frontier cargo/passenger assignments until accounting/recovery is qualified. Shared native operation serialization preserves existing cargo behavior. Platforms remain disabled; H125 cargo/survey/inspection deferred.
+
+## Offshore passenger transfers — 2026-10-29
+
+- Matt selected passenger transfers before H125 platform cargo or survey/inspection. [Approved scope](specs/offshore-passenger-transfers.md): one simulated specialist passenger on eligible airport routes; no people in cargo stock and no native passenger/payload claim.
+- Reuse existing flight identity/distance/stationary rules and the same contiguous airborne-time helper at $800/hour. One passenger flight excludes cargo/other passenger boarding; unresolved physical cargo intents must be recovered first.
+- Schema 11 stores typed assignments and their flight progress in the atomic economy aggregate. Explicit disembarkation commits delivery, terminal proof and one PilotWage receipt/balance together. Restart cannot infer missing time or pay twice.
+- Both endpoint restrictions apply before new boarding. Accepted snapshots and proof survive later exclusions. Platform kind is explicitly unavailable, even with coordinates; live evidence plus a reviewed qualified adapter/registry and deck-specific rules are required before activation. [Acceptance procedure](offshore-passenger-transfers.md).
+
 ## Aircraft condition foundation — 2026-10-19
 
 - Condition recording is opt-in and read-only in the existing CLI, with an independent SimConnect diagnostic session. Optional-variable failures cannot terminate the existing position source or feed delivery evidence.

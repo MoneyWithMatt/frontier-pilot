@@ -1,5 +1,25 @@
 # Technical status — 2026-09-07
 
+## Guided cargo loading repair — 2026-10-30
+
+[Live diagnosis and loading repair](guided-cargo-loading.md): the old build read Caravan payload and walking identity successfully but Fleet latched an earlier incomplete title/model. Automatic recovery now waits for complete tracking without unblocking durable save failures. The requested Load → station-card UI replaces the main dropdown/quantity table. Regression/hosted WPF verification and repaired-artifact live acceptance are distinct. [Current checkpoint](handoffs/guided-cargo-loading.md).
+
+## Employer-owned starting fleets — 2026-10-29
+
+[Automatic starting allocations](employer-starting-fleets.md) extend the existing physical fleet, with career schema 3 local player identity and fleet schema 2 company ownership/assignment. All catalogue types provision once; disabled types remain disabled. Existing saves/history/condition/location are preserved, ambiguous records require explicit reconciliation, exact type/position guards and current mission capabilities remain authoritative. Draft PR #7: local and hosted full regression 836/0/0; hosted WPF/package and four employer screenshots verified. Exact source/evidence belongs in the [handoff](handoffs/employer-starting-fleets.md). No live acceptance or shared-world authority is claimed.
+
+## Multi-stop cargo — 2026-10-29
+
+[New production cargo dispatch/manifest](multistop-cargo.md) adds explicit independent consignment quantities, persistent GUID station ownership, retained native readback/recovery, intermediate delivery/pickup and once-per-leg wage settlement. Schema 13 preserves prior saves without inferring physical ownership. MTOW/CG/overall payload and company fixture budgets are advisory for cargo/passengers. Clean runtime `8b56d6f` passed hosted full Release regression: 816 passed, zero failed/skipped, both WPF programs, nine guards and packaging. [Evidence/screenshots](../evidence/multistop-cargo/verification.md); final documentation-checkpoint status is in [PR #6](https://github.com/MoneyWithMatt/frontier-pilot/pull/6). No new live simulator acceptance or mixed transport qualification is claimed.
+
+## Shared physical passengers — 2026-10-29
+
+The later [shared passenger implementation](shared-passengers.md) supersedes the simulated/one-person Offshore slice. Schema 12 persists independent groups/carriage and payload intents. Real native payload integration has exact configuration checks, owned-station targets, pre-write comparison, readback, partial/restart conflict handling and atomic once-only career settlement. Offshore and Missionary use the same engine at unchanged rates. Local full Release verification passes 794/0/0; hosted WPF/package status is maintained in [task handoff](handoffs/offshore-career.md). No live passenger acceptance: Caravan Professional 0.1.2 gear is a reviewed candidate; Vision Jet streamed capacity/configuration remains blocked; seated models and animations are unsupported. Platforms/H125/survey remain deferred.
+
+## Offshore passenger transfers — 2026-10-29
+
+Typed airport specialist transfers now implement reservation, simulated boarding, tracker-created flight proof, explicit disembarkation and one $800/hour PilotWage receipt through the existing economy/ledger. Both endpoint aircraft eligibility and shared physical fleet dispatch guards apply. Schema 11 embeds passenger progress so delivery/payment/recovery commit atomically without cargo-inventory substitution. Platforms remain unavailable; H125 cargo and survey/inspection are deferred. [Approved scope and simulator acceptance boundaries](offshore-passenger-transfers.md). [774 hosted tests, WPF, visual review and publish passed](offshore-passenger-verification.md), zero failed/skipped and clean Release build. Initial WPF binding failure and repair are preserved in that report. No live acceptance claimed.
+
 ## Aircraft Condition Recorder V0 — 2026-10-19
 
 Implemented an optional read-only CLI recorder using an isolated native SimConnect session, per-field availability/validation and streaming JSONL diagnostics. Added create-only GUID-backed individual-aircraft documents with unknown initial estimates and explicit model binding; telemetry never updates those estimates. Standard/add-on profile boundaries, future fault synchronization and probabilistic-failure design are documented in [Aircraft Condition V0](aircraft-condition-v0.md). All aircraft capabilities remain unverified. 24 new tests / 719 total pass; Release build clean, CLI failure-path smoke passes and development distribution rebuilt. No simulator writes or gameplay changes. [Evidence](../evidence/aircraft-condition-v0/verification.md).

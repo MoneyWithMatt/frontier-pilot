@@ -52,7 +52,9 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public TrackingViewModel Tracking { get; }
     public AircraftConditionSession ConditionRecording { get; }
     public EmployedCargoJobsViewModel Jobs { get; }
+    public PassengerTransfersViewModel Passengers { get; }
     public AircraftLoadingViewModel AircraftLoading { get; }
+    public CargoJourneyViewModel CargoJourney { get; }
     public ProspectingOperationsViewModel Operations { get; }
     public double LayoutRunwayHeading => runwayHeading;
     public double LayoutRunwayLength => double.TryParse(length,NumberStyles.Float,CultureInfo.InvariantCulture,out var n)&&double.IsFinite(n)&&n>0 ? n : 200;
@@ -88,7 +90,11 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     {
         this.services = services; this.sdkRoot = sdkRoot;
         var careerRoot=careerStore?.StorageRoot??CareerStore.DefaultRoot;
-        Fleet = new(services.IsDryRun ? null : new AircraftFleetStore(Path.Combine(careerRoot,"fleet","aircraft-fleet.json")), () => new FrontierAirportBuilder.MsfsSdk.LiveAircraftCondition(this.sdkRoot));
+        var profile=careerStore?.Load();
+        EmployerFleetResult? allocation=null;string? allocationError=null;
+        try{allocation=careerStore?.EnsureEmployerFleet();}catch(IOException ex){allocationError="Company allocation blocked; existing fleet preserved: "+ex.Message;}
+        Fleet = new(services.IsDryRun && careerStore is null ? null : new AircraftFleetStore(Path.Combine(careerRoot,"fleet","aircraft-fleet.json")), () => new FrontierAirportBuilder.MsfsSdk.LiveAircraftCondition(this.sdkRoot));
+        if(profile?.Employment is {} assigned)Fleet.ConfigureEmployment(profile.PlayerId!.Value,CareerCatalogue.Employers.Single(e=>e.Id==assigned.EmployerId),allocationError is null?allocation?.Reconciliation??[]:[allocationError]);
         Fleet.OperatorId = careerStore?.Load().Employment?.EmployerId ?? EmployedCargoPrototype.PlayerId;
         Fleet.ResolveCompanyType = t => CompanyAircraft.Resolve(FlightAircraftIdentity.From(t), careerStore?.Load().AircraftBindings ?? []);
         var customTrackingStore = aircraftStateStore is not null;
@@ -108,21 +114,70 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         IFlightAttemptStore attemptStore = services.IsDryRun ? new MemoryFlightAttemptStore() : new LocalFlightAttemptStore(Path.Combine(careerRoot,"economy","flight-attempts.json"));
         flightAttemptTracker ??= new FlightAttemptTracker(economyStore, attemptStore) {AdditionalLocationResolver=employerDestinations is null?null:employerDestinations.Find};
         Jobs = new(employedCargoJobs, flightAttemptTracker);
+        Fleet.MissionEligibilityProvider=()=>Jobs.SelectedOffer is {} job ? $"Selected job {job.JobId}: eligible types {string.Join(", ",Jobs.CompanyAircraftChoices.Select(t=>t.Name))}. Aircraft allocation does not enable unfinished mission capabilities." : "Select an offer in Jobs to inspect eligible company types. Passenger transfers retain their own endpoint/configuration gates.";
+        Jobs.PropertyChanged+=(_,e)=>{if(e.PropertyName is nameof(Jobs.SelectedOffer) or nameof(Jobs.CompanyAircraftChoices))Fleet.RefreshMissionEligibility();};
         IAircraftLoadingStore loadingStore = services.IsDryRun ? new MemoryAircraftLoadingStore() : new LocalAircraftLoadingStore(Path.Combine(careerRoot,"economy","aircraft-loading.json"));
+        var passengerService = new PassengerTransfersService(economyStore, employer, employerDestinations ?? new(),
+            () => careerStore?.Load().AircraftBindings ?? [])
+            { AircraftGuard = Fleet.CheckPassengerDispatch, SelectedAirframe = () => Fleet.Selected?.Id,
+                Payload = new PassengerPayloadCoordinator(economyStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(),
+                    new PassengerAircraftConfigurations(() => Passengers?.AircraftPackageDirectory), () => this.sdkRoot),
+                BoardingRecoveryGuard = async token =>
+                {
+                    var manifests = await loadingStore.LoadManifestsAsync(token).ConfigureAwait(false);
+                    if (manifests.Any(x => x.CargoKilograms > .001m && x.State is not (LoadManifestState.Completed or LoadManifestState.Abandoned or LoadManifestState.ResetAtOrigin or LoadManifestState.SimulatorUnloaded)))
+                        throw new InvalidOperationException("Resolve the saved cargo load/recovery intent in Aircraft before boarding passengers. Existing cargo is preserved.");
+                } };
+        Passengers = new(passengerService, () => { if (!services.IsDryRun && Tracking.ConnectCommand.CanExecute(null)) _ = Tracking.ConnectAsync(); });
         var loadingCoordinator = new AircraftLoadingCoordinator(loadingStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(),
             flightAttemptTracker, () => this.sdkRoot, () => Tracking.World, () => Jobs.LoadingJobs)
-            { RecoverManifestJobsAsync = Jobs.RecoverManifestJobsAsync,CompanyAircraftGuard=(identity,jobs)=>
+            { RecoverManifestJobsAsync = Jobs.RecoverManifestJobsAsync, TransportDispatchGuard = passengerService.RequireNoBoardedPassengersAsync, CompanyAircraftGuard=(identity,jobs)=>
                 {
                     return CompanyAircraft.CheckDispatch(identity,jobs,careerStore?.Load().AircraftBindings??[]) ?? Fleet.CheckDispatch(identity,jobs);
                 } };
         AircraftLoading = new(loadingCoordinator, () => { if (Tracking.ConnectCommand.CanExecute(null)) _ = Tracking.ConnectAsync(); });
+        var knownCatalogue = NamibiaLocationCatalogue.Load();
+        IEnumerable<PassengerEndpoint> CargoLocations(EconomyWorld w)
+        {
+            foreach (var place in w.Locations)
+            {
+                var authored = employerDestinations?.Find(place.Id) ?? knownCatalogue.Locations.SingleOrDefault(x => x.StableId == place.Id);
+                if (authored?.ApproximateCoordinates is {} c)
+                    yield return new(place.Id, authored.Name + " (" + authored.AirportIdentifier.Value + ")", c.Latitude, c.Longitude);
+                else if (w.Sites.SingleOrDefault(x => x.LocationId == place.Id) is {} site)
+                    yield return new(place.Id, site.Name + " (" + site.AirportIdentifier + ")", site.Latitude, site.Longitude);
+            }
+        }
+        var cargoJourneyService = new CargoJourneyService(economyStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(),
+            () => services.IsDryRun ? throw new InvalidOperationException("Physical cargo is unavailable in dry-run. Automated cargo scenarios use an isolated synthetic simulator adapter; no native simulator call was made.") : this.sdkRoot,
+            () => Fleet.Selected?.Id, (w, p) =>
+            {
+                var matches = CargoLocations(w).Where(e => WorldTracking.DistanceMeters(e.Latitude, e.Longitude, p.Latitude, p.Longitude) <= 2778).ToArray();
+                return matches.Length == 1 ? matches[0] : null;
+            })
+        {
+            AuthorizeHandling = loadingCoordinator.AuthorizeCargoHandling,
+            WorldObserved = Fleet.ReconcileTransportArrivals,
+            LegacyRecoveryGuard = async token =>
+            {
+                var manifests = await loadingStore.LoadManifestsAsync(token).ConfigureAwait(false);
+                if (manifests.Any(x => x.State is not (LoadManifestState.Completed or LoadManifestState.Abandoned or LoadManifestState.ResetAtOrigin or LoadManifestState.SimulatorUnloaded)))
+                    throw new InvalidOperationException("Resolve the existing legacy cargo loading/recovery manifest in Aircraft first. It will not be adopted by inference.");
+            },
+            DispatchGuard = (identity, ids) =>
+            {
+                var jobs = ids.Select(id => Jobs.ReservedJobs.Single(x => x.JobId == id)).ToArray();
+                return CompanyAircraft.CheckDispatch(identity, jobs, careerStore?.Load().AircraftBindings ?? []) ?? Fleet.CheckDispatch(identity, jobs);
+            }
+        };
+        CargoJourney = new(cargoJourneyService, () => Jobs.RefreshLiveAsync(), CargoLocations, () => Fleet.Selected?.Registration ?? "unavailable");
         if (flightAttemptTracker is FlightAttemptTracker concreteFlightTracker) concreteFlightTracker.AircraftLoadingDiagnosticProvider = loadingCoordinator.CreateDiagnosticSnapshot;
         if (services is BuilderServices concrete) concrete.SetEconomyDependencyStore(economyStore);
         prospectingOperations ??= services is IAirportManagement management
             ? new ProspectingOperationsService(economyStore, management, new GuardedAvatarSitePresence(() => Tracking.World))
             : new UnavailableProspectingOperations();
         Operations = new(prospectingOperations);
-        Tracking.TelemetryChanged += sample => { _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft); _ = AircraftLoading.ObserveAsync(sample); };
+        Tracking.TelemetryChanged += sample => { _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft); _ = AircraftLoading.ObserveAsync(sample); _ = Passengers.ObserveAsync(sample?.Aircraft); _ = CargoJourney.ObserveAsync(sample?.Aircraft); };
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading,runwayEast,runwayNorth),()=>hasRunway);
         Layout.Edited += (_,_)=>Invalidate();
         AddParkingCommand = new(()=>
