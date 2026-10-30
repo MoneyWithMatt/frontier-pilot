@@ -339,5 +339,13 @@ public sealed class CargoJourneyTests : IDisposable
         sim.FailAfterStation=1;await vm.HandleCargoAsync();Assert.Contains("partial payload",vm.Status);Assert.False(vm.CanEditCargo);Assert.NotNull(s.Manifest!.Pending);
         await vm.HandleCargoAsync();Assert.Equal(68,sim.Weights[5]);Assert.Equal(1,sim.Writes);Assert.Equal(35,s.Manifest.Cargo.Sum(c=>c.Kilograms));
     }
+    [Fact] public async Task ReopenedPendingPlanDisplaysSavedQuantitiesWithoutClaimingThemAboard()
+    {
+        var s=await Create();await s.PrepareAsync(new Dictionary<string,decimal>{{"job-mine",10},{"job-community",25}},[new(6,35)]);
+        var resumed=NewService();var vm=new CargoJourneyViewModel(resumed,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");
+        await vm.RefreshAsync();Assert.Equal(35,vm.RequestedKilograms);Assert.Equal(0,vm.Consignments.Sum(c=>c.Aboard));
+        Assert.Equal(35,vm.Stations.Single(s=>s.Index==6).DesiredCargo);Assert.False(vm.CanEditCargo);Assert.Equal(0,sim.Writes);
+        await vm.HandleCargoAsync();Assert.Equal(68,sim.Weights[5]);Assert.Null(resumed.Manifest!.Pending);
+    }
     public void Dispose() { if(Directory.Exists(root)) Directory.Delete(root,true); }
 }

@@ -220,13 +220,14 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
             Consignments.Add(new() { JobId = job.Id, Description = w.Resources.Single(x=>x.Id==s.ResourceId).Name,
                 Origin = w.Locations.Single(x=>x.Id==s.OriginLocationId).Name, Destination = w.Locations.Single(x=>x.Id==s.DestinationLocationId).Name,
                 Aboard = aboard, AvailableHere = s.OriginLocationId == here ? s.Quantity - s.DeliveredQuantity - s.LoadedQuantity : 0,
-                Delivered = s.DeliveredQuantity, DesiredAboard = aboard, Status = s.DestinationLocationId == here ? "DELIVER HERE" : s.State.ToString(), Edited=()=>Update(false) });
+                Delivered = s.DeliveredQuantity, DesiredAboard = m?.Pending?.Changes.SingleOrDefault(c=>c.JobId==job.Id)?.After??aboard, Status = s.DestinationLocationId == here ? "DELIVER HERE" : s.State.ToString(), Edited=()=>Update(false) });
         }
         foreach (var s in service.Live?.PayloadStations ?? [])
         {
             var claim = m?.Stations.SingleOrDefault(x=>x.StationIndex==s.Index)?.FrontierCargoKilograms ?? 0;
-            Stations.Add(new() { Index=s.Index, Name=s.Name, Actual=s.CurrentWeightKilograms, Unrelated=s.CurrentWeightKilograms-claim,
-                CargoAboard=claim, DesiredCargo=claim, Writable=s.IsWritable, Limit=s.AuthoritativeMaximumKilograms?.ToString("0.###") ?? "Not reported" });
+            var pending=m?.Pending?.Targets.SingleOrDefault(x=>x.StationIndex==s.Index);
+            Stations.Add(new() { Index=s.Index, Name=s.Name, Actual=s.CurrentWeightKilograms, Unrelated=pending?.BaselineKilograms??s.CurrentWeightKilograms-claim,
+                CargoAboard=claim, DesiredCargo=pending?.FrontierCargoKilograms??claim, Writable=s.IsWritable, Limit=s.AuthoritativeMaximumKilograms?.ToString("0.###") ?? "Not reported" });
         }
         var selectedStationIndex=SelectedStation?.Index;
         SelectedStation=Stations.SingleOrDefault(s=>s.Index==selectedStationIndex)??(Stations.Count(s=>s.CargoAboard>0)==1?Stations.Single(s=>s.CargoAboard>0):null);
