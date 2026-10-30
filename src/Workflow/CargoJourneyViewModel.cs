@@ -181,7 +181,7 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
         if(!CanEditCargo||!Consignments.Contains(cargo))return;
         var remaining=cargo.AvailableHere-Math.Max(0,cargo.DesiredAboard-cargo.Aboard);
         if(remaining<=0){status="All available cargo for this job is already selected or aboard.";Update(false);return;}
-        PickupCargo=cargo;PickupQuantityText=remaining.ToString("0.###");Update(false);
+        PickupCargo=cargo;PickupQuantityText=remaining.ToString();Update(false);
     }
     public void ClosePickup(){PickupCargo=null;Update(false);}
     public void AddPickup(CargoStationRow station)
@@ -218,7 +218,10 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     public void DeliverConsignment(CargoConsignmentRow cargo)
     {
         if(!CanEditCargo||!Consignments.Contains(cargo)||cargo.Status!="DELIVER HERE"||cargo.Aboard<=0)return;
-        cargo.DesiredAboard=0;PickupCargo=null;RefreshEditableRows();Update(false);
+        var before=cargo.DesiredAboard;
+        try{cargo.DesiredAboard=0;DistributeMass();status=$"Selected {cargo.Aboard:0.###} kg of {cargo.Description} for delivery. Confirm and apply to unload.";}
+        catch(Exception ex){cargo.DesiredAboard=before;status=ex.Message;}
+        PickupCargo=null;RefreshEditableRows();Update(false);
     }
     private void RefreshEditableRows()
     {
@@ -270,6 +273,8 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
             else
             {
                 var remove=-delta;
+                if(Stations.Where(x=>x.Writable).Sum(x=>Math.Max(0,x.DesiredCargo-Pickups.Where(p=>p.StationIndex==x.Index).Sum(p=>p.Kilograms)))<remove)
+                    throw new InvalidOperationException("The current writable station allocations cannot supply this reduction.");
                 foreach(var station in Stations.Where(x=>x.Writable).OrderByDescending(x=>x.DesiredCargo))
                 { var retainedPickup=Pickups.Where(p=>p.StationIndex==station.Index).Sum(p=>p.Kilograms);
                   var take=Math.Min(remove,Math.Max(0,station.DesiredCargo-retainedPickup)); station.DesiredCargo-=take;remove-=take; }

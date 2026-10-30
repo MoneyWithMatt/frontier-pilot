@@ -409,6 +409,7 @@ public sealed class CargoJourneyTests : IDisposable
         vm.BeginPickup(vm.Consignments.Single(c=>c.JobId=="job-mine"));vm.AddPickup(vm.Stations.Single(x=>x.Index==6));
         Assert.Contains("station limit",vm.Status);Assert.Empty(vm.Pickups); // 33 unrelated + 10 > 40.
         vm.AddPickup(new(){Index=6,Name="stale",Writable=true});Assert.Contains("not writable",vm.Status);
+        var readOnly=new CargoStationRow{Index=7,Name="Read only",Writable=false};vm.Stations.Add(readOnly);vm.AddPickup(readOnly);Assert.Empty(vm.Pickups);vm.Stations.Remove(readOnly);
         vm.AddPickup(vm.Stations.Single(x=>x.Index==5));await vm.HandleCargoAsync();await vm.HandleCargoAsync();
         Assert.Equal(10,sim.Weights[4]);Assert.Equal(33,sim.Weights[5]);Assert.NotEmpty(s.Manifest!.Cargo);
     }
@@ -420,6 +421,17 @@ public sealed class CargoJourneyTests : IDisposable
         vm.DeliverConsignment(vm.Consignments.Single(c=>c.JobId=="job-mine"));vm.BeginPickup(vm.Consignments.Single(c=>c.JobId=="job-lodge"));
         vm.AddPickup(vm.Stations.Single(x=>x.Index==5));await vm.HandleCargoAsync();await vm.HandleCargoAsync();
         Assert.Equal(7,sim.Weights[4]);Assert.Equal(58,sim.Weights[5]);Assert.Equal(32,s.Manifest!.Cargo.Sum(c=>c.Kilograms));
+    }
+    [Fact] public async Task DeliveryFreesStationCapacityForPickupBeforeConfirmation()
+    {
+        sim.Weights[0]=0;sim.Weights[1]=0;sim.StationMaximum=70;
+        var s=await Create();await Handle(s,new(){{"job-mine",10},{"job-community",25}},new CargoStationAllocation(6,35));await Fly(s,Origin,A);
+        await Store.ApplyAsync(w=>EconomyKernel.AcceptJob(w,"job-lodge",sim.Sample.ObservedUtc));
+        var vm=new CargoJourneyViewModel(s,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        vm.DeliverConsignment(vm.Consignments.Single(c=>c.JobId=="job-mine"));Assert.Equal(25,vm.Stations.Single(x=>x.Index==6).DesiredCargo);
+        vm.BeginPickup(vm.Consignments.Single(c=>c.JobId=="job-lodge"));vm.AddPickup(vm.Stations.Single(x=>x.Index==6));
+        Assert.Single(vm.Pickups);Assert.Equal(68,sim.Weights[5]);
+        await vm.HandleCargoAsync();await vm.HandleCargoAsync();Assert.Equal(65,sim.Weights[5]);Assert.Equal(32,s.Manifest!.Cargo.Sum(c=>c.Kilograms));
     }
     public void Dispose() { if(Directory.Exists(root)) Directory.Delete(root,true); }
 }

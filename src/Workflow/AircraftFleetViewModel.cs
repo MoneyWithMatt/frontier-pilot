@@ -25,6 +25,7 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
     private Guid? observingId;
     private Guid session;
     private uint observingObject;
+    private uint? identityGapObject;
     private bool bindingConfirmationRequired;
     private bool qualifiedAdapterActive;
     private DateTimeOffset stableSince, savedUtc;
@@ -247,11 +248,14 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
                     sample.Aircraft.AircraftTitle.Equals("Unknown aircraft",StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(sample.Aircraft.AircraftType)))
                 {
                     // Identity arrives separately from position. Do not latch a normal startup/aircraft transition as a durable save failure.
-                    if(observingId is not null && sample.AircraftObjectId!=observingObject)bindingConfirmationRequired=true;
+                    identityGapObject??=observingId is not null?observingObject:null;
+                    if(identityGapObject is {} priorObject && sample.AircraftObjectId!=priorObject)bindingConfirmationRequired=true;
                     world=null;location=null;EndSession("Waiting for complete aircraft identity");
                     status="Waiting for MSFS aircraft identity. Fleet observation resumes automatically when TITLE and ATC MODEL arrive; no aircraft was inferred.";
                     Notify();return;
                 }
+                if(sample is not null && identityGapObject is {} interrupted)
+                {if(sample.AircraftObjectId!=interrupted)bindingConfirmationRequired=true;identityGapObject=null;}
                 world = sample; location = recognized;
                 if(sample is not null && Selected is {} company && company.OwnerEntityId is not null)
                 {
@@ -404,6 +408,7 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
             var a=Selected;
             if(blocked)return "Fleet is blocked: "+status+" Existing saves are preserved; review Aircraft / Fleet before loading.";
             if(world is null)return "Waiting for a complete live aircraft observation in Aircraft / Fleet. Loading has not started.";
+            if(bindingConfirmationRequired)return "Confirm the loaded livery against the selected airframe in Aircraft / Fleet before loading; the simulator aircraft object changed.";
             if(a?.CompanyTypeId is {} type && a.OwnerEntityId is not null && (!Authorized(a) || world is null || !CompanyAircraft.Types.Any(t=>t.Id==type&&t.Enabled) || ResolveCompanyType?.Invoke(world.Aircraft)!=type))return "Selected company airframe is unauthorised, disabled or does not match the confirmed live type.";
             if(blocked||a is null||world is null||!a.Bindings.Any(b=>b.Title==identity.Title&&b.Model==identity.Type))return "Select and bind an individual aircraft in Aircraft / Fleet before a new load.";
             if(a.LocationReconciliationRequired)return "Review and acknowledge the aircraft's external relocation before new dispatch. Existing cargo is not moved by this acknowledgement.";

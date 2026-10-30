@@ -2,7 +2,7 @@
 
 ## Guided cargo loading repair — 2026-10-30
 
-[Guided loader and identity diagnostics](guided-cargo-loading.md) address the confusing toolbar and reported outside-preview validation failure. The exact missing-field source is unconfirmed pending live evidence; automated retry/guard/UI tests cannot establish Caravan acceptance. [Current checkpoint](handoffs/guided-cargo-loading.md).
+[Live diagnosis and loading repair](guided-cargo-loading.md): the old build read Caravan payload and walking identity successfully but Fleet latched an earlier incomplete title/model. Automatic recovery now waits for complete tracking without unblocking durable save failures. The requested Load → station-card UI replaces the main dropdown/quantity table. Regression/hosted WPF verification and repaired-artifact live acceptance are distinct. [Current checkpoint](handoffs/guided-cargo-loading.md).
 
 ## Employer-owned starting fleets — 2026-10-29
 

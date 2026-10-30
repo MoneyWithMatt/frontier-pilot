@@ -136,6 +136,15 @@ public sealed class EmployerFleetTests : IDisposable
         v.ObserveTracking(World(t with{ObservedUtc=t.ObservedUtc.AddSeconds(21)}),null);Assert.NotNull(v.Selected.Latest);
         Assert.Single(v.Selected.Bindings);await v.ShutdownAsync();
     }
+    [Fact] public async Task AircraftObjectChangeAcrossIdentityGapStillRequiresExplicitConfirmation()
+    {
+        var p=Join("Missionary");var v=View(p);v.ResolveCompanyType=sample=>{FlightAircraftIdentity.From(sample);return v.Selected!.CompanyTypeId;};
+        var t=At(Employer("Missionary"));v.ObserveTracking(World(t),null);
+        v.ObserveTracking(World(t with{AircraftType="",ObservedUtc=t.ObservedUtc.AddSeconds(1)}),null);
+        v.ObserveTracking(World(t with{ObservedUtc=t.ObservedUtc.AddSeconds(2)},99),null);
+        Assert.Contains("object changed",v.Status);Assert.Single(v.Selected!.Bindings);
+        Assert.Contains("Confirm the loaded livery",v.CheckDispatch(FlightAircraftIdentity.From(t),[])!);await v.ShutdownAsync();
+    }
     [Fact] public async Task DurableFleetRevisionFailureStaysBlockedAfterCompleteTelemetry()
     {
         var p=Join("Missionary");var v=View(p);v.ResolveCompanyType=sample=>{FlightAircraftIdentity.From(sample);return v.Selected!.CompanyTypeId;};
