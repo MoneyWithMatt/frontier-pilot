@@ -1,5 +1,9 @@
 # Design decisions
 
+## Guided cargo repair — 2026-10-30
+
+Matt requested a really simple loader after the live Caravan outside-preview failure. Reuse the persistent journey/ownership/flight system; expose a guided quantity/confirm/apply/departure flow, retain partial quantities and explicit actual compartment choice, and move advanced distribution/recovery out of the main path. Retry incomplete identity reads only, never fabricate a model or retry native writes automatically. Stage-specific failure details must identify the actual blocker. No pay, save schema, station limit, avatar or delivery authority changes. [Scope](specs/guided-cargo-loading.md), [implementation/live limits](guided-cargo-loading.md).
+
 ## Persistent employer starting fleets — 2026-10-29
 
 Matt authorized automatic one-per-catalogue-type employer allocations without purchase/registration. Extend the existing physical GUID fleet, never a parallel ownership system. Ownership, assignment and operation are separate; company property has no player ledger/net-worth value. Local career player GUIDs scope idempotent company/type allocation receipts. Full-GUID FP dispatch registrations are not native/civil/global registry claims.

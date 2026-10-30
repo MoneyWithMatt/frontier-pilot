@@ -6,6 +6,13 @@ namespace FrontierAirportBuilder.Tests;
 
 public sealed class AircraftLoadingTests
 {
+    [Fact] public void OutsideCargoAuthorizationRejectsIncompleteTrackingWithoutGuessingModel()
+    {
+        var h=Harness();var world=World();h.setWorld(world with{Aircraft=world.Aircraft with{AircraftType=""}});
+        var error=Assert.Throws<InvalidOperationException>(()=>h.coordinator.AuthorizeCargoHandling(Snapshot(),true));
+        Assert.Contains("Tracking to identify the aircraft",error.Message);Assert.Equal(0,h.sim.PayloadWrites);Assert.Null(h.coordinator.Current.Manifest);
+        h.setWorld(world);h.coordinator.AuthorizeCargoHandling(Snapshot(),true);Assert.Equal(0,h.sim.PayloadWrites);
+    }
     private static async Task WaitForLoadingCommand(AircraftLoadingViewModel vm)
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();

@@ -608,6 +608,9 @@ public sealed class AircraftLoadingCoordinator
 
     public void AuthorizeCargoHandling(AircraftLoadingSnapshot live, bool outside)
     {
+        var observed=tracking();
+        if(observed is not null && (string.IsNullOrWhiteSpace(observed.Aircraft.AircraftType) || string.IsNullOrWhiteSpace(observed.Aircraft.AircraftTitle)))
+            throw new InvalidOperationException("Live tracking has not confirmed the aircraft model after the cockpit/walkaround transition. Wait for Tracking to identify the aircraft, then retry. No payload was changed by this check.");
         if (outside)
         {
             var reason = Access(live, false);

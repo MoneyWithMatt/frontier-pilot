@@ -1,5 +1,9 @@
 # Technical status — 2026-09-07
 
+## Guided cargo loading repair — 2026-10-30
+
+[Guided loader and identity diagnostics](guided-cargo-loading.md) address the confusing toolbar and reported outside-preview validation failure. The exact missing-field source is unconfirmed pending live evidence; automated retry/guard/UI tests cannot establish Caravan acceptance. [Current checkpoint](handoffs/guided-cargo-loading.md).
+
 ## Employer-owned starting fleets — 2026-10-29
 
 [Automatic starting allocations](employer-starting-fleets.md) extend the existing physical fleet, with career schema 3 local player identity and fleet schema 2 company ownership/assignment. All catalogue types provision once; disabled types remain disabled. Existing saves/history/condition/location are preserved, ambiguous records require explicit reconciliation, exact type/position guards and current mission capabilities remain authoritative. Draft PR #7: local and hosted full regression 836/0/0; hosted WPF/package and four employer screenshots verified. Exact source/evidence belongs in the [handoff](handoffs/employer-starting-fleets.md). No live acceptance or shared-world authority is claimed.

@@ -54,16 +54,20 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
         IReadOnlyList<CargoStationAllocation> allocations, CancellationToken token = default)
     {
         await gate.WaitAsync(token).ConfigureAwait(false);
+        var stage="checking existing loading records";
         try
         {
             using var lease = await AircraftPayloadOperationLease.AcquireAsync(token).ConfigureAwait(false);
             if (LegacyRecoveryGuard is {} guard) await guard(token).ConfigureAwait(false);
             var w = await store.LoadAsync(token).ConfigureAwait(false) ?? throw new InvalidOperationException("Accept a cargo job first.");
             NoPassengers(w);
+            stage="reading aircraft identity and payload from MSFS";
             var live = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid();
             var id = selectedAirframe() ?? throw new InvalidOperationException("Select a physical airframe.");
             var m = w.CargoAirframes.SingleOrDefault(x => x.AirframeId == id); Ground(live, m);
+            stage="checking walking-avatar access and live tracking identity";
             AuthorizeHandling?.Invoke(live, true);
+            stage="checking cargo, aircraft eligibility and station distribution";
             var here = location(w, live.Position) ?? throw new InvalidOperationException("Stop at one unambiguous known cargo location.");
             if (m?.Pending is not null) throw new InvalidOperationException("Resolve the persisted cargo preview/operation before preparing another.");
             if (m?.Legs.Any(x => x.SettledUtc is null) == true) throw new InvalidOperationException("Complete the current armed leg before changing cargo.");
@@ -110,6 +114,7 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
             m ??= new CargoAirframeManifest(CargoJourneyKernel.ManifestId(id), id, live.Aircraft, w.Jobs.Single(x => x.Id == changes[0].JobId).PlayerId, 1, here.Id, [], [], [], null, [], []) { StationLayout = live.PayloadStations.ToArray() };
             var expected = m.Revision;
             var updated = m with { LocationId = here.Id, Revision = expected + 1, Pending = operation, ManagedJobs = m.ManagedJobs.Concat(changes.Select(x => x.JobId)).Distinct().ToArray() };
+            stage="saving the loading plan";
             World = (await store.ApplyAsync(current =>
             {
                 NoPassengers(current);
@@ -119,6 +124,8 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
             Live = live; Reason = "PROPOSED: outside authorization saved. Review consignments and station targets, board the same aircraft, then Apply within five minutes. Cargo is unchanged until readback and commit.";
             Changed?.Invoke(); return operation;
         }
+        catch(Exception error) when(error is not OperationCanceledException)
+        {throw new InvalidOperationException($"Loading plan stopped while {stage}. {error.Message} This preview did not write payload to MSFS.",error);}
         finally { gate.Release(); }
     }
 

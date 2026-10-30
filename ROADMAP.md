@@ -1,5 +1,7 @@
 # Frontier Pilot roadmap and current status
 
+Immediate repair: [guided cargo loading](docs/guided-cargo-loading.md), [scope](docs/specs/guided-cargo-loading.md), [handoff](docs/handoffs/guided-cargo-loading.md). Simplify the reported failed outside preview without weakening identity/payload ownership. Automated verification and exact-aircraft live acceptance are separate; do not add further loading features before the live loop is established.
+
 This index separates implementation from acceptance. Historical reports in `docs/TECHNICAL_STATUS.md`, `docs/BACKLOG.md` and `evidence/` remain intact; older dates may describe superseded behavior. See [architecture](ARCHITECTURE.md) and the linked feature reports before changing rules.
 
 | System | Implemented / automated evidence | Live acceptance / remaining boundary |

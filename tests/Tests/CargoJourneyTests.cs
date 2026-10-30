@@ -303,5 +303,41 @@ public sealed class CargoJourneyTests : IDisposable
         await Assert.ThrowsAsync<InvalidOperationException>(()=>NewService().PrepareAsync(new Dictionary<string,decimal>{{"job-community",25}},[new CargoStationAllocation(6,25)]));
         Assert.Equal(0,sim.Writes);
     }
+    [Fact] public async Task GuidedLoadingAndDeliveryRetainThroughCargoWithoutManualStationArithmetic()
+    {
+        var s=await Create();var vm=new CargoJourneyViewModel(s,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");
+        await vm.RefreshAsync();vm.LoadAvailableCommand.Execute(null);vm.SelectedStation=vm.Stations.Single(s=>s.Index==6);
+        await vm.HandleCargoAsync();Assert.Contains("Apply cargo",vm.PrimaryActionText);Assert.False(vm.CanEditCargo);Assert.Equal(0,sim.Writes);
+        await vm.HandleCargoAsync();Assert.Equal(68,sim.Weights[5]);Assert.Equal(35,s.Manifest!.Cargo.Sum(c=>c.Kilograms));
+        Assert.True(vm.CanEditCargo);Assert.False(vm.PrimaryCommand.CanExecute(null));
+        await Fly(s,Origin,A);await vm.RefreshAsync();vm.DeliverHereCommand.Execute(null);
+        Assert.Equal(0,vm.Consignments.Single(c=>c.JobId=="job-mine").DesiredAboard);
+        Assert.Equal(25,vm.Consignments.Single(c=>c.JobId=="job-community").DesiredAboard);
+        await vm.HandleCargoAsync();await vm.HandleCargoAsync();Assert.Equal(58,sim.Weights[5]);Assert.Equal(25,Assert.Single(s.Manifest.Cargo).Kilograms);
+    }
+    [Fact] public async Task GuidedPickupRequiresExplicitCompartmentAndKeepsErrorVisibleDuringTracking()
+    {
+        var s=await Create();var vm=new CargoJourneyViewModel(s,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");
+        await vm.RefreshAsync();vm.LoadAvailableCommand.Execute(null);await vm.HandleCargoAsync();
+        Assert.Contains("Choose a cargo compartment",vm.Status);Assert.Null(s.Manifest);Assert.Equal(0,sim.Writes);
+        await vm.ObserveAsync(sim.Sample);Assert.Contains("Choose a cargo compartment",vm.Status);
+        Assert.Contains("InvalidOperationException",vm.TechnicalDetails);
+    }
+    [Theory][InlineData(false)][InlineData(true)] public async Task OutsideIdentityFailureIdentifiesStageAndCannotCommitCargoOrPayment(bool tracking)
+    {
+        await Create();var s=NewService(authorize:(_,_)=>{if(tracking)throw new InvalidDataException("MSFS aircraft identity is incomplete (ATC MODEL missing).");});
+        if(!tracking)sim.Sample=sim.Sample with{AircraftType=""};
+        var before=File.ReadAllText(Store.StoragePath);
+        var error=await Assert.ThrowsAsync<InvalidOperationException>(()=>s.PrepareAsync(new Dictionary<string,decimal>{{"job-mine",10}},[new(6,10)]));
+        Assert.Contains(tracking?"walking-avatar access and live tracking identity":"reading aircraft identity and payload from MSFS",error.Message);Assert.Contains("did not write payload",error.Message);
+        Assert.Equal(before,File.ReadAllText(Store.StoragePath));Assert.Equal(0,sim.Writes);
+    }
+    [Fact] public async Task GuidedPartialWriteRetainsPlanAndRetryDoesNotDoubleApply()
+    {
+        var s=await Create();var vm=new CargoJourneyViewModel(s,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");
+        await vm.RefreshAsync();vm.LoadAvailableCommand.Execute(null);vm.SelectedStation=vm.Stations.Single(s=>s.Index==6);await vm.HandleCargoAsync();
+        sim.FailAfterStation=1;await vm.HandleCargoAsync();Assert.Contains("partial payload",vm.Status);Assert.False(vm.CanEditCargo);Assert.NotNull(s.Manifest!.Pending);
+        await vm.HandleCargoAsync();Assert.Equal(68,sim.Weights[5]);Assert.Equal(1,sim.Writes);Assert.Equal(35,s.Manifest.Cargo.Sum(c=>c.Kilograms));
+    }
     public void Dispose() { if(Directory.Exists(root)) Directory.Delete(root,true); }
 }

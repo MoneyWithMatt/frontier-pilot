@@ -18,7 +18,17 @@ public sealed class SimConnectAircraftLoading : IGuardedPassengerPayloadSimulato
     ];
 
     public Task<AircraftLoadingSnapshot> ReadAsync(string sdkRoot, CancellationToken cancellationToken = default) =>
-        Task.Run(() => WithSession(sdkRoot, cancellationToken, session => session.Read()), cancellationToken);
+        Task.Run(() => WithSession(sdkRoot, cancellationToken, session => ReadCompleteIdentity(session.Read, () => { cancellationToken.ThrowIfCancellationRequested(); Thread.Sleep(250); })), cancellationToken);
+    // A control-mode transition can produce an incomplete identity. Retry reads only;
+    // never reuse a previous identity, retry a write, or authorize unknown aircraft.
+    internal static AircraftLoadingSnapshot ReadCompleteIdentity(Func<AircraftLoadingSnapshot> read, Action wait)
+    {
+        for (var attempt=0;;attempt++)
+        {
+            try { return read().EnsureValid(); }
+            catch (InvalidDataException error) when (error.Message.StartsWith("MSFS aircraft identity is incomplete", StringComparison.Ordinal) && attempt<2) { wait(); }
+        }
+    }
     public Task<AircraftLoadingSnapshot> WritePayloadAsync(string sdkRoot, IReadOnlyDictionary<int, decimal> targetKilograms, CancellationToken cancellationToken = default) =>
         Task.Run(() => WithSession(sdkRoot, cancellationToken, session => { session.WritePayload(targetKilograms); Thread.Sleep(250); return session.Read(); }), cancellationToken);
     public Task<AircraftLoadingSnapshot> WriteFuelAsync(string sdkRoot, IReadOnlyDictionary<string, decimal> targetGallons, CancellationToken cancellationToken = default) =>
