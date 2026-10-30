@@ -1,5 +1,9 @@
 # Backlog
 
+## Immediate loading repair — 2026-10-30
+
+[Guided cargo loading](guided-cargo-loading.md), [draft PR #8](https://github.com/MoneyWithMatt/frontier-pilot/pull/8), [handoff](handoffs/guided-cargo-loading.md): simplified primary flow, bounded identity reads and source-specific preview errors. Exact Caravan live outside/seated loading must be re-established before expanding logistics features. Do not substitute synthetic acceptance or guessed model data.
+
 ## Employer starting fleets — 2026-10-29
 
 [Automatic employer-owned starting allocation](employer-starting-fleets.md), [approved scope](specs/employer-starting-fleets.md), [handoff](handoffs/employer-starting-fleets.md). Finish exact-source hosted WPF/package evidence and separately approved live type/location/condition/mission checks. Future work: explicit active-career employer/economy transition, ownership/assignment transfers and authenticated shared-world registration/allocation authority. Allocation does not enable H125/platform/passenger/configuration/fault/placement capabilities.
