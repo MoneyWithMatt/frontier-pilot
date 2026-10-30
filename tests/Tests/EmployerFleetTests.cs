@@ -110,6 +110,41 @@ public sealed class EmployerFleetTests : IDisposable
         Assert.Single(v.Selected!.Bindings);Assert.NotNull(v.Selected.Latest);Assert.Null(v.CheckDispatch(FlightAircraftIdentity.From(t),[]));
         var id=v.Selected.Id;await v.ShutdownAsync();var restarted=View(p);Assert.Equal(id,restarted.Selected!.Id);Assert.NotNull(restarted.Selected.Latest);await restarted.ShutdownAsync();
     }
+    [Theory][InlineData("", "Synthetic model")][InlineData("Synthetic company aircraft", "")][InlineData("Unknown aircraft", "Synthetic model")]
+    public async Task IncompleteIdentityWaitsWithoutBindingAndCompleteObservationRecovers(string title,string model)
+    {
+        var p=Join("Missionary");var v=View(p);v.Selected=v.Aircraft.Single(a=>a.CompanyTypeId=="c208");
+        var t=At(Employer("Missionary"),DateTimeOffset.UtcNow.AddSeconds(-12));
+        v.ResolveCompanyType=sample=>CompanyAircraft.Resolve(FlightAircraftIdentity.From(sample),[new(t.AircraftTitle,t.AircraftType,"c208")]);
+        var bytes=File.ReadAllText(FleetStore.StoragePath);
+        v.ObserveTracking(World(t with{AircraftTitle=title,AircraftType=model}),null);
+        Assert.Contains("Waiting for MSFS",v.Status);Assert.Empty(v.Selected!.Bindings);Assert.Null(v.Selected.Latest);
+        Assert.Contains("Waiting",v.CheckDispatch(FlightAircraftIdentity.From(t),[])!);Assert.Equal(bytes,File.ReadAllText(FleetStore.StoragePath));
+        for(var i=0;i<=11;i++)v.ObserveTracking(World(t with{ObservedUtc=t.ObservedUtc.AddSeconds(i)}),null);
+        Assert.Single(v.Selected.Bindings);Assert.NotNull(v.Selected.Latest);Assert.Null(v.CheckDispatch(FlightAircraftIdentity.From(t),[]));
+        await v.ShutdownAsync();
+    }
+    [Fact] public async Task IdentityGapResetsStationaryContinuityWithoutReplacingIdentityOrLocation()
+    {
+        var p=Join("Missionary");var v=View(p);var t=At(Employer("Missionary"));
+        v.ResolveCompanyType=sample=>CompanyAircraft.Resolve(FlightAircraftIdentity.From(sample),[new(t.AircraftTitle,t.AircraftType,v.Selected!.CompanyTypeId!)]);
+        v.ObserveTracking(World(t),null);v.ObserveTracking(World(t with{ObservedUtc=t.ObservedUtc.AddSeconds(9)}),null);
+        v.ObserveTracking(World(t with{ObservedUtc=t.ObservedUtc.AddSeconds(10),AircraftType=""}),null);
+        Assert.Null(v.Selected!.Latest);Assert.NotNull(v.CheckDispatch(FlightAircraftIdentity.From(t),[]));
+        for(var i=11;i<=20;i++)v.ObserveTracking(World(t with{ObservedUtc=t.ObservedUtc.AddSeconds(i)}),null);
+        Assert.Null(v.Selected.Latest);
+        v.ObserveTracking(World(t with{ObservedUtc=t.ObservedUtc.AddSeconds(21)}),null);Assert.NotNull(v.Selected.Latest);
+        Assert.Single(v.Selected.Bindings);await v.ShutdownAsync();
+    }
+    [Fact] public async Task DurableFleetRevisionFailureStaysBlockedAfterCompleteTelemetry()
+    {
+        var p=Join("Missionary");var v=View(p);v.ResolveCompanyType=sample=>{FlightAircraftIdentity.From(sample);return v.Selected!.CompanyTypeId;};
+        var f=FleetStore.Load();FleetStore.Commit(f with{Revision=f.Revision+1},f.Revision);var bytes=File.ReadAllText(FleetStore.StoragePath);
+        var t=At(Employer("Missionary"));v.ObserveTracking(World(t),null);Assert.Contains("revision conflict",v.Status);
+        v.ObserveTracking(World(t with{AircraftType=""}),null);v.ObserveTracking(World(t with{ObservedUtc=t.ObservedUtc.AddSeconds(1)}),null);
+        Assert.Contains("Fleet is blocked",v.CheckDispatch(FlightAircraftIdentity.From(t),[])!);
+        Assert.Equal(bytes,File.ReadAllText(FleetStore.StoragePath));await v.ShutdownAsync();
+    }
     [Fact] public async Task WrongTypeWrongLocationAndDisabledAircraftRemainUnavailable()
     {
         var p=Join("Offshore");var v=View(p);var enabled=v.Aircraft.Single(a=>a.CompanyTypeId=="vision-jet");v.Selected=enabled;
@@ -154,8 +189,11 @@ public sealed class EmployerFleetTests : IDisposable
     }
     [Fact] public async Task AllocatedGuidWorksThroughExistingCargoAndPassengerPhysicalPayloadCoordinators()
     {
-        var p=Join("Missionary");var company=Employer("Missionary");var v=View(p);v.Selected=v.Aircraft.Single(a=>a.CompanyTypeId=="c208");v.ResolveCompanyType=_=>"c208";
+        var p=Join("Missionary");var company=Employer("Missionary");var v=View(p);v.Selected=v.Aircraft.Single(a=>a.CompanyTypeId=="c208");
         var sim=new FrontierAirportBuilder.TestFixtures.SyntheticPassengerAircraft{Sample=At(company,DateTimeOffset.UtcNow.AddSeconds(-12))};
+        v.ResolveCompanyType=sample=>CompanyAircraft.Resolve(FlightAircraftIdentity.From(sample),[new(sim.Sample.AircraftTitle,sim.Sample.AircraftType,"c208")]);
+        v.ObserveTracking(World(sim.Sample with{AircraftType=""}),null);
+        Assert.Contains("Waiting",v.CheckDispatch(FlightAircraftIdentity.From(sim.Sample),[])!);
         for(var i=0;i<=11;i++)v.ObserveTracking(World(sim.Sample with{ObservedUtc=sim.Sample.ObservedUtc.AddSeconds(i)}),null);
         sim.Sample=sim.Sample with{ObservedUtc=sim.Sample.ObservedUtc.AddSeconds(11)};
         var cargo=new MemoryEconomyStateStore();var seed=EconomyPrototypeSeed.Create();seed=seed with{Resources=seed.Resources.Select(r=>r with{UnitName="kg"}).ToArray()};
