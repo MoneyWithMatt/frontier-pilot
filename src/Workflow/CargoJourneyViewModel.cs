@@ -108,11 +108,20 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     public decimal RequestedKilograms=>Consignments.Sum(c=>c.DesiredAboard);
     public string CargoSummary=>$"Confirmed aboard: {Consignments.Sum(c=>c.Aboard):0.###} kg  |  After this operation: {RequestedKilograms:0.###} kg";
     public string PrimaryActionText=>service.Manifest?.Pending is not null?"Apply cargo in cockpit":"Confirm loading / unloading plan";
-    public string NextStep=>service.Manifest?.Pending is {} pending ? pending.Problem is not null ?
-        "Loading needs attention. Read the message below before retrying; the saved plan is retained." :
-        "2. Review the proposed dispatch sheet, board this aircraft, then apply cargo. Nothing is aboard until verified." :
-        service.Manifest?.Legs.Any(l=>l.SettledUtc is null&&l.Flight is not null)==true ? "Flight recording active. Fly to the planned stop; remaining cargo stays aboard." :
-        "1. Choose how much cargo to have aboard. Confirm the plan while walking near this aircraft.";
+    public string NextStep
+    {
+        get
+        {
+            if(service.Manifest?.Pending is {} pending)return pending.Problem is not null?
+                "Loading needs attention. Read the message below before retrying; the saved plan is retained.":
+                "2. Review the proposed dispatch sheet, board this aircraft, then apply cargo. Nothing is aboard until verified.";
+            if(service.Manifest?.Legs.SingleOrDefault(l=>l.SettledUtc is null) is {} leg)return leg.Flight is null?
+                "3. Remain stopped for ten tracking seconds, then Start flight recording before takeoff.":
+                "Flight recording active. Fly to the planned stop; remaining cargo stays aboard.";
+            return service.Manifest?.Cargo.Length>0?"Cargo confirmed aboard. Choose your next destination below, or select cargo for a pickup or delivery here.":
+                "1. Choose how much cargo to have aboard. Confirm the plan while walking near this aircraft.";
+        }
+    }
     public string DepartureActionText=>service.Manifest?.Legs.Any(l=>l.SettledUtc is null)==true?"Start flight recording":"Prepare departure";
     public ActionCommand PrimaryCommand { get; }
     public ActionCommand LoadAvailableCommand { get; }

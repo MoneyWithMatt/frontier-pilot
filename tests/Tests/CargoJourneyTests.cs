@@ -347,5 +347,16 @@ public sealed class CargoJourneyTests : IDisposable
         Assert.Equal(35,vm.Stations.Single(s=>s.Index==6).DesiredCargo);Assert.False(vm.CanEditCargo);Assert.Equal(0,sim.Writes);
         await vm.HandleCargoAsync();Assert.Equal(68,sim.Weights[5]);Assert.Null(resumed.Manifest!.Pending);
     }
+    [Fact] public async Task GuidedDepartureExplainsStationaryWaitAndStillRequiresExplicitStart()
+    {
+        var s=await Create();await Handle(s,new(){{"job-mine",10}},new CargoStationAllocation(6,10));
+        var vm=new CargoJourneyViewModel(s,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        Assert.Contains("Cargo confirmed aboard",vm.NextStep);vm.SelectedStop=vm.Stops.Single(p=>p.Endpoint==A);
+        await vm.PrepareDepartureAsync();Assert.Contains("Remain stopped",vm.NextStep);Assert.False(vm.CanEditCargo);
+        Assert.Null(s.Manifest!.Legs.Last().Flight);
+        for(var i=0;i<=10;i++){sim.Sample=sim.Sample with{ObservedUtc=sim.Sample.ObservedUtc.AddSeconds(1)};await vm.ObserveAsync(sim.Sample);}
+        Assert.Null(s.Manifest.Legs.Last().Flight);await vm.PrepareDepartureAsync();Assert.NotNull(s.Manifest.Legs.Last().Flight);
+        Assert.Contains("Flight recording active",vm.NextStep);Assert.False(vm.DepartureCommand.CanExecute(null));
+    }
     public void Dispose() { if(Directory.Exists(root)) Directory.Delete(root,true); }
 }
