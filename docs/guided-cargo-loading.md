@@ -23,7 +23,10 @@ The adapter still requests aircraft proxy 0, independently of avatar/current pro
 - Choose the actual cargo compartment once; the button reconciles aggregate station mass automatically. No guessed seat/cargo mapping, limit or MTOW/CG/performance decision. Advanced distributions, explicit renewal/discard and diagnostics remain collapsed. Pending/active-flight quantities are locked in the UI; backend guards remain authoritative.
 - Destination and one stateful departure button replace separate plan/arm controls. Ten continuous stopped tracking seconds and explicit start remain required; no automatic proof, wages or arming. Existing jobs and pay policy are unchanged.
 
-## Remaining live acceptance — repaired build NOT yet tested
+## Live acceptance status — 2026-10-30
+Approved run 38 passed live recognition, outside preview, F11 cockpit entry, one physical apply and retained readback: 100 kg Cargo Cabin + 5 kg Cargo Pod 1, total payload 259.221 kg including preserved occupants; fuel unchanged. Persisted state contains one receipt, two Loaded shipments and no pending operation or payment. Full multi-stop flight, unloading and restart/reconnect acceptance remain pending. Exact evidence and limits are recorded in the [handoff](handoffs/guided-cargo-loading.md). F11 was verified unused and saved as Take control of character in Matt 2026 at the user's explicit request.
+
+## Full live acceptance procedure (steps 1–3 now passed for this session)
 1. Approve the exact artifact/executable and isolated data procedure before agent execution. Record source/merge/artifact/executable SHA256, MSFS/SDK and Black Square Caravan versions/config hashes. Preserve the existing career and pending state; never reset it to make a test pass.
 2. Start Frontier before simulator identity is available, then load the Caravan at Eros. Fleet should wait, then recover automatically on complete matching telemetry without a save-blocked latch. Walk near the aircraft. Click Load beside 100 kg school supplies, click Cargo Cabin; click Load beside 5 kg mail and click its intended reported station. No quantity or station-total typing should be needed. Optionally test a partial amount/split and Remove. Confirm outside and record any failing phase. Persistent native missing identity must still refuse without guessed identity or writes.
 3. If preview succeeds, inspect the PROPOSED dispatch sheet and unchanged physical mass. Board the same aircraft, apply once, verify immediate/retained station values and gross delta, then check inventory/manifest and reopen. Confirm unrelated occupants/fuel survive. Repeat must not add weight or payment twice.
@@ -31,4 +34,5 @@ The adapter still requests aircraft proxy 0, independently of avatar/current pro
 
 Runtime `4a9cc57` passed [hosted Windows run 31](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41030548114): **848 passed / 0 failed / 0 skipped**, zero build warnings/errors, nine guards, both WPF programs and packaging. Clean tested merge `4fa7e10ffd00381a080ec1c84412f2a144820979`, SDK 8.0.424. Synthetic screenshots were reviewed; this does not prove the reported live Caravan failure is cleared.
 
-Automated evidence, exact commands/commits and pending work belong in [handoff](handoffs/guided-cargo-loading.md). The old installed build was tested live for diagnosis only. The repaired runtime has not yet been executed locally or accepted in MSFS.
+Automated evidence, exact commands/commits and pending work belong in [handoff](handoffs/guided-cargo-loading.md). The old installed build was tested live for diagnosis. Approved repaired run 38 subsequently passed the narrow loading checks above; remaining simulator acceptance must not be inferred from automated tests.
+
