@@ -1,5 +1,9 @@
 # Design decisions
 
+## Specific-platform presence testing — 2026-11-02
+
+Matt explicitly separated deck-presence feasibility from autonomous helicopter flight. Native helipad starts and diagnostic repositioning may test known-platform contact/elevation and reject water, without requiring a human pilot. OL400/H125 live diagnostic accepts sustained deck presence and rejects near/under-pad sea level even when MSFS reports on-ground. This does not qualify other rigs, production transport loading, a flown leg or wages. An isolated staged no-pay transport test can follow without a flown approach; only the existing tracker may construct normal delivery evidence. [Evidence and next integration slice](offshore-landing-proof.md#latest-focused-result--platform-presence-2026-11-02).
+
 ## Aircraft condition foundation — 2026-10-19
 
 - Condition recording is opt-in and read-only in the existing CLI, with an independent SimConnect diagnostic session. Optional-variable failures cannot terminate the existing position source or feed delivery evidence.

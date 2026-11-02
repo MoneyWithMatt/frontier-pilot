@@ -1,5 +1,53 @@
 # Offshore helicopter landing proof
 
+## Latest focused result — platform presence, 2026-11-02
+
+Matt clarified that he cannot fly helicopters or attend the PC. The immediate question is **can the application distinguish this platform's deck from nearby water?** A full autonomous flight is not required for that question. Native helipad starts/repositioning are authorised diagnostic setup; they still cannot create normal flight proof, wages or completion. This supersedes earlier sequencing that made a flown approach a prerequisite for every presence experiment.
+
+**PASS for the isolated H125/OL400 presence diagnostic:** native Free Flight OL400 / Valaris 109, departure **H01 (helipad)**, then **Ready to fly**, places the H125 on the actual deck in normal physics without a position write. Pre-entry exterior preview initially showed water and is not aircraft-contact evidence. Readback after entering was at the pad centre, about 133.21 ft MSL, on-ground 1, slew 0, contact flags set. The existing detector found **59.5546794 continuous simulation seconds / 220 candidate samples**. Full 90-second recording contains pre-entry sea-level samples as well as post-entry deck rest; only the latter qualifies.
+
+| Actual simulator case | Result with deck-specific detector |
+|---|---|
+| Native H01 start, normal-physics deck rest | Accepted sustained deck presence. |
+| Sea level approximately 102 m west | **Rejected all 427 samples**, 34.35 simulation seconds. MSFS nonetheless reported on-ground/contact during water contact. |
+| Sea level directly beneath pad, almost identical latitude/longitude | **Rejected all 448 samples**, 34.55 simulation seconds. This isolates the elevation requirement rather than relying on horizontal distance. |
+| Attempted drop from deck +8 ft | Watchdog aborted after first frame at 11.18 kt. No landing/hover accepted; failure retained. |
+| Native restart and live read-only detector | **Confirmed after 20.2332746 seconds**, longest uninterrupted rest **39.8262123 seconds / 147 samples**. |
+
+Water near the rig ranged -2.7294 to 2.2768 ft MSL; directly beneath the pad -2.8893 to 2.2904 ft MSL. Both contained on-ground=1 and contact bits despite being below the deck. **On-ground alone is unsafe.** The diagnostic combines the known pad centre (8 m conservative radius within the 19 m deck), known deck elevation plus empirically observed H125 reference-height window (0.3–1.5 m above deck), on-ground AND contact, low ground/vertical motion, non-slew/rate-1, object/title identity and uninterrupted wall/simulation time. Surface type 2 was observed in water; no generic crash/failure qualification is inferred from it. Water is rejected irrespective of whether MSFS itself declares a crash.
+
+`scripts/offshore_rest_observer.py` now supports a **read-only live monitor**, using the existing recorder unchanged:
+
+```powershell
+python scripts/offshore_rest_observer.py <new-private-recording.jsonl> --live-sdk 'C:/MSFS 2024 SDK' --seconds 40
+```
+
+It logs source/SDK hashes, observations and presence transitions; no setters, flight controls or save/economy access. Current presence is revoked on invalid contact/height/continuity and on monitor close; historical longest rest never authorises a later operation. Actual transition at **13:31:03.096914 UTC**: `diagnosticDeckRest=true`, 20.2332746 continuous seconds. Recording ended at 13:31:22.999720 UTC with current presence explicitly cleared. Final physical sample: -22.938928762349086, 14.504617448383726; 133.2099106 ft MSL, surface 130.7543582 ft, groundspeed 0.0018355 kt, vertical speed 0.0001039 ft/s, on-ground 1, slew 0, several contacts. Native restart is not return flight. Simulator subsequently left with Escape menu open on the pad; no need to resume the old failed flight controller.
+
+`scripts/offshore_contact_scenarios.py` is a **separate mutation artifact** for exactly named OL400 tests: one INITPOSITION (OnGround=0), bounded 35-second physics observation, fixed pad/water targets, stationarity/title/site guards and slew restoration. No payload/fuel/engine/fault/configuration writes. Exact-site recovery only; no arbitrary coordinate interface. Default geographic, speed, tilt, elevation, time and identity limits remain enforced. Deck-drop failure proves why successful native starts are the preferred recovery; do not blindly repeat it. Initial position readback/optional contact groups can briefly disagree, so no one-frame result is accepted as stable deck presence. Frozen render views can lag diagnostics; never use a slew screenshot as contact proof.
+
+### Evidence and verification
+
+Raw logs and requested screenshots remain private/ignored under `.ci-output-offshore-live`; no public upload. Same simulator/SDK hashes as earlier experiments. No production code, saves, career rates, loading state, bindings, Community or other branches changed.
+
+| Private file | SHA256 |
+|---|---|
+| ol400-native-pad-spawn-01.jsonl | `7ca80d2f0667e34134b1b09d76cca7173fd08b4947fe5d74de99101a20a11eea` |
+| ol400-water-negative-01.jsonl | `9dccce3843f9c814b6e349e7342171a6a78493de391a061119d8ada16b76a6e2` |
+| ol400-under-deck-water-01.jsonl | `a504ce77c8420226531413b886e75bbfcc84dd9252b82dbbbe2fee3cc38f8ac0` |
+| ol400-deck-drop-01.jsonl (aborted) | `c4ccdbc7489d4cc653aa4663c13a7b5d2f5072c74222b62bd7616e4217ffc36f` |
+| ol400-live-contact-monitor-01.jsonl | `35e021dc819139b02c4760e4dea4828445059486875f7436b898fc5924dc5ab4` |
+
+Executed monitor source SHA256 `65ab958884bb8e7aabe37ce8fa57fc175ecfff40383a188aaf08876555679fea`. Scenario initial source `94ef78b5eab9e5f7a071d1a99e3784baabd8f18c5d4971089a91773df88f86e8`; after adding the same-position under-deck case, `602ab1eb54e4556b83ff696a10cf68241a7f62bab83a820870289f0f8b22f7b0`. Each scenario retains an exact create-only source sidecar. Recorder unchanged at `e4700a1f3d482a6fbe77073722b2aad3c3259a5149e83edff0b123dc00513bad`. Screenshots: `screenshots/ol400-native-pad-cockpit.jpg`, `ol400-water-negative-cockpit.jpg`, `ol400-live-contact-confirmed.jpg`; screenshot state must be read with its telemetry, not treated as a flown mission.
+
+Local `python -m unittest discover -s tests/OffshoreProbe -q`: **31/0/0**. Added fixed-scenario guard/native-surface checks and revocation after established presence (contact loss, sea level, slew, disconnect, repeated simulation time). Local `pwsh -NoProfile -File scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath 'C:/Users/mattr/Documents/ChatGPT/Frontier Pilot/.tools/dotnet/dotnet.exe' -OutputDirectory .ci-output-platform-contact-01`: **744/0/0**, Release zero warnings/errors, SDK 8.0.424, source **8128916f5d9e9eb8019cf81fccf53cbb59504234 / dirty** with initial scenario/tests; live-monitor extension followed, no .NET changes. Hosted committed verification is recorded in handoff/PR. Automated tests remain separate from the live cases above.
+
+### Next integration slice
+
+The **presence feasibility question is answered for OL400/H125**, not for every rig and not by a production arrival adapter yet. The shipped app has not been wired to this diagnostic. Use these actual readings to build/review a restricted platform-presence adapter and an isolated no-pay test mission. Loading/unloading and duplicate/recovery behaviour are a separate acceptance sequence through the existing shared transport coordinator, not simulated by this observer. PR #3's current H125 title/model, payload stations, boarding transitions and platform transport remain unqualified (`docs/offshore-career.md`, shared-passenger handoff, inspected read-only). Establish the H125 loading configuration/readback before sending passenger or cargo weight. Do not merge or overwrite PR #3/#8 to shortcut this.
+
+A diagnostic mission may deliberately stage endpoint presence without claiming that a leg was flown; its staged transition must not construct `VerifiedDeliveryEvidence`, award wages or enter production generation. Normal mission flight requirements remain the tracker’s responsibility. Next: specific rig adapter -> H125 loading inspection -> isolated load/stage/deck-confirm/unload test with retries and no duplicate mass/removal -> repeat per additional authored platform. Full fly-out/return and sustained hover remain separate acceptance items, **not a blocker to this diagnostic transport test**. No need for Matt to learn helicopter flying or be at home.
+
 ## Live result — 2026-11-02
 
 | Question | Result | Boundary |

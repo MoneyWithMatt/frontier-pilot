@@ -48,6 +48,23 @@ class RestTests(unittest.TestCase):
             observer.add(row)
         self.assertEqual(0, observer.longest)
 
+    def test_confirmed_presence_is_revoked_when_contact_or_elevation_is_lost(self):
+        for kind in ('airborne','sea-level','slew','disconnect','repeated-time'):
+            observer = self.observer()
+            for second in range(25):
+                observer.add(sample(second))
+            self.assertGreaterEqual(observer.current,20)
+            row = sample(25)
+            if kind == 'airborne': row['core']['SIM ON GROUND']=0
+            if kind == 'sea-level': row['core']['PLANE ALTITUDE']=2/.3048
+            if kind == 'slew': row['core']['IS SLEW ACTIVE']=1
+            if kind == 'disconnect': row={}
+            if kind == 'repeated-time': row['core']['SIMULATION TIME']=24
+            observer.add(row)
+            with self.subTest(kind=kind):
+                self.assertEqual(0,observer.current)
+                self.assertEqual(24,observer.longest)
+
     def test_pause_gap_identity_and_missing_data_reset_current_interval(self):
         for change in ('pause', 'gap', 'identity', 'missing', 'nan'):
             observer = self.observer()

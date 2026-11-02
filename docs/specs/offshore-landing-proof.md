@@ -6,6 +6,8 @@ Approved by / date: Matt's live MSFS 2024 Offshore Helicopter Landing Test instr
 ## Objective
 Observe a real H125 flight/deck landing from FYWB and determine whether deck contact, stable rest and a round trip can be recognised. Prefer simulator discovery. Separate flown, repositioned/static, SDK, synthetic and unverified evidence.
 
+Latest explicit scope clarification: Matt cannot fly helicopters or attend the PC. First prove deck presence versus nearby/beneath-pad water on specific platforms using native starts or diagnostic repositioning. A full flown approach/return is not a prerequisite for this presence test or an isolated staged no-pay transport test. Never turn staging into normal tracker flight proof or payment. Current live OL400/H125 diagnostic passes deck/water discrimination; app integration/loading remains a subsequent slice.
+
 ## Gameplay behavior
 No normal career change. Experimental mission is conditional on physical/deck telemetry qualification. H125/platform production availability and wages stay unchanged. Collect at least 20 continuous seconds at rest and negative-control hovering data; this is an observation target, not a new career rule.
 

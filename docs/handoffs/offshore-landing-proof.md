@@ -1,5 +1,19 @@
 # Handoff: offshore-landing-proof
 
+## Latest focused contact test — supersedes flight-controller blocker
+
+Matt clarified he cannot fly helicopters or attend the PC; test specific-platform presence using native starts/repositioning, without making autonomous flight mandatory. **OL400/H125 diagnostic presence PASSES:** native Free Flight OL400 H01 -> Ready to fly produces normal-physics deck rest; 59.5547 s accepted. Live read-only monitor confirmed after 20.2333 s (13:31:03.096914 UTC), continuous rest 39.8262 s / 147 samples. Nearby sea level (102 m west) rejected 427/427; directly under pad at almost identical lat/lon rejected 448/448. Water reports on-ground/contact too; horizontal AND vertical deck containment is necessary. No flown landing, mission, payload operation or payment claimed. [Latest report](../offshore-landing-proof.md#latest-focused-result--platform-presence-2026-11-02) has hashes/stats.
+
+New `scripts/offshore_contact_scenarios.py`: fixed pad/near-water/under-pad sea-level tests, one placement, bounded 35-second physics, narrow position/slew surface, source sidecars. Deck+8ft drop aborted at first 11.18 kt sample; don't retry blindly or relax guards. Native OL400 Restart/Ready to fly is reliable recovery. `offshore_rest_observer.py` now has read-only live mode: `python scripts/offshore_rest_observer.py <new.jsonl> --live-sdk 'C:/MSFS 2024 SDK' --seconds 40`. Logs samples, hashes and presence transitions; closes/revokes current presence on end. Historical longest rest never authorises operations. No production/cargo/passenger/save changes.
+
+**Current PC:** native OL400 restart/Ready to fly, final monitor sample 13:31:22.691103 UTC at pad (-22.938928762349086,14.504617448383726), 133.20991 ft MSL, surface 130.75436 ft, groundspeed .0018355 kt, on-ground 1, slew 0, contacts set. Then opened Escape menu on the platform, not old FYWB slew hold. Bounded processes completed. Fresh state check before further work. Screenshots/logs remain private and ignored.
+
+**Checks:** 31 Python/0 failed/0 skipped. Local BuildTest `.ci-output-platform-contact-01`: 744/0/0, zero Release warnings/errors, SDK 8.0.424, 8128916 dirty plus initial scenario/tests; live-monitor refinements followed, no .NET change. Hosted continuation receipt pending at this checkpoint; earlier CI does not validate new code.
+
+**Next:** restricted platform-presence integration and isolated staged no-pay transport test. Full flown approach/return is not a prerequisite for this diagnostic. Inspect H125 payload configuration/readback first (PR #3 still unqualified, inspected read-only), then load -> stage at OL400 -> deck-confirm for 20 s -> unload, preserving ownership/retry invariants. Staging must never construct normal tracker delivery/flight evidence or award wages. Repeat per OL617/OL689 before activation. Do not ask Matt to fly or require him at home. Keep generation disabled and preserve PR #3/#8; continue draft PR #9.
+
+Older checkpoint paragraphs below retain history and are superseded by this latest scope/state.
+
 ## Latest continuation — authoritative checkpoint, 2026-11-02
 
 User explicitly requested unattended live execution and granted PC/simulator access. Added separate experimental `scripts/offshore_hover_test.py` and five pure regression cases; read-only recorder and all production/game/save code unchanged. Source snapshot of final live variant SHA256 `1993deccff4eef8353b6efa16d36f7b1479a709e91cfd599e6537b76087b5c29`. See [continued report](../offshore-landing-proof.md#continued-live-controller-experiment--2026-11-02) for failures, SDK contradictions and exact private evidence hashes. Never treat this controller as qualified.
