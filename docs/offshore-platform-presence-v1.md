@@ -33,6 +33,28 @@ Hosted Windows CI also uploads the clean Release App output as a small framework
 
 At this checkpoint the new .NET CLI has **not been executed locally**. Previously documented Python live observations remain genuine but cannot be described as acceptance of this new .NET adapter. Approval of the concrete hosted bundle is the next execution gate. The intended initial scenario is read-only H125 payload inspection and a 40-second OL400 contact recording; no payload writes, flight, failure injection, Community changes or personal-store access.
 
+### Concrete hosted build awaiting execution approval
+
+Implementation **fe0388b4f4b4ad453bd889befbf474e198da55b1** passed [hosted run 54](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41472610355), clean merge **77304670dcba8f13c6670e95dede4312f1101292**: **767 .NET / 31 Python / 9 simulated failure guards / both WPF programs / packaging and three uploads**, zero test failures/skips and build warnings/errors. Regression/smoke/package receipts all identify that exact clean merge, SDK 8.0.424. TRX independently confirms 767/0/0; WPF error logs are empty.
+
+[Experimental CLI artifact 13156520528](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41472610355/artifacts/13156520528), 3.84 MB ZIP, downloaded to ignored `.ci-output-offshore-hosted/run54/experimental-cli.zip`; SHA256 **08772a726f062a0cd68bc592e986afdbcde2b2e56f5f1fbd1f9b911b36750449**, independently matches GitHub metadata. Extracted at `.ci-output-offshore-hosted/run54/cli/src/App/bin/Release/net8.0/`. The copied regression receipt also matches. No executable was run during inspection/extraction.
+
+| Module | SHA256 |
+|---|---|
+| FrontierAirportBuilder.App.dll | `e4809694762eee40d862db0e178f7a043eefb0aa2bbb26a2f7185f1568751831` |
+| FrontierAirportBuilder.Core.dll | `a825e87a3529bd0dce1b0612d72a4ff150aa18ae881e7fa20635e23e4cff4688` |
+| FrontierAirportBuilder.MsfsSdk.dll | `a9dad7612c918431a5a66dbd28c4eff766cf47aeca4fb563bb63b4e60f0a7eee` |
+| FrontierAirportBuilder.Workflow.dll | `b66793c05cf752622fc5a5c0fdc6b645a53650d877629f75fa363ee56ef41f88` |
+
+[Diagnostics artifact 13155483768](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41472610355/artifacts/13155483768), downloaded/hash verified at `.ci-output-offshore-hosted/run54/diagnostics.zip`, SHA256 **347af3240a96d9cf63cec6f53459c912751eaa6eea6df5fb1ad368531c1857d6**. The ordinary Desktop development bundle was not downloaded/executed.
+
+Proposed allowlist, using the existing .NET host at `C:/Users/mattr/Documents/ChatGPT/Frontier Pilot/.tools/dotnet/dotnet.exe` and **only this downloaded App.dll/dependency set**:
+
+1. `inspect-loading .ci-output-offshore-live/csharp-h125-loading-01.json 'C:/MSFS 2024 SDK'` — read actual aircraft/payload/fuel metadata, preserve output/error. No station write.
+2. `record-platform-contact .ci-output-offshore-live/csharp-ol400-contact-01.jsonl 40 'C:/MSFS 2024 SDK'` — observe .NET diagnostic on native OL400 H01; resume/pause MSFS through existing authorised UI as needed. No flight/position/fault/payload/career operation.
+
+Both paths must still be absent immediately before invocation; outputs are create-only. This exact artifact/scenario was presented to Matt for approval. At this documentation checkpoint that approval is pending. Do not execute a later doc-checkpoint rebuild or local assembly under approval of run 54: its binary hashes may differ even if source behavior is unchanged.
+
 ## Next test-mission work
 
 After inspection establishes the actual H125 station layout, select a supported compartment and prepare a small, explicitly reviewed physical loading test through the existing loading architecture. Do not infer seats/capacity or guess a station index. Keep test-owned weight separate from unrelated occupants/cargo; persist intent before writes, verify immediate and retained values, protect baseline/unrelated payload and fail closed on conflicts. PR #3's guarded passenger coordinator/configuration work remains separate and must be reused/coordinated, not duplicated or silently merged.
