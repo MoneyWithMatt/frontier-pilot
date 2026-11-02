@@ -1,7 +1,7 @@
 # Offshore helicopter landing proof
 
 ## Current result
-**UNVERIFIED**: no H125 flight, deck contact or round trip performed. Platform location/identity not yet established.
+**UNVERIFIED**: no H125 flight, deck contact or round trip performed. Platform location/identity not yet established. Existing MSFS UI has loaded the selected H125/FYWB H01 ground scene to **Ready to fly**; left at that preflight screen while the new read-only probe's exact execution approval is pending. No new telemetry probe or Frontier application executed live.
 
 ## Inspection
 Isolated `codex/offshore-landing-proof` from origin/master `d5ff51650789e45e46c8828893acaba071d957e7`. Cargo PR #8 branch and reference attachments untouched. Open PR #3 inspected: shared passengers and platform/H125 gates are unmerged; no successful deck qualification. No merge of unrelated branches.
@@ -27,3 +27,14 @@ Read-only StreamedPackages inventory includes H125, worldwide oil-rig, oil-rig t
 
 ## Remaining
 Approve exact diagnostic, load H125 at FYWB and discover candidates. Record runway baseline, platform visual identity, hover/contact/rest and actual flight if practical. Discrete desktop inputs are not a continuous joystick interface; a separately reviewed bounded control harness may be needed. Custom scenery remains a conditional fallback, not yet justified/built. Experimental round-trip mission is deferred until physical landing/detection works; normal production gates remain disabled.
+
+## Automated evidence
+Diagnostic implementation `fdf5f3f89995039957968c635abeb8a565982e5b`; source script SHA256 `9f2ce5a0c7b9c0d2a89bc4cf2671fbbd440eeed46e464bc8492f75f7ac4acacb`.
+
+Local full BuildTest on dirty base `d5ff516` plus this probe/docs: **744 .NET passed / 0 failed / 0 skipped**, Release zero warnings/errors, SDK 8.0.424. Ten offline Python packet/allowlist tests passed separately. The 744 count is master's baseline; this branch intentionally does not include the unmerged cargo/passenger suites.
+
+Commands: `python -m unittest discover -s tests/OffshoreProbe -v`; `pwsh -NoProfile -File scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath 'C:/Users/mattr/Documents/ChatGPT/Frontier Pilot/.tools/dotnet/dotnet.exe' -OutputDirectory .ci-output-offshore-proof-01`.
+
+[Hosted Windows run 46](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41424653817), clean merge `604b8cffd3eff56a589a34e117606d141200519e` of head `fdf5f3f`, passed **744/0/0**, ten Python cases, nine simulated guards, both WPF programs and packaging/uploads. [Diagnostics](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41424653817/artifacts/13131321939) downloaded; archive SHA256 `e6d05e3f15e4da464bdb0a8d8b1ff1d79a5cd944bd2669a362f61d2fcc9a109a`, clean regression/smoke/package receipts and TRX independently verified. The [incidental app bundle](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41424653817/artifacts/13130992860) was not downloaded/executed; it is not needed for this source probe. No automated result establishes live landing acceptance.
+
+[Draft PR #9](https://github.com/MoneyWithMatt/frontier-pilot/pull/9) remains unmerged. New probe execution approval is pending. No packet test failures or assertion weakening. A combined documentation-edit/build shell request was rejected by execution review before running; edits were safely completed through apply_patch and the ordinary BuildTest command ran separately. SDK managed reflection inspection also failed to load its native dependency; no simulator action came from it.
