@@ -8,7 +8,7 @@ using FrontierAirportBuilder.Core;
 using FrontierAirportBuilder.Workflow;
 using FrontierAirportBuilder.Desktop;
 
-internal static class Program
+internal static partial class Program
 {
     [STAThread] public static int Main(string[] args)
     {
@@ -111,6 +111,7 @@ internal static class Program
                     var accepted=false;control.EmploymentAccepted+=()=>accepted=true;
                     Descendants<Button>(control).Single(b=>b.Content?.ToString()=="Accept employment").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
                     Check(accepted&&isolated.Load().Employment?.EmployerId==employer.Id,"Actual acceptance button persists "+employer.Name);host.Close();
+                    await CheckEmployerFleet(isolated,employer,folder);
                 }
                 CareerButton("Explore employment opportunities").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
                 ((ListBox)screen.FindName("EmployersList")).SelectedIndex=1;
@@ -122,16 +123,67 @@ internal static class Program
                 var offerGrid=Descendants<DataGrid>(employedWindow).Single(x=>x.GetBindingExpression(ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path=="Offers");
                 offerGrid.SelectedItem=employedModel.Jobs.Offers.First(x=>x.CargoMassKilograms==160);Pump();
                 var dispatch=Descendants<ComboBox>(employedWindow).Single(x=>x.GetBindingExpression(ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path=="CompanyAircraftChoices");
-                Check(dispatch.Items.Count==1,"160 kg industrial fixture permits Caravan only");dispatch.SelectedIndex=0;Pump();
+                Check(dispatch.Items.Cast<CompanyAircraftType>().Any(x=>x.Id=="c208"),"Company destination/type eligibility includes Caravan; mass budgets are advisory");dispatch.SelectedItem=dispatch.Items.Cast<CompanyAircraftType>().Single(x=>x.Id=="c208");Pump();
                 Save(employedWindow,Path.Combine(folder,"company-jobs.png"));
                 var reserve=Descendants<Button>(employedWindow).Single(x=>x.Content?.ToString()=="Accept and reserve job");reserve.Command.Execute(reserve.CommandParameter);await Task.Delay(250);Pump();
                 Check(employedModel.Jobs.ReservedJobs.Count==1&&employedModel.Jobs.ReservedJobs[0].CompanyAircraftTypeId=="c208","Aircraft selector and bound accept command reserve company dispatch: "+employedModel.Jobs.Error);
-                employedWindow.Close();result=0;
+                employedWindow.Close();
+                await CheckPassengerTransfers(folder);
+                await CheckCargoJourney(folder);
+                result=0;
             }
             catch(Exception e){Console.Error.WriteLine(e);}
             finally{app.Shutdown(result);}
         };
         app.Run();return result;
+    }
+    private static async Task CheckPassengerTransfers(string folder)
+    {
+        var now = DateTimeOffset.Parse("2026-10-29T12:00:00Z"); var clock = now;
+        var employer = CareerCatalogue.Employers.Single(x => x.Category == "Offshore");
+        var destinations = new EmployerDestinationCatalogue([new("FYWB", "Approved", "FYWB", -23, 15, "Synthetic WPF passenger fixture", now, [])]);
+        var store = new MemoryEconomyStateStore(); var physical = new FrontierAirportBuilder.TestFixtures.SyntheticPassengerAircraft(); var airframe = Guid.NewGuid();
+        var service = new PassengerTransfersService(store, employer, destinations,
+            () => [new("Synthetic Vision Jet", "SF50", "vision-jet")], () => clock) { SelectedAirframe = () => airframe, Payload = new(store, physical, physical, () => "synthetic", physical.WaitForRetentionAsync) };
+        var vm = new PassengerTransfersViewModel(service); var control = new PassengerTransfersControl { DataContext = vm };
+        var host = new Window { Content = control, Width = 1250, Height = 850, ShowInTaskbar = false }; host.Show();
+        await vm.RefreshAsync(); Pump();
+        var grid = (DataGrid)control.FindName("TransfersGrid");
+        grid.SelectedItem = vm.Transfers.First(x => x.Destination.Name.Contains("FYAR")); Pump();
+        var assigned = vm.SelectedTransfer!;
+        var aircraft = (ComboBox)control.FindName("PassengerAircraft"); aircraft.SelectedIndex = 0; Pump();
+        var reserve = (Button)control.FindName("AcceptTransfer");
+        Check(reserve.Command.CanExecute(null), "Passenger reserve command is bound to eligible aircraft"); reserve.Command.Execute(null);
+        while (vm.IsBusy) await Task.Delay(10); Pump();
+        Check(vm.SelectedTransfer?.State == PassengerTransferState.Reserved, "Passenger reservation uses the actual bound control: " + vm.Error);
+        ((TextBox)control.FindName("PassengerManifestWeights")).Text = "82"; Pump();
+        var manifest = (Button)control.FindName("ConfirmPassengerManifest"); Check(manifest.Command.CanExecute(null), "Manifest command is bound to the reserved passenger group");
+        manifest.Command.Execute(null); while (vm.IsBusy) await Task.Delay(10); Pump();
+        Check(service.SelectedTransport?.Group.WeightKilograms == 82, "Actual manifest input confirms declared passenger weight: " + vm.Error);
+        async Task Sample(int second, bool destination = false, bool ground = true)
+        {
+            clock = now.AddSeconds(second);
+            physical.Sample = new(clock, "Synthetic Vision Jet", "SF50", destination ? assigned.Destination.Latitude : assigned.Origin.Latitude,
+                destination ? assigned.Destination.Longitude : assigned.Origin.Longitude, ground ? 500 : 2000, 0, ground ? 0 : 100, ground);
+            await vm.ObserveAsync(physical.Sample); Pump();
+        }
+        for (var i = 0; i <= 10; i++) await Sample(i);
+        Check(vm.SelectedTransfer?.Id == assigned.Id && (grid.SelectedItem as PassengerTransfer)?.Id == assigned.Id,
+            "Actual passenger row selection survives telemetry snapshot refresh");
+        Check((aircraft.SelectedItem as CompanyAircraftType)?.Id == "vision-jet", "Passenger aircraft selection survives telemetry refresh");
+        var board = (Button)control.FindName("BoardPassengers"); Check(board.Command.CanExecute(null), "Passenger boarding control qualifies at origin"); board.Command.Execute(null);
+        while (vm.IsBusy) await Task.Delay(10); Pump();
+        Check(vm.SelectedTransfer?.State == PassengerTransferState.Boarded, "Passenger boarding persists via production command: " + vm.Error);
+        Check(physical.Weights[2] == 82 && physical.Weights[5] == 33 && physical.FuelWrites == 0, "Synthetic physical boarding preserves cargo and fuel");
+        for (var i = 11; i <= 71; i++) await Sample(i, i > 11, false);
+        for (var i = 72; i <= 82; i++) await Sample(i, true);
+        var disembark = (Button)control.FindName("DisembarkPassengers"); Check(disembark.Command.CanExecute(null), "Passenger disembark control requires qualified arrival");
+        disembark.Command.Execute(null); while (vm.IsBusy) await Task.Delay(10); Pump();
+        Check(vm.SelectedTransfer?.State == PassengerTransferState.Delivered && service.Balance == 13.33m, "Passenger completion renders one hourly wage: " + vm.Error);
+        Check(physical.Weights[2] == 0 && physical.Weights[5] == 33 && physical.Writes == 2, "Synthetic physical unloading removes owned weight once");
+        Check(vm.Status.Contains("Transfer completed") && !vm.Status.Contains("Disembark to complete"), "Completed passenger status no longer prompts delivery");
+        Check(!disembark.Command.CanExecute(null), "Completed passenger control prevents repeated disembarkation");
+        Save(host, Path.Combine(folder, "offshore-passenger-completed.png")); host.Close();
     }
     private static void Pump()=>Dispatcher.CurrentDispatcher.Invoke(()=>{},DispatcherPriority.ApplicationIdle);
     private static void Check(bool ok,string message){if(!ok)throw new Exception(message);Console.WriteLine("PASS: "+message);}

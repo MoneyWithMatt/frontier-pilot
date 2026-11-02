@@ -10,7 +10,7 @@ public enum EconomicLocationStatus { PrototypeOnly, ResearchCandidate, MsfsVerif
 public enum TransportRequirementState { Open, Reserved, Fulfilled, Cancelled }
 public enum EconomyJobState { Offered, Accepted, RoadInTransit, Completed, Cancelled, Forfeited, Expired }
 public enum ShipmentState { Available, Reserved, InTransit, Delivered, Consumed, Sold, Cancelled, Loaded, Forfeited }
-public enum FinancialTransactionKind { JobPayment, SiteFounding, LogisticsCargoPurchase, LogisticsSaleRevenue, RoadTransportCost, PilotWage, AircraftMaintenance }
+public enum FinancialTransactionKind { JobPayment, SiteFounding, LogisticsCargoPurchase, LogisticsSaleRevenue, RoadTransportCost, PilotWage, AircraftMaintenance, CargoLegWage }
 public enum InventoryTransactionKind { LegacyOpeningBalance, SystemGatewaySupply, ShipmentReserved, DeliveryReceived, OperationInitialStock, OperationConsumption, OperationProduction, ShipmentReservationReleased, PartialDeliveryReceived, PersistentGatewayOpeningStock, PersistentTransferOut, PersistentTransferIn, PlayerContractReserved, PlayerContractReleased, PlayerContractDelivered }
 public enum ShipmentCargoTransferKind { LoadedToAircraft, UnloadedAtOrigin, UnloadedAtDestination, UnloadedAndForfeited }
 
@@ -34,6 +34,7 @@ public sealed record EconomyJob(string Id, string RequirementId, string Employer
 {
     public string? CompanyAircraftTypeId { get; init; }
     public PilotWage? CompletedWage {get;init;}
+    public string? CompletedCargoLegId { get; init; }
     public DateTimeOffset? CancelledUtc { get; init; }
     public string? CancellationReason { get; init; }
     public DateTimeOffset? OfferedUtc { get; init; }
@@ -62,7 +63,8 @@ public sealed record ShipmentCargoTransfer(string Id, string CommandId, string J
     DateTimeOffset OccurredUtc, string Details);
 public sealed record ShipmentCargoTransferRequest(string Id, string CommandId, string JobId, decimal DesiredLoadedQuantity,
     string? CurrentLocationId, double Latitude, double Longitude, DateTimeOffset OccurredUtc,
-    bool ConfirmForfeit = false, VerifiedDeliveryEvidence? CompletionEvidence = null);
+    bool ConfirmForfeit = false, VerifiedDeliveryEvidence? CompletionEvidence = null)
+{ public string? AirframeManifestId { get; init; } }
 public sealed record RecurringDemandDefinition(string Id, string NeedId, string IdStem, string OriginLocationId,
     string DestinationLocationId, string ResourceId, decimal PreferredShipmentQuantity, decimal PaymentAmount,
     string CurrencyCode, int DesiredAvailableOffers, string FundingBusinessId, string EmployerBusinessId,
@@ -76,6 +78,7 @@ public sealed record VerifiedDeliveryEvidence(string Id, string Provider, string
     string OriginLocationId, string DestinationLocationId, DateTimeOffset VerifiedUtc, string Details)
 {
     public PilotWage? Wage {get;init;}
+    public string? CargoLegId { get; init; }
     public VerifiedDeliveryEvidence EnsureValid()
     {
         EconomyValidation.Id(Id, nameof(Id)); EconomyValidation.Text(Provider, nameof(Provider), 64);
@@ -95,6 +98,9 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
     IReadOnlyList<EconomyJob> Jobs, IReadOnlyList<Shipment> Shipments,
     IReadOnlyList<FinancialTransaction> FinancialLedger)
 {
+    public IReadOnlyList<PassengerTransfer> PassengerTransfers { get; init; } = [];
+    public IReadOnlyList<CargoAirframeManifest> CargoAirframes { get; init; } = [];
+    public IReadOnlyList<PassengerTransport> PassengerTransports { get; init; } = [];
     public IReadOnlyList<MaintenanceCharge> MaintenanceCharges { get; init; } = [];
     public IReadOnlyList<InventoryTransaction> InventoryLedger { get; init; } = [];
     public IReadOnlyList<RecurringDemandDefinition> RecurringDemand { get; init; } = [];
@@ -116,6 +122,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         EconomyValidation.Collection(Resources, nameof(Resources)); EconomyValidation.Collection(Inventories, nameof(Inventories));
         EconomyValidation.Collection(Needs, nameof(Needs)); EconomyValidation.Collection(Requirements, nameof(Requirements));
         EconomyValidation.Collection(Players, nameof(Players)); EconomyValidation.Collection(Jobs, nameof(Jobs));
+        EconomyValidation.Collection(PassengerTransfers, nameof(PassengerTransfers));
         EconomyValidation.Collection(Shipments, nameof(Shipments)); EconomyValidation.Collection(FinancialLedger, nameof(FinancialLedger));
         EconomyValidation.Collection(InventoryLedger, nameof(InventoryLedger)); EconomyValidation.Collection(RecurringDemand, nameof(RecurringDemand));
         EconomyValidation.Collection(Sites, nameof(Sites)); EconomyValidation.Collection(Operations, nameof(Operations)); EconomyValidation.Collection(OperationTicks, nameof(OperationTicks));
@@ -196,7 +203,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         }
         foreach (var x in Jobs)
         {
-            if(x.CompletedWage is not null && x.State!=EconomyJobState.Completed)throw new InvalidDataException("Incomplete job cannot contain a wage receipt.");
+            if((x.CompletedWage is not null || x.CompletedCargoLegId is not null) && x.State!=EconomyJobState.Completed)throw new InvalidDataException("Incomplete job cannot contain a wage receipt.");
             if(x.CompanyAircraftTypeId is not null)EconomyValidation.Id(x.CompanyAircraftTypeId,"company aircraft type");
             var contract = LogisticsContracts.SingleOrDefault(c => c.JobId == x.Id);
             if ((x.OfferedUtc is null) != (x.ExpiresUtc is null) || x.ExpiresUtc <= x.OfferedUtc) throw new InvalidDataException("Job offer timing is inconsistent.");
@@ -291,14 +298,23 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
                !Businesses.Any(b=>b.Id==c.Payee) || (!Players.Any(p=>p.Id==c.Payer) && !Businesses.Any(b=>b.Id==c.Payer)))
                 throw new InvalidDataException("Maintenance charge lacks its authoritative ledger entry or explicit payer.");
         }
+        PassengerTransportKernel.Validate(this);
+        PassengerTransferKernel.Validate(this);
+        CargoJourneyKernel.Validate(this);
         foreach (var x in FinancialLedger)
         {
-            if(x.Kind!=FinancialTransactionKind.PilotWage && x.Wage is not null)throw new InvalidDataException("Only pilot wage entries may contain wage audit details.");
+            if(x.Kind is not (FinancialTransactionKind.PilotWage or FinancialTransactionKind.CargoLegWage) && x.Wage is not null)throw new InvalidDataException("Only wage entries may contain wage audit details.");
             EconomyValidation.Id(x.Id, "transaction ID");
             EconomyValidation.Id(x.EvidenceId, "transaction evidence ID"); EconomyValidation.Id(x.FromEntityId, "transaction source"); EconomyValidation.Id(x.ToEntityId, "transaction destination");
-            if(x.Kind==FinancialTransactionKind.PilotWage)EconomyValidation.NonNegative(x.Amount,"wage amount");
+            if(x.Kind is FinancialTransactionKind.PilotWage or FinancialTransactionKind.CargoLegWage)EconomyValidation.NonNegative(x.Amount,"wage amount");
             else EconomyValidation.Positive(x.Amount, "transaction amount"); EconomyValidation.Currency(x.CurrencyCode);
             if (x.OccurredUtc == default) throw new InvalidDataException("Financial transaction timestamp is missing.");
+            if (x.Kind == FinancialTransactionKind.CargoLegWage) { CargoJourneyKernel.ValidateWage(this, x); continue; }
+            if (x.Kind == FinancialTransactionKind.PilotWage && PassengerTransfers.SingleOrDefault(t => t.Id == x.JobId) is {} passenger)
+            {
+                PassengerTransferKernel.ValidatePayment(this, passenger, x);
+                continue;
+            }
             if (x.Kind is FinancialTransactionKind.JobPayment or FinancialTransactionKind.PilotWage)
             {
                 EconomyValidation.Reference(jobs, x.JobId!, "transaction job");
@@ -377,6 +393,15 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         {
             var shipment = shipments[job.ShipmentId];
             var requirement = requirements[job.RequirementId];
+            if (job.CompletedCargoLegId is {} legId)
+            {
+                var m = CargoAirframes.SingleOrDefault(x => x.ManagedJobs.Contains(job.Id));
+                var leg = m?.Legs.SingleOrDefault(x => x.Id == legId && x.SettledUtc is not null);
+                if (leg is null || leg.Destination.Id != shipment.DestinationLocationId || !leg.Carried.Any(x => x.JobId == job.Id) ||
+                    job.CompletedWage is not null || FinancialLedger.Any(x => x.JobId == job.Id) || !FinancialLedger.Any(x=>x.Kind==FinancialTransactionKind.CargoLegWage&&x.EvidenceId==legId) || Businesses.Single(x => x.Id == job.EmployerBusinessId).PilotHourlyRate is null || LogisticsContracts.Any(x => x.JobId == job.Id))
+                    throw new InvalidDataException("Completed consignment leg settlement is inconsistent.");
+                continue;
+            }
             if(job.CompletedWage is {} wage)
             {
                 wage.EnsureValid();
@@ -483,6 +508,7 @@ public static class EconomyKernel
     public static EconomyTransition MarkShipmentLoaded(EconomyWorld source, string jobId)
     {
         var world = source.EnsureValid();
+        if (CargoJourneyKernel.Manages(world, jobId)) throw new InvalidOperationException("Use the explicit cargo-airframe payload operation for this consignment.");
         var job = world.Jobs.Single(x => x.Id == jobId);
         if (job.State != EconomyJobState.Accepted) throw new InvalidOperationException("Job must be accepted before loading.");
         var shipment = world.Shipments.Single(x => x.Id == job.ShipmentId);
@@ -549,6 +575,12 @@ public static class EconomyKernel
         if (job.State != EconomyJobState.Accepted) throw new InvalidOperationException("Cargo job must be accepted before transfer.");
         var requirement = world.Requirements.Single(x => x.Id == job.RequirementId);
         var shipment = world.Shipments.Single(x => x.Id == job.ShipmentId);
+        var physicalIntent = supplied.AirframeManifestId is {} manifestId ? world.CargoAirframes.SingleOrDefault(x => x.Id == manifestId)?.Pending : null;
+        if (CargoJourneyKernel.Manages(world, job.Id) && supplied.AirframeManifestId is null)
+            throw new InvalidOperationException("Managed aircraft cargo requires its explicit verified consignment intent.");
+        if (supplied.AirframeManifestId is not null && (physicalIntent is not { Verified: true } || physicalIntent.LocationId != supplied.CurrentLocationId ||
+            !physicalIntent.Changes.Any(x => x.JobId == job.Id && x.Before == shipment.LoadedQuantity && x.After == supplied.DesiredLoadedQuantity)))
+            throw new InvalidOperationException("Multi-stop transfer lacks its verified physical intent.");
         if (shipment.State is ShipmentState.Delivered or ShipmentState.Cancelled or ShipmentState.Forfeited)
             throw new InvalidOperationException("Terminal shipment cargo cannot be changed.");
         if (supplied.DesiredLoadedQuantity > shipment.Quantity - shipment.DeliveredQuantity + .001m)
@@ -567,7 +599,7 @@ public static class EconomyKernel
         if (delta > 0)
         {
             if (!atOrigin) throw new InvalidOperationException("Reserved shipment cargo is available only at its configured origin.");
-            if (shipment.State == ShipmentState.InTransit) throw new InvalidOperationException("An InTransit shipment cannot load additional reserved cargo.");
+            if (shipment.State == ShipmentState.InTransit && physicalIntent is null) throw new InvalidOperationException("An InTransit shipment requires a verified multi-stop ground transfer before loading its reserved remainder.");
             kind = ShipmentCargoTransferKind.LoadedToAircraft;
             details = $"{quantity:0.###} kg loaded from reserved origin cargo after verified simulator read-back.";
         }
@@ -578,6 +610,13 @@ public static class EconomyKernel
         }
         else if (atDestination)
         {
+            if (supplied.AirframeManifestId is {} owner)
+            {
+                var leg = CargoJourneyKernel.DeliveryLeg(world, owner, job.Id);
+                var carried = leg.Carried.Single(x => x.JobId == job.Id);
+                if (supplied.CompletionEvidence?.CargoLegId != leg.Id || shipment.DeliveredQuantity - carried.DeliveredBefore + quantity > carried.Kilograms)
+                    throw new InvalidOperationException("Partial destination delivery lacks eligible arrival-leg evidence for this consignment quantity.");
+            }
             kind = ShipmentCargoTransferKind.UnloadedAtDestination; delivered += quantity;
             if (delivered > shipment.Quantity + .001m) throw new InvalidOperationException("Destination delivery would exceed the shipment quantity.");
             var index = inventories.FindIndex(x => x.LocationId == shipment.DestinationLocationId && x.ResourceId == shipment.ResourceId);
@@ -630,10 +669,13 @@ public static class EconomyKernel
             {
                 var transactionId = EconomyIds.Derive("payment-", job.Id);
                 if (ledger.Any(x => x.Id == transactionId || x.JobId == job.Id)) throw new InvalidDataException("A payment already exists for this job.");
-                var payment=PilotWagePayments.Create(world,job,requirement,evidence);
+                var legPaid = evidence.CargoLegId is {} cargoLeg && supplied.AirframeManifestId is {} owner &&
+                    CargoJourneyKernel.DeliveryLeg(world, owner, job.Id).Id == cargoLeg && world.Businesses.Single(x => x.Id == job.EmployerBusinessId).PilotHourlyRate is not null;
+                var payment=legPaid ? null : PilotWagePayments.Create(world,job,requirement,evidence);
                 if(payment is not null)ledger.Add(payment);
             }
-            jobs = jobs.Select(x => x.Id == job.Id ? x with { State = EconomyJobState.Completed, CompletedUtc = evidence.VerifiedUtc, CompletedWage=contract is null?evidence.Wage:null } : x).ToArray();
+            jobs = jobs.Select(x => x.Id == job.Id ? x with { State = EconomyJobState.Completed, CompletedUtc = evidence.VerifiedUtc, CompletedWage=contract is null?evidence.Wage:null,
+                CompletedCargoLegId = contract is null && world.Businesses.Single(b => b.Id == job.EmployerBusinessId).PilotHourlyRate is not null ? evidence.CargoLegId : null } : x).ToArray();
             requirements = requirements.Select(x => x.Id == requirement.Id ? x with { State = TransportRequirementState.Fulfilled } : x).ToArray();
             updatedShipment = updatedShipment with { State = ShipmentState.Delivered, CurrentLocationId = shipment.DestinationLocationId,
                 LoadedQuantity = 0, DeliveredQuantity = shipment.Quantity, DeliveryEvidenceId = evidence.Id, DeliveredUtc = evidence.VerifiedUtc };
@@ -659,6 +701,7 @@ public static class EconomyKernel
     public static EconomyTransition AbandonIncompletePrototypeShipment(EconomyWorld source, string jobId, DateTimeOffset cancelledUtc)
     {
         var world = source.EnsureValid(); EconomyValidation.Id(jobId, nameof(jobId));
+        if (CargoJourneyKernel.Manages(world, jobId)) throw new InvalidOperationException("Legacy diagnostic skip cannot cancel an aircraft-owned multi-stop consignment.");
         if (cancelledUtc == default) throw new ArgumentOutOfRangeException(nameof(cancelledUtc));
         var job = world.Jobs.SingleOrDefault(x => x.Id == jobId) ?? throw new InvalidOperationException("Job does not exist.");
         if (world.LogisticsContracts.Any(x => x.JobId == job.Id))
@@ -697,6 +740,7 @@ public static class EconomyKernel
     public static EconomyTransition CompleteDelivery(EconomyWorld source, VerifiedDeliveryEvidence supplied)
     {
         var world = source.EnsureValid(); var evidence = supplied.EnsureValid();
+        if (CargoJourneyKernel.Manages(world, evidence.JobId)) throw new InvalidOperationException("Aircraft-owned cargo requires explicit physical consignment unloading.");
         var job = world.Jobs.SingleOrDefault(x => x.Id == evidence.JobId) ?? throw new InvalidOperationException("Delivery job does not exist.");
         if (job.ShipmentId != evidence.ShipmentId) throw new InvalidOperationException("Delivery evidence names the wrong shipment.");
         if (job.State == EconomyJobState.Completed)

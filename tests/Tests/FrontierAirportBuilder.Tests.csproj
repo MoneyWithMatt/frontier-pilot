@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="../SyntheticPassengerAircraft.cs" Link="SyntheticPassengerAircraft.cs"/>
   </ItemGroup>
 
   <ItemGroup>

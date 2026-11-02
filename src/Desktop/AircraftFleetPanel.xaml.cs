@@ -31,6 +31,13 @@ public partial class AircraftFleetPanel : UserControl
         if(MessageBox.Show("Declare the selected aircraft's currently unknown components healthy for Frontier modelling? Historical hours stay unknown. This is your explicit baseline, not an inspection result or a simulator repair.","Establish baseline",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No)==MessageBoxResult.Yes)
             viewModel.EstablishBaseline();
     }
+    private void ConfirmLegacyAssignment(object sender,RoutedEventArgs e)
+    {
+        if(viewModel?.SelectedLegacyCandidate is not {} a)return;
+        if(MessageBox.Show($"Confirm existing aircraft {a.Registration} ({a.Id}) as company-owned and assigned to this player, using the selected company type? Existing identity, condition, location and history are retained. No simulator state changes.",
+            "Reconcile legacy company assignment",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No)==MessageBoxResult.Yes)
+            viewModel.ConfirmLegacyAssignment();
+    }
     private async void BookMaintenance(object sender,RoutedEventArgs e)
     {
         if(viewModel is null)return;
@@ -40,7 +47,7 @@ public partial class AircraftFleetPanel : UserControl
     private void AcknowledgeRelocation(object sender,RoutedEventArgs e)
     {
         if(viewModel?.Selected?.LocationReconciliationRequired!=true)return;
-        if(MessageBox.Show("Acknowledge this external simulator relocation? This records the change only; cargo, flight evidence and payments are unchanged.","Location reconciliation",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No)==MessageBoxResult.Yes)
+        if(MessageBox.Show("Developer/testing recovery: acknowledge this external simulator relocation as an unobserved move? This records the change only; cargo, flight evidence and payments are unchanged. This is not normal aircraft transport or simulator placement.","Developer location recovery",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No)==MessageBoxResult.Yes)
             viewModel.AcknowledgeRelocation();
     }
 }
