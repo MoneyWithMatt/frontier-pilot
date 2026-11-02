@@ -160,3 +160,32 @@ This changes only a diagnostic control artifact, not production authority. Const
 ### Automated evidence
 
 Local `pwsh -NoProfile -File scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath 'C:/Users/mattr/Documents/ChatGPT/Frontier Pilot/.tools/dotnet/dotnet.exe' -OutputDirectory .ci-output-platform-visit-02`: **802passed/0failed/0skipped**, zero warnings/errors, SDK8.0.424, source6579c00dirty plus Core/Workflow/CLI/tests. Initial cycle01 build failed because the synthetic source used string instead of existing ConditionConnectionInfo; corrected fixture type, failure retained.22new.NET cases cover three ordered milestones/once-only completion, current permission revocation, initialairborne/water/contactflags/lowheight/jumps, runtime/disconnect/clock/identity resets, persistence/offline replay/duplicate commands/corruptfuturesequence/trailing/interruptedrecords. Python `python -m unittest discover -s tests/OffshoreProbe -v`: **38/0/0** (7newpureharness guard/allowlist tests). No native script or new executable has been run locally. Hosted checks/artifact verification pending before exact execution approval.
+
+### Verified visit build / proposed exact execution allowlist
+
+Implementation **e59b9d7a16170022bbc3c753d56db79b8f0a48f8** passed [hosted run59](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41520454101), clean merge **525af85db61f1961cebbb7c280a0176654c440c7**: **802.NET/0failed/0skipped,38Python,9simulatedguards,bothWPF,packaging and all3uploads**, zero build warnings/errors. Downloaded receipts/TRX independently confirm the exact clean merge/SDK8.0.424 and802/0/0. Final local BuildTest visit03 also passed802/0/0; script guard suite38/0/0. New runtime remains unexecuted.
+
+[Experimental CLI+scripts13178145363](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41520454101/artifacts/13178145363),3.874MB ZIP SHA256 **07f42771abbf95f87e18eea1153eb2d75c7bd57d30e29ad183749a02dbee959f**, downloaded/independently digest-verified at ignored `.ci-output-offshore-hosted/run59/experimental-cli.zip`, extracted `.ci-output-offshore-hosted/run59/cli/`. [Diagnostics13178025540](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41520454101/artifacts/13178025540),SHA256 **1912e6a3c188988c4335b1491292e42bf0e5a1d23c6edcad355a1de217e66cea**, independently downloaded/verified. Ordinary Desktop13176893847 not downloaded/executed. Seven-day expiry.
+
+| Extracted module/source | SHA256 |
+|---|---|
+| `src/App/bin/Release/net8.0/FrontierAirportBuilder.App.dll` | `96434492314fd866ae2a89d854658a679cf1d6e007e6e462605e64f41ffe6b4b` |
+| `FrontierAirportBuilder.Core.dll` | `f74156c656b4ed742e9419533b120c889601b894d37f3943bb2b11033ee0111d` |
+| `FrontierAirportBuilder.MsfsSdk.dll` | `ab281743efb276ce81eb8207eee8baa4f2d1123235bd14799f4288ada5c5d5dc` |
+| `FrontierAirportBuilder.Workflow.dll` | `03a8cd8f5a162a67695846ab33b4d897a559fca6ffde4b2eda5d66231668d618` |
+| `scripts/offshore_vertical_contact_test.py` | `50177fdfc501c9afc57227f14a014d4a4b9b547ac2611aa3d4342463810fd7ca` |
+| `scripts/offshore_probe.py` | `e4700a1f3d482a6fbe77073722b2aad3c3259a5149e83edff0b123dc00513bad` |
+| `scripts/offshore_static_placement.py` | `59e8996a6ebb64772f97522401be027998fd6d0e31459a499e382067ffcc1313` |
+| `scripts/offshore_hover_test.py` | `1993deccff4eef8353b6efa16d36f7b1479a709e91cfd599e6537b76087b5c29` |
+
+All4downloaded scripts independently match the reviewed source. Imported helpers' main functions are not executed: never run their earlier placement/freehover modes as part of this allowlist.
+
+**Proposed scenario, pending Matt's answer to exact approval card:**
+
+1. Recheck these hashes, actual PC/window, H125/OL400 stationary baseline and no competing controller/loader. `inspect-loading .ci-output-offshore-live/csharp-h125-before-visit-01.json 'C:/MSFS 2024 SDK'` using downloaded run59 App/dependencies through existing `C:/Users/mattr/Documents/ChatGPT/Frontier Pilot/.tools/dotnet/dotnet.exe`; no setter.
+2. Start same bundle `record-platform-visit .ci-output-offshore-live/csharp-ol400-visit-01.jsonl 210 'C:/MSFS 2024 SDK'`; preserve stdout/stderr. Resume via supported UI, confirm current deck readiness before controller. No new bindings/settings/position operation.
+3. Execute **only** downloaded `scripts/offshore_vertical_contact_test.py --sdk 'C:/MSFS 2024 SDK' --output .ci-output-offshore-live/ol400-constrained-vertical-01.jsonl --confirm-constrained-diagnostic` through existing Python runtime `C:/Users/mattr/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe`. One attempt,150sbound. Ground verify toggle/actualfreeze flags before collective; altitude unfrozen. Only fixed latlon/attitudetoggles, collective and abortSLEW_ON. No initialplacement, cyclic/pedal, payload/fuel/fault/altitude setter. Do not execute existing hover/placement scripts' main paths.
+4. Observe .NET independently, inspect terminal controller result/restoration, pause simulator through supported UI. Stop on failure; no retry or unqualified slew release/reposition. A crash/disconnect can leave constraints/collective or slew unresolved; inspect actual state before any separately reviewed recovery. Fresh identity checks must not target a replacement aircraft.
+5. Same bundle `review-platform-visit .ci-output-offshore-live/csharp-ol400-visit-01.jsonl` is offline historical only. It cannot turn replay/native/staged/constrained observations into flown-route evidence. Review old read-only contact recordings for regression if useful; never rerun their live actions or personal store paths.
+
+Allnewoutput paths must be absent before creation. Artifacts and this new live control scenario need approval under AGENTS.md line11. Previous run56approval is already completed and does not carry forward. At this receipt checkpoint the new question is pending; do not execute a later doc-checkpoint rebuild or local substitute under eventual run59approval. No new live actions in this continuation.
