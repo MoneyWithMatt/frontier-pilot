@@ -65,6 +65,22 @@ class ProbeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             probe.decode_data(raw,101,1,1)
 
+    def test_actual_object_from_explicit_proxy_response_must_remain_consistent(self):
+        raw=aircraft([1],obj=540672)
+        self.assertEqual((1,),probe.decode_data(raw,101,2,1,expected_object=540672))
+        with self.assertRaises(ValueError):
+            probe.decode_data(aircraft([1],obj=540673),101,2,1,expected_object=540672)
+
+    def test_first_title_response_can_bind_real_object_instead_of_alias(self):
+        raw=struct.pack('<10I',296,0,8,101,540672,1,0,0,1,1)+b'Fixture H125'+bytes(244)
+        self.assertEqual('Fixture H125',probe.decode_data(raw,101,1,1,True,expected_object=None))
+
+    def test_numeric_requests_cannot_establish_initial_aircraft_identity(self):
+        session=probe.Session.__new__(probe.Session)
+        session.aircraft_object=None
+        with self.assertRaisesRegex(ValueError,'identity'):
+            session.data(2,1)
+
     def test_distance_is_symmetric_and_zero_at_origin(self):
         a,b=(-23,14),(-23,15)
         self.assertEqual(0,probe.distance_nm(a,a))

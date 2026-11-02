@@ -1,6 +1,6 @@
 # Build and testing
 
-Offshore feasibility diagnostic: `python -m unittest discover -s tests/OffshoreProbe -v` runs ten offline packet/read-only-allowlist fixtures without loading native code. The hosted Windows workflow runs these alongside the established .NET/WPF/guard/package stages. These fixtures never establish simulator/aircraft/platform acceptance; [live procedure and evidence boundary](docs/offshore-landing-proof.md).
+Offshore feasibility diagnostics: `python -m unittest discover -s tests/OffshoreProbe -v` runs 21 offline packet, identity, mutation-boundary, placement-layout/watchdog and rest-observation cases without loading native code. The hosted Windows workflow runs these alongside the established .NET/WPF/guard/package stages. `scripts/offshore_rest_observer.py <recording.jsonl>` is an offline diagnostic; its rest candidates can include repositioning and never grant flight/mission proof. The separate `offshore_static_placement.py` mutates only the explicitly bounded H125/OL400 inspection scenario; never run it as an ordinary test. Fixtures never establish simulator/aircraft/platform acceptance; [live procedure and evidence boundary](docs/offshore-landing-proof.md).
 
 ## Windows prerequisites
 

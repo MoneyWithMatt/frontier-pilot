@@ -1,6 +1,6 @@
 # Feature: offshore-landing-proof — H125 deck feasibility
 
-Status: Approved objective; exact new diagnostic execution approval pending
+Status: Approved experiment; live static deck rest observed, flown landing/mission unverified
 Approved by / date: Matt's live MSFS 2024 Offshore Helicopter Landing Test instruction, 2026-11-02.
 
 ## Objective
@@ -19,7 +19,7 @@ No normal career change. Experimental mission is conditional on physical/deck te
 No global H125 enablement, career/pay/save changes, cargo branch modifications, assumed rig airport identifier, moving-vessel qualification, failure injection or third-party content purchase.
 
 ## Relevant existing systems
-PR #3 passenger/platform gates and PR #8 cargo work inspected read-only. Main FlightAttemptTracker, LiveAirportCatalogue, LiveAircraftCondition and scenery/owned-package installation remain authoritative. New isolated branch from master. The diagnostic binds only SDK queries; it cannot control flight or grant mission proof.
+PR #3 passenger/platform gates and PR #8 cargo work inspected read-only. Main FlightAttemptTracker, LiveAirportCatalogue, LiveAircraftCondition and scenery/owned-package installation remain authoritative. New isolated branch from master. The recorder binds only SDK queries; it cannot control flight or grant mission proof. A separate one-shot H125/OL400 inspection helper binds only position and slew commands, with a bounded release watchdog. Offline rest candidates never create game authority.
 
 ## Persistence implications
 No personal Frontier state access. Create-only JSONL outside source. No schema migration. Scenery fallback requires a separate owned package and applicable build/install approval.
@@ -28,7 +28,7 @@ No personal Frontier state access. Create-only JSONL outside source. No schema m
 Offline Python packet fixtures plus full Windows regression, hosted WPF, guards and packaging. Ordinary CI needs no simulator/SDK/personal configuration. Fixtures never establish live compatibility.
 
 ## Simulator testing requirements
-Approve exact new diagnostic artifact under AGENTS.md before live execution. First read-only facility scan/short recorder baseline. Record errors and unsupported fields explicitly. Then inspect candidate identity and physical collision before attempted flight/deck validation. New flight-control or scenery artifacts require concrete review. Existing simulator UI control is authorised by the user's request.
+Matt approved the presented read-only diagnostic and continued experiment with "I approve whatever you need" on 2026-11-02. The requested separate repositioning diagnostic was performed; it is not a flown mission. Record errors and unsupported fields explicitly. Any future continuous flight controller needs a concrete artifact/scenario review and ground calibration before flight. Existing simulator UI control is authorised by the user's request. No such controller is currently established.
 
 ## Open design decisions
 None before physical feasibility. Reliable deck criteria follow observed signals; no prototype mission proof from unit tests.

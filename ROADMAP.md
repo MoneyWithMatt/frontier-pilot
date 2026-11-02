@@ -1,6 +1,6 @@
 # Frontier Pilot roadmap and current status
 
-Active experimental investigation: [H125 FYWB/platform landing proof](docs/offshore-landing-proof.md), [handoff](docs/handoffs/offshore-landing-proof.md). Real Windows/MSFS access established; landing/flight/platform identity unverified. Read-only probe prepared; exact live execution approval and physical contact evidence remain required. H125/platform production missions stay disabled; independent cargo work is untouched.
+Active experimental investigation: [H125 FYWB/platform landing proof](docs/offshore-landing-proof.md), [handoff](docs/handoffs/offshore-landing-proof.md). Live simulator identified OL400 / Valaris 109 and two other candidates. Repositioned H125 remained on OL400's elevated deck with normal physics/contact for 34.36 continuous simulation seconds. This is static rest, not a flown landing. Calibrated flight control, hover negative control, dynamic touchdown, return flight and tracker integration remain outstanding. H125/platform production missions stay disabled; independent cargo work is untouched.
 
 This index separates implementation from acceptance. Historical reports in `docs/TECHNICAL_STATUS.md`, `docs/BACKLOG.md` and `evidence/` remain intact; older dates may describe superseded behavior. See [architecture](ARCHITECTURE.md) and the linked feature reports before changing rules.
 

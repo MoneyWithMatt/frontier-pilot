@@ -66,14 +66,14 @@ class Airports:
         return len(self.seen) == self.total
 
 
-def decode_data(raw, request, definition, count, strings=False):
+def decode_data(raw, request, definition, count, strings=False, expected_object=0):
     if len(raw) < 40:
         raise ValueError('Truncated aircraft packet')
     req, obj, df, _, _, _, n = struct.unpack_from('<7I', raw, 12)
     if req != request:
         return None
-    if df != definition or obj != 0 or n != count:
-        raise ValueError('Aircraft proxy/definition/count mismatch')
+    if df != definition or expected_object is not None and obj != expected_object or n != count:
+        raise ValueError(f'Aircraft object/definition/count mismatch: received object={obj}, definition={df}, count={n}; expected object={expected_object}, definition={definition}, count={count}')
     needed = 256 if strings else count*8
     if len(raw) != 40+needed:
         raise ValueError('Unexpected aircraft packet length')
@@ -90,7 +90,7 @@ class Session:
     def __init__(self, sdk):
         self.dll_path = pathlib.Path(sdk)/'SimConnect SDK/lib/SimConnect.dll'
         self.dll = C.WinDLL(str(self.dll_path))
-        self.handle, self.sequence = C.c_void_p(), 100
+        self.handle, self.sequence, self.aircraft_object = C.c_void_p(), 100, None
         U, H, S = C.c_uint32, C.c_void_p, C.c_char_p
         def bind(name, args):
             fn = getattr(self.dll, 'SimConnect_'+name)
@@ -133,6 +133,8 @@ class Session:
             self.check(self.add(self.handle, definition, name.encode(), unit.encode(), 4, 0, 0xffffffff))
 
     def data(self, definition, count, strings=False):
+        if self.aircraft_object is None and (definition != 1 or not strings):
+            raise ValueError('Read aircraft identity through proxy 0 before numeric data')
         self.sequence += 1
         request = self.sequence
         self.check(self.request(self.handle, request, definition, 0, 1, 0, 0, 0, 0))
@@ -140,8 +142,12 @@ class Session:
         while time.monotonic() < deadline:
             item = self.next()
             if item and item[0] == 8:
-                result = decode_data(item[1], request, definition, count, strings)
+                result = decode_data(item[1], request, definition, count, strings, self.aircraft_object)
                 if result is not None:
+                    # Proxy 0 is the request target, not necessarily the actual returned object ID.
+                    # Bind from that explicit aircraft TITLE response; every later reply must match.
+                    if self.aircraft_object is None:
+                        self.aircraft_object = struct.unpack_from('<I', item[1], 16)[0]
                     return result
         raise TimeoutError('Fresh aircraft read timed out')
 
@@ -205,6 +211,10 @@ class Session:
     def record(self, emit, seconds):
         self.check(self.add(self.handle, 1, b'TITLE', None, 9, 0, 0xffffffff))
         self.numeric_definition(2, CORE)
+        initial_title = self.data(1, 1, True)
+        if not initial_title:
+            raise ValueError('Aircraft TITLE missing')
+        emit('aircraft_identity', title=initial_title, requestProxy=0, actualObjectId=self.aircraft_object)
         emit('fields', core=CORE, optionalCandidates=OPTIONAL, contactMapping='unqualified numeric indices, not identified skids')
         supported = []
         for i, field in enumerate(OPTIONAL):
@@ -217,7 +227,7 @@ class Session:
                 emit('optional_probe', field=field, available=False, problem=str(error))
         if supported:
             self.numeric_definition(3, supported)
-        title, start = None, time.monotonic()
+        title, start = initial_title, time.monotonic()
         while time.monotonic()-start < seconds:
             before = self.data(1, 1, True)
             if not before or title is not None and before != title:
@@ -228,7 +238,7 @@ class Session:
             optional = dict(zip((f[0] for f in supported), self.data(3, len(supported)))) if supported else {}
             if self.data(1, 1, True) != title:
                 raise ValueError('Aircraft changed during sample')
-            emit('aircraft_sample', title=title, aircraftProxy=0, startedUtc=sample_start, core=core, optional=optional, qualification='diagnostic only; no mission credit')
+            emit('aircraft_sample', title=title, aircraftProxy=0, actualObjectId=self.aircraft_object, startedUtc=sample_start, core=core, optional=optional, qualification='diagnostic only; no mission credit')
             time.sleep(.2)
 
     def dispose(self):
