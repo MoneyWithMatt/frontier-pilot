@@ -2,7 +2,7 @@
 
 ## Aircraft station schematic — 2026-11-02
 
-Matt requested an aircraft outline with loading-station boxes. Use a decorative native vector and real station buttons in simulator order; explicitly label the diagram schematic, not physical positions. This supersedes the earlier no-drawing direction only for this schematic. No new aircraft geometry, guessed configuration, station limits or payload authority. [Scope](specs/cargo-station-schematic.md).
+Matt requested an aircraft outline with loading-station boxes. After Matt rejected the winged version, use a plain horizontal fuselage with much smaller non-stretching station buttons in four columns and simulator order; explicitly label the diagram schematic, not physical positions. This supersedes the earlier no-drawing direction only for this schematic. No new aircraft geometry, guessed configuration, station limits or payload authority. [Scope](specs/cargo-station-schematic.md).
 
 ## Cargo card interaction — 2026-11-02
 

@@ -1,5 +1,9 @@
 # Technical status — 2026-09-07
 
+## Fuselage station schematic — 2026-11-02
+
+Compact actual/planned station boxes on a theme-native wingless fuselage; schematic numeric order, not physical geometry. Hosted run 44 passed 869/0/0, guards, both WPF programs and packaging; six/15-station screenshots reviewed. Not installed or simulator accepted. [Scope](specs/cargo-station-schematic.md), [handoff](handoffs/cargo-click-assign.md).
+
 ## Cargo-card interaction — 2026-11-02
 
 The approved follow-up retains the existing theme/services and fax manifest while replacing the main cargo table with clickable, accessible cargo and reported-station cards. Pair colour reflects proposals only. Partial quantities, Change/Remove, shared stations, delivery and pending recovery are retained. [Current verification/handoff](handoffs/cargo-click-assign.md).

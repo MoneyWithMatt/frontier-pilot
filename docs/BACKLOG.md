@@ -1,5 +1,7 @@
 # Backlog
 
+Current visual follow-up: [compact fuselage station boxes](specs/cargo-station-schematic.md) implemented; run 44 automated verification and screenshot review passed. Live PC test still requires exact-artifact approval; no physical layout qualification or engine recovery claimed. [Handoff](handoffs/cargo-click-assign.md).
+
 Current: [cargo-card interaction](specs/cargo-click-assign.md), same PR #8; final hosted Windows verification and new-UI live acceptance remain separate. Engine recovery investigation deferred by user; do not resume simulator actions as part of the UI task.
 
 ## Immediate loading repair — 2026-10-30

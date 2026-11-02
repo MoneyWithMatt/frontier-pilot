@@ -46,7 +46,7 @@ internal static partial class Program
         Check(((Grid)control.FindName("CargoStationDiagram")).ActualHeight<300&&Descendants<Button>(choices).All(b=>b.ActualHeight<90),"Six stations remain compact rather than stretching to outline height");
         Check(Descendants<TextBlock>(control).Any(t=>t.Text.Contains("not physical compartment positions")),"Schematic explicitly distinguishes station order from geometry");
         // Presentation-only maximum-size fixture; these extra rows never enter the physical service snapshot.
-        var extra=Enumerable.Range(7,9).Select(i=>new CargoStationRow{Index=i,Name=i==15?"Synthetic rear cargo compartment":"Synthetic station "+i,Actual=i==15?123.456m:0,Writable=i!=15}).ToArray();
+        var extra=Enumerable.Range(7,9).Select(i=>new CargoStationRow{Index=i,Name=i==15?"Synthetic rear cargo compartment":"Synthetic station "+i,Actual=i==15?123.456m:0,Unrelated=i==15?123.456m:0,Writable=i!=15}).ToArray();
         foreach(var row in extra)vm.Stations.Add(row);Pump();
         var buttons=Descendants<Button>(choices).ToArray();
         Check(buttons.Length==15&&!buttons.Single(b=>b.DataContext==extra[^1]).IsEnabled,"Fifteen station diagram retains read-only station safeguard");
