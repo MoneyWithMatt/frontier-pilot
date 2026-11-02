@@ -82,3 +82,25 @@ Create-only, flushed journal records intent before each write and observations/r
 This controlled single-operator diagnostic uses the existing legacy loading adapter. Its check/write operations are not an atomic simulator transaction and do not pin the write across aircraft switches. No concurrent manual payload edits, aircraft changes or other Frontier loading process are allowed during the scenario. This is a documented qualification limitation, not production shared ownership/reconciliation. It neither adopts unrelated occupants/cargo nor qualifies passengers, visuals, mixed transport, a physical GUID, normal deliveries or wages. Production integration must coordinate PR #3/#8 rather than duplicating their ownership model.
 
 Local BuildTest `.ci-output-platform-cycle-02` passed **780/0/0**, zero warnings/errors, SDK 8.0.424, source c9b61ae dirty with this implementation/docs. Earlier `.ci-output-platform-cycle-01` retained **779 passed / 1 failed / 0 skipped**: the test fixture could not inspect an open journal because its reader did not share write access. Fixed reader FileShare.ReadWrite, preserving the durable-intent assertion. The successful command was `pwsh -NoProfile -File scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath 'C:/Users/mattr/Documents/ChatGPT/Frontier Pilot/.tools/dotnet/dotnet.exe' -OutputDirectory .ci-output-platform-cycle-02`. Thirteen additional synthetic cases cover both writes/retention, duplicate path, wrong aircraft/layout/baseline, station refusal, manual edits, clamping, post-write exception, retention reset, disconnect and advisory-only gross limits. No physical test has run. Hosted WPF/package/artifact checks are the next gate, followed by exact artifact AND scenario approval under AGENTS.md line 11.
+
+## Physical diagnostic hosted receipt / exact next approval
+
+Implementation **962165031b95c4378ae0ce80b734163fefc6265e** passed [hosted run56](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41483848318), clean merge **6dd821394b57863ae977b951d997af59fd1f5aa4**: **780 .NET /31 Python /9 simulated guards /both WPF smoke programs /packaging and three uploads**, zero test failures/skips and zero build warnings/errors. Downloaded diagnostic receipts all independently identify that exact clean merge, SDK8.0.424 and Passed; TRX780/0/0, both WPF error logs empty. Hosted commands remain verification entry point BuildTest/Smoke/Package with `-DotnetPath dotnet`, Python unittest and Test-VerificationGuards.ps1.
+
+[Experimental CLI13161051021](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41483848318/artifacts/13161051021), 3.845 MB ZIP: SHA256 **99091e25f139a4ad6d6b31999b10d5bba0016fc3605e57c34b203d7c9a224ba3**, independently downloaded/digest-verified. Extracted `.ci-output-offshore-hosted/run56/cli/src/App/bin/Release/net8.0/`; no new executable run. [Diagnostics13161640604](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41483848318/artifacts/13161640604) SHA256 **5e48b5528d8dc848723b2a14340fb1b97caa0f69a7d52e8d9a6a5b0981b34382**, downloaded/hash-verified. Ordinary Desktop bundle13161330755 was not downloaded/executed. Artifacts expire seven days after upload.
+
+| Module | SHA256 |
+|---|---|
+| FrontierAirportBuilder.App.dll | `c12a12e054a937fb560d5bbb6832f38900857d1026d31a38394e94af521d1f97` |
+| FrontierAirportBuilder.Core.dll | `5793376131584e67bf736ea763a3f241bf236f520d7af6efd5d48921a389d3c5` |
+| FrontierAirportBuilder.MsfsSdk.dll | `f7a41ecbdbde05bb591f60945322ed228f7137510e5a79f17d2d81e0ab4062e8` |
+| FrontierAirportBuilder.Workflow.dll | `5ba0043021cc0c080dceadb4b6352210ae582318323ab66b53f755d25297341f` |
+
+The next proposed allowlist uses only this exact bundle through the existing reviewed dotnet host:
+
+1. Fresh read-only `inspect-loading .ci-output-offshore-live/csharp-h125-loading-before-cycle-01.json 'C:/MSFS 2024 SDK'` to confirm current state. Outputs must be absent.
+2. Supported UI resume/pause only; no flight/reposition/failures. Single controlled operator, no other loader or manual payload/aircraft changes.
+3. `test-platform-payload .ci-output-offshore-live/csharp-ol400-payload-cycle-01.jsonl 'C:/MSFS 2024 SDK' --confirm-five-kilogram-diagnostic` — bounded120s, fixed station6/Cargo1, baseline99.7903214±0.05 kg ->baseline+5->baseline, with fresh20s deck confirmation before each operation and immediate/three-second retained readback. Never writes fuel or other stations.
+4. Review actual journal/readback and pause. Any unresolved write stops; no automatic retry, reset, rollback or new-path adoption. If test mass remains, inspect/report and prepare a separate recovery action.
+
+Matt has been asked to approve this exact artifact plus fixed physical scenario. At this checkpoint answer is pending; no physical writes have occurred. Do not execute a later documentation-checkpoint rebuild or local substitute under run56 approval.
