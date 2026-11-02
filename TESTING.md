@@ -1,5 +1,7 @@
 # Build and testing
 
+Offshore feasibility diagnostic: `python -m unittest discover -s tests/OffshoreProbe -v` runs ten offline packet/read-only-allowlist fixtures without loading native code. The hosted Windows workflow runs these alongside the established .NET/WPF/guard/package stages. These fixtures never establish simulator/aircraft/platform acceptance; [live procedure and evidence boundary](docs/offshore-landing-proof.md).
+
 ## Windows prerequisites
 
 Windows x64, Git, PowerShell 7.2+ and **.NET SDK 8.0.424**, pinned without roll-forward in `global.json`. Install the SDK from Microsoft's official distribution, or use GitHub's pinned `setup-dotnet` action. No MSFS installation, SDK, Community directory, private package source or personal save is needed for regression/build/publish.

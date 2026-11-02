@@ -1,5 +1,7 @@
 # Frontier Pilot architecture
 
+Experimental Offshore proof: [scope](docs/specs/offshore-landing-proof.md), [evidence](docs/offshore-landing-proof.md), [handoff](docs/handoffs/offshore-landing-proof.md). An isolated read-only Python/SimConnect facility and contact recorder supplies diagnostics only. No mission proof, career activation or platform authority is created; existing arrival/scenery systems are unchanged.
+
 Current source map; historical implementation reports remain under `docs/` and `evidence/`. See [ROADMAP](ROADMAP.md) for acceptance boundaries and [TESTING](TESTING.md) for commands. The public repository integrates through `master` via reviewed pull requests.
 
 ## Projects and execution
