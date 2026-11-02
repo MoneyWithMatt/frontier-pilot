@@ -73,5 +73,9 @@ jobs:
             .ci-output/regression.json
             .ci-output/smoke.json
             .ci-output/package.json
+            scripts/offshore_vertical_contact_test.py
+            scripts/offshore_probe.py
+            scripts/offshore_static_placement.py
+            scripts/offshore_hover_test.py
           if-no-files-found: error
           retention-days: 7

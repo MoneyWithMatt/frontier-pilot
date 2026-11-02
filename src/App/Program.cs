@@ -12,6 +12,30 @@ var json = new JsonSerializerOptions
 };
 try
 {
+    if (args.Length == 2 && args[0] == "review-platform-visit")
+    {
+        Console.WriteLine(JsonSerializer.Serialize(ExperimentalPlatformVisitRecording.Review(args[1]), json));
+        return 0;
+    }
+    if (args.Length == 4 && args[0] == "record-platform-visit")
+    {
+        if (!int.TryParse(args[2], out var seconds) || seconds is < 1 or > 900)
+            throw new ArgumentException("Platform visit observation duration must be 1–900 seconds.");
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(seconds));
+        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
+        Console.WriteLine("READ-ONLY EXPERIMENT: OL400 deck -> contact loss -> deck. No flight, payload, career or pay writes. Static/placed observations never become flown proof.");
+        PlatformVisitStatus? lastStatus = null;
+        await ExperimentalPlatformVisitRecording.RecordAsync(
+            new LiveAircraftCondition(args[3], new ExperimentalPlatformContactProfile()), args[1], stop.Token,
+            status =>
+            {
+                if (lastStatus?.Stage != status.Stage || lastStatus.CurrentDeckPermission != status.CurrentDeckPermission)
+                    Console.WriteLine(JsonSerializer.Serialize(status, json));
+                lastStatus = status;
+            });
+        Console.WriteLine("Recording closed; current permissions revoked. Review this create-only recording for historical diagnostic milestones.");
+        return 0;
+    }
     if (args.Length == 4 && args[0] == "test-platform-payload" && args[3] == "--confirm-five-kilogram-diagnostic")
     {
         using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(120));
@@ -106,7 +130,7 @@ try
     }
     if (args.Length is < 3 or > 4 || args[0] is not ("generate" or "build") || (args[0] == "generate" && args.Length != 3))
     {
-        Console.Error.WriteLine("Frontier Airport Builder 0.1 (CLI spike)\nUsage:\n  inspect <SDK root>\n  inspect-loading <new.json> <SDK root> (read only)\n  record-platform-contact <new.jsonl> <seconds 1-300> <SDK root> (experimental read only)\n  generate <airstrip.json> <new output directory>\n  build <airstrip.json> <new output directory> [SDK root]\n  record-condition <new.jsonl> <seconds 1-3600> <SDK root> [airframe.json]\n  condition-airframe <new.json> <label> <exact TITLE> <exact ATC MODEL> <package/version note> --confirm-model-binding\nAll geometry is in metres / true degrees. Output must not exist.");
+        Console.Error.WriteLine("Frontier Airport Builder 0.1 (CLI spike)\nUsage:\n  inspect <SDK root>\n  inspect-loading <new.json> <SDK root> (read only)\n  record-platform-contact <new.jsonl> <seconds 1-300> <SDK root> (experimental read only)\n  record-platform-visit <new.jsonl> <seconds 1-900> <SDK root> (experimental read only)\n  review-platform-visit <existing.jsonl> (offline historical review only)\n  generate <airstrip.json> <new output directory>\n  build <airstrip.json> <new output directory> [SDK root]\n  record-condition <new.jsonl> <seconds 1-3600> <SDK root> [airframe.json]\n  condition-airframe <new.json> <label> <exact TITLE> <exact ATC MODEL> <package/version note> --confirm-model-binding\nAll geometry is in metres / true degrees. Output must not exist.");
         return 2;
     }
     var input = JsonSerializer.Deserialize<AirstripDefinition>(await File.ReadAllTextAsync(args[1]), json)

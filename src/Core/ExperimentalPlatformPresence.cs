@@ -8,7 +8,14 @@ public sealed record PlatformPresenceStatus(PlatformPresenceStage Stage, string 
     double? DistanceMeters = null, double? AircraftHeightAboveDeckMeters = null)
 {
     public bool DiagnosticDeckPresence => Stage == PlatformPresenceStage.StableDeckContact;
+    public PlatformContactObservation? Observation { get; init; }
 }
+
+/// <summary>Validated diagnostic sample; continuity is relative to the preceding accepted sample.</summary>
+public sealed record PlatformContactObservation(double SimulationSeconds, bool Consecutive,
+    double Latitude, double Longitude, double HeightAboveDeckMeters, double DistanceMeters,
+    double GroundSpeedKnots, double VerticalSpeedFeetPerSecond, double BankDegrees, double PitchDegrees,
+    bool OnGround, int Contacts, bool Slewing, double SimulationRate);
 
 /// <summary>Known static OL400/H125 test only. This profile does not enable a career destination.</summary>
 public sealed class ExperimentalPlatformContactProfile : IAircraftConditionProfile
@@ -108,10 +115,16 @@ public sealed class ExperimentalPlatformPresence
             ExperimentalPlatformContactProfile.Latitude, ExperimentalPlatformContactProfile.Longitude);
         var height = values["PLANE ALTITUDE"] * .3048 - ExperimentalPlatformContactProfile.DeckMeters;
         var surfaceError = Math.Abs(values["GROUND ALTITUDE"] * .3048 - ExperimentalPlatformContactProfile.DeckMeters);
+        var observation = new PlatformContactObservation(sim, consecutive,
+            values["PLANE LATITUDE"], values["PLANE LONGITUDE"], height, distance,
+            values["GROUND VELOCITY"], values["VERTICAL SPEED"], values["PLANE BANK DEGREES"], values["PLANE PITCH DEGREES"],
+            values["SIM ON GROUND"] == 1,
+            Enumerable.Range(0, 20).Count(i => values[$"CONTACT POINT IS ON GROUND:{i}"] == 1),
+            values["IS SLEW ACTIVE"] != 0, values["SIMULATION RATE"]);
         PlatformPresenceStatus NotPresent(PlatformPresenceStage stage, string reason)
         {
             contactStart = null;
-            return Current = new(stage, reason, frame.CompletedUtc, 0, distance, height);
+            return Current = new(stage, reason, frame.CompletedUtc, 0, distance, height) { Observation = observation };
         }
         if (values["IS SLEW ACTIVE"] != 0 || values["SIMULATION RATE"] != 1)
             return NotPresent(PlatformPresenceStage.Unavailable, "Slew or nonstandard simulation rate; no deck presence.");
@@ -131,7 +144,7 @@ public sealed class ExperimentalPlatformPresence
             ? "Diagnostic stable OL400 deck presence. No flight, delivery or payment evidence."
             : "Observing uninterrupted deck contact for 20 simulation seconds.";
         if (frame.Runtime?.Paused is null) reason += " Pause-event state unknown; only clock continuity checked.";
-        return Current = new(stage, reason, frame.CompletedUtc, duration, distance, height);
+        return Current = new(stage, reason, frame.CompletedUtc, duration, distance, height) { Observation = observation };
     }
 
     public PlatformPresenceStatus Reset(string reason)
