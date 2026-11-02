@@ -50,6 +50,7 @@ public sealed class CargoStationRow : CargoCardRow
     public override string VisualState => HasProposedAssignment ? "Paired" : base.VisualState;
     public decimal PlannedTotal=>Unrelated+DesiredCargo;
     public override string StateText => HasProposedAssignment ? "Proposed assignments — not applied" : IsSelected ? "Station selected" : "Simulator station";
+    public string DiagramStateText => HasProposedAssignment ? "Proposed · not loaded" : IsSelected ? "Selected" : Writable ? "" : "Read only";
     public string AccessibleDescription=>$"{StationLabel}. {Detail}. {StateText}. {AssignmentText}";
     public string StationLabel=>$"{Index}: {Name}";
     public string Detail=>$"Actual {Actual:0.###} kg · planned total {PlannedTotal:0.###} kg · limit {Limit}";
@@ -134,6 +135,7 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     public bool CanChooseAircraft => CanEditCargo && Pickups.Count == 0 && Consignments.All(c=>c.DesiredAboard==c.Aboard);
     public string StationAssignments => SelectedStation is {} station ?
         $"{station.StationLabel}: " + (string.IsNullOrEmpty(station.AssignmentText) ? "No proposed pickup assignments. Confirmed cargo ownership is tracked in the manifest." : station.AssignmentText) : "Click a station to inspect its proposed consignments.";
+    public string SelectedStationDetails => SelectedStation is {} station ? $"{station.StationLabel} · {station.Detail}\n{StationAssignments}" : "Click a station to inspect its reported limit and proposed consignments.";
     public CargoConsignmentRow? PickupCargo { get; private set; }
     public string PickupQuantityText { get; set; } = "";
     public bool IsChoosingStation=>CanEditCargo&&PickupCargo is not null;
@@ -404,7 +406,7 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     {
         if (reason && !busy) status = service.Reason;
         RefreshCards();
-        foreach (var name in new[] { nameof(Status), nameof(ManifestText), nameof(AircraftStatus), nameof(Warnings), nameof(SelectedStop),nameof(SelectedStation),nameof(TechnicalDetails),nameof(CanEditCargo),nameof(CargoSummary),nameof(PrimaryActionText),nameof(NextStep),nameof(DepartureActionText),nameof(IsChoosingStation),nameof(PickupQuantityText),nameof(PickupHeading),nameof(PickupHelp), nameof(StationAssignments), nameof(LoadingBayHeading), nameof(CanChooseAircraft) }) PropertyChanged?.Invoke(this, new(name));
+        foreach (var name in new[] { nameof(Status), nameof(ManifestText), nameof(AircraftStatus), nameof(Warnings), nameof(SelectedStop),nameof(SelectedStation),nameof(TechnicalDetails),nameof(CanEditCargo),nameof(CargoSummary),nameof(PrimaryActionText),nameof(NextStep),nameof(DepartureActionText),nameof(IsChoosingStation),nameof(PickupQuantityText),nameof(PickupHeading),nameof(PickupHelp), nameof(StationAssignments), nameof(SelectedStationDetails), nameof(LoadingBayHeading), nameof(CanChooseAircraft) }) PropertyChanged?.Invoke(this, new(name));
         PrimaryCommand?.Refresh();LoadAvailableCommand?.Refresh();DeliverHereCommand?.Refresh();DepartureCommand?.Refresh();
         ReadCommand.Refresh(); PrepareCommand.Refresh(); ApplyCommand.Refresh(); PlanLegCommand.Refresh(); ArmLegCommand.Refresh(); RenewCommand.Refresh(); CancelPlanCommand.Refresh(); MatchMassCommand.Refresh();
     }

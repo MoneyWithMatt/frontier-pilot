@@ -44,17 +44,28 @@
    </StackPanel>
   </Border>
   <TextBlock Text="Aircraft loading stations" FontSize="17" FontWeight="SemiBold" Margin="0,10,0,4"/>
-  <TextBlock Text="Simulator order; physical positions are unverified. Current payload stays untouched until apply." FontSize="11"/>
-  <Border x:Name="CargoStationPicker"><ItemsControl x:Name="PickupStations" ItemsSource="{Binding Stations}">
-   <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-   <ItemsControl.ItemTemplate><DataTemplate>
-    <Button Click="ChooseStation_Click" Style="{StaticResource AssignmentCard}" Width="170" MinHeight="118" IsEnabled="{Binding Writable}" AutomationProperties.Name="{Binding AccessibleDescription}"><StackPanel>
-     <TextBlock Text="{Binding StationLabel}" FontWeight="SemiBold"/><TextBlock Text="{Binding Detail}" FontSize="12" Margin="0,5"/>
-     <TextBlock Text="{Binding StateText}" FontSize="11"/><TextBlock Text="{Binding AssignmentText}" FontSize="11"/>
-    </StackPanel></Button>
-   </DataTemplate></ItemsControl.ItemTemplate>
-  </ItemsControl></Border>
-  <TextBlock Text="{Binding StationAssignments}" FontSize="12" Margin="0,5"/>
+  <TextBlock Text="Schematic only. Boxes follow simulator station order, not physical compartment positions." FontSize="11"/>
+  <Border x:Name="CargoStationPicker" Margin="0,6">
+   <Grid x:Name="CargoStationDiagram" MinHeight="320">
+    <!-- Generic vector outline: decoration only, never a source of station geometry or loading limits. -->
+    <Path x:Name="CargoAircraftOutline" IsHitTestVisible="False" Stretch="Fill" Fill="{StaticResource PanelBrush}" Stroke="{StaticResource LineBrush}" StrokeThickness="2"
+     Data="M 300,0 C 190,0 90,35 90,95 L 90,195 8,290 8,325 90,295 110,450 35,535 35,555 220,530 300,590 380,530 565,555 565,535 490,450 510,295 592,325 592,290 510,195 510,95 C 510,35 410,0 300,0 Z"/>
+    <TextBlock Text="FRONT" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,16,0,0" FontSize="10" Foreground="{StaticResource MutedBrush}" IsHitTestVisible="False"/>
+    <ItemsControl x:Name="PickupStations" ItemsSource="{Binding Stations}" Margin="58,52,58,65">
+     <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+     <ItemsControl.ItemTemplate><DataTemplate>
+      <Button Click="ChooseStation_Click" Style="{StaticResource AssignmentCard}" MinHeight="90" Padding="6" Margin="3" IsEnabled="{Binding Writable}" AutomationProperties.Name="{Binding AccessibleDescription}" ToolTip="{Binding AccessibleDescription}">
+       <StackPanel><TextBlock Text="{Binding StationLabel}" FontSize="12" FontWeight="SemiBold"/>
+        <TextBlock Text="{Binding Actual, StringFormat='Actual {0:0.###} kg'}" FontSize="11" Margin="0,5,0,0"/>
+        <TextBlock Text="{Binding PlannedTotal, StringFormat='Planned {0:0.###} kg'}" FontSize="11"/>
+        <TextBlock Text="{Binding DiagramStateText}" FontSize="10" Margin="0,3,0,0"/>
+       </StackPanel>
+      </Button>
+     </DataTemplate></ItemsControl.ItemTemplate>
+    </ItemsControl>
+   </Grid>
+  </Border>
+  <TextBlock Text="{Binding SelectedStationDetails}" FontSize="12" Margin="0,5"/>
   <TextBlock Text="Loading actions" FontSize="17" FontWeight="SemiBold" Margin="0,10,0,4"/>
   <TextBlock Text="{Binding CargoSummary}" FontWeight="SemiBold" Margin="0,6"/>
   <ItemsControl x:Name="PickupPlan" ItemsSource="{Binding Pickups}" IsEnabled="{Binding CanEditCargo}"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="0,4">

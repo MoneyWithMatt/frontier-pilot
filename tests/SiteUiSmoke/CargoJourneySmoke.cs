@@ -39,6 +39,24 @@ internal static partial class Program
             var button=Descendants<Button>(choices).Single(b=>b.DataContext is CargoStationRow s&&s.Index==index);
             button.BringIntoView();Pump();Check(button.IsVisible&&button.IsEnabled,"Actual station button is usable");button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
         }
+        var outline=(System.Windows.Shapes.Path)control.FindName("CargoAircraftOutline");
+        Check(outline.IsVisible&&!outline.IsHitTestVisible,"Aircraft outline is decorative and cannot intercept station clicks");
+        var choices=(ItemsControl)control.FindName("PickupStations");
+        Check(Descendants<Button>(choices).Count()==vm.Stations.Count,"Diagram represents every reported station once");
+        Check(Descendants<TextBlock>(control).Any(t=>t.Text.Contains("not physical compartment positions")),"Schematic explicitly distinguishes station order from geometry");
+        // Presentation-only maximum-size fixture; these extra rows never enter the physical service snapshot.
+        var extra=Enumerable.Range(7,9).Select(i=>new CargoStationRow{Index=i,Name=i==15?"Synthetic rear cargo compartment":"Synthetic station "+i,Actual=i==15?123.456m:0,Writable=i!=15}).ToArray();
+        foreach(var row in extra)vm.Stations.Add(row);Pump();
+        var buttons=Descendants<Button>(choices).ToArray();
+        Check(buttons.Length==15&&!buttons.Single(b=>b.DataContext==extra[^1]).IsEnabled,"Fifteen station diagram retains read-only station safeguard");
+        Check(buttons.Select(b=>((CargoStationRow)b.DataContext).Index).SequenceEqual(Enumerable.Range(1,15)),"Diagram preserves reported numeric station order");
+        foreach(var button in buttons)
+        {
+            var box=button.TransformToAncestor(choices).TransformBounds(new Rect(0,0,button.ActualWidth,button.ActualHeight));
+            Check(box.Left>=0&&box.Right<=choices.ActualWidth+.1,"Station box fits the diagram width");
+        }
+        choices.BringIntoView();Pump();Save(host,Path.Combine(folder,"cargo-aircraft-diagram-15.png"));
+        foreach(var row in extra)vm.Stations.Remove(row);Pump();
         Save(host,Path.Combine(folder,"cargo-cards-none.png"));
         var first=vm.Consignments[0].JobId;ClickRow(first,"Load");
         var selectedButton=Descendants<Button>(cargoGrid).Single(b=>b.DataContext==vm.PickupCargo&&b.Style==control.Resources["AssignmentCard"]);
@@ -58,6 +76,7 @@ Check(vm.IsChoosingStation,"Load opens the station chooser");
         var pairedButton=Descendants<Button>(cargoGrid).Single(b=>b.DataContext==paired&&b.Style==control.Resources["AssignmentCard"]);
         var stationButton=Descendants<Button>((ItemsControl)control.FindName("PickupStations")).Single(b=>b.DataContext is CargoStationRow row&&row.Index==6);
         Check(pairedButton.Background.ToString()==stationButton.Background.ToString()&&paired.VisualState=="Paired","Cargo and station share green proposed state");
+        Check(vm.SelectedStationDetails.Contains("limit 500")&&vm.SelectedStationDetails.Contains("General Supplies"),"Station selection retains reported limit and consignment details outside compact boxes");
         Save(host,Path.Combine(folder,"cargo-cards-paired.png"));
         var remove=Descendants<Button>((ItemsControl)control.FindName("PickupPlan")).Single(b=>b.Content?.ToString()=="Remove");remove.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
         Check(vm.RequestedKilograms==0,"Remove undoes only the proposed pickup");

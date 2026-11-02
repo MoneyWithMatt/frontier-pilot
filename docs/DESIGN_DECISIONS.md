@@ -1,5 +1,9 @@
 # Design decisions
 
+## Aircraft station schematic — 2026-11-02
+
+Matt requested an aircraft outline with loading-station boxes. Use a decorative native vector and real station buttons in simulator order; explicitly label the diagram schematic, not physical positions. This supersedes the earlier no-drawing direction only for this schematic. No new aircraft geometry, guessed configuration, station limits or payload authority. [Scope](specs/cargo-station-schematic.md).
+
 ## Cargo card interaction — 2026-11-02
 
 Use native cargo/station buttons and matching blue/green text-labelled states in the current theme. Ordered reported stations are the fallback where geometry is unverified. Change/Remove affect transient pickup proposals only; no new physical ownership, save schema, wages, limits or authorization. Aircraft selection reuses Fleet and refreshes readback on an actual selection change. [Scope](specs/cargo-click-assign.md).

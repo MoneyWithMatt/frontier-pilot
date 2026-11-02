@@ -1,5 +1,10 @@
 # Handoff: cargo-click-assign
 
+## Station schematic follow-up — 2026-11-02
+Matt requested an aircraft diagram with loading station boxes. [Approved scope](../specs/cargo-station-schematic.md). Reuse existing station rows/handlers, put compact buttons on a generic theme-native vector outline and label numeric station order as schematic, not physical geometry. Official SDK review and existing native reader establish that this readback does not provide station coordinates; no geometry is inferred. Six/15-station WPF fixtures, ordering, decoration hit testing, disabled stations, box bounds and retained details added; verification pending. Existing loading services, saves and simulator state untouched. Untracked `.codex-remote-attachments/` is user-provided reference content; preserve and do not commit it.
+
+Preceding live-test request: MSFS was launched to its startup screen; run-41 bundle downloaded with archive and all 11 checksums verified, old distribution and career/economy/fleet/tracking backed up under ignored `.ci-output-cargo-cards-live/private-before-run41`. Executable hash `aecf7fd50ca3cd4b642e506117eb68c47aa51c5fcb4e805bccc5ab6ff0de4a86`. Action-time execution approval was requested and remains unanswered; new build not installed/launched. This new diagram request steers development before that test. Engine investigation remains deferred.
+
 ## Objective / source
 Approved 2026-11-02 cargo-card brief and three-state reference. Preserve Frontier's theme and existing cargo service; blue selection / green proposed pairing / actual confirmed aboard after readback. [Scope](../specs/cargo-click-assign.md). Continue isolated `codex/guided-cargo-loading`, [draft PR #8](https://github.com/MoneyWithMatt/frontier-pilot/pull/8); master/other branches untouched, no merge. Starting clean head `6aa3947e4354fd0d21800dc2a61157406d3f3817`, remote inspected, PR open/unmerged/draft. Engine investigation explicitly deferred by Matt; issue unresolved, no further simulator actions authorized by this UI task.
 
