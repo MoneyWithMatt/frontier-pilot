@@ -2,6 +2,8 @@
 
 ## Latest focused result — platform presence, 2026-11-02
 
+Subsequent [read-only .NET app preparation](offshore-platform-presence-v1.md) ports this diagnostic into Core/CLI with 23 new synthetic cases. That new executable has not yet been run; Python live evidence below does not establish .NET adapter acceptance or a completed loading/test-mission loop.
+
 Matt clarified that he cannot fly helicopters or attend the PC. The immediate question is **can the application distinguish this platform's deck from nearby water?** A full autonomous flight is not required for that question. Native helipad starts/repositioning are authorised diagnostic setup; they still cannot create normal flight proof, wages or completion. This supersedes earlier sequencing that made a flown approach a prerequisite for every presence experiment.
 
 **PASS for the isolated H125/OL400 presence diagnostic:** native Free Flight OL400 / Valaris 109, departure **H01 (helipad)**, then **Ready to fly**, places the H125 on the actual deck in normal physics without a position write. Pre-entry exterior preview initially showed water and is not aircraft-contact evidence. Readback after entering was at the pad centre, about 133.21 ft MSL, on-ground 1, slew 0, contact flags set. The existing detector found **59.5546794 continuous simulation seconds / 220 candidate samples**. Full 90-second recording contains pre-entry sea-level samples as well as post-entry deck rest; only the latter qualifies.

@@ -61,3 +61,17 @@ jobs:
             .ci-output/screenshots/*.png
           if-no-files-found: warn
           retention-days: 7
+      - name: Upload experimental diagnostic CLI
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: FrontierPilot-experimental-cli-${{ github.sha }}
+          # Built by the same clean Release solution build; framework-dependent .NET 8.
+          # No live SDK, simulator configuration, recordings or user saves on this runner.
+          include-hidden-files: true
+          path: |
+            src/App/bin/Release/net8.0/
+            .ci-output/regression.json
+            .ci-output/smoke.json
+            .ci-output/package.json
+          if-no-files-found: error
+          retention-days: 7

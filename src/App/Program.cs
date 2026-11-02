@@ -12,6 +12,44 @@ var json = new JsonSerializerOptions
 };
 try
 {
+    if (args.Length == 3 && args[0] == "inspect-loading")
+    {
+        // Explicit create-only output; no personal stores or simulator setters.
+        await using var output = new FileStream(args[1], FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+        var snapshot = (await new SimConnectAircraftLoading().ReadAsync(args[2])).EnsureValid();
+        await JsonSerializer.SerializeAsync(output, snapshot, json);
+        Console.WriteLine($"Read-only loading inspection: {snapshot.Aircraft.Title} / {snapshot.Aircraft.Type}; {snapshot.PayloadStations.Count} stations. Saved {Path.GetFullPath(args[1])}. No payload/fuel writes.");
+        return 0;
+    }
+    if (args.Length == 4 && args[0] == "record-platform-contact")
+    {
+        if (!int.TryParse(args[2], out var seconds) || seconds is < 1 or > 300)
+            throw new ArgumentException("Platform observation duration must be 1–300 seconds.");
+        var presence = new ExperimentalPlatformPresence();
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(seconds));
+        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
+        Console.WriteLine("Experimental OL400/H125 contact monitor: READ ONLY, no flight/delivery proof or payment. A native start may establish diagnostic presence.");
+        PlatformPresenceStatus? previous = null;
+        try
+        {
+            var count = await new AircraftConditionRecorder().RecordAsync(
+                new LiveAircraftCondition(args[3], new ExperimentalPlatformContactProfile()), args[1], null, stop.Token,
+                onFrameRecorded: (_, frame) =>
+                {
+                    var status = presence.Observe(frame, DateTimeOffset.UtcNow);
+                    if (previous?.Stage != status.Stage)
+                        Console.WriteLine(JsonSerializer.Serialize(new { DiagnosticOnly = true, Platform = "OL400", Status = status }, json));
+                    previous = status;
+                });
+            Console.WriteLine($"Recorded {count} actual frames. Compatibility and mission acceptance remain separate.");
+            return count > 0 ? 0 : 1;
+        }
+        finally
+        {
+            Console.WriteLine(JsonSerializer.Serialize(new { DiagnosticOnly = true,
+                Status = presence.Reset("Monitor closed/disconnected; previous presence is no longer current.") }, json));
+        }
+    }
     if (args.Length == 7 && args[0] == "condition-airframe")
     {
         var record = AircraftConditionRecord.Create(args[2], args[3], args[4], args[5]);
@@ -48,7 +86,7 @@ try
     }
     if (args.Length is < 3 or > 4 || args[0] is not ("generate" or "build") || (args[0] == "generate" && args.Length != 3))
     {
-        Console.Error.WriteLine("Frontier Airport Builder 0.1 (CLI spike)\nUsage:\n  inspect <SDK root>\n  generate <airstrip.json> <new output directory>\n  build <airstrip.json> <new output directory> [SDK root]\n  record-condition <new.jsonl> <seconds 1-3600> <SDK root> [airframe.json]\n  condition-airframe <new.json> <label> <exact TITLE> <exact ATC MODEL> <package/version note> --confirm-model-binding\nAll geometry is in metres / true degrees. Output must not exist.");
+        Console.Error.WriteLine("Frontier Airport Builder 0.1 (CLI spike)\nUsage:\n  inspect <SDK root>\n  inspect-loading <new.json> <SDK root> (read only)\n  record-platform-contact <new.jsonl> <seconds 1-300> <SDK root> (experimental read only)\n  generate <airstrip.json> <new output directory>\n  build <airstrip.json> <new output directory> [SDK root]\n  record-condition <new.jsonl> <seconds 1-3600> <SDK root> [airframe.json]\n  condition-airframe <new.json> <label> <exact TITLE> <exact ATC MODEL> <package/version note> --confirm-model-binding\nAll geometry is in metres / true degrees. Output must not exist.");
         return 2;
     }
     var input = JsonSerializer.Deserialize<AirstripDefinition>(await File.ReadAllTextAsync(args[1]), json)

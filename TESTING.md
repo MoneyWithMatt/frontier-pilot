@@ -1,5 +1,7 @@
 # Build and testing
 
+Experimental .NET platform presence: `ExperimentalPlatformPresenceTests` adds 23 synthetic cases (767 .NET total at this checkpoint). Read-only CLI commands and their live approval/evidence boundary are documented in [platform presence](docs/offshore-platform-presence-v1.md). Hosted CI uploads the existing clean Release `src/App/bin/Release/net8.0` output plus stage receipts as a framework-dependent experimental CLI bundle; it is not automatically executed locally. Native .NET contact/loading inspection remains pending, separate from Python live tests.
+
 Offshore feasibility diagnostics: `python -m unittest discover -s tests/OffshoreProbe -v` runs 31 offline packet, identity, mutation-boundary, placement-layout/watchdog, rest-observation and experimental-controller guard/conversion cases without loading native code. The hosted Windows workflow runs these alongside the established .NET/WPF/guard/package stages. `scripts/offshore_rest_observer.py <recording.jsonl>` is an offline diagnostic; its rest candidates can include repositioning and never grant flight/mission proof. The separate `offshore_static_placement.py` and `offshore_hover_test.py` are bounded live-scenario mutation artifacts, never ordinary CI tests. Controller tests exercise pure functions/guards, never flight. Fixtures never establish simulator/aircraft/platform acceptance; [live procedure and evidence boundary](docs/offshore-landing-proof.md).
 
 ## Windows prerequisites
