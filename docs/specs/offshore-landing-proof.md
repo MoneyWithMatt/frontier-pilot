@@ -28,7 +28,7 @@ No personal Frontier state access. Create-only JSONL outside source. No schema m
 Offline Python packet fixtures plus full Windows regression, hosted WPF, guards and packaging. Ordinary CI needs no simulator/SDK/personal configuration. Fixtures never establish live compatibility.
 
 ## Simulator testing requirements
-Matt approved the presented read-only diagnostic and continued experiment with "I approve whatever you need" on 2026-11-02. The requested separate repositioning diagnostic was performed; it is not a flown mission. Record errors and unsupported fields explicitly. Any future continuous flight controller needs a concrete artifact/scenario review and ground calibration before flight. Existing simulator UI control is authorised by the user's request. No such controller is currently established.
+Matt approved the presented read-only diagnostic and continued experiment with "I approve whatever you need" on 2026-11-02, then explicitly requested unattended execution and granted PC/simulator access. The requested separate repositioning diagnostic was performed; it is not a flown mission. Record errors and unsupported fields explicitly. A separate bounded H125 controller was subsequently implemented and ground-calibrated before flight. FYWB lift-off was observed, but its drift abort prevents hover/platform qualification; see the live report. Existing simulator UI control is authorised by the user's request. No controller is qualified for platform flight.
 
 ## Open design decisions
 None before physical feasibility. Reliable deck criteria follow observed signals; no prototype mission proof from unit tests.

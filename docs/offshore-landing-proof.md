@@ -8,7 +8,8 @@
 | Discover an existing platform | PASS | Complete facility scan, helipad detail, simulator UI name and visual inspection of OL400 / Valaris 109. |
 | H125 rests on elevated deck in normal physics | PASS, static/repositioned only | 34.36 continuous simulation seconds of rest candidates, slew off, on-ground/contact and visual deck evidence. |
 | Flown FYWB → platform approach/touchdown | UNVERIFIED | No controlled outbound flight. Placement cannot satisfy this. |
-| Stationary hover negative control | UNVERIFIED | Failed release contains airborne data, not controlled stationary hover. |
+| FYWB normal-physics lift-off / contact-clear observation | PASS, short unstable flight only | 69 airborne observations over 5.3536 simulation seconds; all 20 contact flags clear. Drift watchdog aborted. |
+| Stationary hover negative control | UNVERIFIED | No sustained stationary hover; FYWB lift-off is not a rig departure. |
 | Return flight / Frontier mission completion | UNVERIFIED | No return, tracker integration, credit or wages. |
 
 This is **not a flown landing or completed Offshore mission**. The aircraft was repositioned; the first normal-physics read already reported on-ground. This establishes that the deck supports the loaded H125 and exposes distinct surface/contact telemetry. It does not prove dynamic touchdown, map skid indices or qualify production missions. The conditional experimental round trip remains deferred.
@@ -44,7 +45,7 @@ Matt approved the presented diagnostic and continued experiment with **“I appr
 5. Bounded release helper sent SLEW_OFF **before** the single INITPOSITION write (deck + 3.5 ft, OnGround=0, airspeed=0). First readback already reported ground contact at the deck; no resolved descent/touchdown was captured. It observed normal physics for at most 35 wall seconds, then restored slew. No continuing position corrections. Independent recorder/UI confirm slew off during observation and on afterward.
 6. Offline analysis found **34.3584 continuous simulation seconds**, 129 accepted rest-candidate samples. These include placement and remain diagnostic. Saved cockpit screenshot during normal physics and exterior screenshot after slew restoration. Private evidence is not uploaded to public GitHub.
 
-Actual PC access works. The remaining limitation is **dependable continuous helicopter flight control**. The desktop interface supplies discrete inputs; no calibrated cyclic/collective/pedal controller is established. SDK collective event range/helper conversion also needs empirical calibration. Do not guess control signs/ranges or claim an unattended flight.
+Actual PC access works. The remaining limitation is **dependable continuous helicopter flight control**. The subsequent controller experiment below establishes input mappings and short FYWB lift-off, but not dependable hover or approach. Do not claim an unattended mission.
 
 ## Recorded static telemetry
 
@@ -103,7 +104,7 @@ Simulator version **1,9,21,0**, executable SHA256 `5cccf10e882be7aacd56e95e06ffb
 
 Latest implementation **`88e70d7dba94450600cdf9def01a3e318b87c583`** passed [hosted run 48](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41433936110) on clean merge **`2577cbc1a09e7e53e66936323a6526da9a22a463`**: **744 .NET / 21 Python / 9 simulated guards / both WPF programs / packaging and uploads**, no test failures/skips. [Diagnostics](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41433936110/artifacts/13134549391) SHA256 `f4f919b593bc2b81449b5ab2be0185f4c13a17b093792272378ea052ad6bb087` independently checked against clean source receipts, TRX and smoke logs. Incidental app artifact was not downloaded/executed. Earlier runs 46/47 passed older code. No local WPF or packaged Frontier app launch. Follow-up checkpoint changes documentation only; see handoff for implementation provenance.
 
-The simulator was left on OL400 with slew restored and Escape pause menu open. No further live operation should start without a fresh state check.
+The earlier static experiment ended on OL400. The subsequent controller experiment below ended near FYWB H01, with slew independently confirmed and Escape pause menu open. No further live operation should start without a fresh state check.
 
 ## Next focused live procedure
 
@@ -112,3 +113,51 @@ The simulator was left on OL400 with slew restored and Escape pause menu open. N
 3. At FYWB record controlled lift, stationary hover and landing. Contact must clear while hovering and return at actual contact; no slew, pause or reposition in qualifying intervals. Resolve H125 skid mapping where possible.
 4. Fly FYWB H01 to OL400 **helipad centre**, recording approach/hover/descent/touchdown and >=20 continuous seconds at rest. Independently inspect skids/deck; retain failures. Reject airport-reference proximity, stale touchdown coordinates or zero speed alone.
 5. Return to FYWB with actual flight evidence. Then implement a separate no-pay experimental round-trip state machine using tracker authority, identity/teleport/disconnect/restart guards and regression tests. Keep production H125/platform destinations disabled until separately accepted.
+
+## Continued live controller experiment — 2026-11-02
+
+User explicitly requested unattended execution and granted PC/simulator access. Added a **separate experimental mutation artifact**, `scripts/offshore_hover_test.py`. It does not change the read-only recorder, production integration, controls configuration, payload/fuel, failures, saves, career state or Community. It is not a qualified autopilot. Exact H125 title and bounded OL400/FYWB H01 scenarios only. FYWB flight trials start in normal physical ground contact and send **no position/SLEW_OFF write**. OL400 staging remains labelled repositioning.
+
+Trials last at most 180 wall seconds, with identity, telemetry-continuity, rate, altitude, 7 m drift, 5 kt speed, 12-degree tilt and rotor-RPM aborts. Finally submits SLEW_ON, original collective/pedal and neutral cyclic; disconnect can prevent restoration. Generic YOKE readback does not verify helicopter cyclic input. FYWB's 5 m initial-location guard rejects post-abort status beyond that radius; use the independent read-only recorder to observe final state. Logs are create-only; final variant also retains an exact source sidecar.
+
+### SDK findings and empirical calibration
+
+- Official [helicopter events](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/key-events/helicopter-specific-events/) describe unipolar collective. Actual readback confirms **-16384 = 0%, -8192 = 25%**, matching the installed helper's bipolar conversion. This does not establish another aircraft's range.
+- `AXIS_TAIL_ROTOR_SET` returned exception **7 / NAME_UNRECOGNIZED**. The [SDK release notes](https://docs.flightsimulator.com/msfs2024/retail/introduction/sdk-release-notes/) name **ROTOR_AXIS_TAIL_ROTOR_SET**, which mapped successfully: raw +819 reads approximately -5% pedal, -819 reads +5%. Mapping is checked before sending controls. Failed mapping logs are preserved.
+- Disk pitch/bank index 0 remained zero; index 1 responded. No complete skid-index map or effective aircraft-package identity established.
+- OL400 staging bounced and one attempt exceeded 450 RPM (~475 RPM); aborted, not landed. Native UI Restart returned to FYWB at ~390 RPM, **not a return flight**. Object ID 540672 was reused while simulation time reset: never persistent airframe identity.
+
+### Actual flight attempts
+
+| Private log | Result |
+|---|---|
+| hover-fywb-trial-01.jsonl | First lateral feedback sign was wrong; exceeded 12-degree bank before lift-off. Aborted. |
+| hover-fywb-trial-02.jsonl | Corrected lateral sign, near level; reached initial 55% collective ceiling, no lift; 180-second timeout. |
+| hover-fywb-trial-03.jsonl | Increased ceiling to 65%, same abort envelope. Lift-off **12:15:04.887542 UTC**; >7 m drift abort **12:15:10.393227 UTC**. No qualified hover/descent/touchdown. |
+
+Latest run: **69 airborne observations / 5.3535728 simulation seconds**, on-ground 0, slew 0, all 20 contact flags 0. Altitude 269.39653–272.00398 ft MSL, baseline 269.29675 ft; groundspeed 0.9180–3.2182 kt, vertical speed 0.0281–0.9956 ft/s. Heading 336.43 to 316.17 degrees. Last watchdog frame: -22.977818797273436, 14.642198405675149; 272.01507 ft MSL; 3.20493 kt; 0.33911 ft/s vertical; bank -2.21535, pitch 0.25988 degrees. This is **FYWB flight, not platform departure**. The failure is autonomous horizontal/yaw control, not a proven landing-detector failure. Do not relax pad-sized bounds to obtain a pass.
+
+Readbacks changed around native Ready to Fly without script writes: fresh pre-entry ~3899 lb/brake 0; active flight ~4570 lb/brake handle ~0.991. Cause and H125 interpretation unresolved; not evidence that Frontier changed payload or that a physical brake prevented lift. No brake, engine, fault, fuel or payload writes were sent. Rotor RPM remained suitable during the final short lift.
+
+Independent final recorder at **12:23:04.751317 UTC** confirmed actual object 540672, slew 1, zero ground/vertical speed, all contacts clear, -22.977819652951528, 14.642198143631914, altitude 272.02152 ft. Bounded recorder/controller processes completed; then opened Escape pause menu. Aircraft is held above FYWB apron in slew, **not parked/landed**. Do not release slew blindly.
+
+### Continued evidence provenance
+
+Private ignored `.ci-output-offshore-live` retains all failures, independent recordings and source snapshots. No raw telemetry/screenshots publicly uploaded. Starting with final variant, create-only `.jsonl.source.py` captures exact source; preliminary variants retain hashes but not exact sidecar copies, limiting their reproducibility.
+
+| File | SHA256 |
+|---|---|
+| hover-fywb-trial-01.jsonl | `f2cc7816f79d7f9e79462e6378f77827c03fc0ddb66e974d09a0da085c7ac20b` |
+| hover-fywb-trial-02.jsonl | `866d487cdf543ecdfec5aa6501dbf1f1d1f49ecf81e6671ea264343ebf262e96` |
+| hover-fywb-trial-03.jsonl | `ae810bd8b043351cb1d737f162a269db5a5eb7246ec990f1027eed421be8eafe` |
+| hover-fywb-trial-03.jsonl.source.py | `1993deccff4eef8353b6efa16d36f7b1479a709e91cfd599e6537b76087b5c29` |
+| hover-fywb-flight-03.jsonl | `4ad09a5690155738db220b14546f0e644394ac5790e1a0cbfa8404af73ac73fc` |
+| hover-post-abort-readonly-01.jsonl | `a44f8c32ecb383bbe2305b286da45aed95381b3a964ffcb9b49f539e81ee6420` |
+
+### Continued automated checks and remaining test
+
+`C:/Users/mattr/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe -m unittest discover -s tests/OffshoreProbe -q`: **26 passed / 0 failed / 0 skipped**. New cases cover conversion, ground/aircraft envelope, allowlist, bounded feedback/gap refusal and contact-clear hover predicates. These are mocked/pure tests, not flight-control qualification.
+
+`pwsh -NoProfile -File scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath 'C:/Users/mattr/Documents/ChatGPT/Frontier Pilot/.tools/dotnet/dotnet.exe' -OutputDirectory .ci-output-offshore-hover-01`: **744 .NET passed / 0 failed / 0 skipped**, SDK 8.0.424, Release zero warnings/errors. Receipt source **f8a72a6157ef6192ef50b31fe7a6dedf98374314 / dirty**, with initial untracked controller/tests; subsequent controller refinements changed no .NET code. Hosted verification of committed continuation is recorded in handoff/PR.
+
+**Blocker:** present controller cannot sustain pad-sized hover. A human-flown instrumented approach is the shortest remaining acceptance path; otherwise dedicated controller tuning and airfield qualification are needed before another platform attempt. Neither needs a new platform or mission generator. After controlled hover and real deck landing/departure, add the isolated no-pay round-trip prototype through tracker authority. Production H125/platform gates remain disabled.
