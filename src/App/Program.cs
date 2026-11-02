@@ -12,6 +12,26 @@ var json = new JsonSerializerOptions
 };
 try
 {
+    if (args.Length == 4 && args[0] == "test-platform-payload" && args[3] == "--confirm-five-kilogram-diagnostic")
+    {
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
+        var source = new LiveAircraftCondition(args[2], new ExperimentalPlatformContactProfile());
+        await using var frames = source.ReadAsync(stop.Token).GetAsyncEnumerator(stop.Token);
+        async Task<ConditionFrame> Next(CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!await frames.MoveNextAsync()) throw new IOException("Platform observation source closed.");
+            return frames.Current;
+        }
+        Console.WriteLine("EXPERIMENTAL PHYSICAL TEST: 5 kg added to inspected H125 Cargo 1, retained/read back, then removed on OL400. No job, flight proof or money. Interruption leaves an unresolved journal; never blindly repeat.");
+        await new ExperimentalPlatformPayloadCycle(new SimConnectAircraftLoading(), Next)
+            .RunAsync(args[2], args[1], stop.Token);
+        Console.WriteLine("Diagnostic loading/unloading cycle completed. Review journal; no production transport qualification inferred.");
+        return 0;
+    }
+    if (args.Length > 0 && args[0] == "test-platform-payload")
+        throw new ArgumentException("Usage: test-platform-payload <new-private-journal.jsonl> <SDK root> --confirm-five-kilogram-diagnostic. Separate exact-build and physical-scenario approval required.");
     if (args.Length == 3 && args[0] == "inspect-loading")
     {
         // Explicit create-only output; no personal stores or simulator setters.

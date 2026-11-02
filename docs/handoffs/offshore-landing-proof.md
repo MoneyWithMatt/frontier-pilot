@@ -1,3 +1,8 @@
+# Current continuation — approved read-only .NET test completed, 2026-11-02
+
+Run 54 exact downloaded CLI (fe0388b4 / clean merge 77304670; ZIP 08772a726f062a0cd68bc592e986afdbcde2b2e56f5f1fbd1f9b911b36750449) was approved by Matt and executed. Actual nine-station H125 inspection succeeded; Cargo 1/index6 baseline 99.7903214 kg. First 40 s capture paused and correctly rejected; second confirmed actual native-start static OL400 deck presence after 20.2181848753 sim seconds, 38 frames /39.4044 s total. No payload/fuel/fault/economy writes. Simulator paused on OL400 H01. Full receipt/hashes in offshore-platform-presence-v1.md.
+
+Prepared new Workflow.ExperimentalPlatformPayloadCycle + CLI fixed 5 kg diagnostic and 13 synthetic tests. Local BuildTest cycle-02 780/0/0, no warnings/errors; earlier cycle-01 779/1/0 preserved (fixture journal file-sharing fixed, assertion retained). New harness NOT executed and NOT covered by run54 approval. Next: commit/push, hosted Windows CI WPF/package, download/hash exact CLI; obtain exact changed-artifact and fixed physical scenario approval before execution. See specs/offshore-platform-payload-diagnostic.md. Interrupted write may leave5kg; no automatic rollback/retry. Existing adapter non-atomic/unpinned across aircraft switches: controlled no-concurrency diagnostic only. No full mission, departure, .NET live water, mixed transport or passenger qualification claimed. PR9 stays draft; issue2 needs current status. Prior pending-read-only statements below are historical and superseded.
 # Handoff: offshore-landing-proof
 
 ## Current .NET continuation — read-only app preparation
@@ -77,3 +82,4 @@ Recorder executed source hash `e4700a1f3d482a6fbe77073722b2aad3c3259a5149e83edff
 3. Freshly inspect simulator/state, preserve private evidence and failed paths. Never blindly retry prior release or classify placement as flight. Keep recorder separate from mutation helper.
 4. Establish bounded continuous flight control or use human pilot. Ground-calibrate current H125 collective/cyclic/pedal range/sign/readback with safe abort; SDK helper/event range contradiction remains. At FYWB obtain controlled lift/hover/contact negative controls. Then actual FYWB → OL400 pad-centre approach/touchdown, >=20 seconds rest, actual return FYWB.
 5. Only after dynamic physical/detection evidence add isolated no-pay experimental round trip via existing tracker authority. Normal H125/platform gates stay disabled. No custom scenery yet: existing OL400 supports static rest.
+

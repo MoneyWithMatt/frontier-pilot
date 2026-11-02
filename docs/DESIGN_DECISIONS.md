@@ -269,3 +269,6 @@ Aircraft-condition diagnostics use one session lifecycle shared by manual comman
 
 ## Physical aircraft authority — 2026-10-27
 The physical fleet GUID is distinct from company aircraft-type permission and legacy title/model tracking. Legacy tracking remains preserved/unassigned; the fleet snapshot atomically owns per-airframe location and condition. Automatic observation never requires Record. Maintenance uses durable intents plus existing authoritative economy ledger/UTC scheduling; unknown and vendor authority never receive assumed Frontier wear. No production fault or positioning adapter/facility is enabled without qualification. See physical-aircraft-v1.md.
+
+## 2026-11-02: Fixed on-pad payload diagnostic boundary
+Approved run54 read-only .NET capture confirmed20.218 s native-start OL400 deck presence and actual H125 nine-station layout. A fixed5 kg Cargo1 diagnostic is prepared separately. It cannot create normal flight/delivery/payment evidence. Existing native payload writes are reused with durable intent and immediate/retained readback; no MTOW/CG veto. It remains a controlled diagnostic with no concurrent changes, not production shared ownership. Exact changed-artifact plus physical scenario approval precede execution; interrupted mass is unresolved, never guessed away. See [specification](specs/offshore-platform-payload-diagnostic.md).

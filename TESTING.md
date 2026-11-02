@@ -78,3 +78,5 @@ For an explicitly requested local distribution, the existing `scripts/Publish-De
 ## Failure reporting
 
 Report command, exact commit/dirty status, runner/SDK, test totals, failures/skips, TRX/log location and evidence level. Distinguish infrastructure blockage from assertions. Never infer live MSFS acceptance from synthetic tests, UI screenshots or a successful publish. Never invoke `App build`, Package Tool or install scripts to make ordinary CI pass.
+
+Experimental platform payload coverage: `ExperimentalPlatformPayloadCycleTests` is synthetic (13 cases), with fake stations/frames, no SDK/real saves. It covers durable intents, retained readback, unrelated preservation, refusal/clamp/disconnect/manual conflict and advisory-only gross warnings. Native on-pad5 kg acceptance is separate, exact-build/scenario gated; see `docs/specs/offshore-platform-payload-diagnostic.md`. Do not run the physical CLI command as part of ordinary verification.
