@@ -1,7 +1,7 @@
 # Feature: offshore-platform-payload-diagnostic — fixed OL400 ballast cycle
 
-Status: Implementation authorised; physical execution requires exact hosted-artifact and scenario approval.
-Approved by / date: Matt's continued autonomous offshore proof request, 2026-11-02. Latest “Approved” covered run 54 read-only commands only.
+Status: Approved fixed scenario executed successfully on OL400 / H125, 2026-11-02. This is diagnostic acceptance only.
+Approved by / date: Matt's continued autonomous offshore proof request, 2026-11-02. Matt separately approved exact run56 artifact and the 5 kg physical scenario after the explicit approval request; see execution receipt in offshore-platform-presence-v1.md.
 
 ## Objective
 Prove actual H125 payload can change while stationary on the known platform, without requiring a human helicopter flight or inventing mission evidence.

@@ -216,3 +216,6 @@ Committed continuation **75c5022bbaebe85574751498c2d8b6d36824102e** passed [host
 
 ## .NET continuation receipt
 The approved run54 read-only artifact has now confirmed actual OL400/H125 stable deck presence after20.218 s; actual H125 loading inspection returned nine stations. Initial paused capture correctly refused qualification. See [full receipt](offshore-platform-presence-v1.md#approved-read-only-execution--2026-11-02). This extends actual Python presence evidence to the .NET adapter, but neither proves a flown touchdown/departure nor qualifies production missions. A separate fixed5 kg on-pad diagnostic is prepared, not executed.
+
+## Actual physical payload test — 2026-11-02
+Matt approved and executed run56 fixed5kg diagnostic on native OL400 H01 using the H125. Cargo1 actual99.7903214 ->104.7903214 ->99.7903214kg; immediate/three-second retained checks passed, all unrelated stations preserved, gross delta agreed after observed fuel burn. Fresh stable deck presence20.2665s/20.2272s before the two operations. Exit0/Completed; no test weight remains. [Full evidence and exact acceptance boundary](offshore-platform-presence-v1.md#approved-physical-execution--ol400--h125-2026-11-02). Static test only; no actual flown takeoff/landing/mission/payment or production enablement. Simulator paused again on pad.

@@ -104,3 +104,39 @@ The next proposed allowlist uses only this exact bundle through the existing rev
 4. Review actual journal/readback and pause. Any unresolved write stops; no automatic retry, reset, rollback or new-path adoption. If test mass remains, inspect/report and prepare a separate recovery action.
 
 Matt has been asked to approve this exact artifact plus fixed physical scenario. At this checkpoint answer is pending; no physical writes have occurred. Do not execute a later documentation-checkpoint rebuild or local substitute under run56 approval.
+
+## Approved physical execution — OL400 / H125, 2026-11-02
+
+**PASS for the fixed static on-pad ballast cycle.** Matt explicitly approved run56 + the 5 kg scenario after being told it was paused for that approval. Rechecked the exact ZIP and all four App/Core/MsfsSdk/Workflow hashes listed above; source962165031b95c4378ae0ce80b734163fefc6265e / clean hosted merge6dd821394b57863ae977b951d997af59fd1f5aa4. Executed downloaded run56 only, not local or later run57 assemblies. No competing Frontier/python/dotnet process was running before the test; actual simulator remained MSFS2024 1.9.21.0 / H125 Passengers / H125 on native OL400 H01.
+
+Exact commands, existing dotnet host and SDK path as in the allowlist above:
+
+- `inspect-loading .ci-output-offshore-live/csharp-h125-loading-before-cycle-01.json 'C:/MSFS 2024 SDK'` — exit0, actual unchanged nine-station layout and Cargo1 baseline99.79032140000001 kg. Position -22.938928769253206,14.504617446654764,133.215875ft MSL, on-ground true. Pre-test fuel72.51USgal reflects current state, not restoration of an older tank value.
+- Supported UI Escape resumed the existing native-start flight; no position/flight-control/fault operation.
+- `test-platform-payload .ci-output-offshore-live/csharp-ol400-payload-cycle-01.jsonl 'C:/MSFS 2024 SDK' --confirm-five-kilogram-diagnostic` — **exit0**, stderr0bytes, journal `Completed`, once only. Wall interval19:53:43.4906600–19:54:33.3759123UTC (~49.89s),40 actual deck-observation frames.
+
+| Milestone | UTC | Observed result |
+|---|---|---|
+| Fresh deck permission / LoadIntent | 19:54:04.066 | 20.2664972 continuous simulation seconds, distance0.00217m, aircraft reference0.704m above known deck |
+| LoadVerified, after immediate +3s retention | 19:54:08 | Cargo1 **104.79032140000005kg**, baseline+5kg |
+| Fresh deck permission / UnloadIntent | 19:54:29.354 | 20.2272240 new continuous simulation seconds after detector reset; no stale permission reuse |
+| Completed, after immediate +3s retention | 19:54:33.376 | Cargo1 **99.79032140000001kg**, original baseline restored |
+
+All eight unrelated station weights matched the initial baseline exactly at both retained checkpoints, independently rechecked from the journal after execution. The native setter targeted index6 only. Gross delta over the load verification interval was+4.863050619kg; observed fuel burn -0.136029871kg gives **+4.999080490kg adjusted payload effect**. Unload gross delta-5.138572547kg with fuel burn-0.138656175kg gives **-4.999916372kg adjusted payload effect**. No fuel write/restoration occurred. Normal engine fuel consumption continues during running intervals. Final retained position: -22.93892877249717,14.504617451479293,133.202715385ft MSL, GS0.00361kt, on-ground true. The exact5kg diagnostic mass is removed; no unresolved recovery remains.
+
+Private/ignored evidence (no personal telemetry/screenshots committed):
+
+| Receipt | SHA256 |
+|---|---|
+| `csharp-h125-loading-before-cycle-01.json` | `e443bcd27f573e85a86e12cd8e03539a7989f763743639a050879fc9f51d188a` |
+| `csharp-ol400-payload-cycle-01.jsonl` | `b781603859e2d3b9940abe2bb525530228b67870010f70b6c37782fe556355e8` |
+| `csharp-ol400-payload-cycle-01.stdout.txt` | `8343cdd1c8f81921182ce4c5938c52bb882418c2c1012c4c4bc59b1f95d85866` |
+| `screenshots/ol400-payload-cycle-completed-paused.jpg` | `ea56ba85e3bc3db506ad44bd11ccf3c1986a4989d49ac1fb208df5b984c7e988` |
+
+Paused MSFS through Escape after completion; helicopter remains on OL400. The screenshot illustrates location/current pause, not proof of a physical mass delta; the native readbacks/gross effect provide that evidence. No Community changes, fuel/fault setters, career/personal save writes, new mission proof or wages. No repeated payload command.
+
+**Acceptance boundary:** real static deck presence + a single inspected compartment's5kg loading/removal works in this version/session. This does not establish flown touchdown/takeoff, a complete mission, restart/conflict recovery in the real simulator, other payload stations/rigs, verified passenger capacity/visuals or mixed transport. Operational aircraft-package version is still incomplete. Production H125/platform generation stays disabled. Prior approval-pending/not-executed paragraphs are historical and superseded by this receipt.
+
+**Next engineering action:** integrate an isolated no-pay platform-visit objective using the measured specific-platform profile and existing mission/recovery boundaries; retain native-start diagnostic provenance separate from tracker flight proof. Qualify actual contact-loss/takeoff transition and live .NET sea-level negative before enabling a production destination. Coordinate the PR3/PR6/PR8 identity/ownership/reconciliation work rather than extending this non-atomic legacy diagnostic into a production writer. No request for Matt to fly is needed to prepare that work.
+
+Automated baseline remains run56 **780/0/0**,31Python,9guards,bothWPF,package. Subsequent documentation-only b024942 passed [run57](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41484481740), same counts/allstages; these newly recorded live observations require no code/test change. This following receipt commit has its own hosted documentation check, never a substitute for the approved run56 artifact.
