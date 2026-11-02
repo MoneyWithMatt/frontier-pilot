@@ -170,7 +170,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
                 return CompanyAircraft.CheckDispatch(identity, jobs, careerStore?.Load().AircraftBindings ?? []) ?? Fleet.CheckDispatch(identity, jobs);
             }
         };
-        CargoJourney = new(cargoJourneyService, () => Jobs.RefreshLiveAsync(), CargoLocations, () => Fleet.Selected?.Registration ?? "unavailable");
+        CargoJourney = new(cargoJourneyService, () => Jobs.RefreshLiveAsync(), CargoLocations, () => Fleet.Selected?.Registration ?? "unavailable", Fleet);
         if (flightAttemptTracker is FlightAttemptTracker concreteFlightTracker) concreteFlightTracker.AircraftLoadingDiagnosticProvider = loadingCoordinator.CreateDiagnosticSnapshot;
         if (services is BuilderServices concrete) concrete.SetEconomyDependencyStore(economyStore);
         prospectingOperations ??= services is IAirportManagement management

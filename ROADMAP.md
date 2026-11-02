@@ -1,5 +1,7 @@
 # Frontier Pilot roadmap and current status
 
+Current UI slice: [click-to-assign cargo cards](docs/specs/cargo-click-assign.md), [handoff](docs/handoffs/cargo-click-assign.md). Blue selection / green proposed pairings retain the current theme, service and right-hand manifest. Prior run 38 physically loaded 105 kg in the Caravan; this new UI revision still requires its own exact-artifact live acceptance. Engine troubleshooting is deferred by Matt.
+
 Immediate repair: [guided cargo loading](docs/guided-cargo-loading.md), [scope](docs/specs/guided-cargo-loading.md), [handoff](docs/handoffs/guided-cargo-loading.md). Live diagnosis reproduced the fleet startup-identity latch; automatic recovery and the requested consignment → station-card loading UI are implemented for verification. Next: qualify the repaired artifact outside → seated apply → retained readback in the Caravan. Automated verification and live acceptance remain separate; no broader logistics expansion until this loop is established.
 
 This index separates implementation from acceptance. Historical reports in `docs/TECHNICAL_STATUS.md`, `docs/BACKLOG.md` and `evidence/` remain intact; older dates may describe superseded behavior. See [architecture](ARCHITECTURE.md) and the linked feature reports before changing rules.

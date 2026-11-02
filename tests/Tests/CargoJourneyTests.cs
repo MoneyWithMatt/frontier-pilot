@@ -433,5 +433,65 @@ public sealed class CargoJourneyTests : IDisposable
         Assert.Single(vm.Pickups);Assert.Equal(68,sim.Weights[5]);
         await vm.HandleCargoAsync();await vm.HandleCargoAsync();Assert.Equal(65,sim.Weights[5]);Assert.Equal(32,s.Manifest!.Cargo.Sum(c=>c.Kilograms));
     }
+    [Fact] public async Task CardsSelectExactlyOneCargoWithoutPlanningOrWriting()
+    {
+        var service=await Create();var vm=new CargoJourneyViewModel(service,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        Assert.All(vm.Consignments,c=>Assert.Equal("Normal",c.VisualState));Assert.All(vm.Stations,c=>Assert.Equal("Normal",c.VisualState));
+        var first=vm.Consignments[0];var second=vm.Consignments[1];var notifications=0;
+        first.PropertyChanged+=(_,_)=>notifications++;
+        vm.SelectCargo(first);Assert.Equal("Selected",first.VisualState);Assert.Equal("Normal",second.VisualState);
+        vm.SelectCargo(second);Assert.Equal("Normal",first.VisualState);Assert.Equal("Selected",second.VisualState);
+        Assert.True(notifications>0);Assert.All(vm.Stations,c=>Assert.False(c.HasProposedAssignment));
+        vm.ClosePickup();Assert.All(vm.Consignments,c=>Assert.Equal("Normal",c.VisualState));Assert.Empty(vm.Pickups);Assert.Equal(0,sim.Writes);
+    }
+    [Fact] public async Task SharedStationCardsPairAndExplainAllConsignmentsWithoutTouchingBaseline()
+    {
+        var service=await Create();var vm=new CargoJourneyViewModel(service,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        var station=vm.Stations.Single(s=>s.Index==6);
+        foreach(var cargo in vm.Consignments){vm.SelectCargo(cargo);vm.ChooseStation(station);}
+        Assert.Equal("Paired",station.VisualState);Assert.Equal(68,station.PlannedTotal);Assert.Equal(33,station.Actual);
+        Assert.All(vm.Consignments,c=>{Assert.Equal("Paired",c.VisualState);Assert.Contains(station.Name,c.AssignmentText);});
+        vm.ChooseStation(station);Assert.Contains("Medical supplies",vm.StationAssignments);Assert.Contains("Food supplies",vm.StationAssignments);
+        Assert.Contains("LOCAL PROPOSED PLAN",vm.ManifestText);Assert.Contains("NOT SAVED OR CONFIRMED ABOARD",vm.ManifestText);
+        Assert.Null(service.Manifest);Assert.Equal(0,sim.Writes);Assert.False(vm.CanChooseAircraft);
+        vm.ChangePickup(vm.Pickups[0]);Assert.False(vm.PrimaryCommand.CanExecute(null));vm.ClosePickup();Assert.True(vm.PrimaryCommand.CanExecute(null));
+        await vm.HandleCargoAsync();Assert.NotNull(service.Manifest!.Pending);Assert.Equal(0,sim.Writes);
+        await vm.HandleCargoAsync();Assert.Equal(68,sim.Weights[5]);Assert.Empty(vm.Pickups);
+        Assert.All(vm.Consignments,c=>Assert.Equal("Confirmed aboard",c.StateText));Assert.All(vm.Stations,c=>Assert.False(c.HasProposedAssignment));
+        Assert.DoesNotContain("LOCAL PROPOSED PLAN",vm.ManifestText);Assert.Contains("TOTAL COMMITTED CARGO: 35",vm.ManifestText);
+    }
+    [Fact] public async Task ChangeAndRemovePairPreserveOtherJobsAndPartialQuantities()
+    {
+        var service=await Create();var vm=new CargoJourneyViewModel(service,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        var first=vm.Consignments.Single(c=>c.JobId=="job-mine");var last=vm.Stations.Single(s=>s.Index==6);var other=vm.Stations.Single(s=>s.Index==5);
+        vm.SelectCargo(first);vm.PickupQuantityText="4";vm.ChooseStation(last);
+        vm.SelectCargo(vm.Consignments.Single(c=>c.JobId=="job-community"));vm.ChooseStation(last);
+        vm.ChangePickup(vm.Pickups.Single(p=>p.JobId==first.JobId));vm.ChooseStation(other);
+        Assert.Equal(4,other.DesiredCargo);Assert.Equal(25,last.DesiredCargo);Assert.Equal(29,vm.RequestedKilograms);
+        vm.RemovePickup(vm.Pickups.Single(p=>p.JobId==first.JobId));Assert.Equal(0,other.DesiredCargo);Assert.False(first.HasProposedAssignment);
+        Assert.Equal("Paired",last.VisualState);Assert.Equal(25,vm.RequestedKilograms);Assert.Equal(0,sim.Writes);
+    }
+    [Fact] public async Task InvalidChangedPairKeepsOriginalPlanAndPendingPlanCannotBeEdited()
+    {
+        var service=await Create();var vm=new CargoJourneyViewModel(service,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        vm.SelectCargo(vm.Consignments.Single(c=>c.JobId=="job-mine"));vm.ChooseStation(vm.Stations.Single(s=>s.Index==6));
+        var pair=Assert.Single(vm.Pickups);vm.ChangePickup(pair);vm.PickupQuantityText="invalid";vm.ChooseStation(vm.Stations.Single(s=>s.Index==5));
+        Assert.Equal(pair,Assert.Single(vm.Pickups));Assert.Equal(10,vm.RequestedKilograms);Assert.True(vm.IsChoosingStation);
+        vm.ClosePickup();await vm.HandleCargoAsync();Assert.False(vm.CanEditCargo);vm.ChangePickup(pair);vm.RemovePickup(pair);
+        vm.SelectCargo(vm.Consignments[0]);vm.ChooseStation(vm.Stations[0]);Assert.Equal(pair,Assert.Single(vm.Pickups));Assert.Equal(0,sim.Writes);
+        var reopened=new CargoJourneyViewModel(NewService(),()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await reopened.RefreshAsync();
+        Assert.False(reopened.CanEditCargo);Assert.Empty(reopened.Pickups);Assert.Contains("PROPOSED / PENDING",reopened.ManifestText);
+        await reopened.HandleCargoAsync();Assert.Equal(43,sim.Weights[5]);Assert.Contains("TOTAL COMMITTED CARGO: 10",reopened.ManifestText);
+    }
+    [Fact] public async Task CardAssignmentsStillRequireOutsideAndCockpitAuthorization()
+    {
+        await Create();var outside=false;var seated=false;
+        var service=NewService(authorize:(_,isOutside)=>{if(isOutside?!outside:!seated)throw new InvalidOperationException("Authorization required");});
+        var vm=new CargoJourneyViewModel(service,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        vm.SelectCargo(vm.Consignments.Single(c=>c.JobId=="job-mine"));vm.ChooseStation(vm.Stations.Single(s=>s.Index==6));
+        await vm.HandleCargoAsync();Assert.Contains("Authorization required",vm.Status);Assert.Null(service.Manifest);Assert.Equal(0,sim.Writes);
+        outside=true;await vm.HandleCargoAsync();Assert.NotNull(service.Manifest!.Pending);await vm.HandleCargoAsync();Assert.Equal(0,sim.Writes);Assert.NotNull(service.Manifest.Pending);
+        seated=true;await vm.HandleCargoAsync();Assert.Null(service.Manifest.Pending);Assert.Equal(43,sim.Weights[5]);
+    }
     public void Dispose() { if(Directory.Exists(root)) Directory.Delete(root,true); }
 }

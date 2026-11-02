@@ -6,12 +6,26 @@ using FrontierAirportBuilder.Core;
 
 namespace FrontierAirportBuilder.Workflow;
 
-public sealed class CargoConsignmentRow
+public abstract class CargoCardRow : INotifyPropertyChanged
+{
+    public bool IsSelected { get; internal set; }
+    public bool HasProposedAssignment { get; internal set; }
+    public string AssignmentText { get; internal set; } = "";
+    public abstract string StateText { get; }
+    public virtual string VisualState => IsSelected ? "Selected" : HasProposedAssignment ? "Paired" : "Normal";
+    public void RefreshPresentation() => PropertyChanged?.Invoke(this, new(null));
+    public event PropertyChangedEventHandler? PropertyChanged;
+}
+public sealed class CargoConsignmentRow : CargoCardRow
 {
     public required string JobId { get; init; }
     public required string Description { get; init; }
     public required string Origin { get; init; }
     public required string Destination { get; init; }
+    public string DestinationLabel => Destination;
+    public string WeightLabel => $"{AvailableHere:0.###} kg available · {Aboard:0.###} kg aboard";
+    public override string StateText => IsSelected ? "Selected — choose a station" : HasProposedAssignment ? "Proposed assignment — not aboard" : Aboard > 0 ? "Confirmed aboard" : "Available here";
+    public string AccessibleDescription => $"{Description}. {WeightLabel}. To {DestinationLabel}. {StateText}. {AssignmentText}";
     public decimal AvailableHere { get; init; }
     public decimal Aboard { get; init; }
     public decimal Delivered { get; init; }
@@ -22,7 +36,7 @@ public sealed class CargoConsignmentRow
     public Action? Edited { get; init; }
     public decimal DesiredAboard { get=>desiredAboard; set {desiredAboard=value;Edited?.Invoke();} }
 }
-public sealed class CargoStationRow
+public sealed class CargoStationRow : CargoCardRow
 {
     public int Index { get; init; }
     public required string Name { get; init; }
@@ -33,8 +47,12 @@ public sealed class CargoStationRow
     public bool Writable { get; init; }
     public decimal DesiredCargo { get; set; }
     public decimal? Maximum { get; init; }
+    public override string VisualState => HasProposedAssignment ? "Paired" : base.VisualState;
+    public decimal PlannedTotal=>Unrelated+DesiredCargo;
+    public override string StateText => HasProposedAssignment ? "Proposed assignments — not applied" : IsSelected ? "Station selected" : "Simulator station";
+    public string AccessibleDescription=>$"{StationLabel}. {Detail}. {StateText}. {AssignmentText}";
     public string StationLabel=>$"{Index}: {Name}";
-    public string Detail=>$"Actual {Actual:0.###} kg · planned cargo {DesiredCargo:0.###} kg · limit {Limit}";
+    public string Detail=>$"Actual {Actual:0.###} kg · planned total {PlannedTotal:0.###} kg · limit {Limit}";
     public override string ToString()=>$"{Index}: {Name}";
 }
 public sealed record CargoStop(PassengerEndpoint Endpoint)
@@ -110,11 +128,17 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     public ObservableCollection<CargoStationRow> Stations { get; } = [];
     public ObservableCollection<CargoStop> Stops { get; } = [];
     public ObservableCollection<CargoPickupPlan> Pickups { get; } = [];
+    public AircraftFleetViewModel? Fleet { get; }
+    private CargoPickupPlan? changingPickup;
+    public string LoadingBayHeading => $"Loading bay · {service.Here?.Name ?? "sync aircraft to locate cargo"}";
+    public bool CanChooseAircraft => CanEditCargo && Pickups.Count == 0 && Consignments.All(c=>c.DesiredAboard==c.Aboard);
+    public string StationAssignments => SelectedStation is {} station ?
+        $"{station.StationLabel}: " + (string.IsNullOrEmpty(station.AssignmentText) ? "No proposed pickup assignments. Confirmed cargo ownership is tracked in the manifest." : station.AssignmentText) : "Click a station to inspect its proposed consignments.";
     public CargoConsignmentRow? PickupCargo { get; private set; }
     public string PickupQuantityText { get; set; } = "";
     public bool IsChoosingStation=>CanEditCargo&&PickupCargo is not null;
     public string PickupHeading=>PickupCargo is {} c?$"Load {c.Description} → {c.Destination}":"";
-    public string PickupHelp=>PickupCargo is {} c?$"{c.AvailableHere-Math.Max(0,c.DesiredAboard-c.Aboard):0.###} kg still available. Choose a station below to add this amount to the plan.":"";
+    public string PickupHelp=>PickupCargo is {} c?$"{c.AvailableHere-Math.Max(0,c.DesiredAboard-c.Aboard)+(changingPickup?.Kilograms??0):0.###} kg still available. Choose a station below to add this amount to the plan.":"";
     public CargoStationRow? SelectedStation { get; set; }
     public CargoStop? SelectedStop { get; set; }
     public string Status => status;
@@ -134,7 +158,7 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
                 "3. Remain stopped for ten tracking seconds, then Start flight recording before takeoff.":
                 "Flight recording active. Fly to the planned stop; remaining cargo stays aboard.";
             return service.Manifest?.Cargo.Length>0?"Cargo confirmed aboard. Choose your next destination below, or select cargo for a pickup or delivery here.":
-                "1. Click Load beside cargo, then choose its station. Confirm the plan while walking near this aircraft.";
+                "Click cargo, then a station. Confirm the plan while walking near this aircraft.";
         }
     }
     public string DepartureActionText=>service.Manifest?.Legs.Any(l=>l.SettledUtc is null)==true?"Start flight recording":"Prepare departure";
@@ -142,7 +166,19 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     public ActionCommand LoadAvailableCommand { get; }
     public ActionCommand DeliverHereCommand { get; }
     public ActionCommand DepartureCommand { get; }
-    public string ManifestText => CargoDispatchDocument.Render(service.World, service.Manifest, registration(), service.Live);
+    public string ManifestText
+    {
+        get
+        {
+            var document=CargoDispatchDocument.Render(service.World, service.Manifest, registration(), service.Live);
+            if(service.Manifest?.Pending is not null || Consignments.All(c=>c.DesiredAboard==c.Aboard))return document;
+            var plan=new StringBuilder(document).AppendLine().AppendLine("--------------------------------------------------------")
+                .AppendLine("LOCAL PROPOSED PLAN / NOT SAVED OR CONFIRMED ABOARD");
+            foreach(var pickup in Pickups)plan.AppendLine(pickup.Summary+" / TO: "+pickup.Destination);
+            foreach(var c in Consignments.Where(c=>c.DesiredAboard<c.Aboard))plan.AppendLine($"{c.Description}: unload {c.Aboard-c.DesiredAboard:0.###} kg / {c.JobId}");
+            return plan.ToString();
+        }
+    }
     public string AircraftStatus => service.Live is {} l ? $"{l.Aircraft.Title} / {registration()} / {service.Here?.Name ?? "location unrecognised"} / actual payload {l.PayloadStations.Sum(x=>x.CurrentWeightKilograms):0.###} kg" : "No current simulator readback.";
     public string Warnings => service.Live is {} l ? string.Join("\n", AircraftLoadPlan.EvaluateWarnings(l.Weights, l.Weights.CurrentGrossWeightKilograms, l.Weights.CurrentCgPercent)) +
         (l.Weights.CurrentGrossWeightKilograms is null ? "\nTotal gross is not reported; physical verification uses retained station readback without an independent gross delta." : "") +
@@ -155,11 +191,11 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     public ActionCommand RenewCommand { get; }
     public ActionCommand CancelPlanCommand { get; }
     public ActionCommand MatchMassCommand { get; }
-    public CargoJourneyViewModel(CargoJourneyService service, Func<Task> refreshJobs, Func<EconomyWorld, IEnumerable<PassengerEndpoint>> destinations, Func<string> registration)
+    public CargoJourneyViewModel(CargoJourneyService service, Func<Task> refreshJobs, Func<EconomyWorld, IEnumerable<PassengerEndpoint>> destinations, Func<string> registration, AircraftFleetViewModel? fleet = null)
     {
-        this.service = service; this.refreshJobs = refreshJobs; this.destinations = destinations; this.registration = registration;
+        Fleet=fleet; this.service = service; this.refreshJobs = refreshJobs; this.destinations = destinations; this.registration = registration;
         PrimaryCommand=new(()=>_=HandleCargoAsync(),()=>!busy&&service.Live is not null&&
-            (service.Manifest?.Pending is not null||CanEditCargo&&Consignments.Any(c=>c.DesiredAboard!=c.Aboard)));
+            (service.Manifest?.Pending is not null||CanEditCargo&&PickupCargo is null&&Consignments.Any(c=>c.DesiredAboard!=c.Aboard)));
         LoadAvailableCommand=new(()=>SetQuantities(false),()=>CanEditCargo&&Consignments.Any(c=>c.AvailableHere>0));
         DeliverHereCommand=new(()=>SetQuantities(true),()=>CanEditCargo&&Consignments.Any(c=>c.Status=="DELIVER HERE"&&c.Aboard>0));
         DepartureCommand=new(()=>_=PrepareDepartureAsync(),()=>!busy&&service.Manifest is {Pending:null} m&&m.Cargo.Length>0&&m.Legs.All(l=>l.SettledUtc is not null||l.Flight is null));
@@ -181,9 +217,29 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
         if(!CanEditCargo||!Consignments.Contains(cargo))return;
         var remaining=cargo.AvailableHere-Math.Max(0,cargo.DesiredAboard-cargo.Aboard);
         if(remaining<=0){status="All available cargo for this job is already selected or aboard.";Update(false);return;}
-        PickupCargo=cargo;PickupQuantityText=remaining.ToString();Update(false);
+        changingPickup=null;PickupCargo=cargo;PickupQuantityText=remaining.ToString();Update(false);
     }
-    public void ClosePickup(){PickupCargo=null;Update(false);}
+    public void SelectCargo(CargoConsignmentRow cargo)
+    {
+        if(!CanEditCargo||!Consignments.Contains(cargo))return;
+        ClosePickup();
+        if(cargo.CanPickup)BeginPickup(cargo);
+        else {status=cargo.HasProposedAssignment ? "Proposed pickup selected. Use Change or Remove below to edit its assignment." : "Confirmed cargo stays aboard until a permitted delivery.";Update(false);}
+    }
+    public void ChooseStation(CargoStationRow station)
+    {
+        if(!Stations.Contains(station))return;
+        SelectedStation=station;
+        if(PickupCargo is not null)AddPickup(station);
+        else Update(false);
+    }
+    public void ChangePickup(CargoPickupPlan pickup)
+    {
+        if(!CanEditCargo||!Pickups.Contains(pickup))return;
+        changingPickup=pickup;PickupCargo=Consignments.Single(c=>c.JobId==pickup.JobId);
+        PickupQuantityText=pickup.Kilograms.ToString();Update(false);
+    }
+    public void ClosePickup(){PickupCargo=null;changingPickup=null;Update(false);}
     public void AddPickup(CargoStationRow station)
     {
         if(!CanEditCargo||PickupCargo is not {} cargo)return;
@@ -191,17 +247,24 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
         {
             if(!Stations.Contains(station)||!station.Writable)throw new InvalidOperationException("This simulator station is not writable. Choose another station.");
             if(!decimal.TryParse(PickupQuantityText,out var pickupQuantity))throw new InvalidOperationException("Enter a valid cargo amount in kilograms.");
-            var remaining=cargo.AvailableHere-Math.Max(0,cargo.DesiredAboard-cargo.Aboard);
+            var remaining=cargo.AvailableHere-Math.Max(0,cargo.DesiredAboard-cargo.Aboard)+(changingPickup?.Kilograms??0);
             if(pickupQuantity<=0||pickupQuantity>remaining)throw new InvalidOperationException($"Choose an amount greater than zero and no more than {remaining:0.###} kg.");
-            if(station.Maximum is {} max&&station.Unrelated+station.DesiredCargo+pickupQuantity>max)
+            if(station.Maximum is {} max&&station.Unrelated+station.DesiredCargo+pickupQuantity-(changingPickup?.StationIndex==station.Index?changingPickup.Kilograms:0)>max)
                 throw new InvalidOperationException("This amount exceeds the simulator-reported station limit. Choose a smaller amount or another station.");
+            if(changingPickup is {} previous)
+            {
+                var old=Stations.Single(s=>s.Index==previous.StationIndex);
+                if(cargo.DesiredAboard-cargo.Aboard<previous.Kilograms||old.DesiredCargo<previous.Kilograms)
+                    throw new InvalidOperationException("Advanced totals changed this assignment. Refresh before changing it.");
+                old.DesiredCargo-=previous.Kilograms;cargo.DesiredAboard-=previous.Kilograms;Pickups.Remove(previous);
+            }
             // A station choice is an explicit pickup target; MSFS still receives aggregate mass, not job identity.
             station.DesiredCargo+=pickupQuantity;cargo.DesiredAboard+=pickupQuantity;
             var existing=Pickups.SingleOrDefault(p=>p.JobId==cargo.JobId&&p.StationIndex==station.Index);
             if(existing is not null)Pickups.Remove(existing);
             Pickups.Add(new(cargo.JobId,cargo.Description,cargo.Destination,station.Index,station.Name,pickupQuantity+(existing?.Kilograms??0)));
             status=$"Added {pickupQuantity:0.###} kg of {cargo.Description} to {station.Name} in the plan. Nothing has been loaded yet.";
-            PickupCargo=null;RefreshEditableRows();
+            PickupCargo=null;changingPickup=null;RefreshEditableRows();
         }
         catch(Exception ex){status=ex.Message;}
         Update(false);
@@ -225,9 +288,7 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     }
     private void RefreshEditableRows()
     {
-        var cargo=Consignments.ToArray();Consignments.Clear();foreach(var c in cargo)Consignments.Add(c);
-        var index=SelectedStation?.Index;var stations=Stations.ToArray();Stations.Clear();foreach(var s in stations)Stations.Add(s);
-        SelectedStation=Stations.SingleOrDefault(s=>s.Index==index);
+        RefreshCards();
     }
     private void SetQuantities(bool deliver)
     {
@@ -293,7 +354,7 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     }
     private void ReloadRows()
     {
-        Consignments.Clear(); Stations.Clear(); Stops.Clear();Pickups.Clear();PickupCargo=null;
+        Consignments.Clear(); Stations.Clear(); Stops.Clear();Pickups.Clear();PickupCargo=null;changingPickup=null;
         if (service.World is not {} w) return;
         var m = service.Manifest; var here = service.Here?.Id;
         foreach (var job in w.Jobs.Where(j => j.State == EconomyJobState.Accepted))
@@ -302,11 +363,11 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
             var aboard = m?.Cargo.SingleOrDefault(x => x.JobId == job.Id)?.Kilograms ?? 0;
             if (s.OriginLocationId != here && aboard == 0) continue;
             Consignments.Add(new() { JobId = job.Id, Description = w.Resources.Single(x=>x.Id==s.ResourceId).Name,
-                Origin = w.Locations.Single(x=>x.Id==s.OriginLocationId).Name, Destination = w.Locations.Single(x=>x.Id==s.DestinationLocationId).Name,
+                Origin = w.Locations.Single(x=>x.Id==s.OriginLocationId).Name, Destination = destinations(w).SingleOrDefault(p=>p.Id==s.DestinationLocationId)?.Name ?? w.Locations.Single(x=>x.Id==s.DestinationLocationId).Name,
                 Aboard = aboard, AvailableHere = s.OriginLocationId == here ? s.Quantity - s.DeliveredQuantity - s.LoadedQuantity : 0,
                 Delivered = s.DeliveredQuantity, DesiredAboard = m?.Pending?.Changes.SingleOrDefault(c=>c.JobId==job.Id)?.After??aboard, Status = s.DestinationLocationId == here ? "DELIVER HERE" : s.State.ToString(), Edited=()=>Update(false) });
         }
-        foreach (var s in service.Live?.PayloadStations ?? [])
+        foreach (var s in (service.Live?.PayloadStations ?? []).OrderBy(s=>s.Index))
         {
             var claim = m?.Stations.SingleOrDefault(x=>x.StationIndex==s.Index)?.FrontierCargoKilograms ?? 0;
             var pending=m?.Pending?.Targets.SingleOrDefault(x=>x.StationIndex==s.Index);
@@ -319,11 +380,31 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
         foreach (var p in destinations(w).Where(p=>p.Id!=here)) Stops.Add(new(p));
         SelectedStop=Stops.SingleOrDefault(s=>s.Endpoint.Id==stopId);
     }
+    private void RefreshCards()
+    {
+        foreach(var cargo in Consignments)
+        {
+            var assignments=Pickups.Where(p=>p.JobId==cargo.JobId).ToArray();
+            cargo.IsSelected=IsChoosingStation&&ReferenceEquals(cargo,PickupCargo);
+            cargo.HasProposedAssignment=assignments.Length>0;
+            cargo.AssignmentText=string.Join("; ",assignments.Select(p=>$"{p.Kilograms:0.###} kg → {p.StationIndex}: {p.StationName}"));
+            cargo.RefreshPresentation();
+        }
+        foreach(var station in Stations)
+        {
+            var assignments=Pickups.Where(p=>p.StationIndex==station.Index).ToArray();
+            station.IsSelected=ReferenceEquals(station,SelectedStation);
+            station.HasProposedAssignment=assignments.Length>0;
+            station.AssignmentText=string.Join("; ",assignments.Select(p=>$"{p.Description}: {p.Kilograms:0.###} kg → {p.Destination}"));
+            station.RefreshPresentation();
+        }
+    }
     public event PropertyChangedEventHandler? PropertyChanged;
     private void Update(bool reason = true)
     {
         if (reason && !busy) status = service.Reason;
-        foreach (var name in new[] { nameof(Status), nameof(ManifestText), nameof(AircraftStatus), nameof(Warnings), nameof(SelectedStop),nameof(SelectedStation),nameof(TechnicalDetails),nameof(CanEditCargo),nameof(CargoSummary),nameof(PrimaryActionText),nameof(NextStep),nameof(DepartureActionText),nameof(IsChoosingStation),nameof(PickupQuantityText),nameof(PickupHeading),nameof(PickupHelp) }) PropertyChanged?.Invoke(this, new(name));
+        RefreshCards();
+        foreach (var name in new[] { nameof(Status), nameof(ManifestText), nameof(AircraftStatus), nameof(Warnings), nameof(SelectedStop),nameof(SelectedStation),nameof(TechnicalDetails),nameof(CanEditCargo),nameof(CargoSummary),nameof(PrimaryActionText),nameof(NextStep),nameof(DepartureActionText),nameof(IsChoosingStation),nameof(PickupQuantityText),nameof(PickupHeading),nameof(PickupHelp), nameof(StationAssignments), nameof(LoadingBayHeading), nameof(CanChooseAircraft) }) PropertyChanged?.Invoke(this, new(name));
         PrimaryCommand?.Refresh();LoadAvailableCommand?.Refresh();DeliverHereCommand?.Refresh();DepartureCommand?.Refresh();
         ReadCommand.Refresh(); PrepareCommand.Refresh(); ApplyCommand.Refresh(); PlanLegCommand.Refresh(); ArmLegCommand.Refresh(); RenewCommand.Refresh(); CancelPlanCommand.Refresh(); MatchMassCommand.Refresh();
     }

@@ -1,5 +1,9 @@
 # Design decisions
 
+## Cargo card interaction — 2026-11-02
+
+Use native cargo/station buttons and matching blue/green text-labelled states in the current theme. Ordered reported stations are the fallback where geometry is unverified. Change/Remove affect transient pickup proposals only; no new physical ownership, save schema, wages, limits or authorization. Aircraft selection reuses Fleet and refreshes readback on an actual selection change. [Scope](specs/cargo-click-assign.md).
+
 ## Guided cargo repair — 2026-10-30
 
 Follow-up approved after live diagnosis: clicking a consignment's Load opens actual station cards with full available amount prefilled, optional partial amount, and removable pickup choices. Deliver names the individual consignment. This replaces the main station dropdown and routine numeric bookkeeping, without changing aggregate payload ownership, saves or career rules. Missing tracking identity is transient and resets observation continuity; complete later telemetry must recover through existing type/location/object guards. Persistence failures remain blocked. The successful old-build recognition/native reads are diagnostic evidence, not repaired-build loading acceptance.

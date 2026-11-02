@@ -26,12 +26,12 @@ internal static partial class Program
         async Task Click(string content)
         {var b=FindButton(content);Check(b.Command?.CanExecute(null)==true,"Cargo command is bound: "+content);b.Command!.Execute(null);await Task.Delay(120);Pump();}
         await Click("Refresh aircraft & jobs");Check(vm.Consignments.Count==2,"Cargo control lists both accepted destinations");
-        var cargoGrid=(DataGrid)control.FindName("CargoConsignments");
+        var cargoGrid=(ItemsControl)control.FindName("CargoConsignments");
         void ClickRow(string jobId,string action)
         {
-            var item=vm.Consignments.Single(c=>c.JobId==jobId);cargoGrid.ScrollIntoView(item);cargoGrid.UpdateLayout();Pump();
-            var b=Descendants<Button>(cargoGrid).Single(b=>b.DataContext==item&&b.Content?.ToString()==action);
-            Check(b.IsVisible&&b.IsEnabled,"Consignment action is usable: "+action);b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+            var item=vm.Consignments.Single(c=>c.JobId==jobId);cargoGrid.UpdateLayout();Pump();
+            var b=Descendants<Button>(cargoGrid).Single(b=>b.DataContext==item&&(action=="Load"?b.Style==control.Resources["AssignmentCard"]:b.Content?.ToString()==action));
+            b.BringIntoView();Pump();Check(b.IsVisible&&b.IsEnabled&&b.Focusable,"Consignment card/action is keyboard accessible: "+action);b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
         }
         void ClickStation(int index)
         {
@@ -39,13 +39,27 @@ internal static partial class Program
             var button=Descendants<Button>(choices).Single(b=>b.DataContext is CargoStationRow s&&s.Index==index);
             button.BringIntoView();Pump();Check(button.IsVisible&&button.IsEnabled,"Actual station button is usable");button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
         }
-        var first=vm.Consignments[0].JobId;ClickRow(first,"Load");Check(vm.IsChoosingStation,"Load opens the station chooser");
+        Save(host,Path.Combine(folder,"cargo-cards-none.png"));
+        var first=vm.Consignments[0].JobId;ClickRow(first,"Load");
+        var selectedButton=Descendants<Button>(cargoGrid).Single(b=>b.DataContext==vm.PickupCargo&&b.Style==control.Resources["AssignmentCard"]);
+        Check(((System.Windows.Media.SolidColorBrush)selectedButton.Background).Color==System.Windows.Media.Color.FromRgb(34,59,75),"Selected cargo uses blue card background");
+        Check(!string.IsNullOrWhiteSpace(System.Windows.Automation.AutomationProperties.GetName(selectedButton)),"Cargo card has accessible state description");
+Check(vm.IsChoosingStation,"Load opens the station chooser");
         Save(host,Path.Combine(folder,"cargo-station-picker.png"));
-        var amount=(TextBox)control.FindName("PickupQuantity");amount.Text="invalid";amount.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();ClickStation(6);
+        var partial=Descendants<Expander>(control).Single(e=>e.Header?.ToString()=="Partial amount / split");partial.IsExpanded=true;Pump();
+        var amount=(TextBox)control.FindName("PickupQuantity");Check(amount.IsVisible,"Contextual partial quantity is visible when requested");amount.Text="invalid";amount.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();ClickStation(6);
         Check(vm.Pickups.Count==0&&vm.IsChoosingStation,"Invalid text cannot silently load the previous amount");
         amount.Text=vm.Consignments.Single(c=>c.JobId==first).AvailableHere.ToString();amount.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();ClickStation(6);
-        Check(!vm.IsChoosingStation&&vm.Pickups.Count==1,"Full pickup chooses station without quantity arithmetic");
-        var remove=Descendants<Button>((ItemsControl)control.FindName("PickupPlan")).Single();remove.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+        Check(!vm.IsChoosingStation&&vm.Pickups.Count==1,"Full pickup chooses station without quantity arithmetic");partial.IsExpanded=false;Pump();
+        var change=Descendants<Button>((ItemsControl)control.FindName("PickupPlan")).Single(b=>b.Content?.ToString()=="Change");change.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();ClickStation(5);
+        Check(vm.Pickups.Single().StationIndex==5&&physical.Weights[4]==0,"Change reassigns only the proposed station, no simulator write");
+        change=Descendants<Button>((ItemsControl)control.FindName("PickupPlan")).Single(b=>b.Content?.ToString()=="Change");change.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();ClickStation(6);
+        var paired=vm.Consignments.Single(c=>c.JobId==first);
+        var pairedButton=Descendants<Button>(cargoGrid).Single(b=>b.DataContext==paired&&b.Style==control.Resources["AssignmentCard"]);
+        var stationButton=Descendants<Button>((ItemsControl)control.FindName("PickupStations")).Single(b=>b.DataContext is CargoStationRow row&&row.Index==6);
+        Check(pairedButton.Background.ToString()==stationButton.Background.ToString()&&paired.VisualState=="Paired","Cargo and station share green proposed state");
+        Save(host,Path.Combine(folder,"cargo-cards-paired.png"));
+        var remove=Descendants<Button>((ItemsControl)control.FindName("PickupPlan")).Single(b=>b.Content?.ToString()=="Remove");remove.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
         Check(vm.RequestedKilograms==0,"Remove undoes only the proposed pickup");
         foreach(var id in vm.Consignments.Select(c=>c.JobId).ToArray()){ClickRow(id,"Load");ClickStation(6);}
         Check(vm.Pickups.Count==2&&vm.RequestedKilograms==35,"Two consignment station choices are previewed independently");
@@ -56,10 +70,10 @@ internal static partial class Program
         await Click("Apply cargo in cockpit");Check(physical.Weights[5]==68&&service.Manifest!.Cargo.Length==2,"Real bound apply command confirms 35 kg: "+vm.Status);
         foreach(var item in vm.Consignments)
         {
-            var row=(DataGridRow)cargoGrid.ItemContainerGenerator.ContainerFromItem(item);
-            var destination=Descendants<TextBlock>(row).Single(t=>t.Text=="TO: "+item.Destination);
-            var bounds=destination.TransformToAncestor(row).TransformBounds(new Rect(0,0,destination.ActualWidth,destination.ActualHeight));
-            Check(bounds.Bottom<=row.ActualHeight,"Cargo destination text is not clipped by inherited global row height");
+            var button=Descendants<Button>(cargoGrid).Single(b=>b.DataContext==item&&b.Style==control.Resources["AssignmentCard"]);
+            var destination=Descendants<TextBlock>(button).Single(t=>t.Text=="TO: "+item.Destination);
+            var bounds=destination.TransformToAncestor(button).TransformBounds(new Rect(0,0,destination.ActualWidth,destination.ActualHeight));
+            Check(bounds.Bottom<=button.ActualHeight,"Cargo card destination is not clipped");
         }
         Check(vm.ManifestText.Contains("TOTAL COMMITTED CARGO: 35"),"Printout reflects committed 35 kg");Save(host,Path.Combine(folder,"cargo-dispatch-35kg.png"));
         var loadingScroll=Descendants<ScrollViewer>(control).Single(s=>s.Content is StackPanel);loadingScroll.ScrollToBottom();Pump();

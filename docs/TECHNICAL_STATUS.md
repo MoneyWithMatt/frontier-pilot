@@ -1,5 +1,9 @@
 # Technical status — 2026-09-07
 
+## Cargo-card interaction — 2026-11-02
+
+The approved follow-up retains the existing theme/services and fax manifest while replacing the main cargo table with clickable, accessible cargo and reported-station cards. Pair colour reflects proposals only. Partial quantities, Change/Remove, shared stations, delivery and pending recovery are retained. [Current verification/handoff](handoffs/cargo-click-assign.md).
+
 ## Guided cargo loading repair — 2026-10-30
 
 [Live diagnosis and loading repair](guided-cargo-loading.md): the old build read Caravan payload and walking identity successfully but Fleet latched an earlier incomplete title/model. Automatic recovery now waits for complete tracking without unblocking durable save failures. The requested Load → station-card UI replaces the main dropdown/quantity table. Regression/hosted WPF verification and repaired-artifact live acceptance are distinct. [Current checkpoint](handoffs/guided-cargo-loading.md).

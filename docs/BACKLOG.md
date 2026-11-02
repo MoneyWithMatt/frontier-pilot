@@ -1,5 +1,7 @@
 # Backlog
 
+Current: [cargo-card interaction](specs/cargo-click-assign.md), same PR #8; final hosted Windows verification and new-UI live acceptance remain separate. Engine recovery investigation deferred by user; do not resume simulator actions as part of the UI task.
+
 ## Immediate loading repair — 2026-10-30
 
 [Guided cargo loading](guided-cargo-loading.md), [draft PR #8](https://github.com/MoneyWithMatt/frontier-pilot/pull/8), [handoff](handoffs/guided-cargo-loading.md): live fleet identity latch diagnosed; transient recovery and consignment → station-card UI implemented for verification. Next, test the exact repaired artifact outside/seated with retained mass, restart and delivery checks. Do not substitute synthetic acceptance or guessed model data.
