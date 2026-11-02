@@ -30,7 +30,7 @@
      <StackPanel><TextBlock Text="{Binding Description}" FontWeight="SemiBold"/>
       <TextBlock Text="{Binding WeightLabel}" Margin="0,6"/><TextBlock Text="{Binding DestinationLabel, StringFormat='TO: {0}'}" FontSize="12"/>
       <TextBlock Text="{Binding JobId}" FontSize="10" Foreground="{StaticResource MutedBrush}"/>
-      <TextBlock Text="{Binding StateText}" FontSize="11" Margin="0,5,0,0"/><TextBlock Text="{Binding AssignmentText}" FontSize="11"/>
+      <TextBlock Text="{Binding StateText}" FontSize="10" Margin="0,3,0,0"/><TextBlock Text="{Binding AssignmentText}" FontSize="11"/>
      </StackPanel>
     </Button>
     <Button Content="Deliver" Click="DeliverCargo_Click" Visibility="{Binding CanDeliver, Converter={StaticResource VisibleWhenTrue}}"/>
@@ -46,19 +46,22 @@
   <TextBlock Text="Aircraft loading stations" FontSize="17" FontWeight="SemiBold" Margin="0,10,0,4"/>
   <TextBlock Text="Schematic only. Boxes follow simulator station order, not physical compartment positions." FontSize="11"/>
   <Border x:Name="CargoStationPicker" Margin="0,6">
-   <Grid x:Name="CargoStationDiagram" MinHeight="320">
-    <!-- Generic vector outline: decoration only, never a source of station geometry or loading limits. -->
-    <Path x:Name="CargoAircraftOutline" IsHitTestVisible="False" Stretch="Fill" Fill="{StaticResource PanelBrush}" Stroke="{StaticResource LineBrush}" StrokeThickness="2"
-     Data="M 300,0 C 190,0 90,35 90,95 L 90,195 8,290 8,325 90,295 110,450 35,535 35,555 220,530 300,590 380,530 565,555 565,535 490,450 510,295 592,325 592,290 510,195 510,95 C 510,35 410,0 300,0 Z"/>
-    <TextBlock Text="FRONT" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,16,0,0" FontSize="10" Foreground="{StaticResource MutedBrush}" IsHitTestVisible="False"/>
-    <ItemsControl x:Name="PickupStations" ItemsSource="{Binding Stations}" Margin="58,52,58,65">
-     <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+   <Grid x:Name="CargoStationDiagram" MinHeight="180">
+    <!-- Decorative fuselage never determines row height or physical station geometry. -->
+    <Canvas x:Name="CargoFuselageBackdrop" IsHitTestVisible="False">
+     <Path x:Name="CargoAircraftOutline" IsHitTestVisible="False" Stretch="Fill" Fill="{StaticResource PanelBrush}" Stroke="{StaticResource LineBrush}" StrokeThickness="2"
+      Width="{Binding ActualWidth, ElementName=CargoFuselageBackdrop}" Height="{Binding ActualHeight, ElementName=CargoFuselageBackdrop}"
+      Data="M 0,150 C 0,80 45,25 115,20 L 470,20 C 520,20 575,105 600,150 C 575,195 520,280 470,280 L 115,280 C 45,275 0,220 0,150 Z"/>
+    </Canvas>
+    <TextBlock Text="FRONT" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="9" Foreground="{StaticResource MutedBrush}" IsHitTestVisible="False"/>
+    <ItemsControl x:Name="PickupStations" ItemsSource="{Binding Stations}" Margin="68,24,50,24">
+     <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
      <ItemsControl.ItemTemplate><DataTemplate>
-      <Button Click="ChooseStation_Click" Style="{StaticResource AssignmentCard}" MinHeight="90" Padding="6" Margin="3" IsEnabled="{Binding Writable}" AutomationProperties.Name="{Binding AccessibleDescription}" ToolTip="{Binding AccessibleDescription}">
-       <StackPanel><TextBlock Text="{Binding StationLabel}" FontSize="12" FontWeight="SemiBold"/>
+      <Button Click="ChooseStation_Click" Style="{StaticResource AssignmentCard}" MinHeight="64" Padding="5" Margin="3" VerticalAlignment="Center" IsEnabled="{Binding Writable}" AutomationProperties.Name="{Binding AccessibleDescription}" ToolTip="{Binding AccessibleDescription}">
+       <StackPanel><TextBlock Text="{Binding StationLabel}" FontSize="11" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
         <TextBlock Text="{Binding Actual, StringFormat='Actual {0:0.###} kg'}" FontSize="11" Margin="0,5,0,0"/>
-        <TextBlock Text="{Binding PlannedTotal, StringFormat='Planned {0:0.###} kg'}" FontSize="11"/>
-        <TextBlock Text="{Binding DiagramStateText}" FontSize="10" Margin="0,3,0,0"/>
+        <TextBlock Text="{Binding PlannedTotal, StringFormat='Planned {0:0.###} kg'}" FontSize="10"/>
+        <TextBlock Text="{Binding DiagramStateText}" FontSize="10"/>
        </StackPanel>
       </Button>
      </DataTemplate></ItemsControl.ItemTemplate>

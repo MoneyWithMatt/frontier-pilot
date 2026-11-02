@@ -4,10 +4,10 @@ Status: Approved
 Approved by / date: Matt's aircraft-diagram reference and request, 2026-11-02.
 
 ## Objective
-Show clickable loading-station boxes on a restrained aircraft outline, retaining Frontier's dark theme and the existing cargo workflow.
+Show compact clickable loading-station boxes on a restrained fuselage outline, retaining Frontier's dark theme and the existing cargo workflow.
 
 ## Gameplay behavior
-A generic top-down vector aircraft surrounds station buttons in simulator numeric order. Each box shows its actual station number/name, actual mass, proposed total and selection/proposal label. The outline is explicitly schematic: boxes do not claim physical compartment locations. Selected-station details retain reported limits and the list of proposed consignments. Blue selection/green pairing, keyboard buttons, partial quantities, Change/Remove, manifest and existing authorization/readback remain unchanged.
+A generic horizontal vector fuselage surrounds compact station buttons in four columns and simulator numeric order. Matt explicitly rejected the initial winged outline and large stretching boxes; this revision removes wings and keeps the backdrop out of layout measurement. Each box shows its actual station number/name, actual mass, proposed total and selection/proposal label. The outline is explicitly schematic: boxes do not claim physical compartment locations. Selected-station details retain reported limits and the list of proposed consignments. Blue selection/green pairing, keyboard buttons, partial quantities, Change/Remove, manifest and existing authorization/readback remain unchanged.
 
 The new request supersedes the prior prohibition on an aircraft drawing for this decorative schematic only. No geometry is inferred from names/indices or the reference image. Accurate aircraft-specific layouts require separately verified positions; no layout profile is added here.
 

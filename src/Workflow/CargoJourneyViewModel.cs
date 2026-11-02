@@ -50,7 +50,7 @@ public sealed class CargoStationRow : CargoCardRow
     public override string VisualState => HasProposedAssignment ? "Paired" : base.VisualState;
     public decimal PlannedTotal=>Unrelated+DesiredCargo;
     public override string StateText => HasProposedAssignment ? "Proposed assignments — not applied" : IsSelected ? "Station selected" : "Simulator station";
-    public string DiagramStateText => HasProposedAssignment ? "Proposed · not loaded" : IsSelected ? "Selected" : Writable ? "" : "Read only";
+    public string DiagramStateText => HasProposedAssignment ? "Proposed" : IsSelected ? "Selected" : Writable ? "" : "Read only";
     public string AccessibleDescription=>$"{StationLabel}. {Detail}. {StateText}. {AssignmentText}";
     public string StationLabel=>$"{Index}: {Name}";
     public string Detail=>$"Actual {Actual:0.###} kg · planned total {PlannedTotal:0.###} kg · limit {Limit}";

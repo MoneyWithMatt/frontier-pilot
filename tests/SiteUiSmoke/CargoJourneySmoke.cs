@@ -43,6 +43,7 @@ internal static partial class Program
         Check(outline.IsVisible&&!outline.IsHitTestVisible,"Aircraft outline is decorative and cannot intercept station clicks");
         var choices=(ItemsControl)control.FindName("PickupStations");
         Check(Descendants<Button>(choices).Count()==vm.Stations.Count,"Diagram represents every reported station once");
+        Check(((Grid)control.FindName("CargoStationDiagram")).ActualHeight<300&&Descendants<Button>(choices).All(b=>b.ActualHeight<90),"Six stations remain compact rather than stretching to outline height");
         Check(Descendants<TextBlock>(control).Any(t=>t.Text.Contains("not physical compartment positions")),"Schematic explicitly distinguishes station order from geometry");
         // Presentation-only maximum-size fixture; these extra rows never enter the physical service snapshot.
         var extra=Enumerable.Range(7,9).Select(i=>new CargoStationRow{Index=i,Name=i==15?"Synthetic rear cargo compartment":"Synthetic station "+i,Actual=i==15?123.456m:0,Writable=i!=15}).ToArray();
@@ -55,6 +56,7 @@ internal static partial class Program
             var box=button.TransformToAncestor(choices).TransformBounds(new Rect(0,0,button.ActualWidth,button.ActualHeight));
             Check(box.Left>=0&&box.Right<=choices.ActualWidth+.1,"Station box fits the diagram width");
         }
+        Check(((Grid)control.FindName("CargoStationDiagram")).ActualHeight<430&&buttons.All(b=>b.ActualHeight<90),"Fifteen compact station boxes fit a short fuselage schematic");
         choices.BringIntoView();Pump();Save(host,Path.Combine(folder,"cargo-aircraft-diagram-15.png"));
         foreach(var row in extra)vm.Stations.Remove(row);Pump();
         Save(host,Path.Combine(folder,"cargo-cards-none.png"));
