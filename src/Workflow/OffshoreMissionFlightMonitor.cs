@@ -27,7 +27,15 @@ public sealed partial class FlightAttemptTracker
             if (sample is null)
             {
                 Reset(); Reason = "Mission telemetry paused, disconnected, stale, accelerated, frozen or unavailable. Unconfirmed observation time reset; no wages accrue.";
-                return mission is { Active: true, ObservationCompletedUtc: null } ? mission with { ObservationSeconds = 0 } : mission;
+                var unsafePhysics = frame?.Readings?.Any(r => r is not null && r.Field is not null && r.Value is {} value &&
+                    ((r.Field.Key is "IS SLEW ACTIVE" or "IS LATITUDE LONGITUDE FREEZE ON" or "IS ALTITUDE FREEZE ON" or "IS ATTITUDE FREEZE ON") && value != 0 ||
+                     r.Field.Key == "SIMULATION RATE" && value != 1)) == true;
+                if (unsafePhysics && mission is { Active: true, Aircraft: not null, ReturnReadyUtc: null })
+                    return mission with { RecoveryRequired = true, RecoveryRequiresBase = true,
+                        ObservationSeconds = mission.ObservationCompletedUtc is null ? 0 : mission.ObservationSeconds,
+                        ReturnAreaRequalificationRequired = mission.ObservationCompletedUtc is not null };
+                return mission is { Active: true, Aircraft: not null, ReturnReadyUtc: null } ? mission with {
+                    RecoveryRequired = true, ObservationSeconds = mission.ObservationCompletedUtc is null ? 0 : mission.ObservationSeconds } : mission;
             }
             if (mission?.Aircraft is {} aircraft && (aircraft.Title != sample.Identity.Title || aircraft.Type != sample.Identity.Model))
             { Reset(); Reason = "Resume with the recorded aircraft and selected employer airframe."; return mission with { RecoveryRequired = true }; }
@@ -41,18 +49,15 @@ public sealed partial class FlightAttemptTracker
             }
             var wall = before is null ? 0 : (sample.Position.ObservedUtc - before.Position.ObservedUtc).TotalSeconds;
             var sim = before is null ? 0 : sample.SimulationSeconds - before.SimulationSeconds;
-            var continuous = before is not null && before.Identity == sample.Identity && before.RuntimeDiscontinuity == sample.RuntimeDiscontinuity &&
-                wall is > 0 and <= 2 && sim is > 0 and <= 2 && Math.Abs(wall - sim) <= .5;
+            var continuous = OffshoreFlightContinuity.Elapsed(before, sample) is not null;
             if (continuous && before is not null)
             {
-                var delta = WorldTracking.DistanceMeters(before.Position.Latitude, before.Position.Longitude, sample.Position.Latitude, sample.Position.Longitude);
-                var maxSpeed = Math.Max(before.Position.GroundSpeedKnots, sample.Position.GroundSpeedKnots);
-                if (maxSpeed > 400 || delta > (maxSpeed * .514444 * wall * 1.5 + 20) ||
-                    Math.Abs(sample.Position.AltitudeFeet - before.Position.AltitudeFeet) >
-                    (Math.Max(Math.Abs(before.VerticalSpeedFeetPerSecond), Math.Abs(sample.VerticalSpeedFeetPerSecond)) * wall * 1.5 + 50))
+                if (!OffshoreFlightContinuity.Plausible(before, sample))
                 {
                     Reset(); Reason = "Position changed discontinuously. Stop at base and explicitly resume; existing facts and wages are preserved.";
-                    return mission is { Active: true } ? mission with { RecoveryRequired = true, ObservationSeconds = mission.ObservationCompletedUtc is null ? 0 : mission.ObservationSeconds } : mission;
+                    return mission is { Active: true, ReturnReadyUtc: null } ? mission with { RecoveryRequired = true, RecoveryRequiresBase = true,
+                        ReturnAreaRequalificationRequired = mission.ObservationCompletedUtc is not null,
+                        ObservationSeconds = mission.ObservationCompletedUtc is null ? 0 : mission.ObservationSeconds } : mission;
                 }
             }
             if (!continuous) { baseSince = null; loiterSince = null; returningAirborne = 0; }
@@ -61,6 +66,11 @@ public sealed partial class FlightAttemptTracker
             BaseSeconds = baseSince is {} since ? (sample.Position.ObservedUtc - since).TotalSeconds : 0;
             if (mission is null || !mission.Active || mission.Aircraft is null) { Reason = $"Base qualification {BaseSeconds:0} / 10 seconds."; return mission; }
             if (mission.ReturnReadyUtc is not null) { Reason = "Return proof retained. Stop at base and complete; no further wages accrue."; return mission; }
+            if (before is not null && !continuous && !mission.RecoveryRequired)
+            {
+                Reason = "Mission telemetry was interrupted. Resume explicitly near the last recorded position or at base; unobserved time is not credited.";
+                return mission with { RecoveryRequired = true, ObservationSeconds = mission.ObservationCompletedUtc is null ? 0 : mission.ObservationSeconds };
+            }
             if (mission.RecoveryRequired) { Reason = "Tracking was interrupted. Select the recorded airframe and resume with fresh telemetry."; return mission; }
             var position = sample.Position;
             var m = mission with { LastPosition = position, LastSimulationSeconds = sample.SimulationSeconds };
@@ -84,6 +94,12 @@ public sealed partial class FlightAttemptTracker
             }
             else if (m.ObservationCompletedUtc is not null && m.ReturnReadyUtc is null)
             {
+                if (m.ReturnAreaRequalificationRequired)
+                {
+                    if (!position.IsOnGround && WorldTracking.DistanceMeters(position.Latitude, position.Longitude, m.Area.Latitude, m.Area.Longitude) <= m.Area.RadiusNauticalMiles * 1852)
+                        m = m with { ReturnAreaRequalificationRequired = false };
+                    else { Reason = "After slew/frozen/accelerated physics, re-establish airborne presence in the operating area before flying the return. Historical observation is retained."; return m.EnsureValid(); }
+                }
                 if (continuous && !position.IsOnGround && before is { Position.IsOnGround: false }) returningAirborne += sim;
                 if (returningAirborne >= 5 && ReadyAtBase(airport, now))
                     m = m with { ReturnReadyUtc = position.ObservedUtc, State = OffshoreMissionState.ReadyToComplete };

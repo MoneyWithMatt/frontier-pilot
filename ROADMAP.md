@@ -1,5 +1,15 @@
 # Frontier Pilot roadmap and current status
 
+## Offshore checkpoint — 2026-11-03
+
+[Draft PR #10](https://github.com/MoneyWithMatt/frontier-pilot/pull/10) starts from unmerged PR #8 (includes PR #3/6/7), selectively reusing PR #9 read-only contact logic. [Implementation/live procedure](docs/offshore-missions.md), [handoff](docs/handoffs/offshore-missions.md).
+
+- A implemented: Vision Jet observation round trip, configurable area/duration, guarded telemetry/recovery and once-only $800/hour airborne settlement. New live loop pending.
+- B integrated: shared personnel UI and two-specialist airport offers. SF50 effective seat/station configuration unavailable; physical boarding blocked, seated models unsupported.
+- C prepared: exact platform/aircraft/operation/version registry, normal outbound-plus-deck adapter and separate no-pay H125 recorder. OL400 remains static-contact only; no production platform mission.
+- D gated: supply/personnel delivery/pickup and return need aircraft loading and genuinely flown operation-specific acceptance. Shared managers preserved, no unsafe partial mixed ownership.
+- E pending: exact-artifact/scenario approval, isolated stores and working desktop access before live tests. Synthetic checks cannot satisfy live acceptance; no new controller/scenery/personal save changes.
+
 Station schematic follow-up: [scope](docs/specs/cargo-station-schematic.md). A plain horizontal fuselage surrounds compact station buttons in four columns and numeric order, with actual/planned weights and unchanged blue/green assignment states. It is explicitly not a physical compartment map. Reported limits and consignment details remain below the diagram. [Hosted run 44](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41419840588) passed 869/0/0, both WPF programs, guards and packaging; compact six/15-station screenshots reviewed. Exact evidence is in the [cargo UI handoff](docs/handoffs/cargo-click-assign.md).
 
 Current UI slice: [click-to-assign cargo cards](docs/specs/cargo-click-assign.md), [handoff](docs/handoffs/cargo-click-assign.md). Blue selection / green proposed pairings retain the current theme, service and right-hand manifest. Prior run 38 physically loaded 105 kg in the Caravan; this new UI revision still requires its own exact-artifact live acceptance. Clean local and hosted run 41 passed 869/0/0, WPF, guards and packaging; three-state screenshots reviewed. Engine troubleshooting is deferred by Matt.

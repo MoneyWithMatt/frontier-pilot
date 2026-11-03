@@ -1,5 +1,7 @@
 # Backlog
 
+Offshore PR #10: observation loop implemented and automated; exact-build live flight pending. Shared engineering-team airport offers integrated, SF50 boarding blocked by effective configuration. OL400 registry/normal arrival adapter/read-only diagnostics prepared; H125 supply/personnel/visit production missions remain gated by aircraft/scenery/flown operation-specific acceptance. Mixed ownership/accounting remains a coordinated follow-up. [Details/live procedure](offshore-missions.md), [handoff](handoffs/offshore-missions.md).
+
 Current visual follow-up: [compact fuselage station boxes](specs/cargo-station-schematic.md) implemented; run 44 automated verification and screenshot review passed. Live PC test still requires exact-artifact approval; no physical layout qualification or engine recovery claimed. [Handoff](handoffs/cargo-click-assign.md).
 
 Current: [cargo-card interaction](specs/cargo-click-assign.md), same PR #8; final hosted Windows verification and new-UI live acceptance remain separate. Engine recovery investigation deferred by user; do not resume simulator actions as part of the UI task.

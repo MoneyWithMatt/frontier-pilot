@@ -12,8 +12,12 @@ public sealed class OffshoreMissionsService(IEconomyStateStore store, CareerEmpl
     private bool initialized;
     private EconomyWorld? world;
     public bool Enabled => employer?.Category == "Offshore";
+    public decimal HourlyRate => employer?.HourlyWage ?? 0;
+    public bool CanAccept => Selected is { State: OffshoreMissionState.Offered } m && m.ExpiresUtc > Now &&
+        selectedAirframe() is not null && SelectedCompanyType() == "vision-jet" && Active is null;
     public Func<ConditionAircraftIdentity, bool> LiveIdentityGuard { get; init; } = _ => false;
     public Func<string?> SelectedCompanyType { get; init; } = () => null;
+    public Func<FlightAircraftIdentity, string?> ContinuityGuard { get; init; } = _ => null;
     public Func<CancellationToken, Task> LegacyRecoveryGuard { get; init; } = _ => Task.CompletedTask;
     public Func<FlightAircraftIdentity, OffshoreMission, string?> DispatchGuard { get; init; } = (_, _) => "Select and bind the employer aircraft in Fleet before dispatch.";
     public Action<EconomyWorld>? WorldObserved { get; init; }
@@ -33,11 +37,12 @@ public sealed class OffshoreMissionsService(IEconomyStateStore store, CareerEmpl
     public bool CanStart => Selected is { State: OffshoreMissionState.Accepted, Aircraft: null } m && selectedAirframe() == m.AirframeId && monitor.ReadyAtBase(m.Base, Now);
     public bool CanResume => Selected is { Active: true, Aircraft: not null, RecoveryRequired: true } m &&
         selectedAirframe() == m.AirframeId && monitor.Latest is {} latest && Matches(m, latest.Identity) &&
-        (monitor.ReadyAtBase(m.Base, Now) || m.LastPosition is {} last && WorldTracking.DistanceMeters(last.Latitude, last.Longitude, latest.Position.Latitude, latest.Position.Longitude) <= 1852);
+        (monitor.ReadyAtBase(m.Base, Now) || !m.RecoveryRequiresBase && m.LastPosition is {} last && WorldTracking.DistanceMeters(last.Latitude, last.Longitude, latest.Position.Latitude, latest.Position.Longitude) <= 1852);
     public bool CanComplete => Selected is { State: OffshoreMissionState.ReadyToComplete, RecoveryRequired: false } m &&
         selectedAirframe() == m.AirframeId && monitor.ReadyAtBase(m.Base, Now);
     private bool Matches(OffshoreMission m, ConditionAircraftIdentity identity) =>
         LiveIdentityGuard(identity) && CompanyAircraft.Resolve(new(identity.Title, identity.Model), bindings()) == "vision-jet" &&
+        ContinuityGuard(new(identity.Title, identity.Model)) is null &&
         (m.Aircraft is null || m.Aircraft == new FlightAircraftIdentity(identity.Title, identity.Model));
 
     public async Task RefreshAsync(CancellationToken token = default)
@@ -49,8 +54,7 @@ public sealed class OffshoreMissionsService(IEconomyStateStore store, CareerEmpl
             await new EmployedCargoJobsService(store, employer: employer, destinations: destinations, utcNow: () => Now).LoadAsync(token).ConfigureAwait(false);
             var airport = Base;
             if (airport is null) { Reason = "Resolve the employer base airport in destination diagnostics before generating missions."; return; }
-            var area = operatingArea ?? new OffshoreOperatingArea("ol400-observation", "OL400 harbour operating area",
-                OffshorePlatformRegistry.Find("ol400-h01").Latitude, OffshorePlatformRegistry.Find("ol400-h01").Longitude);
+            var area = operatingArea ?? OffshoreMissionDefinitions.Areas[0];
             area.Validate();
             world = (await store.ApplyAsync(w =>
             {
@@ -100,7 +104,11 @@ public sealed class OffshoreMissionsService(IEconomyStateStore store, CareerEmpl
         {
             if (!m.RecoveryRequired || !CanResume) throw new InvalidOperationException("Resume at base or within one nautical mile of the last recorded position, in the same aircraft.");
             monitor.Reset();
-            return OffshoreMissionKernel.Replace(w, m with { RecoveryRequired = false, LastPosition = latest.Position, LastSimulationSeconds = latest.SimulationSeconds });
+            var recoveredFarFromLast = m.LastPosition is {} last && WorldTracking.DistanceMeters(last.Latitude, last.Longitude,
+                latest.Position.Latitude, latest.Position.Longitude) > 1852;
+            return OffshoreMissionKernel.Replace(w, m with { RecoveryRequired = false, RecoveryRequiresBase = false,
+                ReturnAreaRequalificationRequired = m.ReturnAreaRequalificationRequired || m.ObservationCompletedUtc is not null && recoveredFarFromLast,
+                LastPosition = latest.Position, LastSimulationSeconds = latest.SimulationSeconds });
         }
         if (!monitor.ReadyAtBase(m.Base, Now)) throw new InvalidOperationException("Stop at the assigned base for ten continuous tracking seconds before beginning.");
         var identity = new FlightAircraftIdentity(latest.Identity.Title, latest.Identity.Model);
@@ -131,7 +139,7 @@ public sealed class OffshoreMissionsService(IEconomyStateStore store, CareerEmpl
                     (selectedAirframe() != active.AirframeId || !Matches(active, frame.Aircraft)))
                 {
                     monitor.Reset(); Reason = "Mission paused: selected physical airframe or actual simulator identity changed.";
-                    return active.RecoveryRequired ? new(w, false) : OffshoreMissionKernel.Replace(w, active with { RecoveryRequired = true });
+                    return active.RecoveryRequired || active.ReturnReadyUtc is not null ? new(w, false) : OffshoreMissionKernel.Replace(w, active with { RecoveryRequired = true });
                 }
                 var result = monitor.Observe(active, airport, frame, Now);
                 Reason = monitor.Reason;

@@ -128,13 +128,12 @@ public sealed class ExperimentalPlatformPresence
         }
         if (values["IS SLEW ACTIVE"] != 0 || values["SIMULATION RATE"] != 1)
             return NotPresent(PlatformPresenceStage.Unavailable, "Slew or nonstandard simulation rate; no deck presence.");
-        if (distance > 8 || height < .3 || height > 1.5 || surfaceError > .5)
+        if (!DeckSurfaceContact.WithinEnvelope(distance, height, surfaceError, 8))
             return NotPresent(PlatformPresenceStage.OffPlatform, "Outside the known deck's horizontal/elevation envelope; water/lower surfaces cannot qualify.");
         var contacts = Enumerable.Range(0, 20).Select(i => values[$"CONTACT POINT IS ON GROUND:{i}"]).ToArray();
         if (values["SIM ON GROUND"] != 1 || !contacts.Any(x => x == 1))
             return NotPresent(PlatformPresenceStage.Airborne, "No confirmed physical contact with the deck.");
-        if (values["GROUND VELOCITY"] > .5 || Math.Abs(values["VERTICAL SPEED"]) > .1 ||
-            Math.Abs(values["PLANE BANK DEGREES"]) > 5 || Math.Abs(values["PLANE PITCH DEGREES"]) > 5)
+        if (!DeckSurfaceContact.StableMotion(values["GROUND VELOCITY"], values["VERTICAL SPEED"], values["PLANE BANK DEGREES"], values["PLANE PITCH DEGREES"]))
             return NotPresent(PlatformPresenceStage.Contact, "Contact observed; motion/attitude is not stable.");
 
         contactStart ??= sim;

@@ -54,6 +54,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     public EmployedCargoJobsViewModel Jobs { get; }
     public PassengerTransfersViewModel Passengers { get; }
     public OffshoreMissionsViewModel Offshore { get; }
+    public OffshorePlatformDiagnosticViewModel OffshoreDiagnostic { get; }
     public AircraftLoadingViewModel AircraftLoading { get; }
     public CargoJourneyViewModel CargoJourney { get; }
     public ProspectingOperationsViewModel Operations { get; }
@@ -135,6 +136,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         {
             SelectedCompanyType = () => Fleet.Selected?.CompanyTypeId,
             DispatchGuard = Fleet.CheckOffshoreDispatch,
+            ContinuityGuard = Fleet.CheckOffshoreContinuity,
             LiveIdentityGuard = identity => Tracking.World is {} live && live.AircraftObjectId == identity.ObjectId &&
                 live.Aircraft.AircraftTitle == identity.Title && live.Aircraft.AircraftType == identity.Model &&
                 DateTimeOffset.UtcNow - live.Aircraft.ObservedUtc <= TimeSpan.FromSeconds(3),
@@ -149,6 +151,10 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         Offshore = new(offshoreService, () => services.IsDryRun
             ? throw new InvalidOperationException("Live Offshore tracking is disabled in dry-run; synthetic tests inject their own source.")
             : new FrontierAirportBuilder.MsfsSdk.LiveAircraftCondition(this.sdkRoot, new OffshoreFlightProfile()));
+        OffshoreDiagnostic = new(() => services.IsDryRun
+            ? throw new InvalidOperationException("Native diagnostics disabled in dry-run; synthetic tests use an isolated source.")
+            : new FrontierAirportBuilder.MsfsSdk.LiveAircraftCondition(this.sdkRoot, new ExperimentalPlatformContactProfile()),
+            Path.Combine(careerRoot, "diagnostics", "offshore"));
         var loadingCoordinator = new AircraftLoadingCoordinator(loadingStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(),
             flightAttemptTracker, () => this.sdkRoot, () => Tracking.World, () => Jobs.LoadingJobs)
             { RecoverManifestJobsAsync = Jobs.RecoverManifestJobsAsync, TransportDispatchGuard = passengerService.RequireNoBoardedPassengersAsync, CompanyAircraftGuard=(identity,jobs)=>

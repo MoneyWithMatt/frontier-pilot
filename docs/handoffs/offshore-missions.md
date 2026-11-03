@@ -1,5 +1,21 @@
 # Handoff: offshore-missions
 
+## Current checkpoint — supersedes historical checkpoint below
+
+Draft [PR #10](https://github.com/MoneyWithMatt/frontier-pilot/pull/10), target master, branch `codex/offshore-missions`. Initial implementation commit `cdc09654339ea758703457c0d396342a7543acb0`; [hosted run62](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41596222802) tested merge `b091652af0a534f7cd82014e6d19bb6bc81ad256`: 932/0/0, nine verification guards, both WPF programs and packaging passed. Verification artifact13211604746 downloaded, initial observation screenshot reviewed; horizontal clipping identified and fixed in follow-up. No executable downloaded/run locally.
+
+Follow-up: production shared personnel tab/two-specialist offers; authored observation JSON; exact platform/operation/version gates; normal native outbound-plus-deck adapter; separate no-pay contact recorder; strict interruption/reposition recovery; idempotent history-failure retry. Effective SF50/H125 seat/station configuration archived/unavailable; physical boarding blocked. No seated models, normal platform mission offers or new controllers. [Implementation/SDK/live procedure](../offshore-missions.md).
+
+Local exact command: `pwsh -NoProfile -File scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath 'C:/Users/mattr/Documents/ChatGPT/Frontier Pilot/.tools/dotnet/dotnet.exe' -OutputDirectory .ci-output-offshore-missions-11`: **947 passed / 0 failed / 0 skipped**, zero warnings/errors, SDK8.0.424, cdc0965 plus dirty follow-up. Subsequent XAML instruction wording/docs only. Final hosted pipeline required after commit/push.
+
+Preserved follow-up results: run05/06 943/0/0;07 945/0/0;08 authored duration double/int build failure fixed;09 946/0/0;10 946/1/0 exposed full post-resume dwell requirement, fixture now explicitly waits the full ten seconds;11 947/0/0. No assertions weakened/skips. Root logs moved to ignored `.ci-output-offshore-logs`; all TRX/stage directories preserved. Earlier failures below retained.
+
+Next: commit/push follow-up and inspect exact hosted Windows regression/guards/WPF/package, review corrected screenshots; record source/merge/artifact identity here. Update task #2 preserving previous history and rewrite PR #10 with final scope/evidence. Connector writes403; existing configured Git-credential REST fallback previously worked. Do not print credentials/signed URLs or replay mutations without fresh reads.
+
+Live blockers: no simulator/native execution/personal-save/Community changes this task. Old PR9 run59 constrained-lift approval does not cover new executables; desktop activation previously failed. Exact artifact/scenario approval plus isolated Windows profile or reviewed temporary-store harness required before live testing; normal app has no general data-root override. Prioritise an actual Vision Jet observation flight, then supported SF50 configuration/physical boarding/airport completion, then exact H125/scenery/operation-specific flown/platform handling qualification. Never promote static evidence or mark full career complete. No routine engineering decision is awaiting Matt; missing physical evidence cannot be guessed.
+
+## Historical initial checkpoint
+
 Current branch codex/offshore-missions, isolated worktree from PR8 47698b1704039f12dc3875fb6e2359a12b0ac13f. PR3/6/7 are ancestors of8, all still draft/unmerged. Master d5ff516 unchanged. PR9 80abb04 remains separate; selected Core presence/visit, Workflow read-only recording and45tests ported, no controllers/legacypayloadsetter. New PR to be created; no merges allowed.
 
 Approved scope docs/specs/offshore-missions.md. PhaseA implemented normal observation roundtrip in production WPF and atomic schema14 economy/ledger, strict runtime/freeze/identity/motion gates in FlightAttemptTracker.OffshoreMonitor. Shared passenger manager embedded unchanged; static OL400 registry/operationgates present, platform generation disabled. First area5NM/300s around actual visualOL400; localharbour patrol, not fictional remote rig. Start requires base10s and explicitGUID/binding, completion return10s/one800hourlywage. Startedobservation cannot overlap aircraftcargo/passengers; no addedperformance/MTOW blocks. Fleet history projects once; no inventedhours/health/location. No live actions or personal saves touched.

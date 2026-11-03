@@ -37,3 +37,5 @@ Separate actual SF50 observation flight, aircraft configuration/physical passeng
 
 ## Open design decisions
 No unresolved decisions block the first broad-area observation loop. H125/platform/physical SF50 restrictions depend on missing live/configuration evidence; continue independent implementation without guessing them.
+
+Read-only installed package follow-up (2026-11-03): streamed SF50/H125 effective configuration is archived; no readable seat/station definitions obtained. No archive protections bypassed or profiles guessed. Two-specialist Windhoek offers are requested counts, not capacity claims. Physical boarding stays blocked, native seated models unsupported. [Implementation/live procedure](../offshore-missions.md).

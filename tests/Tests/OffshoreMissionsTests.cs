@@ -8,6 +8,93 @@ namespace FrontierAirportBuilder.Tests;
 public sealed class OffshoreMissionsTests
 {
     [Fact]
+    public void AuthoredObservationParametersUseKnownGeographyWithoutActivatingPlatformOperations()
+    {
+        var area = Assert.Single(OffshoreMissionDefinitions.Areas);
+        var platform = OffshorePlatformRegistry.Find("ol400-h01");
+        Assert.Equal(platform.Latitude, area.Latitude); Assert.Equal(platform.Longitude, area.Longitude);
+        Assert.Equal(5, area.RadiusNauticalMiles); Assert.Equal(300, area.ObservationSeconds);
+        area.Validate();
+        Assert.False(platform.CanOperate(PlatformOperation.Observation, "H125 Passengers", "H125", "1.9.21.0", "unknown"));
+    }
+    [Fact]
+    public async Task HistoryProjectionFailureCannotDoublePayCommittedMission()
+    {
+        var f = new SyntheticOffshoreFlight(); await f.Begin(); await f.Outbound(); await f.Return();
+        var failed = false;
+        var recovering = f.CreateService(w => { if (!failed && w.OffshoreMissions.Any(m => m.State == OffshoreMissionState.Completed)) { failed = true; throw new IOException("Synthetic fleet history write failure"); } });
+        await recovering.RefreshAsync();
+        for (int i = 162; i <= 172; i++) await recovering.ObserveAsync(f.Frame(i));
+        await Assert.ThrowsAsync<IOException>(() => recovering.CompleteAsync());
+        Assert.Single((await f.Store.LoadAsync())!.FinancialLedger);
+        await recovering.CompleteAsync();
+        Assert.Single((await f.Store.LoadAsync())!.FinancialLedger);
+    }
+    [Fact]
+    public async Task UnsafePhysicsRequiresBaseRecoveryAndCannotInventReturnFlight()
+    {
+        var f = new SyntheticOffshoreFlight(); await f.Begin(); await f.Outbound();
+        await f.Observe(91, 15.05, false, ("IS SLEW ACTIVE", 1));
+        Assert.True(f.Service.Selected!.RecoveryRequired); Assert.True(f.Service.Selected.RecoveryRequiresBase);
+        Assert.True(f.Service.Selected.ReturnAreaRequalificationRequired);
+        await f.Observe(92, 15.05, false); Assert.False(f.Service.CanResume);
+        for (int i = 93; i <= 104; i++) await f.Observe(i);
+        Assert.True(f.Service.CanResume); await f.Service.StartOrResumeAsync();
+        for (int i = 105; i <= 110; i++) await f.Observe(i, 15, false);
+        for (int i = 111; i <= 121; i++) await f.Observe(i);
+        Assert.False(f.Service.CanComplete); // historical target retained, but no new operating-area return segment
+        Assert.NotNull(f.Service.Selected.ObservationCompletedUtc);
+    }
+    [Fact]
+    public void PlatformActivationIsExactToAircraftVersionAndOperation()
+    {
+        var p = OffshorePlatformRegistry.Find("ol400-h01");
+        var proof = new PlatformEvidence("SYNTHETIC test; not live", "sim-v", "scenery-v", "Title", "Model", PlatformQualificationStage.MissionDestination,
+            [PlatformOperation.InspectionVisit, PlatformOperation.CargoDelivery, PlatformOperation.PersonnelPickup])
+            { StaticDeckContact = true, GenuineDepartureAndReturn = true };
+        p = p with { Stage = PlatformQualificationStage.MissionDestination, Evidence = [proof] };
+        Assert.True(p.CanOperate(PlatformOperation.InspectionVisit, "Title", "Model", "sim-v", "scenery-v"));
+        Assert.False(p.CanOperate(PlatformOperation.InspectionVisit, "Other", "Model", "sim-v", "scenery-v"));
+        Assert.False(p.CanOperate(PlatformOperation.InspectionVisit, "Title", "Model", "new-sim", "scenery-v"));
+        Assert.False(p.CanOperate(PlatformOperation.InspectionVisit, "Title", "Model", "sim-v", "new-scenery"));
+        Assert.False(p.CanOperate(PlatformOperation.CargoDelivery, "Title", "Model", "sim-v", "scenery-v"));
+        Assert.False(p.CanOperate(PlatformOperation.PersonnelPickup, "Title", "Model", "sim-v", "scenery-v"));
+        p = p with { Evidence = [proof with { CargoHandling = PlatformHandlingCapability.Qualified }] };
+        Assert.True(p.CanOperate(PlatformOperation.CargoDelivery, "Title", "Model", "sim-v", "scenery-v"));
+        Assert.False(p.CanOperate(PlatformOperation.PersonnelPickup, "Title", "Model", "sim-v", "scenery-v"));
+    }
+    [Fact]
+    public async Task OffshoreEngineeringGroupsReuseSharedManifestAndUnqualifiedVisionJetStaysBlocked()
+    {
+        var f = new SyntheticOffshoreFlight(); await f.Initialize();
+        var passengers = new PassengerTransfersService(f.Store, SyntheticOffshoreFlight.Employer, f.Destinations, utcNow: () => f.Utc)
+            { SelectedAirframe = () => f.SelectedAirframe };
+        await passengers.RefreshAsync();
+        var offer = passengers.Transfers.Single(t => t.State == PassengerTransferState.Offered && t.Destination.Name.Contains("FYWE"));
+        Assert.Equal(2, offer.PassengerCount); Assert.Contains("Engineering team", offer.Purpose);
+        passengers.SelectedId = offer.Id; await passengers.AcceptAsync("vision-jet");
+        await passengers.SetManifestAsync([75, 92]);
+        Assert.Equal(167, passengers.SelectedTransport!.Group.WeightKilograms);
+        Assert.Equal(2, passengers.SelectedTransport.Group.Count);
+        var snapshot = await new SyntheticPassengerAircraft().ReadAsync("synthetic");
+        Assert.Throws<InvalidOperationException>(() => new PassengerAircraftConfigurations(() => null).Resolve("vision-jet", snapshot));
+        Assert.Throws<InvalidOperationException>(() => new PassengerAircraftConfigurations(() => null).Resolve("h125", snapshot));
+    }
+    [Fact]
+    public async Task PausedRepositioningAndDiagnosticFramesCannotBecomeNormalMissionProgress()
+    {
+        var f = new SyntheticOffshoreFlight(); await f.Begin();
+        for (int i = 11; i <= 60; i++) await f.Observe(i, 15 + .05 * (i - 11) / 59, false);
+        var paused = f.Frame(61, 16, false) with { Runtime = new(true, true, 0) };
+        await f.Service.ObserveAsync(paused);
+        await f.Observe(62, 16, false);
+        Assert.True(f.Service.Selected!.RecoveryRequired);
+        Assert.Null(f.Service.Selected.ObservationCompletedUtc);
+        var ticks = f.Service.Selected.AirborneTicks;
+        var diagnostic = f.Frame(63, 15.05, false) with { AdapterId = "experimental-ol400-h125-contact-v1" };
+        await f.Service.ObserveAsync(diagnostic); Assert.Equal(ticks, f.Service.Selected.AirborneTicks);
+    }
+    [Fact]
     public async Task PlayableObservationRoundTripPays800PerAirborneHourOnce()
     {
         var f = new SyntheticOffshoreFlight(); await f.Begin(); await f.Outbound();
@@ -61,9 +148,27 @@ public sealed class OffshoreMissionsTests
         await f.Service.ObserveAsync(null); await f.Observe(66, near, false);
         Assert.Equal(before, f.Service.Selected!.AirborneTicks);
         Assert.Equal(0, f.Service.Selected.ObservationSeconds);
+        Assert.True(f.Service.Selected.RecoveryRequired);
+        await f.Service.StartOrResumeAsync();
         for (int i = 67; i < 76; i++) await f.Observe(i, near, false);
         Assert.Null(f.Service.Selected.ObservationCompletedUtc);
-        await f.Observe(76, near, false); Assert.NotNull(f.Service.Selected.ObservationCompletedUtc);
+        await f.Observe(76, near, false); Assert.Null(f.Service.Selected.ObservationCompletedUtc);
+        await f.Observe(77, near, false); Assert.NotNull(f.Service.Selected.ObservationCompletedUtc);
+    }
+    [Fact]
+    public async Task GapCannotHideReturnRepositionOrEarnWages()
+    {
+        var f = new SyntheticOffshoreFlight(); await f.Begin(); await f.Outbound();
+        var earned = f.Service.Selected!.AirborneTicks;
+        await f.Observe(120); // missing native interval and sudden return to base
+        Assert.True(f.Service.Selected!.RecoveryRequired);
+        Assert.Equal(earned, f.Service.Selected.AirborneTicks);
+        for (int i = 121; i <= 131; i++) await f.Observe(i);
+        await f.Service.StartOrResumeAsync();
+        Assert.True(f.Service.Selected.ReturnAreaRequalificationRequired);
+        for (int i = 132; i <= 140; i++) await f.Observe(i, 15, false);
+        for (int i = 141; i <= 152; i++) await f.Observe(i);
+        Assert.False(f.Service.CanComplete);
     }
     [Fact]
     public async Task ReadyProofStopsWagesEvenIfPilotFliesAgainBeforeCompleting()
@@ -143,6 +248,7 @@ public sealed class OffshoreMissionsTests
         Assert.Equal(PlatformQualificationStage.StaticDeckContact, platform.Stage);
         Assert.False(platform.CanOperate(operation, "H125 Passengers", "H125", "1.9.21.0", "unknown"));
         Assert.False(CompanyAircraft.Types.Single(a => a.Id == "h125").Enabled);
-        Assert.True(platform.CanOperate(PlatformOperation.Observation, "", "", "", ""));
+        Assert.False(platform.CanOperate(PlatformOperation.Observation, "", "", "", ""));
+        Assert.True(platform.CanLocateObservationArea);
     }
 }

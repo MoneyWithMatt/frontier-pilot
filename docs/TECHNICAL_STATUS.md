@@ -1,5 +1,9 @@
 # Technical status — 2026-09-07
 
+## Offshore missions — 2026-11-03
+
+[PR #10](https://github.com/MoneyWithMatt/frontier-pilot/pull/10): production observation round trip, schema14 progress/atomic hourly settlement and native recovery guards. Shared personnel UI carries engineering groups; SF50 physical configuration/boarding remains blocked. OL400 registry/normal outbound-plus-contact adapter and no-pay diagnostic recorder do not activate platform missions. [Implementation/live boundaries](offshore-missions.md), [verification/handoff](handoffs/offshore-missions.md). No new live simulator actions or personal saves changed.
+
 ## Fuselage station schematic — 2026-11-02
 
 Compact actual/planned station boxes on a theme-native wingless fuselage; schematic numeric order, not physical geometry. Hosted run 44 passed 869/0/0, guards, both WPF programs and packaging; six/15-station screenshots reviewed. Not installed or simulator accepted. [Scope](specs/cargo-station-schematic.md), [handoff](handoffs/cargo-click-assign.md).

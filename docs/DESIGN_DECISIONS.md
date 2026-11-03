@@ -1,5 +1,11 @@
 # Design decisions
 
+## Offshore staged missions — 2026-11-03
+
+Matt approved observation, shared personnel and independently qualified platform development. Base on PR #8 ancestry without merging unrelated branches. Normal `FlightAttemptTracker` monitors use existing read-only native clock/physics telemetry; diagnostics never grant career proof. Schema 14 adds observation stages and atomic $800/hour airborne settlement, with temporary started-observation/transport exclusion to prevent overlapping wages. Reservations may coexist. Pilot performance responsibility is unchanged.
+
+OL400 visual geography locates a configurable broad 5 NM / 300-second local harbour observation; it does not enable landing destinations. Static contact and constrained lifts cannot replace flown departure/arrival/return evidence. Qualification is exact to platform, operation, aircraft and versions; supply/personnel gates are independent. Archived SF50/H125 effective configuration does not justify guessed capacity or seated models. [Details and live requirements](offshore-missions.md).
+
 ## Aircraft station schematic — 2026-11-02
 
 Matt requested an aircraft outline with loading-station boxes. After Matt rejected the winged version, use a plain horizontal fuselage with much smaller non-stretching station buttons in four columns and simulator order; explicitly label the diagram schematic, not physical positions. This supersedes the earlier no-drawing direction only for this schematic. No new aircraft geometry, guessed configuration, station limits or payload authority. [Scope](specs/cargo-station-schematic.md).

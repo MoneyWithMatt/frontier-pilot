@@ -29,6 +29,7 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
     }
     private static void NoPassengers(EconomyWorld w)
     {
+        if (OffshoreMissionKernel.Occupied(w)) throw new InvalidOperationException("Complete the active Offshore observation flight before loading or arming cargo; the same airborne time cannot earn two wages.");
         if (w.PassengerTransfers.Any(x => x.State == PassengerTransferState.Boarded) || w.PassengerTransports.Any(x => x.State is PassengerCarriageState.Boarding or PassengerCarriageState.Aboard or PassengerCarriageState.Arrived or PassengerCarriageState.Disembarking))
             throw new InvalidOperationException("Mixed cargo/passenger payload accounting is pending qualification. Disembark passengers before cargo handling; their mass is preserved.");
     }

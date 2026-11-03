@@ -402,6 +402,16 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
         => CheckDispatchCore(identity, [new(transfer.Id, transfer.AircraftTypeId, false, transfer.Origin.Latitude, transfer.Origin.Longitude)]);
     public string? CheckOffshoreDispatch(FlightAircraftIdentity identity, OffshoreMission mission)
         => CheckDispatchCore(identity, [new(mission.Id, "vision-jet", false, mission.Base.Latitude, mission.Base.Longitude)]);
+    public string? CheckOffshoreContinuity(FlightAircraftIdentity identity)
+    {
+        lock (gate)
+        {
+            if (blocked || bindingConfirmationRequired || Selected is not {} a || !Authorized(a) || a.LocationReconciliationRequired ||
+                a.CompanyTypeId != "vision-jet" || !a.Bindings.Any(b => b.Title == identity.Title && b.Model == identity.Type))
+                return "Recorded employer airframe authorization/binding needs review in Fleet.";
+            return null;
+        }
+    }
     public void ReconcileOffshoreHistory(EconomyWorld state)
     {
         lock (gate)

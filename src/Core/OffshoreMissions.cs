@@ -21,6 +21,8 @@ public sealed record OffshoreMission(string Id, string EmployerId, string Player
     long AirborneTicks = 0, double ObservationSeconds = 0, bool RecoveryRequired = false,
     FlightPosition? LastPosition = null, double? LastSimulationSeconds = null)
 {
+    public bool RecoveryRequiresBase { get; init; }
+    public bool ReturnAreaRequalificationRequired { get; init; }
     public OffshoreMissionKind Kind { get; init; } = OffshoreMissionKind.Observation;
     public bool Active => State is not (OffshoreMissionState.Offered or OffshoreMissionState.Completed or OffshoreMissionState.Expired);
     public string Route => Base.Name + " → " + Area.Name + " → " + Base.Name;
@@ -41,7 +43,7 @@ public sealed record OffshoreMission(string Id, string EmployerId, string Player
         {
             if (AcceptedUtc is not null || AirframeId is not null || Aircraft is not null || DepartedUtc is not null ||
                 LastPosition is not null || LastSimulationSeconds is not null || AirborneTicks != 0 || ObservationSeconds != 0 ||
-                ObservationCompletedUtc is not null || ReturnReadyUtc is not null || CompletedUtc is not null)
+                ObservationCompletedUtc is not null || ReturnReadyUtc is not null || CompletedUtc is not null || RecoveryRequiresBase || ReturnAreaRequalificationRequired)
                 throw new InvalidDataException("Unaccepted mission contains flight progress.");
             return this;
         }
@@ -65,6 +67,10 @@ public sealed record OffshoreMission(string Id, string EmployerId, string Player
             CompletedUtc is {} completed && completed < ReturnReadyUtc ||
             ObservationCompletedUtc is not null && ObservationSeconds != Area.ObservationSeconds)
             throw new InvalidDataException("Offshore mission stages are out of order.");
+        if (ObservationCompletedUtc is not null && AirborneTicks <= 0 || ReturnReadyUtc is {} ready &&
+            (LastPosition is not { IsOnGround: true } p || p.ObservedUtc != ready || p.GroundSpeedKnots > 5 ||
+             WorldTracking.DistanceMeters(p.Latitude, p.Longitude, Base.Latitude, Base.Longitude) > 2778))
+            throw new InvalidDataException("Offshore observation/return lacks its airborne or stopped-base facts.");
         return this;
     }
 }

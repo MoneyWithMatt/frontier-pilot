@@ -1,0 +1,9 @@
+[
+  {
+    "Id": "ol400-observation",
+    "Name": "OL400 harbour operating area",
+    "PlatformId": "ol400-h01",
+    "RadiusNauticalMiles": 5,
+    "ObservationSeconds": 300
+  }
+]

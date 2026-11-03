@@ -57,13 +57,14 @@ public sealed class PassengerTransfersService
     private static PassengerEndpoint Endpoint(NamibiaLocation location) => new(location.StableId,
         location.Name + " (" + location.AirportIdentifier.Value + ")", location.ApproximateCoordinates!.Latitude, location.ApproximateCoordinates.Longitude);
 
-    private IReadOnlyList<(PassengerEndpoint Origin, PassengerEndpoint Destination, string[] Types)> Routes()
+    private IReadOnlyList<(PassengerEndpoint Origin, PassengerEndpoint Destination, string[] Types, string Code)> Routes()
     {
         if (!Enabled || destinations.Base(employer!) is not {} origin) return [];
         return destinations.Diagnose(employer!.Category).Where(x => x.Enabled)
-            .OrderBy(x => CompanyEmployment.TimePenalty(origin, x.Resolved!, employer)).ThenBy(x => x.Identifier, StringComparer.Ordinal).Take(4)
+            .OrderBy(x => employer.Category == "Offshore" && x.Identifier is "FYWE" or "FYWH" ? 0 : 1)
+            .ThenBy(x => CompanyEmployment.TimePenalty(origin, x.Resolved!, employer)).ThenBy(x => x.Identifier, StringComparer.Ordinal).Take(4)
             .Select(x => (Origin: Endpoint(origin), Destination: Endpoint(x.Resolved!), Types: CompanyAircraft.Choices(employer, x, 0)
-                .Where(a => EmployedPassengerMissions.SupportsType(employer.Category, a.Id)).Select(a => a.Id).ToArray()))
+                .Where(a => EmployedPassengerMissions.SupportsType(employer.Category, a.Id)).Select(a => a.Id).ToArray(), Code: x.Identifier))
             .Where(x => x.Origin.CanGenerate && x.Destination.CanGenerate && x.Types.Length > 0).ToArray();
     }
     private bool RouteEligible(PassengerTransfer transfer, string type) => Routes().Any(x => x.Origin == transfer.Origin && x.Destination == transfer.Destination && x.Types.Contains(type));
@@ -87,9 +88,9 @@ public sealed class PassengerTransfersService
                     if (transfers.Count(x => x.Origin.Id == route.Origin.Id && x.Destination.Id == route.Destination.Id && x.State == PassengerTransferState.Offered) >= clock.OfferSlotsPerDemand) continue;
                     var id = PassengerTransferKernel.OfferId(employer!.Id, route.Destination.Id, clock.NextOffersUtc);
                     if (transfers.Any(x => x.Id == id)) continue;
-                    var count = EmployedPassengerMissions.Count(employer.Category);
+                    var count = EmployedPassengerMissions.Count(employer.Category, route.Code);
                     transfers.Add(new(id, employer.Id, EmployedCargoPrototype.PlayerId, route.Origin, route.Destination, count, route.Types,
-                        employer.HourlyWage, utc, utc.AddHours(clock.OfferLifetimeHours), Purpose: EmployedPassengerMissions.Purpose(employer.Category)));
+                        employer.HourlyWage, utc, utc.AddHours(clock.OfferLifetimeHours), Purpose: EmployedPassengerMissions.Purpose(employer.Category, route.Code)));
                 }
                 if (transfers.SequenceEqual(w.PassengerTransfers)) return new(w, false);
                 return new((w with { Revision = w.Revision + 1, PassengerTransfers = transfers }).EnsureValid(), true);

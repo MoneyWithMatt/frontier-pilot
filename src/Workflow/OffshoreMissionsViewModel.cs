@@ -15,11 +15,12 @@ public sealed class OffshoreMissionsViewModel : INotifyPropertyChanged
     public bool Enabled => service.Enabled;
     public bool Connected { get; private set; }
     public string Error { get; private set; } = "";
-    public string Status => service.Reason;
+    public string Status => Selected?.State == OffshoreMissionState.Offered && !service.CanAccept ?
+        "Select the employer Vision Jet in Aircraft → Fleet before accepting this mission." : service.Reason;
     public IReadOnlyList<OffshoreMission> Missions => service.Missions;
     public IReadOnlyList<OffshorePlatform> Platforms => OffshorePlatformRegistry.Platforms;
     public OffshoreMission? Selected { get => service.Selected; set { if (value is not null) { service.SelectedId = value.Id; Notify(); } } }
-    public string WagePolicy => "$800 / verified airborne hour · one flight assignment at a time · no per-job reward";
+    public string WagePolicy => $"{service.HourlyRate:C0} / verified airborne hour · one flight assignment at a time · no per-job reward";
     public string AreaStatus => Selected is {} m ? $"{m.Area.Name} · {m.Area.RadiusNauticalMiles:0.#} NM radius · {m.Area.ObservationSeconds / 60d:0.#} minutes continuously airborne" : "Select an observation mission.";
     public string AreaDistance => double.IsNaN(service.AreaDistance) ? "Connect tracking for operating-area distance." :
         $"{service.AreaDistance:0.0} NM from the area centre · {(service.AreaDistance <= Selected!.Area.RadiusNauticalMiles ? "inside" : "outside")} the observation area";
@@ -38,7 +39,7 @@ public sealed class OffshoreMissionsViewModel : INotifyPropertyChanged
     {
         this.service = service; this.source = source;
         RefreshCommand = new(() => _ = RefreshAsync(), () => !busy && Enabled);
-        AcceptCommand = new(() => _ = Run(() => service.AcceptAsync()), () => !busy && Selected?.State == OffshoreMissionState.Offered);
+        AcceptCommand = new(() => _ = Run(() => service.AcceptAsync()), () => !busy && service.CanAccept);
         StartCommand = new(() => _ = Run(() => service.StartOrResumeAsync()), () => !busy && service.CanStart);
         ResumeCommand = new(() => _ = Run(() => service.StartOrResumeAsync()), () => !busy && service.CanResume);
         CompleteCommand = new(() => _ = Run(() => service.CompleteAsync()), () => !busy && service.CanComplete);

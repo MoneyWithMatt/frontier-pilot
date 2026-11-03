@@ -98,7 +98,7 @@ public partial class MainWindow : Window
     }
     private void OpenDependencySetup(object sender,RoutedEventArgs e)
     {
-        if(model.Offshore.Connected||model.IsBusy||model.Tracking.State is TrackingState.Connecting or TrackingState.Connected||model.AircraftLoading.IsBusy||model.Jobs.IsBusy||model.Passengers.IsBusy||model.Operations.IsBusy||refreshingWorld)
+        if(model.OffshoreDiagnostic.Running||model.Offshore.Connected||model.IsBusy||model.Tracking.State is TrackingState.Connecting or TrackingState.Connected||model.AircraftLoading.IsBusy||model.Jobs.IsBusy||model.Passengers.IsBusy||model.Operations.IsBusy||refreshingWorld)
         {MessageBox.Show(this,"Disconnect from MSFS and wait for current operations to finish before changing dependency setup.");return;}
         new DependencySetupWindow(model.SdkRoot,root=>
         {
@@ -146,6 +146,7 @@ public partial class MainWindow : Window
     {
         if(!IsInitialized || !ReferenceEquals(e.Source,MainTabs)||!careerReady)return;
         BuilderFooter.Visibility=ReferenceEquals(MainTabs.SelectedItem,BuilderTab)?Visibility.Visible:Visibility.Collapsed;
+        if(ReferenceEquals(MainTabs.SelectedItem,OffshoreTab)) _=model.Offshore.RefreshAsync();
         if(!model.IsDryRun && (MainTabs.SelectedIndex is 1 or 2 or 3 or 4 || ReferenceEquals(MainTabs.SelectedItem,PassengerTab) || ReferenceEquals(MainTabs.SelectedItem,CargoTab) || ReferenceEquals(MainTabs.SelectedItem,OffshoreTab)) && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
             _=model.Tracking.ConnectAsync();
     }
@@ -304,7 +305,7 @@ public partial class MainWindow : Window
         if(!resettingCareer && model.IsBusy){model.Cancel();return;}
         if(!resettingCareer && !MayDiscardEdits())return;
         closingRecording=true;
-        await model.Offshore.ShutdownAsync(); await model.ConditionRecording.ShutdownAsync();
+        await model.OffshoreDiagnostic.ShutdownAsync(); await model.Offshore.ShutdownAsync(); await model.ConditionRecording.ShutdownAsync();
             await model.Fleet.ShutdownAsync();
         model.Tracking.Dispose();TrackingMap.Dispose();
         closeReady=true;
@@ -314,11 +315,11 @@ public partial class MainWindow : Window
     private async void DeleteCareer(object sender,RoutedEventArgs e)
     {
         if(careerStore is null){MessageBox.Show(this,"Career deletion is unavailable in isolated dry-run mode.");return;}
-        if(model.IsBusy||model.Jobs.IsBusy||model.Passengers.IsBusy||model.Offshore.Connected||model.Operations.IsBusy||model.AircraftLoading.IsBusy||refreshingWorld)
+        if(model.IsBusy||model.Jobs.IsBusy||model.Passengers.IsBusy||model.OffshoreDiagnostic.Running||model.Offshore.Connected||model.Operations.IsBusy||model.AircraftLoading.IsBusy||refreshingWorld)
         {MessageBox.Show(this,"Wait for the current operation to finish before deleting the career.");return;}
         const string warning="Delete this career? This resets pilot/onboarding data, money and ledger, jobs and reservations, operations and inventories, flight progress, cargo manifests, saved fuel and last-known aircraft state.\n\nSDK settings, saved site designs, installed scenery and ownership records are retained. Old career files are archived locally for recovery and diagnostics. No MSFS payload or scenery is changed.\n\nFrontier Pilot will restart at New Career. This cannot be undone from the app. Unsaved site edits will be discarded.";
         if(MessageBox.Show(this,warning,"Delete Career — destructive reset",MessageBoxButton.YesNo,MessageBoxImage.Warning,MessageBoxResult.No)!=MessageBoxResult.Yes)return;
-        if(model.IsBusy||model.Jobs.IsBusy||model.Passengers.IsBusy||model.Offshore.Connected||model.Operations.IsBusy||model.AircraftLoading.IsBusy||refreshingWorld)
+        if(model.IsBusy||model.Jobs.IsBusy||model.Passengers.IsBusy||model.OffshoreDiagnostic.Running||model.Offshore.Connected||model.Operations.IsBusy||model.AircraftLoading.IsBusy||refreshingWorld)
         {MessageBox.Show(this,"An operation started while confirmation was open. Let it finish and try again.");return;}
         var resetRequested=false;
         try
@@ -326,7 +327,7 @@ public partial class MainWindow : Window
             var executable=Environment.ProcessPath??throw new IOException("Application executable not found.");
             if(Process.GetProcessesByName(Process.GetCurrentProcess().ProcessName).Any(p=>p.Id!=Environment.ProcessId))
                 throw new IOException("Close other Frontier Pilot instances before deleting a career.");
-            await model.Offshore.ShutdownAsync(); await model.ConditionRecording.ShutdownAsync();
+            await model.OffshoreDiagnostic.ShutdownAsync(); await model.Offshore.ShutdownAsync(); await model.ConditionRecording.ShutdownAsync();
             await model.Fleet.ShutdownAsync();
             careerStore.RequestReset(true);resetRequested=true;worldTimer.Stop();resettingCareer=true;
             Process.Start(new ProcessStartInfo(executable,$"--career-reset-wait {Environment.ProcessId}"){UseShellExecute=false});

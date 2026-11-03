@@ -19,12 +19,13 @@ public sealed class SyntheticOffshoreFlight
     {
         Store = store ?? new MemoryEconomyStateStore(); Service = CreateService();
     }
-    public OffshoreMissionsService CreateService() => new(Store, Employer, Destinations,
+    public OffshoreMissionsService CreateService(Action<EconomyWorld>? history = null) => new(Store, Employer, Destinations,
         () => [new("SYNTHETIC Vision Jet", "SF50", "vision-jet")], () => SelectedAirframe, () => Utc, Area)
     {
         SelectedCompanyType = () => CompanyType,
         LiveIdentityGuard = i => i.ObjectId == 42,
-        DispatchGuard = (_, _) => null
+        DispatchGuard = (_, _) => null,
+        WorldObserved = history
     };
     public async Task Initialize()
     {

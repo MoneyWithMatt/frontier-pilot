@@ -5,18 +5,19 @@
   <TabControl Grid.Row="2">
    <TabItem Header="Observation missions"><Grid Margin="12"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="3*"/></Grid.ColumnDefinitions>
     <DockPanel Margin="0,0,20,0"><Button DockPanel.Dock="Top" Content="Refresh mission board" Command="{Binding RefreshCommand}" HorizontalAlignment="Left"/>
-     <ListBox ItemsSource="{Binding Missions}" SelectedItem="{Binding Selected}"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="8">
-      <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/><TextBlock Text="{Binding Route}" TextWrapping="Wrap" Margin="0,6"/><TextBlock Text="{Binding State}"/>
+     <ListBox ItemsSource="{Binding Missions}" SelectedItem="{Binding Selected}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="8">
+      <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontWeight="SemiBold"/><TextBlock Text="{Binding Route}" TextWrapping="Wrap" Margin="0,6"/><TextBlock Text="{Binding State}"/>
      </StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
     </DockPanel>
-    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"><StackPanel>
-     <TextBlock Text="{Binding Selected.Title}" FontSize="22" FontWeight="SemiBold"/>
+    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
+     <TextBlock Text="{Binding Selected.Title}" TextWrapping="Wrap" FontSize="22" FontWeight="SemiBold"/>
      <TextBlock Text="{Binding Selected.Purpose}" TextWrapping="Wrap" Margin="0,10"/>
      <TextBlock Text="{Binding Selected.AircraftRequirement}" TextWrapping="Wrap"/>
      <TextBlock Text="{Binding Estimate}" TextWrapping="Wrap" Margin="0,10"/>
-     <TextBlock Text="1. Accept and select the assigned Vision Jet in Fleet. 2. Connect tracking; remain stopped at Walvis Bay for ten seconds, then Begin. 3. Fly to the area and observe continuously. 4. Return, stop and complete." TextWrapping="Wrap" Margin="0,6,0,12"/>
+     <TextBlock Text="1. Select the employer Vision Jet in Fleet, then accept. 2. Connect tracking; stop at Walvis Bay for ten seconds, then Begin. 3. Fly to the area and observe continuously. 4. Return, stop and complete." TextWrapping="Wrap" Margin="0,6,0,12"/>
      <TextBlock Text="{Binding AreaStatus}" TextWrapping="Wrap" FontWeight="SemiBold"/>
      <TextBlock Text="{Binding AreaDistance}" TextWrapping="Wrap" Margin="0,6"/>
+     <TextBlock Text="Observation needs airborne telemetry at least 100 ft above the reported surface. Choose a safe operating altitude; the mission does not approve aircraft performance." TextWrapping="Wrap" Opacity="0.75"/>
      <ProgressBar Value="{Binding Selected.ObservationSeconds}" Maximum="{Binding Selected.Area.ObservationSeconds}" Height="16" Margin="0,8"/>
      <TextBlock Text="{Binding Progress}"/><TextBlock Text="{Binding FlightTime}" Margin="0,6"/>
      <WrapPanel><Button Content="Accept mission" Command="{Binding AcceptCommand}"/><Button Content="Connect mission tracking" Command="{Binding ConnectCommand}"/><Button Content="Begin at base" Command="{Binding StartCommand}"/><Button Content="Resume recorded flight" Command="{Binding ResumeCommand}"/><Button Content="Complete mission" Command="{Binding CompleteCommand}"/><Button Content="Disconnect" Command="{Binding DisconnectCommand}"/></WrapPanel>
@@ -26,15 +27,22 @@
     </StackPanel></ScrollViewer>
    </Grid></TabItem>
    <TabItem Header="Personnel transfers"><local:PassengerTransfersControl DataContext="{Binding DataContext.Passengers, RelativeSource={RelativeSource AncestorType=Window}}"/></TabItem>
-   <TabItem Header="Platforms / helicopter work"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16">
-    <TextBlock Text="Helicopter operations — qualification required" FontSize="22" FontWeight="SemiBold"/>
+   <TabItem Header="Platforms / helicopter work"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="16">
+    <TextBlock Text="Helicopter operations — qualification required" TextWrapping="Wrap" FontSize="22" FontWeight="SemiBold"/>
     <TextBlock Text="Supply delivery · personnel delivery and pickup · timed inspection visits" TextWrapping="Wrap" Margin="0,8"/>
     <ItemsControl ItemsSource="{Binding Platforms}"><ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="#405360" BorderThickness="1" Padding="16" Margin="0,8"><StackPanel>
      <TextBlock Text="{Binding Name}" FontSize="18"/><TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,8"/>
      <TextBlock Text="{Binding BlockedReason}" TextWrapping="Wrap"/>
      <TextBlock Text="Recorded support: H125 static deck contact and fixed 5 kg Cargo 1 diagnostic only. Passenger capacity, flown arrivals/departures and complete platform missions are not accepted." TextWrapping="Wrap" Margin="0,8"/>
+     <Expander Header="Qualification evidence"><TextBlock Text="{Binding EvidenceSummary}" TextWrapping="Wrap" Margin="0,8"/></Expander>
     </StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
     <TextBlock Text="These are qualification records, not available destinations. No platform mission is generated until its aircraft, operation and tested versions are individually qualified. Diagnostic starts and constrained lifts never grant career rewards." TextWrapping="Wrap" Margin="0,12"/>
+    <Expander Header="Experimental H125 contact test — no pay" Margin="0,16" DataContext="{Binding DataContext.OffshoreDiagnostic, RelativeSource={RelativeSource AncestorType=Window}}"><StackPanel>
+     <TextBlock Text="Load the exact H125 Passengers on OL400 H01. This read-only experiment watches stable deck contact, sustained contact loss and a stable return. Native starts or diagnostic constraints are not a normal flown mission. No flight controls or payload changes are issued." TextWrapping="Wrap" Margin="0,8"/>
+     <WrapPanel><Button Content="Observe experimental contact cycle" Command="{Binding StartCommand}"/><Button Content="Stop diagnostic" Command="{Binding StopCommand}"/></WrapPanel>
+     <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,8"/>
+     <TextBlock Text="{Binding RecordingPath}" TextWrapping="Wrap" Opacity="0.7"/>
+    </StackPanel></Expander>
    </StackPanel></ScrollViewer></TabItem>
   </TabControl>
  </Grid>
