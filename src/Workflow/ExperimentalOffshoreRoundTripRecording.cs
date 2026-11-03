@@ -9,6 +9,16 @@ public sealed record OffshoreRoundTripReview(Guid SessionId, int Frames, bool Re
 /// <summary>Create-only diagnostic context and native frames; replay never resumes a flight or changes qualification.</summary>
 public static class ExperimentalOffshoreRoundTripRecording
 {
+    public static PassengerEndpoint ResolveBase(string destinationMetadataRoot)
+    {
+        // Load only separate destination reviews/cache, never CareerStore, economy, fleet or default app settings.
+        var catalogue = new DestinationReviewStore(destinationMetadataRoot).Load();
+        var employer = CareerCatalogue.Employers.Single(e => e.Category == "Offshore");
+        var location = catalogue.Base(employer);
+        if (location?.ApproximateCoordinates is not {} c)
+            throw new IOException("Resolve the Offshore base in existing destination metadata first. No airport or coordinates inferred.");
+        return new(location.StableId, location.Name, c.Latitude, c.Longitude);
+    }
     public static async Task<OffshoreRoundTripStatus> RecordAsync(IAircraftConditionSource source, PassengerEndpoint origin,
         OffshorePlatform platform, string newPath, CancellationToken token, Action<OffshoreRoundTripStatus>? changed = null,
         Func<DateTimeOffset>? clock = null, int inspectionSeconds = 60)

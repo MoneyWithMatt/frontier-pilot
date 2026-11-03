@@ -64,6 +64,10 @@ internal static partial class Program
             Check(!diagnostic.Running && diagnostic.Status.Contains("Completed") && diagnostic.Status.Contains("6 / 6"), "Actual round-trip UI records all milestones without career pay");
             var review = ExperimentalOffshoreRoundTripRecording.Review(diagnostic.RecordingPath);
             Check(review.HistoricalStatus.Completed && !review.HistoricalStatus.CurrentBasePresence, "Closed UI recording replays history without live authority");
+            // Public-safe synthetic fixture only, for hosted CLI command verification; never personal simulator data.
+            var cliFixture = Path.Combine(folder, "synthetic-offshore-roundtrip.jsonl");
+            File.Copy(diagnostic.RecordingPath, cliFixture, overwrite: false);
+            File.Copy(diagnostic.RecordingPath + ".mission.json", cliFixture + ".mission.json", overwrite: false);
             Check(fixture.Service.Balance == 30.89m, "Experimental round trip cannot pay additional career wages");
             Save(host, Path.Combine(folder, "offshore-roundtrip-completed.png"));
         }

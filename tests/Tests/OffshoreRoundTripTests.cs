@@ -114,6 +114,25 @@ public sealed class OffshoreRoundTripTests
         Assert.Throws<InvalidOperationException>(() => new ExperimentalOffshoreRoundTrip(Origin with { Kind = PassengerEndpointKind.Platform }, Platform));
         Assert.Throws<InvalidOperationException>(() => new ExperimentalOffshoreRoundTrip(Origin, Platform with { Stage = PlatformQualificationStage.Discovered }));
     }
+    [Fact]
+    public void StandaloneDiagnosticReadsOnlyResolvedDestinationMetadataAndCannotInventABase()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OffshoreBase", Guid.NewGuid().ToString("N")); Directory.CreateDirectory(root);
+        try
+        {
+            Assert.Throws<IOException>(() => ExperimentalOffshoreRoundTripRecording.ResolveBase(root));
+            Assert.Empty(Directory.GetFiles(root));
+            new DestinationReviewStore(root).Save(new("FYWB", "Approved", "FYWB", Origin.Latitude, Origin.Longitude,
+                "SYNTHETIC reviewed base fixture only", Epoch, ["vision-jet"]));
+            var files = Directory.GetFiles(root).ToDictionary(f => f, File.ReadAllBytes);
+            var endpoint = ExperimentalOffshoreRoundTripRecording.ResolveBase(root);
+            Assert.Equal(Origin.Latitude, endpoint.Latitude); Assert.Equal(Origin.Longitude, endpoint.Longitude);
+            Assert.Equal(files.Keys.Order(), Directory.GetFiles(root).Order());
+            foreach (var f in files) Assert.Equal(f.Value, File.ReadAllBytes(f.Key));
+            Assert.DoesNotContain(Directory.GetFiles(root), f => Path.GetFileName(f).Contains("economy"));
+        }
+        finally { Directory.Delete(root, true); }
+    }
     [Theory]
     [InlineData("missing-end")]
     [InlineData("duplicate")]
