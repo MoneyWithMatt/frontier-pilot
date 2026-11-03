@@ -46,7 +46,7 @@ public sealed class PassengerTransfersService
         t.EligibleAircraftTypes.Contains(x.Id) && RouteEligible(t, x.Id)).ToArray() : [];
     public bool CanBoard => Selected is { State: PassengerTransferState.Reserved } t && !HasBoardedPassengers &&
         world?.Shipments.Any(x => x.State is ShipmentState.Loaded or ShipmentState.InTransit) != true && (world is null || !CargoJourneyKernel.Occupied(world)) &&
-        t.AircraftTypeId is {} type && RouteEligible(t, type) && monitor.Ready(t, utcNow(), true);
+        t.AircraftTypeId is {} type && (RouteEligible(t, type) || SelectedTransport?.Payload is not null && t.BoardingAuthorization is not null) && monitor.Ready(t, utcNow(), true);
     public bool CanDisembark => Selected is { State: PassengerTransferState.Boarded } t &&
         (SelectedTransport?.State == PassengerCarriageState.Disembarked ||
         (t.AirframeId is null || SelectedAirframe?.Invoke() == t.AirframeId) && monitor.Ready(t, utcNow(), false));

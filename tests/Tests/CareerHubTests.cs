@@ -53,6 +53,7 @@ public sealed class CareerHubTests : IDisposable
         var vm = Create(); await Initialize(vm); var hub = vm.Career;
         var offer = hub.Board.All.First(j => j.Family == CareerJobFamily.Personnel && j.Available);
         hub.Board.Selected = offer; hub.Board.SelectedAircraft = hub.Board.AircraftChoices.Single(a => a.Id == "vision-jet");
+        hub.Board.SelectedAircraft=null;Assert.Equal("vision-jet",hub.Board.SelectedAircraft!.Id);
         Assert.True(hub.Board.AcceptCommand.CanExecute(null)); await hub.Board.AcceptAsync();
         Assert.Equal("", hub.Board.Error); Assert.True(hub.Board.Selected!.Accepted, $"Selected {hub.Board.Selected.Key} {hub.Board.Selected.Status}; source {vm.Passengers.SelectedTransfer?.Id} {vm.Passengers.SelectedTransfer?.State}; reserved {string.Join(",", vm.Passengers.Transfers.Where(t=>t.State==PassengerTransferState.Reserved).Select(t=>t.Id))}"); Assert.False(hub.Board.AcceptCommand.CanExecute(null));
         await hub.Board.AcceptAsync(); Assert.Single(vm.Passengers.Transfers.Where(t => t.State == PassengerTransferState.Reserved));

@@ -55,7 +55,7 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
     public CompanyAircraftType? SelectedAircraft
     {
         get => Selected?.Family == CareerJobFamily.Cargo ? cargo.SelectedCompanyAircraft : passengers.SelectedAircraft;
-        set { if (Selected?.Family == CareerJobFamily.Cargo) cargo.SelectedCompanyAircraft = value; else if (Selected?.Family == CareerJobFamily.Personnel) passengers.SelectedAircraft = value; Notify(); }
+        set { if(value is null||!AircraftChoices.Any(a=>a.Id==value.Id))return; if (Selected?.Family == CareerJobFamily.Cargo) cargo.SelectedCompanyAircraft = value; else if (Selected?.Family == CareerJobFamily.Personnel) passengers.SelectedAircraft = value; Notify(); }
     }
     public string Estimate => Selected?.Family == CareerJobFamily.Observation ? offshore.Estimate : "Flight-time estimate unavailable; plan fuel, weather and aircraft performance.";
     public string Progress => Selected?.Family switch

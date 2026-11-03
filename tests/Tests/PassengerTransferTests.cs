@@ -50,6 +50,20 @@ public sealed class PassengerTransferTests : IDisposable
         for (var i = 132; i <= 142; i++) await Observe(i, true);
         Assert.True(service.CanDisembark);
     }
+    [Fact] public async Task DestinationProblemCannotTrapAnAlreadyPersistedPhysicalBoardingIntentOrDuplicateItsMass()
+    {
+        await Setup();await service.AcceptAsync("vision-jet");await service.SetManifestAsync([82]);
+        for(int i=0;i<=10;i++)await Observe(i);
+        physical.FailAfterStation=1;await Assert.ThrowsAsync<IOException>(()=>service.BoardAsync());
+        Assert.NotNull(service.SelectedTransport!.Payload);Assert.Equal(PassengerTransferState.Reserved,service.Selected!.State);
+        destinations.ApplyVisits([new(Guid.NewGuid(),"FYAR",transfer.Destination.Id,transfer.Destination.Name,"FYAR",
+            transfer.Destination.Latitude,transfer.Destination.Longitude,"vision-jet","Synthetic player report",airframe,"Synthetic version",utc,
+            AirportVisitResult.Problematic,AirportIssue.SceneryOrTerrain,"Synthetic problem while recovering saved payload intent")]);
+        await service.RefreshAsync();for(int i=11;i<=22;i++)await Observe(i);
+        Assert.DoesNotContain(service.VisibleTransfers,t=>t.State==PassengerTransferState.Offered&&t.Destination.Id==transfer.Destination.Id);
+        Assert.True(service.CanBoard);await service.BoardAsync();await service.BoardAsync();
+        Assert.Equal(82,physical.Weights[2]);Assert.Equal(PassengerTransferState.Boarded,service.Selected!.State);Assert.Empty((await store.LoadAsync())!.FinancialLedger);
+    }
 
     [Fact] public async Task CompleteTransferPaysAgreedWageOnceWithoutAnyCargoAccounting()
     {
