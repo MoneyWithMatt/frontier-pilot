@@ -123,6 +123,8 @@ public sealed class OffshoreMissionsTests
         Assert.Equal(OffshoreMissionState.ReadyToComplete, f.Service.Selected.State);
         Assert.Equal(TimeSpan.FromSeconds(139).Ticks, f.Service.Selected.AirborneTicks);
         await f.Service.CompleteAsync(); await f.Service.CompleteAsync();
+        var vm = new OffshoreMissionsViewModel(f.Service, () => throw new Exception("No native source in unit test"));
+        Assert.StartsWith("Mission completed.", vm.Status);
         var world = (await f.Store.LoadAsync())!; var wage = Assert.Single(world.FinancialLedger.Where(t => t.Kind == FinancialTransactionKind.OffshoreMissionWage));
         Assert.Equal(800m, wage.Wage!.HourlyRate); Assert.Equal(30.89m, wage.Amount);
         Assert.Equal(wage.Amount, world.Players.Single().CachedBalance);

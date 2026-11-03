@@ -31,11 +31,13 @@ internal static partial class Program
         for (int i = 0; i <= 10; i++) await fixture.Observe(i);
         await vm.RefreshAsync(); await Click("Begin at base");
         Check(vm.Selected!.State == OffshoreMissionState.Outbound, "Production Offshore begin persists selected airframe/start");
-        await fixture.Outbound(); await vm.RefreshAsync();
+        await fixture.Outbound(); await vm.RefreshAsync(); Pump();
         Check(vm.Selected!.State == OffshoreMissionState.Returning, "Production observation task completes only after outbound and continuous area samples");
+        Check(Descendants<ProgressBar>(control).Single().Value == 10 && Descendants<TextBlock>(control).Any(t => t.Text == "Returning"), "Rendered observation stage and progress match committed mission");
         Save(host, Path.Combine(folder, "offshore-observation-return.png"));
         await fixture.Return(); await vm.RefreshAsync(); await Click("Complete mission");
         Check(vm.Selected!.State == OffshoreMissionState.Completed && fixture.Service.Balance == 30.89m, "Production Offshore completion and one hourly wage");
+        Check(Descendants<TextBlock>(control).Any(t => t.Text.StartsWith("Mission completed.")), "Completed UI confirms settlement instead of prompting completion again");
         Save(host, Path.Combine(folder, "offshore-observation-completed.png"));
         var tabs = Descendants<TabControl>(control).Single(); tabs.SelectedIndex = 2; Pump();
         Check(Descendants<TextBlock>(control).Any(t => t.Text.Contains("Static deck contact tested")), "Platform qualification is visible, not an available mission");

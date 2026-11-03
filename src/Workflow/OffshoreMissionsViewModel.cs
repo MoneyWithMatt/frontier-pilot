@@ -15,7 +15,9 @@ public sealed class OffshoreMissionsViewModel : INotifyPropertyChanged
     public bool Enabled => service.Enabled;
     public bool Connected { get; private set; }
     public string Error { get; private set; } = "";
-    public string Status => Selected?.State == OffshoreMissionState.Offered && !service.CanAccept ?
+    public string Status => Selected?.State == OffshoreMissionState.Completed ?
+        "Mission completed. Verified airborne wages settled once; this assignment is closed." :
+        Selected?.State == OffshoreMissionState.Offered && !service.CanAccept ?
         "Select the employer Vision Jet in Aircraft → Fleet before accepting this mission." : service.Reason;
     public IReadOnlyList<OffshoreMission> Missions => service.Missions;
     public IReadOnlyList<OffshorePlatform> Platforms => OffshorePlatformRegistry.Platforms;
