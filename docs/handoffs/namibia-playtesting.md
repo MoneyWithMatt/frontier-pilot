@@ -2,7 +2,7 @@
 
 - Approved scope: [specification](../specs/namibia-playtesting.md), Matt's 2026-11-03 request.
 - Branch: `codex/namibia-playtesting`, based on Career Hub `21b1f78f2ec9d44764450ecfffbf481a46e831bf`. Master and other feature worktrees preserved.
-- Status: implementation complete; full hosted verification and screenshot review passed. Ready for Matt's opt-in playtest. Nothing merged or installed.
+- Status: implementation complete; final aircraft-report context correction is undergoing hosted verification. Earlier full hosted verification and screenshot review passed. Nothing merged or installed.
 - PR: draft creation attempted through the scoped connector and rejected with HTTP 403, Resource not accessible by integration. Branch push works. [Prepared PR description](namibia-playtesting-pr.md). Do not extract credentials, bypass permission failures or retry the rejected shell-credential workaround. No merge authorised.
 - Last validated implementation: `009b0f260c856ae9ab8f613b1421efefd7171295`, clean source, [hosted run 41671407695](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41671407695): 1,008 passed / 0 failed / 0 skipped, zero warnings/errors; both WPF programs, guards, historical CLI and packaging passed. This documentation checkpoint has no production changes.
 
@@ -21,6 +21,8 @@ pwsh -NoProfile -File scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPa
 Local logs/TRX are in ignored `.ci-output-namibia-*` / `.ci-output-namibia-logs`. Run 01 found a mispatched constructor call; 02 found missing source metadata on the held Nepara record; 03 found null/unconfirmed identifiers incorrectly treated as duplicate ICAOs; 04/05 exposed old approval-only fixture expectations and source/held geographic fixtures; 06 found a missing namespace import; 07/08 narrowed remaining fixture/expectation failures. Fixed, without skipping tests or weakening physical/flight/payment assertions. Run 09 passed 1,004; run 10 passed 1,005 after adding persisted-cadence coverage. Updated former FYNG ordinary-route fixtures to an unheld field; explicit held tests now cover FYNG and the other conflicts.
 
 Local runs 11–13 passed 1,005/1,006/1,006; 14 passed 1,007; 15/16 passed 1,008. The new recovery regression proves a destination report cannot trap an already persisted partial passenger boarding intent or duplicate its mass. An explicit per-type problem cannot be cleared by a good visit in another aircraft.
+
+Final review found the report's default aircraft could remain C152 after selecting the Caravan. Runs 17/18 each retained 1,008 passes and one new regression failure: report defaults were not synchronously refreshed on fleet selection. Fixed in `38a6bf76595a0dc4ee12eaebb92d59e6c9d8ab79`; the default now follows the selected physical airframe until the player edits aircraft, description or notes. Drafts remain intact. Local run 19 passed 1,009 / 0 / 0 with zero build warnings/errors, using the same BuildTest command with `-OutputDirectory .ci-output-namibia-19` (source `0e03af2` with the two-line CareerHub correction dirty, subsequently committed as `38a6bf7`). [Hosted failure at 0e03af2](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41673596158) is retained; [final source run](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41674240167) is pending. No assertions skipped or weakened.
 
 ## Final hosted evidence
 
