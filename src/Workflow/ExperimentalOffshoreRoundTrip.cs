@@ -56,7 +56,7 @@ public sealed partial class FlightAttemptTracker
         private ConditionAircraftIdentity? identity;
         private FlightAttempt? outboundFlight, returnFlight;
         private double? contactSince, inspectionSince, departureSince, baseReturnSince;
-        private bool armed, closed;
+        private bool armed, closed, previousOnDeck;
         public OffshoreRoundTripStatus Current { get; private set; } = new(OffshoreTestStage.AwaitingBase,
             "Stop at the resolved Walvis Bay base for ten continuous seconds. Diagnostic only.", 0, false, false, []);
         public PlatformRoundTripMonitor(PassengerEndpoint origin, OffshorePlatform platform, int seconds)
@@ -94,10 +94,14 @@ public sealed partial class FlightAttemptTracker
                 WorldTracking.DistanceMeters(sample.Position.Latitude, sample.Position.Longitude, origin.Latitude, origin.Longitude) <= 2778 &&
                 sample.Position.AltitudeFeet - sample.GroundAltitudeFeet is >= 0 and <= 30;
             var onDeck = PlatformFlightContact.Stable(platform, sample, frame!);
+            var leftKnownDeck = previousOnDeck; previousOnDeck = onDeck;
             if (Current.Completed) return Status(OffshoreTestStage.Completed, "Round trip observed once. Historical diagnostic only; no career reward or automatic qualification.", requiredInspection, onDeck, atBase);
             if (!Has(OffshoreTestMilestone.InspectionObserved))
             {
                 var context = new TransportFlightContext(journeyId, origin, destination, outboundFlight);
+                if (armed && outboundFlight?.FirstAirborneUtc is null && !sample.Position.IsOnGround &&
+                    WorldTracking.DistanceMeters(sample.Position.Latitude, sample.Position.Longitude, origin.Latitude, origin.Longitude) > 2778)
+                { closed = true; return Status(OffshoreTestStage.Interrupted, "Outbound takeoff must be observed near the recorded base, not after ground/water travel to the platform."); }
                 outboundFlight = outbound.Observe(context, !armed && !atBase ? null : telemetry);
                 if (!armed)
                 {
@@ -130,6 +134,8 @@ public sealed partial class FlightAttemptTracker
                 returning.Observe(new TransportFlightContext(id, destination, origin, returnFlight), telemetry);
                 return Status(OffshoreTestStage.ReadyToDepart, "Timed visit observed. Depart normally and return to base; no wages are issued.", requiredInspection, true);
             }
+            if (returnFlight?.FirstAirborneUtc is null && !sample.Position.IsOnGround && !leftKnownDeck)
+            { closed = true; return Status(OffshoreTestStage.Interrupted, "Return takeoff needs a preceding observed contact on the known deck, not a later lift over water."); }
             returnFlight = returning.Observe(new TransportFlightContext(journeyId + "-return", destination, origin, returnFlight), telemetry)!;
             if (atBase) baseReturnSince ??= sample.SimulationSeconds; else baseReturnSince = null;
             if (!Has(OffshoreTestMilestone.PlatformDeparture))

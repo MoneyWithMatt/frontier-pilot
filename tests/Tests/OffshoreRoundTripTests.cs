@@ -92,6 +92,22 @@ public sealed class OffshoreRoundTripTests
         Through(test, 702, 392); Assert.False(test.Current.Completed);
         Assert.DoesNotContain(test.Current.Events, e => e.Milestone == OffshoreTestMilestone.InspectionObserved);
     }
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LateTakeoffAfterGroundOrWaterTravelCannotReplaceObservedDeparture(bool returnLeg)
+    {
+        var test = new ExperimentalOffshoreRoundTrip(Origin, Platform);
+        Through(test, returnLeg ? 391 : 10);
+        for (int i = returnLeg ? 392 : 11; i <= (returnLeg ? 450 : 308); i++)
+        {
+            var f = Frame(i);
+            f = f with { Readings = f.Readings.Select(r => r.Field.Key == "SIM ON GROUND" ? r.Field.Observe(1, r.ObservedUtc) : r).ToArray() };
+            test.Observe(f, f.CompletedUtc);
+        }
+        Observe(test, returnLeg ? 451 : 309);
+        Assert.Equal(OffshoreTestStage.Interrupted, test.Current.Stage); Assert.False(test.Current.Completed);
+    }
     [Fact]
     public void DiscoveredOrUnresolvedOriginsDoNotBecomeRoundTripTestDestinations()
     {
