@@ -18,7 +18,7 @@ public sealed class OffshoreMissionsViewModel : INotifyPropertyChanged
     public string Status => Selected?.State == OffshoreMissionState.Completed ?
         "Mission completed. Verified airborne wages settled once; this assignment is closed." :
         Selected?.State == OffshoreMissionState.Offered && !service.CanAccept ?
-        "Select the employer Vision Jet in Aircraft → Fleet before accepting this mission." : service.Reason;
+        "Select the employer Vision Jet in Career → Fleet before accepting this mission." : service.Reason;
     public IReadOnlyList<OffshoreMission> Missions => service.Missions;
     public IReadOnlyList<OffshorePlatform> Platforms => OffshorePlatformRegistry.Platforms;
     public OffshoreMission? Selected { get => service.Selected; set { if (value is not null) { service.SelectedId = value.Id; Notify(); } } }

@@ -48,6 +48,9 @@ internal static partial class Program
         Check(model.Fleet.SelectedAirframeId == selected.Id && model.Passengers.SelectedTransfer!.AirframeId is null, "Opening loading preserves physical GUID without silently binding assignment");
         Check(!model.Passengers.BoardCommand.CanExecute(null), "Unqualified SF50 physical boarding remains blocked");
         Save(host, Path.Combine(folder, "career-hub-passenger-loading.png"));
+        var passengerScroller = Descendants<ScrollViewer>((DependencyObject)passengers).First();
+        Check(passengerScroller.ScrollableHeight > 0, "Embedded passenger manifest and recovery actions remain reachable by scrolling at ordinary desktop height");
+        passengerScroller.ScrollToBottom(); Pump(); Save(host, Path.Combine(folder, "career-hub-passenger-actions.png"));
         model.Career.Navigation.LoadingSection = 0; Pump(); Save(host, Path.Combine(folder, "career-hub-cargo-loading.png"));
         model.Career.Show(CareerSection.Overview); model.Career.FleetLoadCommand.Execute(null); Pump();
         Check(ReferenceEquals(cargo, ((ContentControl)hub.FindName("CargoWorkspace")).Content), "Fleet re-entry reuses exact cargo control instance");

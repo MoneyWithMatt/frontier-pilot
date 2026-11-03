@@ -124,7 +124,7 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     private readonly SynchronizationContext? ui = SynchronizationContext.Current;
     private bool busy;
     private string technicalDetails="No failed operation recorded.";
-    private string status = "Accept jobs in Jobs, select your physical airframe in Fleet, then read this aircraft.";
+    private string status = "Accept work in Career → Job Board, select your physical airframe in Fleet, then sync this aircraft.";
     public ObservableCollection<CargoConsignmentRow> Consignments { get; } = [];
     public ObservableCollection<CargoStationRow> Stations { get; } = [];
     public ObservableCollection<CargoStop> Stops { get; } = [];

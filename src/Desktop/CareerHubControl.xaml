@@ -177,7 +177,7 @@
                     <ContentControl x:Name="PassengerWorkspace" />
                   </TabItem>
                   <TabItem Header="Aircraft systems / legacy recovery">
-                    <ContentControl x:Name="AircraftWorkspace" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><ContentControl x:Name="AircraftWorkspace" MinHeight="650" /></ScrollViewer>
                   </TabItem>
                 </TabControl>
               </Grid>
