@@ -12,6 +12,7 @@ public partial class CareerHubControl : UserControl
     public CareerHubControl()
     {
         InitializeComponent();
+        JobList.SelectionChanged += (_, _) => { if (JobList.SelectedItem is {} selected) JobList.ScrollIntoView(selected); };
         DataContextChanged += (_, _) => { if (viewModel is not null) viewModel.Board.SelectionChanged -= RefreshMap; viewModel = DataContext as CareerHubViewModel; if (viewModel is not null) viewModel.Board.SelectionChanged += RefreshMap; RefreshMap(); };
         Loaded += (_, _) => { if (viewModel is not null) { viewModel.Board.SelectionChanged -= RefreshMap; viewModel.Board.SelectionChanged += RefreshMap; } RefreshMap(); };
         Unloaded += (_, _) => { if (viewModel is not null) viewModel.Board.SelectionChanged -= RefreshMap; };

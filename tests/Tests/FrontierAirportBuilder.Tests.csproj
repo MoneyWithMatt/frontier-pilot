@@ -29,6 +29,7 @@
 
   <ItemGroup>
     <None Include="..\..\src\Desktop\MainWindow.xaml" Link="Desktop\MainWindow.xaml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Desktop\CargoJourneyControl.xaml" Link="Desktop\CargoJourneyControl.xaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 <ItemGroup><Compile Include="../SyntheticOffshoreFlight.cs" Link="SyntheticOffshoreFlight.cs"/></ItemGroup>

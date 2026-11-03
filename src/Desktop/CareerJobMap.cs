@@ -62,7 +62,8 @@ public sealed class CareerJobMap : MapControl
             features.Insert(0, area); coordinates.AddRange(ring); HasObservationArea = true;
         }
         routeLayer.Features = features; Map.RefreshGraphics();
-        bounds = coordinates.Count == 0 ? null : new(coordinates.Min(p => p.X) - 1500, coordinates.Min(p => p.Y) - 1500, coordinates.Max(p => p.X) + 1500, coordinates.Max(p => p.Y) + 1500);
+        var padding = coordinates.Count == 0 ? 1500 : Math.Max(1500, Math.Max(coordinates.Max(p => p.X) - coordinates.Min(p => p.X), coordinates.Max(p => p.Y) - coordinates.Min(p => p.Y)) * .25);
+        bounds = coordinates.Count == 0 ? null : new(coordinates.Min(p => p.X) - padding, coordinates.Min(p => p.Y) - padding, coordinates.Max(p => p.X) + padding, coordinates.Max(p => p.Y) + padding);
         Fit();
     }
     public void Fit() { if (bounds is not null) Map.Navigator.ZoomToBox(bounds); }

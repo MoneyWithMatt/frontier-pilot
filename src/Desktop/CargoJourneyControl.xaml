@@ -17,7 +17,7 @@
   <TextBlock Text="Click cargo, then a station. Confirm outside and apply in the cockpit." TextWrapping="Wrap" Margin="0,6"/>
   <TextBlock Text="Aircraft" Style="{StaticResource Title}" Margin="0,8,0,4"/>
   <ComboBox x:Name="CargoAircraft" ItemsSource="{Binding Fleet.AircraftRows}" SelectedValuePath="Id" SelectedValue="{Binding Fleet.SelectedAirframeId}" IsEnabled="{Binding CanChooseAircraft}" SelectionChanged="AircraftSelection_Changed">
-   <ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding Type}"/><Run Text=" · "/><Run Text="{Binding Registration}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate>
+   <ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding Type,Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Registration,Mode=OneWay}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate>
   </ComboBox>
   <Button Content="Refresh aircraft &amp; jobs" Command="{Binding ReadCommand}" HorizontalAlignment="Left"/>
   <TextBlock Text="{Binding AircraftStatus}" TextWrapping="Wrap" Margin="0,6"/>
