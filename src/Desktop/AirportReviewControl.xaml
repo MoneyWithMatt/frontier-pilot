@@ -16,7 +16,7 @@
         <Button x:Name="MarkVerified" Content="Mark as Verified" Command="{Binding VerifyCommand}" />
         <Button x:Name="ReportProblem" Content="Report a Problem" Command="{Binding ProblemCommand}" />
       </WrapPanel>
-      <TextBlock Text="{Binding Status}" Foreground="#A8CFC1" TextWrapping="Wrap" />
+      <TextBlock x:Name="SavedStatus" Text="{Binding Status,NotifyOnTargetUpdated=True}" TargetUpdated="ShowSavedStatus" Foreground="#A8CFC1" TextWrapping="Wrap" />
       <TextBlock Text="{Binding Error}" Foreground="#F0B47B" TextWrapping="Wrap" />
       <TextBlock Text="{Binding Policy}" FontSize="10" TextWrapping="Wrap" Margin="0,8" />
     </StackPanel>

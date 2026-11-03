@@ -34,12 +34,16 @@ internal static partial class Program
         while(model.Career.Airports.IsBusy)await Task.Delay(10);Pump();
         Check(model.Career.Airports.Knowledge.Contains("Verified by player"),"Actual Mark Verified control records per-aircraft player knowledge");
         Check(board.Selected!.DestinationKnowledge.Contains("Unverified for this aircraft"),"A Caravan report does not verify the selected C152");
+        var confirmation=(TextBlock)control.FindName("SavedStatus");Check(confirmation.Text.Contains("visit saved"),"Airport visit confirmation is rendered after the actual save");
         Save(host,Path.Combine(folder,"namibia-airport-verified.png"));
         ((TextBox)control.FindName("VisitNote")).Text="SYNTHETIC runway issue; exercise report preservation";
         model.Career.Airports.SelectedIssue=AirportIssue.RunwayUnusable;
         var problem=(Button)control.FindName("ReportProblem");problem.BringIntoView();Pump();problem.Command.Execute(null);
         while(model.Career.Airports.IsBusy)await Task.Delay(10);Pump();
         Check(model.Career.Airports.Error==""&&model.Career.Airports.Knowledge.Contains("Problematic"),"Actual Report Problem control updates current destination knowledge");
+        Check(Descendants<TextBlock>(control).Any(t=>t.Text=="Runway unusable")&&!Descendants<TextBlock>(control).Any(t=>t.Text.StartsWith("IssueOption {")),"Issue selector renders a readable category instead of a developer record");
+        var confirmationPosition=confirmation.TransformToAncestor(host).Transform(new Point(0,0));
+        Check(confirmationPosition.Y>=0&&confirmationPosition.Y+confirmation.ActualHeight<=host.ActualHeight,"Saved problem confirmation is brought into the current window viewport");
         Check(model.Jobs.ReservedJobs.Any(j=>j.JobId==job.SourceId)&&!model.Jobs.Offers.Any(j=>j.DestinationLocationId==job.DestinationLocationId),"Problem report withholds future offers while preserving the accepted consignment");
         Save(host,Path.Combine(folder,"namibia-airport-problem.png"));
         model.Career.Airports.SelectedAircraft=CompanyAircraft.Types.Single(t=>t.Id=="c208");

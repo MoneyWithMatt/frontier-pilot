@@ -5,7 +5,7 @@ namespace FrontierAirportBuilder.Workflow;
 /// <summary>Explicit player reports, separate from official data and flight/aircraft qualification.</summary>
 public sealed class AirportReviewViewModel : INotifyPropertyChanged
 {
-    public sealed record IssueOption(AirportIssue Value,string Label);
+    public sealed record IssueOption(AirportIssue Value,string Label) { public override string ToString()=>Label; }
     private readonly EmployerDestinationCatalogue catalogue;
     private readonly IAirportVisitStore store;
     private readonly AircraftFleetViewModel fleet;
@@ -53,7 +53,7 @@ public sealed class AirportReviewViewModel : INotifyPropertyChanged
         var visit=new AirportVisit(Guid.NewGuid(),row.Key,location.StableId,row.VerifiedName,row.PublishedReference??row.Identifier,
             point.Latitude,point.Longitude,SelectedAircraft!.Id,AircraftDescription.Trim(),fleet.Selected?.CompanyTypeId==SelectedAircraft.Id?fleet.Selected.Id:null,
             SimulatorVersion.Trim(),DateTimeOffset.UtcNow,result,result==AirportVisitResult.Verified?AirportIssue.None:SelectedIssue,Note.Trim());
-        busy=true;Error="";Notify();
+        busy=true;Error="";Status="";Notify();
         try
         {
             await Task.Run(()=>store.Append(visit));catalogue.ApplyVisits(store.Load());
