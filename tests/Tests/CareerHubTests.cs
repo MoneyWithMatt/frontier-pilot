@@ -120,5 +120,15 @@ public sealed class CareerHubTests : IDisposable
         vm.CargoJourney.Consignments.Clear(); Assert.True(vm.Career.SelectAircraft(other)); Assert.Equal(other, vm.Fleet.SelectedAirframeId);
         await vm.Fleet.ShutdownAsync();
     }
+    [Fact] public async Task CargoAcceptanceRetainsSelectedIdentityAcrossOfferToReservationSnapshotAndOpensItsAirframe()
+    {
+        var vm=Create("Missionary");await Initialize(vm);var hub=vm.Career;
+        var offer=hub.Board.All.First(j=>j.Family==CareerJobFamily.Cargo&&j.Destination.Contains("FYAM"));hub.Board.Selected=offer;
+        hub.Board.SelectedAircraft=hub.Board.AircraftChoices.Single(t=>t.Id=="c208");await hub.Board.AcceptAsync();
+        Assert.Equal("",hub.Board.Error);Assert.Equal(offer.Key,hub.Board.Selected!.Key);Assert.True(hub.Board.Selected.Accepted);Assert.True(hub.HasActive);
+        Assert.Contains(vm.Jobs.ReservedJobs,j=>j.JobId==offer.SourceId);await hub.OpenLoadAsync(hub.Board.Selected);
+        Assert.Equal("c208",vm.Fleet.Selected!.CompanyTypeId);Assert.Equal(offer.Key,hub.Board.Selected!.Key);Assert.Equal(2,hub.Navigation.AircraftSection);
+        await vm.Fleet.ShutdownAsync();
+    }
     public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }
 }

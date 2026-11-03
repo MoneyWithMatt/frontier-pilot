@@ -37,6 +37,7 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
     public Func<Task>? OpenLoad { get; set; }
     public EmployerDestinationCatalogue? Destinations {get;set;}
     public string Error { get; private set; } = "";
+    private bool SourcesUpdating=>busy||cargo.IsBusy||passengers.IsBusy;
     public bool IsBusy => busy;
     public string EmptyState => Items.Count == 0 ? "No work in this view. Refresh the board, choose another filter, or inspect employer and aircraft restrictions." : "";
     public IReadOnlyList<string> Filters { get; } = ["All work", "Available", "Accepted", "Completed"];
@@ -78,7 +79,7 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
     {
         if (busy) return; busy = true; Notify();
         try { await Task.WhenAll(cargo.RefreshLiveAsync(), passengers.RefreshAsync(), offshore.RefreshAsync()); if (Reload is not null) await Reload(); }
-        catch (Exception e) { Error = e.Message; } finally { busy = false; Notify(); }
+        catch (Exception e) { Error = e.Message; } finally { busy = false; ReconcileSelection(); Notify(); SelectionChanged?.Invoke(); }
     }
     public async Task AcceptAsync()
     {
@@ -90,7 +91,7 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
             else { await offshore.AcceptAsync(); Error = offshore.Error; }
             if (Reload is not null) await Reload();
         }
-        catch (Exception e) { Error = e.Message; } finally { busy = false; Notify(); }
+        catch (Exception e) { Error = e.Message; } finally { busy = false; ReconcileSelection(); Notify(); SelectionChanged?.Invoke(); }
     }
     private void SelectSource()
     {
@@ -107,6 +108,10 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
         else if (j?.Family == CareerJobFamily.Observation) offshore.Selected = offshore.Missions.FirstOrDefault(m => m.Id == j.SourceId);
     }
     public void FocusSelected() { if (!busy) { SelectSource(); Notify(); } }
+    private void ReconcileSelection()
+    {
+        if(!Items.Any(j=>j.Key==navigation.SelectedJobKey)){navigation.SelectedJobKey=Items.FirstOrDefault()?.Key;SelectSource();}
+    }
     public void Rebuild(EconomyWorld? world, PassengerEndpoint? origin)
     {
         var rows = new List<CareerJobRow>();
@@ -146,8 +151,10 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
                 j.Family==CareerJobFamily.Personnel?passengers.Transfers.FirstOrDefault(p=>p.Id==j.SourceId)?.Destination.Id:null;
             return j with {DestinationLocationId=id,DestinationKnowledge=Destinations?.Describe(id,fleet.Selected?.CompanyTypeId)??""};
         }).OrderBy(j => j.Accepted ? 0 : j.Available ? 1 : j.Completed ? 3 : 2).ToArray();
-        if (!Items.Any(j => j.Key == navigation.SelectedJobKey)) { navigation.SelectedJobKey = Items.FirstOrDefault()?.Key; SelectSource(); }
-        Notify(); SelectionChanged?.Invoke();
+        // Cargo snapshots publish Offers before ReservedJobs. Preserve the selected identity across that
+        // transient gap so an accepted job does not jump to the next offer or reset an in-progress review.
+        if(!SourcesUpdating)ReconcileSelection();
+        Notify(); if(Selected is not null||!SourcesUpdating)SelectionChanged?.Invoke();
     }
     public void Notify() { PropertyChanged?.Invoke(this, new("")); AcceptCommand.Refresh(); RefreshCommand.Refresh(); LoadCommand.Refresh(); }
 }
