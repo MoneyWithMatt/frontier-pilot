@@ -44,9 +44,13 @@ Economy schema 15 reads prior schemas and preserves jobs, inventory, ledger, fli
 
 ## Matt's playtest
 
-1. Use the exact development artifact identified in the handoff. Development has not installed or launched it on your PC or changed personal saves. Prefer an isolated copy/profile for the first test; normal runtime save upgrades are versioned.
+1. Use the exact development artifact identified in the handoff. Development has not installed or launched it on your PC or changed personal saves. A normal launch uses the existing app-data career and can apply versioned save upgrades. Keep a backup for the first opt-in playtest; a unified isolated-data-root launcher is not implemented.
 2. Choose a Namibia career (existing active-employer switching remains unavailable). Open Career → Job Board. Inspect several routes, distance, aircraft eligibility, manifest and destination caution.
 3. Accept an exploratory airport job, load through the existing Fleet/Load Manager workflow and fly using normal tracking. Landing/unloading/disembarkation and pay still require existing proof/readback.
 4. After visiting, record the actual tested aircraft, simulator/scenery version and findings using the inline form. For a missing/bad field, report it even if the mission cannot be completed; this does not fabricate completion.
 5. Check that new offers to a problematic field disappear, existing accepted work/history remains, and knowledge survives restart. Try another aircraft: the first aircraft's verification must not appear as qualification for it.
 6. Report any incorrect identity/coordinate association. Do not treat a facility-list hit, the map or these automated tests as proof of runway usability.
+
+## Automated release checkpoint
+
+Implementation `009b0f260c856ae9ab8f613b1421efefd7171295` passed [Windows CI](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41671407695): 1,008 xUnit tests, 198 site/Career and 7 loading WPF assertions, 9 guard scenarios, historical CLI review and Windows packaging. [Download exact Windows bundle](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41671407695/artifacts/13249051668). Screenshots and receipts remain synthetic evidence; real airport usability is Matt's playtest.
