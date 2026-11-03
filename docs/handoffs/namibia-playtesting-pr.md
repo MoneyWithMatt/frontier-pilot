@@ -40,3 +40,6 @@ No live MSFS acceptance or actual airport-usability test. WPF/synthetic tracker 
 - [ ] Skip preserves all mission/economic state, persists across restart and does not pretend the airport is verified.
 - [ ] Manual problem report works before completion and removes future offers while preserving accepted custody/history/pay.
 - [ ] Held identities and unqualified loading/platform operations remain blocked; runway/performance decisions remain with the pilot.
+## Startup freeze repair follow-up
+
+Installed 67b093a produced Windows application hangs. Isolated regression found ten loading presentation updates republished the Career board 200 times. Fix 7de3ca0 skips unchanged collection projection, batches staged snapshots and indexes airport identity; no gameplay/schema/safety changes. Hosted run 41699597542 passes 1,014 tests, both WPF programs (including 100-update stability), guards/CLI/package. Exact artifact and pending personal-career startup acceptance are recorded in the handoff. The repaired local distribution is installed with its prior build backed up, not yet launched.
