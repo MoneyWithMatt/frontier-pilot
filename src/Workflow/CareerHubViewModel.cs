@@ -28,7 +28,7 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
     public bool HasActive => Active is not null;
     public string ActiveHeading => Active is {} a ? $"{a.Title} · {Board.All.Count(j => j.Accepted)} accepted assignment(s)" : "No active assignment";
     public string ActiveAircraft => Active?.AirframeId is {} id ? fleet.Aircraft.FirstOrDefault(a => a.Id == id)?.Registration ?? "Recorded airframe unavailable: " + id : "Aircraft reservation not yet physically bound; choose an eligible airframe before loading.";
-    public string ActiveProgress => Active?.Status ?? "Accept work from the Job Board to begin.";
+    public string ActiveProgress => Active is {} a ? string.IsNullOrEmpty(a.Objective) ? a.Status + " · " + a.Payload : a.Objective : "Accept work from the Job Board to begin.";
     public ActionCommand ActiveBoardCommand { get; }
     public ActionCommand ActiveLoadCommand { get; }
     public ActionCommand FleetLoadCommand { get; }
@@ -67,7 +67,7 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
         catch (Exception e) { Error = "Career snapshot unavailable; existing records preserved. " + e.Message; Notify(); }
         finally { refreshGate.Release(); }
     }
-    public void Show(CareerSection section) { Navigation.Section = (int)section; NavigationRequested?.Invoke(); }
+    public void Show(CareerSection section) { if (section == CareerSection.JobBoard) Board.FocusSelected(); Navigation.Section = (int)section; NavigationRequested?.Invoke(); }
     private bool SelectionBlocked => !loading.CanChooseAircraft || passengers.IsBusy || passengers.HasBoardedPassengers || passengers.HasPayloadOwnership || world?.PassengerTransports.Any(t => t.Payload is not null && t.State is not (PassengerCarriageState.Disembarked or PassengerCarriageState.Planned or PassengerCarriageState.Reserved)) == true;
     public bool SelectAircraft(Guid id)
     {

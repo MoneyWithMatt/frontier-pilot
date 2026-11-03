@@ -8,7 +8,7 @@ public sealed record CareerRoutePoint(string Name, double Latitude, double Longi
 public sealed record CareerJobRow(string Key, string SourceId, CareerJobFamily Family, string Title, string Purpose,
     string Origin, string Destination, string Payload, string Status, bool Accepted, bool Completed,
     Guid? AirframeId, string[] AircraftTypes, IReadOnlyList<CareerRoutePoint> Route, string Compensation, string Requirements,
-    double? AreaRadiusNauticalMiles = null, bool Started = false, bool OfferAvailable = true)
+    double? AreaRadiusNauticalMiles = null, bool Started = false, bool OfferAvailable = true, string Objective = "")
 {
     public bool Available => OfferAvailable && !Accepted && !Completed && Family != CareerJobFamily.Platform;
     public string Category => Family.ToString();
@@ -34,6 +34,8 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
     public Func<Task>? Reload { get; set; }
     public Func<Task>? OpenLoad { get; set; }
     public string Error { get; private set; } = "";
+    public bool IsBusy => busy;
+    public string EmptyState => Items.Count == 0 ? "No work in this view. Refresh the board, choose another filter, or inspect employer and aircraft restrictions." : "";
     public IReadOnlyList<string> Filters { get; } = ["All work", "Available", "Accepted", "Completed"];
     public int Filter { get => filter; set { if (value is < 0 or > 3 || value == filter) return; filter = value; if (!Items.Any(j => j.Key == navigation.SelectedJobKey)) Selected = Items.FirstOrDefault(); Notify(); } }
     public IReadOnlyList<CareerJobRow> All => jobs;
@@ -41,7 +43,7 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
     public CareerJobRow? Selected
     {
         get => jobs.FirstOrDefault(j => j.Key == navigation.SelectedJobKey);
-        set { if (value is null || value.Key == navigation.SelectedJobKey) return; navigation.SelectedJobKey = value.Key; SelectSource(); Notify(); SelectionChanged?.Invoke(); }
+        set { if (busy || value?.Key == navigation.SelectedJobKey) return; navigation.SelectedJobKey = value?.Key; SelectSource(); Notify(); SelectionChanged?.Invoke(); }
     }
     public IReadOnlyList<CompanyAircraftType> AircraftChoices => Selected?.Family switch
     { CareerJobFamily.Cargo => cargo.CompanyAircraftChoices, CareerJobFamily.Personnel => passengers.AircraftChoices, _ => [] };
@@ -99,6 +101,7 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
         { passengers.SelectedTransfer = passengers.Transfers.FirstOrDefault(t => t.Id == j.SourceId); if (passengers.SelectedAircraft is null) passengers.SelectedAircraft = passengers.AircraftChoices.FirstOrDefault(a => a.Id == fleet.Selected?.CompanyTypeId); }
         else if (j?.Family == CareerJobFamily.Observation) offshore.Selected = offshore.Missions.FirstOrDefault(m => m.Id == j.SourceId);
     }
+    public void FocusSelected() { if (!busy) { SelectSource(); Notify(); } }
     public void Rebuild(EconomyWorld? world, PassengerEndpoint? origin)
     {
         var rows = new List<CareerJobRow>();
@@ -116,14 +119,19 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
                 manifest?.AirframeId, c.CompanyAircraftTypeId is {} type ? [type] : cargo.AircraftChoicesFor(c).Select(a => a.Id).ToArray(), route, c.HourlyWage is {} rate ? DollarDisplay.Format(rate) + " / verified airborne hour" : "Recorded contract: " + DollarDisplay.Format(c.PaymentAmount), c.KnownDestinationInformation, Started: c.LoadedCargoKilograms > 0));
         }
         foreach (var p in passengers.Transfers)
+        {
+            var group = world?.PassengerTransports.FirstOrDefault(t => t.Id == p.TransportId)?.Group;
+            var weights = group is null ? "Declare each passenger's weight in Load Manager." : string.Join(" · ", group.People.Select((person, i) => $"Person {i + 1}: {person.WeightKilograms?.ToString("0.##") ?? "weight required"} kg"));
             rows.Add(new("personnel:" + p.Id, p.Id, CareerJobFamily.Personnel, p.Purpose ?? "Personnel transfer", p.Purpose ?? "Existing passenger assignment", p.Origin.Name, p.Destination.Name,
                 p.People + " · " + (world?.PassengerTransports.FirstOrDefault(t => t.Id == p.TransportId)?.Group.WeightKilograms is {} kg ? $"{kg:0.##} kg declared" : "individual weights required"), p.Status,
                 p.State is PassengerTransferState.Reserved or PassengerTransferState.Boarded, p.State == PassengerTransferState.Delivered, p.AirframeId, p.EligibleAircraftTypes,
-                [new(p.Origin.Name, p.Origin.Latitude, p.Origin.Longitude), new(p.Destination.Name, p.Destination.Latitude, p.Destination.Longitude)], DollarDisplay.Format(p.HourlyRate) + " / verified airborne hour", passengers.SupportSummary, Started: p.State == PassengerTransferState.Boarded, OfferAvailable: p.State == PassengerTransferState.Offered));
+                [new(p.Origin.Name, p.Origin.Latitude, p.Origin.Longitude), new(p.Destination.Name, p.Destination.Latitude, p.Destination.Longitude)], DollarDisplay.Format(p.HourlyRate) + " / verified airborne hour", weights + "\n" + passengers.SupportSummary, Started: p.State == PassengerTransferState.Boarded, OfferAvailable: p.State == PassengerTransferState.Offered,
+                Objective: p.State == PassengerTransferState.Boarded ? "Carry passengers to the destination, then disembark after verified arrival." : "Confirm manifest weights and board at the origin using a qualified aircraft."));
+        }
         foreach (var m in offshore.Missions)
             rows.Add(new("observation:" + m.Id, m.Id, CareerJobFamily.Observation, m.Title, m.Purpose, m.Base.Name, m.Area.Name + " → " + m.Base.Name, "No transport load · observation task", m.State.ToString(), m.Active,
                 m.State == OffshoreMissionState.Completed, m.AirframeId, ["vision-jet"], [new(m.Base.Name, m.Base.Latitude, m.Base.Longitude), new(m.Area.Name, m.Area.Latitude, m.Area.Longitude), new(m.Base.Name, m.Base.Latitude, m.Base.Longitude)],
-                m.WageDisplay, "Airborne observation and return required. Paused, accelerated, frozen or repositioned data cannot qualify.", m.Area.RadiusNauticalMiles, m.Active && m.State != OffshoreMissionState.Accepted, m.State == OffshoreMissionState.Offered));
+                m.WageDisplay, $"Depart base → observe continuously for {m.Area.ObservationSeconds:0} seconds within {m.Area.RadiusNauticalMiles:0.#} NM → return to base → complete. Paused, accelerated, frozen or repositioned data cannot qualify.", m.Area.RadiusNauticalMiles, m.Active && m.State != OffshoreMissionState.Accepted, m.State == OffshoreMissionState.Offered, m.State + " · " + m.ObservationDisplay));
         if (offshore.Enabled) foreach (var p in OffshorePlatformRegistry.Platforms)
             rows.Add(new("platform:" + p.Id, p.Id, CareerJobFamily.Platform, p.Name, "Platform work · qualification required", origin?.Name ?? "Base unresolved", p.Name,
                 "Supply / personnel / visit · unavailable", p.Status, false, false, null, ["h125"], origin is null ? [new(p.Name, p.Latitude, p.Longitude)] : [new(origin.Name, origin.Latitude, origin.Longitude), new(p.Name, p.Latitude, p.Longitude)],

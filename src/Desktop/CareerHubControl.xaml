@@ -231,6 +231,15 @@
               <ComboBox ItemsSource="{Binding Filters}" SelectedIndex="{Binding Filter}" />
             </DockPanel>
             <ListBox x:Name="JobList" Grid.Row="1" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected,Mode=TwoWay}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <ListBox.Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+                <Style TargetType="ListBox">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                      <Setter Property="IsEnabled" Value="False" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </ListBox.Style>
               <ListBox.ItemTemplate>
                 <DataTemplate>
                   <StackPanel Margin="8,10">
@@ -280,7 +289,17 @@
           <StackPanel Margin="12,16" DataContext="{Binding OwnerJobs}">
             <TextBlock Text="Create jobs" Style="{StaticResource Title}" />
             <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" Margin="0,0,0,16" />
-            <TextBlock Text="{Binding EmptyState}" TextWrapping="Wrap" Foreground="#9FB4C1" Margin="0,0,0,12" />
+            <TextBlock Text="{Binding EmptyState}" TextWrapping="Wrap" Foreground="#9FB4C1" Margin="0,0,0,12">
+              <TextBlock.Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+                <Style TargetType="TextBlock">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding HasOwnedOperations}" Value="True">
+                      <Setter Property="Visibility" Value="Collapsed" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
             <StackPanel Visibility="{Binding HasOwnedOperations,Converter={StaticResource BoolVisibility}}">
               <TextBlock Text="Your owned site operation" FontWeight="SemiBold" />
               <ComboBox ItemsSource="{Binding OwnedOperations}" SelectedItem="{Binding SelectedOperation}" DisplayMemberPath="SiteName" />

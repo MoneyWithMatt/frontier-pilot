@@ -4,7 +4,8 @@ on:
   pull_request:
     branches: [master]
   push:
-    branches: [master]
+    # Verify the isolated Career integration branch while PR creation permissions are unavailable.
+    branches: [master, codex/career-hub]
   workflow_dispatch:
 
 permissions:

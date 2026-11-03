@@ -25,6 +25,7 @@ public sealed class CareerJobMap : MapControl
     {
         Map = new Map { CRS = "EPSG:3857" };
         Map.Layers.Add(OpenStreetMap.CreateTileLayer("FrontierPilotPrototype/0.1")); Map.Layers.Add(routeLayer);
+        Loaded += (_, _) => Fit();
     }
     public void Show(CareerJobRow? job)
     {
