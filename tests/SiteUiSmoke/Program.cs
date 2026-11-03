@@ -48,7 +48,7 @@ internal static partial class Program
                 heading.Text="90";heading.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();Pump();
                 Check(edit.RunwayHeading==90,"Actual heading textbox updates runway");
                 Save(window,Path.Combine(folder,"runway-editor.png"));
-                foreach(var index in new[]{5,1,2,3,4}){tabs.SelectedIndex=index;Pump();Save(window,Path.Combine(folder,$"page-{index}.png"));}
+                foreach(var name in new[]{"Career","Operations","Tracking","My Sites"}){tabs.SelectedItem=tabs.Items.Cast<TabItem>().Single(t=>t.Header?.ToString()==name);Pump();Save(window,Path.Combine(folder,$"page-{name.Replace(" ","-")}.png"));}
                 var fleetStore=new AircraftFleetStore(Path.Combine(folder,"synthetic-fleet-"+Guid.NewGuid(),"aircraft-fleet.json"));
                 var aircraft=FleetOperations.DiscoverComponents(FleetOperations.Enrol("SYNTHETIC-1","test",new(DateTimeOffset.UtcNow,"Synthetic aircraft","Test model",-22,15,5000,90,0,true),"synthetic-package",null,DateTimeOffset.UtcNow),1);
                 fleetStore.Commit(new(1,1,aircraft.Id,[aircraft]),0);
@@ -119,15 +119,17 @@ internal static partial class Program
                 var employedWindow=(MainWindow)Application.Current.MainWindow;
                 var employedModel=(BuilderViewModel)employedWindow.DataContext;
                 Check(employedModel.Jobs.Offers.Count>0&&employedModel.Jobs.Offers.All(x=>x.Employer=="Fly Eros"),"MainWindow acceptance enters isolated employer gameplay and initializes its board");
-                ((TabControl)employedWindow.FindName("MainTabs")).SelectedItem=((TabControl)employedWindow.FindName("MainTabs")).Items.Cast<TabItem>().Single(x=>x.Header?.ToString()=="Jobs");Pump();
-                var offerGrid=Descendants<DataGrid>(employedWindow).Single(x=>x.GetBindingExpression(ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path=="Offers");
-                offerGrid.SelectedItem=employedModel.Jobs.Offers.First(x=>x.CargoMassKilograms==160);Pump();
-                var dispatch=Descendants<ComboBox>(employedWindow).Single(x=>x.GetBindingExpression(ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path=="CompanyAircraftChoices");
+                await employedModel.Career.RefreshAsync();employedModel.Career.Show(CareerSection.JobBoard);Pump();
+                var hub=(CareerHubControl)employedWindow.FindName("CareerHub");
+                var offerList=(ListBox)hub.FindName("JobList");
+                offerList.SelectedItem=employedModel.Career.Board.All.Single(x=>x.Family==CareerJobFamily.Cargo&&x.SourceId==employedModel.Jobs.Offers.First(j=>j.CargoMassKilograms==160).JobId);Pump();
+                var dispatch=Descendants<ComboBox>(hub).Single(x=>x.GetBindingExpression(ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path=="AircraftChoices");
                 Check(dispatch.Items.Cast<CompanyAircraftType>().Any(x=>x.Id=="c208"),"Company destination/type eligibility includes Caravan; mass budgets are advisory");dispatch.SelectedItem=dispatch.Items.Cast<CompanyAircraftType>().Single(x=>x.Id=="c208");Pump();
                 Save(employedWindow,Path.Combine(folder,"company-jobs.png"));
-                var reserve=Descendants<Button>(employedWindow).Single(x=>x.Content?.ToString()=="Accept and reserve job");reserve.Command.Execute(reserve.CommandParameter);await Task.Delay(250);Pump();
+                var reserve=Descendants<Button>(hub).Single(x=>x.Content?.ToString()=="Accept job");reserve.Command.Execute(reserve.CommandParameter);await Task.Delay(250);Pump();
                 Check(employedModel.Jobs.ReservedJobs.Count==1&&employedModel.Jobs.ReservedJobs[0].CompanyAircraftTypeId=="c208","Aircraft selector and bound accept command reserve company dispatch: "+employedModel.Jobs.Error);
                 employedWindow.Close();
+                await CheckCareerHub(folder);
                 await CheckPassengerTransfers(folder);
                 await CheckCargoJourney(folder);
                 await CheckOffshoreMissions(folder);

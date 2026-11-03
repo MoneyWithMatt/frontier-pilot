@@ -23,6 +23,7 @@ public sealed class ActionCommand(Action execute, Func<bool>? canExecute = null)
 public sealed partial class BuilderViewModel : INotifyPropertyChanged
 {
     public AircraftFleetViewModel Fleet { get; }
+    public CareerHubViewModel Career { get; }
     private readonly IBuilderServices services;
     private CancellationTokenSource? cancellation;
     private bool busy, checkedReady, siteConfirmed, hasRunway, isPlacingRunway;
@@ -207,6 +208,9 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             ? new ProspectingOperationsService(economyStore, management, new GuardedAvatarSitePresence(() => Tracking.World))
             : new UnavailableProspectingOperations();
         Operations = new(prospectingOperations);
+        Career = new(profile, employer, Fleet, Jobs, Passengers, Offshore, CargoJourney, Operations,
+            () => economyStore.LoadAsync(), () => employer is not null && (employerDestinations ?? new()).Base(employer) is { ApproximateCoordinates: {} c } b
+                ? new PassengerEndpoint(b.StableId, b.Name, c.Latitude, c.Longitude) : null);
         Tracking.TelemetryChanged += sample => { _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft); _ = AircraftLoading.ObserveAsync(sample); _ = Passengers.ObserveAsync(sample?.Aircraft); _ = CargoJourney.ObserveAsync(sample?.Aircraft); };
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading,runwayEast,runwayNorth),()=>hasRunway);
         Layout.Edited += (_,_)=>Invalidate();

@@ -42,7 +42,7 @@ public sealed class OffshoreMissionsViewModel : INotifyPropertyChanged
     {
         this.service = service; this.source = source;
         RefreshCommand = new(() => _ = RefreshAsync(), () => !busy && Enabled);
-        AcceptCommand = new(() => _ = Run(() => service.AcceptAsync()), () => !busy && service.CanAccept);
+        AcceptCommand = new(() => _ = AcceptAsync(), () => !busy && service.CanAccept);
         StartCommand = new(() => _ = Run(() => service.StartOrResumeAsync()), () => !busy && service.CanStart);
         ResumeCommand = new(() => _ = Run(() => service.StartOrResumeAsync()), () => !busy && service.CanResume);
         CompleteCommand = new(() => _ = Run(() => service.CompleteAsync()), () => !busy && service.CanComplete);
@@ -50,6 +50,7 @@ public sealed class OffshoreMissionsViewModel : INotifyPropertyChanged
         DisconnectCommand = new(() => cancellation?.Cancel(), () => Connected);
     }
     public Task RefreshAsync() => Run(() => service.RefreshAsync());
+    public Task AcceptAsync() => Run(() => service.AcceptAsync());
     public async Task ConnectAsync()
     {
         if (Connected || !Enabled) return;

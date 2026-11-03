@@ -1,0 +1,313 @@
+<UserControl x:Class="FrontierAirportBuilder.Desktop.CareerHubControl" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:FrontierAirportBuilder.Desktop">
+  <Grid Margin="18">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <Grid Margin="0,0,0,12">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition />
+        <ColumnDefinition Width="2*" />
+      </Grid.ColumnDefinitions>
+      <TextBlock Text="Career" FontSize="26" FontWeight="SemiBold" />
+      <TextBlock Grid.Column="1" Text="{Binding Connection}" TextWrapping="Wrap" Foreground="#A8CFC1" VerticalAlignment="Center" HorizontalAlignment="Right" />
+    </Grid>
+    <Border Grid.Row="1" Background="#203C35" CornerRadius="7" Padding="12,8" Margin="0,0,0,10" Visibility="{Binding HasActive,Converter={StaticResource BoolVisibility}}">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="2*" />
+          <ColumnDefinition Width="2*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <StackPanel>
+          <TextBlock Text="ACTIVE ASSIGNMENT" FontSize="10" Foreground="#A8CFC1" />
+          <TextBlock Text="{Binding ActiveHeading}" TextWrapping="Wrap" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding Active.Payload}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Margin="10,0">
+          <TextBlock Text="{Binding Active.RouteText}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding ActiveAircraft}" FontSize="10" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding ActiveProgress}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+        <StackPanel Grid.Column="2">
+          <Button Content="View job" Command="{Binding ActiveBoardCommand}" Padding="10,4" />
+          <Button Content="Open Load Manager" Command="{Binding ActiveLoadCommand}" Padding="10,4" />
+        </StackPanel>
+      </Grid>
+    </Border>
+    <TextBlock Grid.Row="2" Text="{Binding Error}" Foreground="#F0B47B" TextWrapping="Wrap" />
+    <TabControl x:Name="Sections" Grid.Row="3" SelectedIndex="{Binding Navigation.Section,Mode=TwoWay}">
+      <TabItem Header="Overview">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <Grid Margin="12,18">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="2*" />
+              <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <StackPanel DataContext="{Binding Overview}" Margin="0,0,20,0">
+              <DockPanel Margin="0,0,0,18">
+                <Border DockPanel.Dock="Left" Width="62" Height="62" Background="#203C35" CornerRadius="10" Margin="0,0,14,0" ToolTip="{Binding LogoDescription}">
+                  <TextBlock Text="{Binding Monogram}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="22" Foreground="#A8CFC1" />
+                </Border>
+                <StackPanel>
+                  <TextBlock Text="{Binding Company}" FontSize="25" FontWeight="SemiBold" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding Role}" FontSize="16" Foreground="#A8CFC1" TextWrapping="Wrap" />
+                </StackPanel>
+              </DockPanel>
+              <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Margin="0,0,0,20" />
+              <TextBlock Text="Operating base" Foreground="#9FB4C1" />
+              <TextBlock Text="{Binding Base}" TextWrapping="Wrap" FontSize="17" Margin="0,4,0,14" />
+              <TextBlock Text="Employment pay" Foreground="#9FB4C1" />
+              <TextBlock Text="{Binding Pay}" FontSize="18" Margin="0,4,0,14" TextWrapping="Wrap" />
+              <TextBlock Text="Activities" Foreground="#9FB4C1" />
+              <TextBlock Text="{Binding Activities}" TextWrapping="Wrap" Margin="0,4,0,14" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" DataContext="{Binding Overview}">
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <TextBlock Text="Your career" Style="{StaticResource Title}" />
+                  <TextBlock Text="{Binding Pilot}" FontSize="18" />
+                  <TextBlock Text="{Binding Employment}" TextWrapping="Wrap" Margin="0,8" />
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <TextBlock Text="Assigned / authorised fleet" Style="{StaticResource Title}" />
+                  <TextBlock Text="{Binding Fleet}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
+              <TextBlock Text="Company initials are a placeholder. Assigned bases do not establish physical aircraft locations." TextWrapping="Wrap" Foreground="#9FB4C1" FontSize="11" />
+            </StackPanel>
+          </Grid>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Fleet">
+        <Grid Margin="0,12">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+          <Grid Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="2*" />
+              <ColumnDefinition Width="3*" />
+            </Grid.ColumnDefinitions>
+            <ComboBox x:Name="FleetSelector" ItemsSource="{Binding Fleet.Aircraft}" SelectedValuePath="Id" SelectedValue="{Binding Fleet.SelectedId,Mode=TwoWay}" HorizontalContentAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel>
+                    <TextBlock Text="{Binding Type}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Registration}" FontSize="10" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <StackPanel Grid.Column="1" Margin="12,0">
+              <TextBlock Text="{Binding Fleet.Selected.Ownership}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Fleet.Selected.Restrictions}" Foreground="#F0B47B" TextWrapping="Wrap" />
+            </StackPanel>
+          </Grid>
+          <TabControl x:Name="AircraftSections" Grid.Row="1" SelectedIndex="{Binding Navigation.AircraftSection,Mode=TwoWay}">
+            <TabItem Header="Aircraft">
+              <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="14">
+                  <TextBlock Text="{Binding Fleet.Selected.Type}" FontSize="23" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Fleet.Identity}" TextWrapping="Wrap" Foreground="#9FB4C1" Margin="0,8" />
+                  <TextBlock Text="{Binding Fleet.Selected.Assignment}" />
+                  <TextBlock Text="{Binding Fleet.Selected.Base}" TextWrapping="Wrap" Margin="0,8" />
+                  <TextBlock Text="{Binding Fleet.Selected.Location}" TextWrapping="Wrap" />
+                  <TextBlock Text="Simulator compatibility" Style="{StaticResource Title}" Margin="0,18,0,8" />
+                  <TextBlock Text="{Binding Fleet.Selected.Binding}" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding Fleet.Source.SelectedInstructions}" TextWrapping="Wrap" Margin="0,10" />
+                  <Button Content="Open Load Manager" Command="{Binding FleetLoadCommand}" HorizontalAlignment="Left" />
+                  <Expander Header="Identity / registration">
+                    <StackPanel DataContext="{Binding Fleet.Source}">
+                      <TextBlock Text="Installed package / version (your declaration)" TextWrapping="Wrap" />
+                      <TextBox Text="{Binding PackageVersion,UpdateSourceTrigger=PropertyChanged}" />
+                      <Button Content="Bind loaded livery to selected airframe" Command="{Binding BindCommand}" />
+                      <StackPanel Visibility="{Binding CanEnrolPersonal,Converter={StaticResource BoolVisibility}}">
+                        <TextBlock Text="Registration" />
+                        <TextBox Text="{Binding Registration,UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Content="Enrol loaded aircraft · unknown history" Command="{Binding EnrolCommand}" />
+                      </StackPanel>
+                      <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="#F0B47B" />
+                    </StackPanel>
+                  </Expander>
+                  <TextBlock Text="{Binding Fleet.Source.Overview}" TextWrapping="Wrap" Margin="0,18" />
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Condition &amp; Maintenance">
+              <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="14">
+                  <TextBlock Text="Condition &amp; Maintenance" Style="{StaticResource Title}" />
+                  <TextBlock Text="{Binding Fleet.MaintenancePolicy}" TextWrapping="Wrap" Foreground="#A8CFC1" />
+                  <TextBlock Text="{Binding Fleet.Source.Observations}" TextWrapping="Wrap" Margin="0,12" />
+                  <TextBlock Text="Components and observed exposure" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Fleet.Source.Components}" TextWrapping="Wrap" Margin="0,8" />
+                  <TextBlock Text="Recorded faults · absence of a record does not prove health" FontWeight="SemiBold" TextWrapping="Wrap" />
+                  <ItemsControl ItemsSource="{Binding Fleet.Source.Selected.Faults}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding Cause}" TextWrapping="Wrap" Margin="0,4" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="{Binding Fleet.Source.MaintenanceSummary}" TextWrapping="Wrap" Margin="0,12" />
+                  <Expander Header="Aircraft history">
+                    <TextBlock Text="{Binding Fleet.Source.History}" TextWrapping="Wrap" />
+                  </Expander>
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Load Manager">
+              <Grid>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="{Binding Fleet.Source.ConnectionStatus}" Foreground="#A8CFC1" TextWrapping="Wrap" Margin="8" />
+                <TabControl x:Name="LoadSections" Grid.Row="1" SelectedIndex="{Binding Navigation.LoadingSection,Mode=TwoWay}">
+                  <TabItem Header="Cargo &amp; dispatch">
+                    <ContentControl x:Name="CargoWorkspace" />
+                  </TabItem>
+                  <TabItem Header="Passengers">
+                    <ContentControl x:Name="PassengerWorkspace" />
+                  </TabItem>
+                  <TabItem Header="Aircraft systems / legacy recovery">
+                    <ContentControl x:Name="AircraftWorkspace" />
+                  </TabItem>
+                </TabControl>
+              </Grid>
+            </TabItem>
+          </TabControl>
+        </Grid>
+      </TabItem>
+      <TabItem Header="Find Work">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="12,16">
+            <TextBlock Text="Find work" Style="{StaticResource Title}" />
+            <TextBlock Text="{Binding Work.Switching}" TextWrapping="Wrap" Margin="0,0,0,16" />
+            <ItemsControl ItemsSource="{Binding Work.Employers}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                      <TextBlock Text="{Binding Name}" FontSize="21" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Role}" Foreground="#A8CFC1" Margin="0,4" />
+                      <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                      <WrapPanel Margin="0,10">
+                        <TextBlock Text="{Binding Base}" Margin="0,0,20,0" />
+                        <TextBlock Text="{Binding Pay}" />
+                      </WrapPanel>
+                      <TextBlock Text="{Binding Aircraft}" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding Work}" TextWrapping="Wrap" Margin="0,4" />
+                      <TextBlock Text="{Binding Status}" Foreground="#F0B47B" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Player-owned employers" Style="{StaticResource Title}" />
+            <TextBlock Text="{Binding Work.PlayerCompanies}" TextWrapping="Wrap" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Job Board">
+        <Grid Margin="0,12">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="3*" />
+            <ColumnDefinition Width="5*" />
+          </Grid.ColumnDefinitions>
+          <Grid Margin="0,0,14,0" DataContext="{Binding Board}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <DockPanel Margin="0,0,0,10">
+              <Button DockPanel.Dock="Right" Content="Refresh work" Command="{Binding RefreshCommand}" />
+              <ComboBox ItemsSource="{Binding Filters}" SelectedIndex="{Binding Filter}" />
+            </DockPanel>
+            <ListBox x:Name="JobList" Grid.Row="1" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected,Mode=TwoWay}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Margin="8,10">
+                    <TextBlock Text="{Binding Category}" FontSize="10" Foreground="#A8CFC1" />
+                    <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding RouteText}" TextWrapping="Wrap" Margin="0,5" />
+                    <TextBlock Text="{Binding Payload}" TextWrapping="Wrap" FontSize="11" />
+                    <TextBlock Text="{Binding Aircraft}" TextWrapping="Wrap" FontSize="11" Margin="0,4" />
+                    <TextBlock Text="{Binding Status}" Foreground="#9FB4C1" TextWrapping="Wrap" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+          <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel DataContext="{Binding Board}">
+              <local:CareerJobMap x:Name="JobMap" Height="220" />
+              <DockPanel Margin="0,4,0,12">
+                <Button DockPanel.Dock="Right" Content="Fit route" Click="FitRoute" Padding="8,3" />
+                <TextBlock Text="Map data © OpenStreetMap contributors · prototype reference" TextWrapping="Wrap" FontSize="10" Foreground="#9FB4C1" />
+              </DockPanel>
+              <TextBlock Text="{Binding Selected.Title}" FontSize="23" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Selected.Purpose}" TextWrapping="Wrap" Margin="0,8" />
+              <TextBlock Text="{Binding Selected.RouteText}" TextWrapping="Wrap" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding Selected.Distance}" Margin="0,6" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Estimate}" Foreground="#9FB4C1" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Selected.Payload}" TextWrapping="Wrap" Margin="0,10" />
+              <TextBlock Text="{Binding Selected.Aircraft}" TextWrapping="Wrap" />
+              <ComboBox ItemsSource="{Binding AircraftChoices}" SelectedItem="{Binding SelectedAircraft}" DisplayMemberPath="Name" />
+              <TextBlock Text="{Binding Selected.Compensation}" Foreground="#A8CFC1" TextWrapping="Wrap" Margin="0,8" />
+              <TextBlock Text="{Binding Selected.Requirements}" TextWrapping="Wrap" />
+              <WrapPanel Margin="0,10">
+                <Button Content="Accept job" Command="{Binding AcceptCommand}" />
+                <Button Content="Open Load Manager" Command="{Binding LoadCommand}" />
+              </WrapPanel>
+              <TextBlock Text="{Binding Progress}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Error}" TextWrapping="Wrap" Foreground="#F0B47B" />
+              <Expander Header="Mission operations / recovery">
+                <ContentControl x:Name="MissionWorkspace" />
+              </Expander>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </TabItem>
+      <TabItem Header="Create Jobs">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="12,16" DataContext="{Binding OwnerJobs}">
+            <TextBlock Text="Create jobs" Style="{StaticResource Title}" />
+            <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" Margin="0,0,0,16" />
+            <TextBlock Text="{Binding EmptyState}" TextWrapping="Wrap" Foreground="#9FB4C1" Margin="0,0,0,12" />
+            <StackPanel Visibility="{Binding HasOwnedOperations,Converter={StaticResource BoolVisibility}}">
+              <TextBlock Text="Your owned site operation" FontWeight="SemiBold" />
+              <ComboBox ItemsSource="{Binding OwnedOperations}" SelectedItem="{Binding SelectedOperation}" DisplayMemberPath="SiteName" />
+              <StackPanel DataContext="{Binding Operations}">
+                <TextBlock Text="Origin" />
+                <ComboBox ItemsSource="{Binding LogisticsOrigins}" SelectedItem="{Binding SelectedLogisticsOrigin}" />
+                <TextBlock Text="Destination" />
+                <ComboBox ItemsSource="{Binding LogisticsDestinations}" SelectedItem="{Binding SelectedLogisticsDestination}" />
+                <TextBlock Text="Cargo" />
+                <ComboBox ItemsSource="{Binding AvailableLogisticsCargo}" SelectedItem="{Binding SelectedLogisticsCargo}" />
+                <TextBlock Text="{Binding OriginCargoAvailability}" TextWrapping="Wrap" />
+                <TextBlock Text="Quantity (kg)" />
+                <TextBox Text="{Binding LogisticsQuantity,UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Text="{Binding CargoEconomics}" TextWrapping="Wrap" />
+                <TextBlock Text="Pilot payout ($) · existing contract rules" />
+                <TextBox Text="{Binding LogisticsPayout,UpdateSourceTrigger=PropertyChanged}" />
+                <ComboBox ItemsSource="{Binding RoadFallbackOptions}" SelectedIndex="{Binding RoadFallbackSelection}" />
+                <TextBlock Text="{Binding LogisticsCommitment}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Error}" TextWrapping="Wrap" Foreground="#F0B47B" />
+              </StackPanel>
+              <Button Content="Publish owned-site logistics job" Command="{Binding PublishCommand}" HorizontalAlignment="Left" />
+            </StackPanel>
+            <TextBlock Text="{Binding Error}" TextWrapping="Wrap" Foreground="#F0B47B" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+  </Grid>
+</UserControl>

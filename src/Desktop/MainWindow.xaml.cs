@@ -42,6 +42,20 @@ public partial class MainWindow : Window
         model = suppliedModel ?? new(dryRun ? BuilderServices.CreateDesktopDryRun() : new BuilderServices(), Environment.GetEnvironmentVariable("MSFS2024_SDK", EnvironmentVariableTarget.User) ?? Environment.GetEnvironmentVariable("MSFS2024_SDK") ?? "",careerStore:careerReady?careerStore:null,employerDestinations:destinations);
         employerCatalogue=destinations;
         DataContext = model;
+        // Move the original views once. Every entry point uses these same controls/view models and native coordinators.
+        var cargoWorkspace = (FrameworkElement)CargoTab.Content; CargoTab.Content = null; cargoWorkspace.DataContext = model.CargoJourney;
+        var passengerWorkspace = (FrameworkElement)PassengerTab.Content; PassengerTab.Content = null; passengerWorkspace.DataContext = model.Passengers;
+        var aircraftWorkspace = (FrameworkElement)LegacyAircraftTab.Content; LegacyAircraftTab.Content = null; aircraftWorkspace.DataContext = model.AircraftLoading;
+        var legacyJobWorkspace = (FrameworkElement)LegacyJobsTab.Content; LegacyJobsTab.Content = null; legacyJobWorkspace.DataContext = model.Jobs;
+        var recoveryPages = new TabControl();
+        recoveryPages.Items.Add(new TabItem { Header = "Aircraft systems", Content = aircraftWorkspace });
+        recoveryPages.Items.Add(new TabItem { Header = "Legacy job recovery", Content = legacyJobWorkspace });
+        var legacyAircraftPages = ((Grid)aircraftWorkspace).Children.OfType<TabControl>().Single();
+        ((TabItem)legacyAircraftPages.Items[0]).Visibility = Visibility.Collapsed; legacyAircraftPages.SelectedIndex = 1;
+        CareerHub.AttachLoadingWorkspaces(cargoWorkspace, passengerWorkspace, recoveryPages);
+        CareerHub.AttachMissionWorkspaces(new CareerMissionActions { DataContext = model.Offshore }, new CareerPlatformDiagnostics { DataContext = model.OffshoreDiagnostic });
+        model.Career.NavigationRequested += () => MainTabs.SelectedItem = CareerTab;
+        model.Career.Navigation.PropertyChanged += (_, _) => EnsureCareerTracking();
         model.Jobs.PropertyChanged+=(_,args)=>
         {
             if(args.PropertyName is nameof(EmployedCargoJobsViewModel.ShowOfferCompensation) or nameof(EmployedCargoJobsViewModel.ShowReservedCompensation))
@@ -84,6 +98,7 @@ public partial class MainWindow : Window
             await model.Passengers.RefreshAsync(); await model.Offshore.RefreshAsync();
             await model.AircraftLoading.InitializeAsync();
             await model.Operations.RefreshAsync();
+            await model.Career.RefreshAsync();
             if (!model.IsDryRun) worldTimer.Start();
             WorldClock.Text = DateTimeOffset.Now.ToString("dd MMM yyyy · HH:mm · 'Local time'");
         };
@@ -93,7 +108,7 @@ public partial class MainWindow : Window
         WorldClock.Text = DateTimeOffset.Now.ToString("dd MMM yyyy · HH:mm · 'Local time'");
         if (refreshingWorld || model.IsBusy || model.Jobs.IsBusy || model.Passengers.IsBusy || model.Operations.IsBusy) return;
         refreshingWorld = true;
-        try { await model.Jobs.RefreshLiveAsync(); await model.Passengers.RefreshAsync(); await model.Offshore.RefreshAsync(); await model.Operations.RefreshAsync(); await model.Fleet.AdvanceMaintenanceAsync(DateTimeOffset.UtcNow); }
+        try { await model.Jobs.RefreshLiveAsync(); await model.Passengers.RefreshAsync(); await model.Offshore.RefreshAsync(); await model.Operations.RefreshAsync(); await model.Fleet.AdvanceMaintenanceAsync(DateTimeOffset.UtcNow); await model.Career.RefreshAsync(); }
         finally { refreshingWorld = false; }
     }
     private void OpenDependencySetup(object sender,RoutedEventArgs e)
@@ -145,19 +160,28 @@ public partial class MainWindow : Window
     private void MainTabsChanged(object sender,SelectionChangedEventArgs e)
     {
         if(!IsInitialized || !ReferenceEquals(e.Source,MainTabs)||!careerReady)return;
+        if(ReferenceEquals(MainTabs.SelectedItem,LegacyJobsTab)){model.Career.Show(CareerSection.JobBoard);return;}
+        if(ReferenceEquals(MainTabs.SelectedItem,LegacyAircraftTab)){model.Career.Show(CareerSection.Fleet);return;}
+        if(ReferenceEquals(MainTabs.SelectedItem,CargoTab)){OpenCargoDispatch(this,new RoutedEventArgs());return;}
+        if(ReferenceEquals(MainTabs.SelectedItem,PassengerTab)){model.Career.Navigation.AircraftSection=2;model.Career.Navigation.LoadingSection=1;model.Career.Show(CareerSection.Fleet);return;}
+        if(ReferenceEquals(MainTabs.SelectedItem,OffshoreTab)){model.Career.Show(CareerSection.JobBoard);return;}
         BuilderFooter.Visibility=ReferenceEquals(MainTabs.SelectedItem,BuilderTab)?Visibility.Visible:Visibility.Collapsed;
-        if(ReferenceEquals(MainTabs.SelectedItem,OffshoreTab)) _=model.Offshore.RefreshAsync();
-        if(!model.IsDryRun && (MainTabs.SelectedIndex is 1 or 2 or 3 or 4 || ReferenceEquals(MainTabs.SelectedItem,PassengerTab) || ReferenceEquals(MainTabs.SelectedItem,CargoTab) || ReferenceEquals(MainTabs.SelectedItem,OffshoreTab)) && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
+        if(ReferenceEquals(MainTabs.SelectedItem,CareerTab)){_=model.Career.RefreshAsync();EnsureCareerTracking();}
+        if(!model.IsDryRun && (ReferenceEquals(MainTabs.SelectedItem,OperationsTab)||ReferenceEquals(MainTabs.SelectedItem,TrackingTab)) && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error))
             _=model.Tracking.ConnectAsync();
     }
-    private void OpenAircraftLoading(object sender,RoutedEventArgs e)=>MainTabs.SelectedIndex=2;
-    private void OpenCargoDispatch(object sender,RoutedEventArgs e)=>MainTabs.SelectedItem=CargoTab;
-    private void OpenOffshore(object sender,RoutedEventArgs e)=>MainTabs.SelectedItem=OffshoreTab;
+    private void EnsureCareerTracking()
+    {
+        if(!model.IsDryRun && ReferenceEquals(MainTabs.SelectedItem,CareerTab) && model.Career.Navigation.Section==1 && model.Career.Navigation.AircraftSection==2 && model.Tracking.State is (TrackingState.Disconnected or TrackingState.Error)) _=model.Tracking.ConnectAsync();
+    }
+    private void OpenAircraftLoading(object sender,RoutedEventArgs e){model.Career.Navigation.AircraftSection=2;model.Career.Navigation.LoadingSection=2;model.Career.Show(CareerSection.Fleet);}
+    private void OpenCargoDispatch(object sender,RoutedEventArgs e){model.Career.Navigation.AircraftSection=2;model.Career.Navigation.LoadingSection=0;model.Career.Show(CareerSection.Fleet);}
+    private void OpenOffshore(object sender,RoutedEventArgs e)=>model.Career.Show(CareerSection.JobBoard);
     private async void PrepareReservedJobs(object sender,RoutedEventArgs e)
     {
         var selected=ReservedJobsList.SelectedItems.Cast<CargoJobDisplay>().ToArray();
         await model.Jobs.PrepareReservedJobsAsync(selected);
-        if(string.IsNullOrEmpty(model.Jobs.Error))MainTabs.SelectedIndex=2;
+        if(string.IsNullOrEmpty(model.Jobs.Error))OpenAircraftLoading(this,new RoutedEventArgs());
     }
     private void SelectAllNumericText(object sender,KeyboardFocusChangedEventArgs e)
     { if(sender is TextBox textBox)textBox.SelectAll(); }
@@ -278,7 +302,7 @@ public partial class MainWindow : Window
     private void NewAirport(object sender,RoutedEventArgs e){if(MayDiscardEdits())model.NewAirport();}
     private void CreateSiteFromLibrary(object sender,RoutedEventArgs e)
     { if(MayDiscardEdits()){model.NewAirport();MainTabs.SelectedItem=BuilderTab;} }
-    private void BackToMySites(object sender,RoutedEventArgs e)=>MainTabs.SelectedIndex=5;
+    private void BackToMySites(object sender,RoutedEventArgs e)=>MainTabs.SelectedItem=SitesTab;
     private async void OpenAirport(object sender,RoutedEventArgs e)
     {
         if(model.SelectedAirport is not {} airport||!MayDiscardEdits())return;

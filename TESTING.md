@@ -90,3 +90,6 @@ For an explicitly requested local distribution, the existing `scripts/Publish-De
 ## Failure reporting
 
 Report command, exact commit/dirty status, runner/SDK, test totals, failures/skips, TRX/log location and evidence level. Distinguish infrastructure blockage from assertions. Never infer live MSFS acceptance from synthetic tests, UI screenshots or a successful publish. Never invoke `App build`, Package Tool or install scripts to make ordinary CI pass.
+# Career Hub coverage
+
+`CareerHubTests` exercises actual catalogue presentation, read-only refresh, persistent GUID selection, delegated passenger acceptance, loading navigation, source-selection mismatch, restricted platform operations, observation geography and owner permissions. `SiteUiSmoke/CareerHubSmoke.cs` exercises the actual MainWindow Career control, same-instance loading integration, route/area updates and ordinary desktop layouts. Screenshots `career-hub-*.png` are synthetic hosted WPF evidence only; no simulator acceptance follows from them. The existing company cargo acceptance smoke now uses the unified board. See [handoff](docs/handoffs/career-hub.md) for exact results.

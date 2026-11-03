@@ -78,3 +78,6 @@ Physical GUIDs do not make title/model or transient simulator object IDs ownersh
 `ReplayWorkflowBackend` replays historical survey frames, generates real XML and simulates compilation. Its `frontier_test_only` packages are not flyable and must never enter real Community. General flight/condition replay is later work.
 
 Mapsui/OSM tiles are a limited prototype dependency. SDK installation downloads are interactive and separate from CI. The self-contained development executable includes .NET, not MSFS or its SDK. Existing Microsoft template provenance/EULA remain in `src/MsfsSdk/Templates`; do not copy installed assets or samples into new work.
+# Career Hub integration (2026-11-03)
+
+Career presentation composes existing services through `CareerHubViewModel` and small Overview/Fleet/JobBoard/Work/OwnerJobs models. `CareerNavigation` carries transient section, job and physical-airframe context. `CareerHubControl` embeds the original loading controls, reparented once by MainWindow; it creates no second simulator/loading lifecycle. `CareerJobMap` uses the existing Mapsui framework and resolved routes/observation areas. Acceptance, inventory, payload recovery, flight proof and wages remain in their existing authoritative services. No save schema changes. See [Career Hub](docs/career-hub.md) and [handoff](docs/handoffs/career-hub.md).

@@ -33,6 +33,7 @@ public sealed class PassengerTransfersService
     private AircraftTelemetry? latest;
     public string Reason => monitor.Reason;
     public bool HasBoardedPassengers => Transfers.Any(x => x.State == PassengerTransferState.Boarded);
+    public bool HasPayloadOwnership => world?.PassengerTransports.Any(t => t.Payload is not null && t.State is not (PassengerCarriageState.Disembarked or PassengerCarriageState.Planned or PassengerCarriageState.Reserved)) == true;
     public async Task RequireNoBoardedPassengersAsync(CancellationToken token)
     {
         var current = await store.LoadAsync(token).ConfigureAwait(false);

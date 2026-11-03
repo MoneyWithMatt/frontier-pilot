@@ -47,6 +47,7 @@ public sealed class PassengerTransfersViewModel : INotifyPropertyChanged
         set { if (value is null || value.Id == selectedType) return; selectedType = value.Id; Changed(); }
     }
     public bool HasBoardedPassengers => service.HasBoardedPassengers;
+    public bool HasPayloadOwnership => service.HasPayloadOwnership;
     public PassengerTransfersViewModel(PassengerTransfersService service, Action? connect = null)
     {
         this.service = service; this.connect = connect;

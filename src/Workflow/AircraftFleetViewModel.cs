@@ -122,6 +122,7 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
     }
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? FleetChanged;
+    public Func<Guid?, string?>? SelectionGuard { get; set; }
     public IReadOnlyList<PhysicalAirframe> Aircraft => fleet.Aircraft.Where(Authorized).ToArray();
     public IReadOnlyList<FleetAircraftRow> AircraftRows=>Aircraft.Select(a=>new FleetAircraftRow(a)).ToArray();
     public Guid? SelectedAirframeId
@@ -132,7 +133,7 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
     public PhysicalAirframe? Selected
     {
         get => fleet.Selected is {} selected&&Authorized(selected)?selected:null;
-        set { Run(()=>{ if(value is not null&&!Authorized(value))throw new InvalidOperationException("This aircraft is not assigned by your current employer.");if (value?.Id == fleet.SelectedId || blocked || closed || maintenanceBusy) return; EndSession("Aircraft selection changed"); bindingConfirmationRequired=false; fleet = fleet with { SelectedId = value?.Id }; dirty = true; Save(); Reconcile(); }); }
+        set { Run(()=>{ if(value is not null&&!Authorized(value))throw new InvalidOperationException("This aircraft is not assigned by your current employer.");if (value?.Id == fleet.SelectedId || blocked || closed || maintenanceBusy) return; if(SelectionGuard?.Invoke(value?.Id) is {} problem) throw new InvalidOperationException(problem); EndSession("Aircraft selection changed"); bindingConfirmationRequired=false; fleet = fleet with { SelectedId = value?.Id }; dirty = true; Save(); Reconcile(); }); }
     }
     public string Registration { get => registration; set { registration = value; Notify(); } }
     public string PackageVersion { get => package; set { package = value; Notify(); } }

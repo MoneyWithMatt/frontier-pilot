@@ -1,0 +1,13 @@
+<UserControl x:Class="FrontierAirportBuilder.Desktop.CareerPlatformDiagnostics" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <StackPanel Margin="0,8">
+    <TextBlock Text="Qualification experiments · no career pay" FontWeight="SemiBold" />
+    <TextBlock Text="These read-only recorders do not enable platform jobs, fly the aircraft or change payload." TextWrapping="Wrap" Margin="0,6" />
+    <TextBlock Text="{Binding RoundTripRequirements}" TextWrapping="Wrap" />
+    <WrapPanel>
+      <Button Content="Observe base–platform–base test" Command="{Binding RoundTripCommand}" />
+      <Button Content="Observe static contact cycle" Command="{Binding StartCommand}" />
+      <Button Content="Stop diagnostic" Command="{Binding StopCommand}" />
+    </WrapPanel>
+    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" />
+  </StackPanel>
+</UserControl>

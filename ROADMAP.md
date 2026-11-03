@@ -42,3 +42,8 @@ Sources: [physical aircraft](docs/physical-aircraft-v1.md), [wages](docs/employe
 4. **Phase 4:** bounded, durable repair/retest coordination with explicit budgets and escalation. No quota bypass or automatic resumption is claimed today.
 
 Current product priority is completing Offshore through the staged tasks above. Passenger/platform/survey mission designs and gameplay balancing require approved specifications. Other deferred work includes qualified failure/position effects, permanent wear calibration, individual fuel/payload migration, broader live acceptance, customer signing/updating and production map service selection.
+# Career Hub checkpoint (2026-11-03)
+
+- In development: unified Career Overview, Fleet/condition/shared Load Manager, employer browsing, mapped Job Board and authorised owned-site job creation. [Scope and boundaries](docs/career-hub.md).
+- Pending: hosted WPF/screenshots and packaging on the feature commit, then human UI review.
+- Deferred: active employer switching, aviation-company manager permissions, freelance/business marketplace and multiplayer hiring. Existing SF50/H125/platform qualification gates stay in force.

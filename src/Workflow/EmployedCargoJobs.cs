@@ -240,6 +240,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     public bool ShowOfferCompensation=>Offers.Any(x=>x.HourlyWage is null);
     public bool ShowReservedCompensation=>ReservedJobs.Any(x=>x.HourlyWage is null);
     public IReadOnlyList<CompanyAircraftType> CompanyAircraftChoices=>(jobs as EmployedCargoJobsService)?.AircraftChoices(SelectedOffer)??[];
+    public IReadOnlyList<CompanyAircraftType> AircraftChoicesFor(CargoJobDisplay job)=>(jobs as EmployedCargoJobsService)?.AircraftChoices(job)??[];
     public CompanyAircraftType? SelectedCompanyAircraft
     {
         get=>CompanyAircraftChoices.FirstOrDefault(x=>x.Id==(jobs as EmployedCargoJobsService)?.SelectedAircraftTypeId);
