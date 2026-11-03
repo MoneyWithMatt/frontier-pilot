@@ -50,7 +50,7 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
         ActiveBoardCommand = new(() => { if (Active is {} a) Board.Selected = a; Show(CareerSection.JobBoard); });
         ActiveLoadCommand = new(() => _ = OpenLoadAsync(Active), () => Active is { Family: CareerJobFamily.Cargo or CareerJobFamily.Personnel });
         FleetLoadCommand = new(() => { Navigation.AircraftSection = (int)CareerAircraftSection.LoadManager; Show(CareerSection.Fleet); }, () => fleet.Selected is not null);
-        fleet.FleetChanged += () => { Fleet.Notify(); Project(); };
+        fleet.FleetChanged += () => { Fleet.Notify(); Project(); Airports.Select(Board.Selected?.DestinationLocationId); };
         foreach (var source in new INotifyPropertyChanged[] { cargo, passengers, offshore, operations }) source.PropertyChanged += (_, _) => Project();
         Board.SelectionChanged += ()=>{Airports.Select(Board.Selected?.DestinationLocationId);Airports.Notify();Notify();};
     }
@@ -80,7 +80,7 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
         { Error = "Keep the current airframe while cargo plans or passenger payload ownership/recovery are active. No assignment was transferred."; Notify(); return false; }
         fleet.SelectedAirframeId = id;
         if (fleet.Selected?.Id != id) { Error = fleet.Status; Notify(); return false; }
-        Error = ""; Fleet.Notify(); Board.Notify(); Notify(); return true;
+        Error = ""; Airports.Select(Board.Selected?.DestinationLocationId); Fleet.Notify(); Board.Notify(); Notify(); return true;
     }
     public async Task OpenLoadAsync(CareerJobRow? job)
     {
