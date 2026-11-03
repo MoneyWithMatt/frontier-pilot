@@ -60,6 +60,19 @@ public sealed class NamibiaPlaytestingTests : IDisposable
         now=Now.AddHours(3).AddMinutes(59); // 15:59; before the saved 16:15 cadence, past a UTC three-hour boundary.
         var same=(await service.LoadAsync()).Offers.Select(j=>j.DestinationLocationId).Distinct().Order().ToArray();Assert.Equal(first,same);
     }
+    [Fact] public async Task ScheduledRefreshShowsFreshOffersFirstWithoutReplacingAcceptedOrStillValidWork()
+    {
+        var now=Now;var store=new MemoryEconomyStateStore();var service=new EmployedCargoJobsService(store,employer:Employer("Missionary"),utcNow:()=>now);
+        var first=await service.LoadAsync();var accepted=first.Offers.First();service.SelectedAircraftTypeId="c208";await service.AcceptAsync(accepted.JobId);
+        var before=(await store.LoadAsync())!;now=Now.AddHours(3).AddSeconds(1);
+        var next=await service.LoadAsync();Assert.NotEmpty(next.Offers);
+        Assert.True(next.Offers[0].ExpiresUtc>first.Offers[0].ExpiresUtc);
+        Assert.Equal(next.Offers.Select(j=>j.ExpiresUtc).OrderByDescending(x=>x),next.Offers.Select(j=>j.ExpiresUtc));
+        Assert.Contains(next.Offers,j=>first.Offers.Any(old=>old.JobId==j.JobId));
+        Assert.Contains(next.Offers,j=>first.Offers.All(old=>old.JobId!=j.JobId));Assert.Contains(next.ReservedJobs,j=>j.JobId==accepted.JobId);
+        var after=(await store.LoadAsync())!;Assert.Equal(before.Jobs.Single(j=>j.Id==accepted.JobId),after.Jobs.Single(j=>j.Id==accepted.JobId));
+        Assert.Equal(before.Shipments,after.Shipments);Assert.Equal(before.FinancialLedger,after.FinancialLedger);
+    }
     [Fact] public void VisitPersistenceIsAirportLevelWithAircraftAsContextOnly()
     {
         var c=new EmployerDestinationCatalogue();var store=new AirportVisitStore(root);var report=Visit(c,"FYAM");

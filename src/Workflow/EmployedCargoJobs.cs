@@ -150,7 +150,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
                 if (operationNeedIds.Contains(requirement.NeedId)) return true;
                 if(Employer is not null)return x.EmployerBusinessId==Employer.Id&&world.RecurringDemand.Any(d=>d.NeedId==requirement.NeedId&&d.IsEnabled)&&destinations!.Diagnose(Employer.Category).Any(d=>d.Enabled&&d.Resolved?.StableId==requirement.DestinationLocationId);
                 return catalogue.Locations.SingleOrDefault(c => c.StableId == requirement.DestinationLocationId)?.CanGenerateOrdinaryLiveJobs == true; })
-            .OrderBy(x => x.Id, StringComparer.Ordinal).Select(Display).ToArray();
+            .OrderByDescending(x=>x.OfferedUtc).ThenBy(x => x.Id, StringComparer.Ordinal).Select(Display).ToArray();
         var reserved = world.Jobs.Where(x => x.State == EconomyJobState.Accepted).Select(Display)
             .OrderByDescending(x => x.ShipmentState is ShipmentState.Loaded or ShipmentState.InTransit)
             .ThenBy(x => x.JobId, StringComparer.Ordinal).ToArray();
