@@ -1,5 +1,9 @@
 # Design decisions
 
+## Specific-platform presence testing — 2026-11-02
+
+Matt explicitly separated deck-presence feasibility from autonomous helicopter flight. Native helipad starts and diagnostic repositioning may test known-platform contact/elevation and reject water, without requiring a human pilot. OL400/H125 live diagnostic accepts sustained deck presence and rejects near/under-pad sea level even when MSFS reports on-ground. This does not qualify other rigs, production transport loading, a flown leg or wages. An isolated staged no-pay transport test can follow without a flown approach; only the existing tracker may construct normal delivery evidence. [Evidence and next integration slice](offshore-landing-proof.md#latest-focused-result--platform-presence-2026-11-02).
+
 ## Aircraft condition foundation — 2026-10-19
 
 - Condition recording is opt-in and read-only in the existing CLI, with an independent SimConnect diagnostic session. Optional-variable failures cannot terminate the existing position source or feed delivery evidence.
@@ -265,3 +269,12 @@ Aircraft-condition diagnostics use one session lifecycle shared by manual comman
 
 ## Physical aircraft authority — 2026-10-27
 The physical fleet GUID is distinct from company aircraft-type permission and legacy title/model tracking. Legacy tracking remains preserved/unassigned; the fleet snapshot atomically owns per-airframe location and condition. Automatic observation never requires Record. Maintenance uses durable intents plus existing authoritative economy ledger/UTC scheduling; unknown and vendor authority never receive assumed Frontier wear. No production fault or positioning adapter/facility is enabled without qualification. See physical-aircraft-v1.md.
+
+## 2026-11-02: Fixed on-pad payload diagnostic boundary
+Approved run54 read-only .NET capture confirmed20.218 s native-start OL400 deck presence and actual H125 nine-station layout. A fixed5 kg Cargo1 diagnostic is prepared separately. It cannot create normal flight/delivery/payment evidence. Existing native payload writes are reused with durable intent and immediate/retained readback; no MTOW/CG veto. It remains a controlled diagnostic with no concurrent changes, not production shared ownership. Exact changed-artifact plus physical scenario approval precede execution; interrupted mass is unresolved, never guessed away. See [specification](specs/offshore-platform-payload-diagnostic.md).
+
+## 2026-11-02: Physical diagnostic acceptance is specific, not general cargo authority
+Approved run56 completed a real5kg load/removal cycle on OL400 / H125 Cargo1, with immediate/retained readback, new20s deck dwell before each write and unchanged unrelated payload. Native-start presence remains separate from flown arrival. This qualifies only the fixed static diagnostic in that simulator version/session; production H125 jobs, departure, mixed transport/passenger capacity and recovery remain gated. See [receipt](offshore-platform-presence-v1.md#approved-physical-execution--ol400--h125-2026-11-02).
+
+## 2026-11-02: Isolated platform test is not a career assignment
+The next approved engineering slice implements diagnostic deck/contact-loss/return milestones outside normal FlightAttemptTracker. It reuses presence validation/condition recording and preserves historical facts without live permission on disconnect/review. Normal delivery proof, wages and production destination gates remain unchanged. A bounded constrained vertical test is prepared to avoid replaying an unqualified free-flight controller; freeze-toggle semantics are SDK findings only until exact live readback/physics acceptance. No freely flown takeoff claim from such constraints. See [spec](specs/offshore-platform-visit.md).

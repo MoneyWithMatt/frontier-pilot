@@ -1,0 +1,221 @@
+# Offshore helicopter landing proof
+
+## Latest focused result — platform presence, 2026-11-02
+
+Subsequent [read-only .NET app preparation](offshore-platform-presence-v1.md) ports this diagnostic into Core/CLI with 23 new synthetic cases. That new executable has not yet been run; Python live evidence below does not establish .NET adapter acceptance or a completed loading/test-mission loop.
+
+Matt clarified that he cannot fly helicopters or attend the PC. The immediate question is **can the application distinguish this platform's deck from nearby water?** A full autonomous flight is not required for that question. Native helipad starts/repositioning are authorised diagnostic setup; they still cannot create normal flight proof, wages or completion. This supersedes earlier sequencing that made a flown approach a prerequisite for every presence experiment.
+
+**PASS for the isolated H125/OL400 presence diagnostic:** native Free Flight OL400 / Valaris 109, departure **H01 (helipad)**, then **Ready to fly**, places the H125 on the actual deck in normal physics without a position write. Pre-entry exterior preview initially showed water and is not aircraft-contact evidence. Readback after entering was at the pad centre, about 133.21 ft MSL, on-ground 1, slew 0, contact flags set. The existing detector found **59.5546794 continuous simulation seconds / 220 candidate samples**. Full 90-second recording contains pre-entry sea-level samples as well as post-entry deck rest; only the latter qualifies.
+
+| Actual simulator case | Result with deck-specific detector |
+|---|---|
+| Native H01 start, normal-physics deck rest | Accepted sustained deck presence. |
+| Sea level approximately 102 m west | **Rejected all 427 samples**, 34.35 simulation seconds. MSFS nonetheless reported on-ground/contact during water contact. |
+| Sea level directly beneath pad, almost identical latitude/longitude | **Rejected all 448 samples**, 34.55 simulation seconds. This isolates the elevation requirement rather than relying on horizontal distance. |
+| Attempted drop from deck +8 ft | Watchdog aborted after first frame at 11.18 kt. No landing/hover accepted; failure retained. |
+| Native restart and live read-only detector | **Confirmed after 20.2332746 seconds**, longest uninterrupted rest **39.8262123 seconds / 147 samples**. |
+
+Water near the rig ranged -2.7294 to 2.2768 ft MSL; directly beneath the pad -2.8893 to 2.2904 ft MSL. Both contained on-ground=1 and contact bits despite being below the deck. **On-ground alone is unsafe.** The diagnostic combines the known pad centre (8 m conservative radius within the 19 m deck), known deck elevation plus empirically observed H125 reference-height window (0.3–1.5 m above deck), on-ground AND contact, low ground/vertical motion, non-slew/rate-1, object/title identity and uninterrupted wall/simulation time. Surface type 2 was observed in water; no generic crash/failure qualification is inferred from it. Water is rejected irrespective of whether MSFS itself declares a crash.
+
+`scripts/offshore_rest_observer.py` now supports a **read-only live monitor**, using the existing recorder unchanged:
+
+```powershell
+python scripts/offshore_rest_observer.py <new-private-recording.jsonl> --live-sdk 'C:/MSFS 2024 SDK' --seconds 40
+```
+
+It logs source/SDK hashes, observations and presence transitions; no setters, flight controls or save/economy access. Current presence is revoked on invalid contact/height/continuity and on monitor close; historical longest rest never authorises a later operation. Actual transition at **13:31:03.096914 UTC**: `diagnosticDeckRest=true`, 20.2332746 continuous seconds. Recording ended at 13:31:22.999720 UTC with current presence explicitly cleared. Final physical sample: -22.938928762349086, 14.504617448383726; 133.2099106 ft MSL, surface 130.7543582 ft, groundspeed 0.0018355 kt, vertical speed 0.0001039 ft/s, on-ground 1, slew 0, several contacts. Native restart is not return flight. Simulator subsequently left with Escape menu open on the pad; no need to resume the old failed flight controller.
+
+`scripts/offshore_contact_scenarios.py` is a **separate mutation artifact** for exactly named OL400 tests: one INITPOSITION (OnGround=0), bounded 35-second physics observation, fixed pad/water targets, stationarity/title/site guards and slew restoration. No payload/fuel/engine/fault/configuration writes. Exact-site recovery only; no arbitrary coordinate interface. Default geographic, speed, tilt, elevation, time and identity limits remain enforced. Deck-drop failure proves why successful native starts are the preferred recovery; do not blindly repeat it. Initial position readback/optional contact groups can briefly disagree, so no one-frame result is accepted as stable deck presence. Frozen render views can lag diagnostics; never use a slew screenshot as contact proof.
+
+### Evidence and verification
+
+Raw logs and requested screenshots remain private/ignored under `.ci-output-offshore-live`; no public upload. Same simulator/SDK hashes as earlier experiments. No production code, saves, career rates, loading state, bindings, Community or other branches changed.
+
+| Private file | SHA256 |
+|---|---|
+| ol400-native-pad-spawn-01.jsonl | `7ca80d2f0667e34134b1b09d76cca7173fd08b4947fe5d74de99101a20a11eea` |
+| ol400-water-negative-01.jsonl | `9dccce3843f9c814b6e349e7342171a6a78493de391a061119d8ada16b76a6e2` |
+| ol400-under-deck-water-01.jsonl | `a504ce77c8420226531413b886e75bbfcc84dd9252b82dbbbe2fee3cc38f8ac0` |
+| ol400-deck-drop-01.jsonl (aborted) | `c4ccdbc7489d4cc653aa4663c13a7b5d2f5072c74222b62bd7616e4217ffc36f` |
+| ol400-live-contact-monitor-01.jsonl | `35e021dc819139b02c4760e4dea4828445059486875f7436b898fc5924dc5ab4` |
+
+Executed monitor source SHA256 `65ab958884bb8e7aabe37ce8fa57fc175ecfff40383a188aaf08876555679fea`. Scenario initial source `94ef78b5eab9e5f7a071d1a99e3784baabd8f18c5d4971089a91773df88f86e8`; after adding the same-position under-deck case, `602ab1eb54e4556b83ff696a10cf68241a7f62bab83a820870289f0f8b22f7b0`. Each scenario retains an exact create-only source sidecar. Recorder unchanged at `e4700a1f3d482a6fbe77073722b2aad3c3259a5149e83edff0b123dc00513bad`. Screenshots: `screenshots/ol400-native-pad-cockpit.jpg`, `ol400-water-negative-cockpit.jpg`, `ol400-live-contact-confirmed.jpg`; screenshot state must be read with its telemetry, not treated as a flown mission.
+
+Local `python -m unittest discover -s tests/OffshoreProbe -q`: **31/0/0**. Added fixed-scenario guard/native-surface checks and revocation after established presence (contact loss, sea level, slew, disconnect, repeated simulation time). Local `pwsh -NoProfile -File scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath 'C:/Users/mattr/Documents/ChatGPT/Frontier Pilot/.tools/dotnet/dotnet.exe' -OutputDirectory .ci-output-platform-contact-01`: **744/0/0**, Release zero warnings/errors, SDK 8.0.424, source **8128916f5d9e9eb8019cf81fccf53cbb59504234 / dirty** with initial scenario/tests; live-monitor extension followed, no .NET changes. Hosted committed verification is recorded in handoff/PR. Automated tests remain separate from the live cases above.
+
+### Next integration slice
+
+The **presence feasibility question is answered for OL400/H125**, not for every rig and not by a production arrival adapter yet. The shipped app has not been wired to this diagnostic. Use these actual readings to build/review a restricted platform-presence adapter and an isolated no-pay test mission. Loading/unloading and duplicate/recovery behaviour are a separate acceptance sequence through the existing shared transport coordinator, not simulated by this observer. PR #3's current H125 title/model, payload stations, boarding transitions and platform transport remain unqualified (`docs/offshore-career.md`, shared-passenger handoff, inspected read-only). Establish the H125 loading configuration/readback before sending passenger or cargo weight. Do not merge or overwrite PR #3/#8 to shortcut this.
+
+A diagnostic mission may deliberately stage endpoint presence without claiming that a leg was flown; its staged transition must not construct `VerifiedDeliveryEvidence`, award wages or enter production generation. Normal mission flight requirements remain the tracker’s responsibility. Next: specific rig adapter -> H125 loading inspection -> isolated load/stage/deck-confirm/unload test with retries and no duplicate mass/removal -> repeat per additional authored platform. Full fly-out/return and sustained hover remain separate acceptance items, **not a blocker to this diagnostic transport test**. No need for Matt to learn helicopter flying or be at home.
+
+## Live result — 2026-11-02
+
+| Question | Result | Boundary |
+|---|---|---|
+| Actual Windows/MSFS access | PASS | Controlled running MSFS 2024 1.9.21.0 through supported Windows automation. |
+| Discover an existing platform | PASS | Complete facility scan, helipad detail, simulator UI name and visual inspection of OL400 / Valaris 109. |
+| H125 rests on elevated deck in normal physics | PASS, static/repositioned only | 34.36 continuous simulation seconds of rest candidates, slew off, on-ground/contact and visual deck evidence. |
+| Flown FYWB → platform approach/touchdown | UNVERIFIED | No controlled outbound flight. Placement cannot satisfy this. |
+| FYWB normal-physics lift-off / contact-clear observation | PASS, short unstable flight only | 69 airborne observations over 5.3536 simulation seconds; all 20 contact flags clear. Drift watchdog aborted. |
+| Stationary hover negative control | UNVERIFIED | No sustained stationary hover; FYWB lift-off is not a rig departure. |
+| Return flight / Frontier mission completion | UNVERIFIED | No return, tracker integration, credit or wages. |
+
+This is **not a flown landing or completed Offshore mission**. The aircraft was repositioned; the first normal-physics read already reported on-ground. This establishes that the deck supports the loaded H125 and exposes distinct surface/contact telemetry. It does not prove dynamic touchdown, map skid indices or qualify production missions. The conditional experimental round trip remains deferred.
+
+## Isolation / existing systems
+
+Branch `codex/offshore-landing-proof`, [draft PR #9](https://github.com/MoneyWithMatt/frontier-pilot/pull/9), starts directly from master `d5ff51650789e45e46c8828893acaba071d957e7`. Never merge automatically. Unmerged passenger PR #3 and cargo PR #8 were inspected, not modified or merged. No production source, career rates, saves, payload, failures, ownership or Community changes.
+
+`src/Workflow/FlightAttemptTracker.cs` remains the sole delivery-proof creator; airport-area arrival cannot identify a particular elevated deck. `src/MsfsSdk/LiveAirportCatalogue.cs` discovers facilities, not arbitrary scenery collision. `src/MsfsSdk/LiveAircraftCondition.cs` is diagnostic. Future experimental arrival needs a qualified specific pad, uninterrupted physical contact/rest, prior flight proof and outbound/return stages. These scripts never create economy evidence.
+
+## Actual simulator discovery
+
+The read-only scan received **85,717 facilities**, with **16 within 100 NM of FYWB**, then queried every nearby facility without incomplete detail replies. Actual detailed packet kinds were 28 (data) and 29 (end), resolving conditional-PICK numbering ambiguity for this SDK build. Raw replies remain private.
+
+| Identifier | Helipad centre latitude, longitude | Reported MSL deck | Size / heading | Status |
+|---|---|---|---|---|
+| OL400 / Valaris 109 | -22.93892875313759, 14.50461745262146 | 39.89600372314453 m | 19 × 19 m / 180° | Visual structure and normal-physics static deck rest tested; harbour-side rig in this scenery. |
+| OL617 | -22.807804942131042, 14.492918998003006 | 47.06900405883789 m | 19 × 19 m / 135° | Facility candidate only. |
+| OL689 | -22.786728143692017, 14.501441717147827 | 36.900001525878906 m | 19 × 19 m / 180° | Facility candidate only. |
+
+OL400 is **8.186 NM** from FYWB's world-list reference. Its airport reference (-22.938931100070477, 14.50408548116684, altitude 0 m) is about **54 m west of its pad centre**. Using the airport reference can place an aircraft below the structure. DevMode airport search identified **OL400 — Valaris 109**. This does not establish current real-world vessel position or exact scenery-package attribution.
+
+FYWB altitude differs by record: world-list 96.316 m, AIRPORT detail 84.11 m, H01 helipad 82.193 m. H01 centre is -22.977764792740345, 14.64223399758339. The baseline H125 was stationary near that pad. Never substitute airport reference altitude for deck elevation.
+
+## Live sequence and failures
+
+Matt approved the presented diagnostic and continued experiment with **“I approve whatever you need.”** Actual aircraft TITLE was `H125 Passengers`, real object ID **540672** returned through request proxy **0**. UI: Airbus H125 / Asobo Studio / Passengers. Its advertised seat count is not verified passenger configuration.
+
+1. Complete discovery succeeded. Two initial recordings failed because the recorder incorrectly required real object ID to equal proxy 0. Both error logs are preserved. It now binds actual identity from the explicit aircraft TITLE response and checks every later reply against it. No camera/avatar substitution or removal of identity checks. A 30-second FYWB baseline completed.
+2. Entered active cockpit at FYWB H01. No engine/failure/payload controls sent. DevMode Teleport → OL400 enabled slew and placed the aircraft below the deck at the airport reference. Contact bits/on-ground in that slew state are invalid landing evidence.
+3. Separate one-shot helper placed the stationary H125 at the pad centre, deck + 8 ft CG altitude. Readback: obstacle-inclusive AGL ~8.14 ft, on-ground 0, slew 1. This is placement, not hovering.
+4. **Failed release:** disabling slew through the UI produced ~99 kt groundspeed and departure from the pad. Later samples show a shoreline touchdown, not a platform landing. Re-enabled slew; preserved all data. Neither trajectory nor its ground contact qualifies a mission. The cause of that transition is not fully established.
+5. Bounded release helper sent SLEW_OFF **before** the single INITPOSITION write (deck + 3.5 ft, OnGround=0, airspeed=0). First readback already reported ground contact at the deck; no resolved descent/touchdown was captured. It observed normal physics for at most 35 wall seconds, then restored slew. No continuing position corrections. Independent recorder/UI confirm slew off during observation and on afterward.
+6. Offline analysis found **34.3584 continuous simulation seconds**, 129 accepted rest-candidate samples. These include placement and remain diagnostic. Saved cockpit screenshot during normal physics and exterior screenshot after slew restoration. Private evidence is not uploaded to public GitHub.
+
+Actual PC access works. The remaining limitation is **dependable continuous helicopter flight control**. The subsequent controller experiment below establishes input mappings and short FYWB lift-off, but not dependable hover or approach. Do not claim an unattended mission.
+
+## Recorded static telemetry
+
+Settled subset **10:51:42.051–10:52:10.911 UTC**: 108 samples over **28.864 simulation seconds**, same aircraft, rate 1, slew off, all on-ground. These are actual simulator readings, not fixtures.
+
+| Field | Range |
+|---|---|
+| Aircraft MSL altitude | 133.20992–133.21160 ft |
+| Ground/surface altitude | ~130.754358 ft / 39.854 m, ~0.042 m below facility elevation |
+| Obstacle-inclusive AGL | 2.45556–2.45724 ft |
+| AGL minus CG | 0.05556–0.05724 ft |
+| Groundspeed | 0.000156–0.005123 kt |
+| Vertical speed | -0.0000614–0.001983 ft/s |
+| SIM ON GROUND / IS SLEW ACTIVE | 1 / 0 |
+| Contact | Several indices 8–15 set; individual bits vary. No verified skid map. |
+| Terrain AIRCRAFT AGL | ~133.23 ft, unlike obstacle-inclusive AGL ~2.457 ft. |
+
+At 10:52:00.928 UTC: position -22.93892875958535, 14.504617428771214, essentially pad centre; rotor RPM ~406, combustion 1. Touchdown lat/lon still referenced the earlier shoreline touchdown (-22.941588472383653, 14.504482267875531). Those stored fields cannot identify this new deck rest. Surface-relative zero speed also cannot prove contact.
+
+## Diagnostic code / authority
+
+- `scripts/offshore_probe.py`: read-only native allowlist, complete facility scan/raw packets, fresh title-bracketed core/optional readings, hashes/time/units. Core failure stops; optional failure is explicit. No setters, control events or career access.
+- `scripts/offshore_static_placement.py`: **separate mutation artifact**. Exact H125, stationary slew within 500 m of OL400, fixed pad only, one SDK INITPOSITION write; optional SLEW_OFF/ON and bounded release watchdog. Aborts on >10 m offset, >5 kt, >10° tilt or altitude outside deck -3/+15 ft; at most 35 wall seconds. No arbitrary coordinate interface, engine/fault/payload controls or flight proof. Disconnect can prevent slew restoration. Never ordinary CI or blind live retry.
+- `scripts/offshore_rest_observer.py`: offline diagnostic tolerances, not production arrival rules. Requires pad/elevation, identity/time continuity, rate 1/non-slew, on-ground/contact/low motion. Pause, gap, missing data or identity change resets current interval. Repositioned/spawned aircraft can satisfy it; no touchdown, flight, mapped skid or mission authority.
+
+Pause handling is conservative time-continuity plus UI observation, not a qualified pause-event adapter. Effective aircraft CFG/contact geometry and complete package-version hash remain unavailable in opaque streamed archives. No decryption, asset copying, installed SDK edits or scenery installation. Existing platform suffices for further tests; custom scenery is not justified yet.
+
+## Official SDK findings — separate from live evidence
+
+- [Facility definitions](https://docs.flightsimulator.com/msfs2024/flighting/programming-apis/simconnect/api-reference/facilities/simconnect_addtofacilitydefinition/): helipad children expose position, metres elevation, dimensions and heading, not collision guarantees.
+- [Motion/AGL](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/aircraft-simvars/aircraft-miscellaneous-variables/), [contact](https://docs.flightsimulator.com/msfs2024/flighting/programming-apis/simvars/aircraft-simvars/aircraft-brake-and-landing-gear-variables/), [helicopter variables](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/helicopter-variables/): terrain/surface signals differ; numeric contacts require aircraft-specific interpretation.
+- [INITPOSITION](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simconnect/api-reference/structures-and-enumerations/simconnect_data_initposition/) uses feet/degrees and DWORD ground/airspeed, may reload scenery, is unsuitable for continuous user-aircraft motion. [SetDataOnSimObject](https://docs.flightsimulator.com/msfs2024/flighting/programming-apis/simconnect/api-reference/events-and-data/simconnect_setdataonsimobject/) documents full structure writes; HRESULT is not contact confirmation.
+- [Slew events](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/key-events/aircraft-flight-control-events/) are diagnostic, never flight. [Legacy helicopter events](https://docs.flightsimulator.com/html/Programming_Tools/Event_IDs/Helicopter_Specific_Events.htm) need current-aircraft calibration: installed `ModelBehaviorDefs/Asobo_EX1/Generic/Shared/Helpers/Helpers.xml` collective `2 * 16384 -` conversion contradicts a simple unipolar assumption.
+- [Boat helipads](https://docs.flightsimulator.com/msfs2024/flighting/content-configuration/modular-simobjects/simobjects/boats/) have moving-surface considerations; no moving-vessel test here.
+
+## Private evidence / exact provenance
+
+Ignored `.ci-output-offshore-live` retains raw telemetry, failures, cache hashes and requested screenshots. Logs record exact executed source hashes, which can precede later log-label edits. No personal data uploaded publicly.
+
+| File | SHA256 |
+|---|---|
+| fywb-discovery-01.jsonl | `49aa5343f5dcd3e56bfbc14382f0f79b88de66f1fb780580d06f3d312fceaa91` |
+| h125-preflight-03.jsonl | `01a864203383e1765523136248b6a08cacab089b58b4300cec6296c24de88ca8` |
+| ol400-static-01.jsonl (failed release retained) | `5e51291ffb4e792abedc41caa3ff1710b2b2cd3a8181f1c73c5696c27e82e95b` |
+| ol400-static-02.jsonl | `15dfd743ee6d313231992b58fbe622a81eeed5e340cadb9a7d2e2b9bc3a29336` |
+| ol400-placement-01.jsonl | `fdde2b22036f72ef33b228aa7f03f8944721a02c71f751c7aeaa81769f0e0180` |
+| ol400-placement-02.jsonl | `c60520ab0f9758a050b775952b5ebc6286c02d7447984224499c1bb25811f86c` |
+
+Simulator version **1,9,21,0**, executable SHA256 `5cccf10e882be7aacd56e95e06ffb12986bcae08f3719879924b89cef1fbea70`; SDK DLL `e54a505be0b0a4cdc98dfb45f0c202ba9637f5d494c0919040bc89ac67d92adb`; header `3684c4b50630db2abec9815105498fa5b921c653f57423b9b5e6214a60caabea`. Executed recorder hash `e4700a1f3d482a6fbe77073722b2aad3c3259a5149e83edff0b123dc00513bad`; executed bounded-release hash `fd9405b99d230e6f153a38972713e2dc57b16fce1109b2c5a5e51df9699518cb`. H125 cache includes two readable archive hashes and an unreadable locked sound file; no complete effective aircraft-version identity.
+
+## Automated verification
+
+`python -m unittest discover -s tests/OffshoreProbe -v`: **21 passed / 0 failed**, no skips, no native connection. Packet/identity/allowlist/placement/watchdog/rest cases are synthetic, not simulator acceptance.
+
+`pwsh -NoProfile -File scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath 'C:/Users/mattr/Documents/ChatGPT/Frontier Pilot/.tools/dotnet/dotnet.exe' -OutputDirectory .ci-output-offshore-proof-02`: **744 .NET passed / 0 failed / 0 skipped**, Release zero warnings/errors, SDK 8.0.424. Dirty source `7834fec899b064f40c4d037d5055fb2767b3ec73` plus recorder/placement changes; offline observer added afterward, no .NET change. Receipt/TRX retained. 744 is master's baseline; unmerged cargo/passenger suites were not removed.
+
+Latest implementation **`88e70d7dba94450600cdf9def01a3e318b87c583`** passed [hosted run 48](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41433936110) on clean merge **`2577cbc1a09e7e53e66936323a6526da9a22a463`**: **744 .NET / 21 Python / 9 simulated guards / both WPF programs / packaging and uploads**, no test failures/skips. [Diagnostics](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41433936110/artifacts/13134549391) SHA256 `f4f919b593bc2b81449b5ab2be0185f4c13a17b093792272378ea052ad6bb087` independently checked against clean source receipts, TRX and smoke logs. Incidental app artifact was not downloaded/executed. Earlier runs 46/47 passed older code. No local WPF or packaged Frontier app launch. Follow-up checkpoint changes documentation only; see handoff for implementation provenance.
+
+The earlier static experiment ended on OL400. The subsequent controller experiment below ended near FYWB H01, with slew independently confirmed and Escape pause menu open. No further live operation should start without a fresh state check.
+
+## Next focused live procedure
+
+1. Freshly inspect current simulator, source and private logs. Do not blindly repeat a failed release. Keep aircraft/object/version identity throughout.
+2. Establish a concrete reviewed bounded cyclic/collective/pedal controller with ground-only range/sign/readback calibration and telemetry-loss/limit abort, or use a human pilot. This is the smallest missing capability; no further PC-access setup or purchase is needed.
+3. At FYWB record controlled lift, stationary hover and landing. Contact must clear while hovering and return at actual contact; no slew, pause or reposition in qualifying intervals. Resolve H125 skid mapping where possible.
+4. Fly FYWB H01 to OL400 **helipad centre**, recording approach/hover/descent/touchdown and >=20 continuous seconds at rest. Independently inspect skids/deck; retain failures. Reject airport-reference proximity, stale touchdown coordinates or zero speed alone.
+5. Return to FYWB with actual flight evidence. Then implement a separate no-pay experimental round-trip state machine using tracker authority, identity/teleport/disconnect/restart guards and regression tests. Keep production H125/platform destinations disabled until separately accepted.
+
+## Continued live controller experiment — 2026-11-02
+
+User explicitly requested unattended execution and granted PC/simulator access. Added a **separate experimental mutation artifact**, `scripts/offshore_hover_test.py`. It does not change the read-only recorder, production integration, controls configuration, payload/fuel, failures, saves, career state or Community. It is not a qualified autopilot. Exact H125 title and bounded OL400/FYWB H01 scenarios only. FYWB flight trials start in normal physical ground contact and send **no position/SLEW_OFF write**. OL400 staging remains labelled repositioning.
+
+Trials last at most 180 wall seconds, with identity, telemetry-continuity, rate, altitude, 7 m drift, 5 kt speed, 12-degree tilt and rotor-RPM aborts. Finally submits SLEW_ON, original collective/pedal and neutral cyclic; disconnect can prevent restoration. Generic YOKE readback does not verify helicopter cyclic input. FYWB's 5 m initial-location guard rejects post-abort status beyond that radius; use the independent read-only recorder to observe final state. Logs are create-only; final variant also retains an exact source sidecar.
+
+### SDK findings and empirical calibration
+
+- Official [helicopter events](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/key-events/helicopter-specific-events/) describe unipolar collective. Actual readback confirms **-16384 = 0%, -8192 = 25%**, matching the installed helper's bipolar conversion. This does not establish another aircraft's range.
+- `AXIS_TAIL_ROTOR_SET` returned exception **7 / NAME_UNRECOGNIZED**. The [SDK release notes](https://docs.flightsimulator.com/msfs2024/retail/introduction/sdk-release-notes/) name **ROTOR_AXIS_TAIL_ROTOR_SET**, which mapped successfully: raw +819 reads approximately -5% pedal, -819 reads +5%. Mapping is checked before sending controls. Failed mapping logs are preserved.
+- Disk pitch/bank index 0 remained zero; index 1 responded. No complete skid-index map or effective aircraft-package identity established.
+- OL400 staging bounced and one attempt exceeded 450 RPM (~475 RPM); aborted, not landed. Native UI Restart returned to FYWB at ~390 RPM, **not a return flight**. Object ID 540672 was reused while simulation time reset: never persistent airframe identity.
+
+### Actual flight attempts
+
+| Private log | Result |
+|---|---|
+| hover-fywb-trial-01.jsonl | First lateral feedback sign was wrong; exceeded 12-degree bank before lift-off. Aborted. |
+| hover-fywb-trial-02.jsonl | Corrected lateral sign, near level; reached initial 55% collective ceiling, no lift; 180-second timeout. |
+| hover-fywb-trial-03.jsonl | Increased ceiling to 65%, same abort envelope. Lift-off **12:15:04.887542 UTC**; >7 m drift abort **12:15:10.393227 UTC**. No qualified hover/descent/touchdown. |
+
+Latest run: **69 airborne observations / 5.3535728 simulation seconds**, on-ground 0, slew 0, all 20 contact flags 0. Altitude 269.39653–272.00398 ft MSL, baseline 269.29675 ft; groundspeed 0.9180–3.2182 kt, vertical speed 0.0281–0.9956 ft/s. Heading 336.43 to 316.17 degrees. Last watchdog frame: -22.977818797273436, 14.642198405675149; 272.01507 ft MSL; 3.20493 kt; 0.33911 ft/s vertical; bank -2.21535, pitch 0.25988 degrees. This is **FYWB flight, not platform departure**. The failure is autonomous horizontal/yaw control, not a proven landing-detector failure. Do not relax pad-sized bounds to obtain a pass.
+
+Readbacks changed around native Ready to Fly without script writes: fresh pre-entry ~3899 lb/brake 0; active flight ~4570 lb/brake handle ~0.991. Cause and H125 interpretation unresolved; not evidence that Frontier changed payload or that a physical brake prevented lift. No brake, engine, fault, fuel or payload writes were sent. Rotor RPM remained suitable during the final short lift.
+
+Independent final recorder at **12:23:04.751317 UTC** confirmed actual object 540672, slew 1, zero ground/vertical speed, all contacts clear, -22.977819652951528, 14.642198143631914, altitude 272.02152 ft. Bounded recorder/controller processes completed; then opened Escape pause menu. Aircraft is held above FYWB apron in slew, **not parked/landed**. Do not release slew blindly.
+
+### Continued evidence provenance
+
+Private ignored `.ci-output-offshore-live` retains all failures, independent recordings and source snapshots. No raw telemetry/screenshots publicly uploaded. Starting with final variant, create-only `.jsonl.source.py` captures exact source; preliminary variants retain hashes but not exact sidecar copies, limiting their reproducibility.
+
+| File | SHA256 |
+|---|---|
+| hover-fywb-trial-01.jsonl | `f2cc7816f79d7f9e79462e6378f77827c03fc0ddb66e974d09a0da085c7ac20b` |
+| hover-fywb-trial-02.jsonl | `866d487cdf543ecdfec5aa6501dbf1f1d1f49ecf81e6671ea264343ebf262e96` |
+| hover-fywb-trial-03.jsonl | `ae810bd8b043351cb1d737f162a269db5a5eb7246ec990f1027eed421be8eafe` |
+| hover-fywb-trial-03.jsonl.source.py | `1993deccff4eef8353b6efa16d36f7b1479a709e91cfd599e6537b76087b5c29` |
+| hover-fywb-flight-03.jsonl | `4ad09a5690155738db220b14546f0e644394ac5790e1a0cbfa8404af73ac73fc` |
+| hover-post-abort-readonly-01.jsonl | `a44f8c32ecb383bbe2305b286da45aed95381b3a964ffcb9b49f539e81ee6420` |
+
+### Continued automated checks and remaining test
+
+`C:/Users/mattr/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe -m unittest discover -s tests/OffshoreProbe -q`: **26 passed / 0 failed / 0 skipped**. New cases cover conversion, ground/aircraft envelope, allowlist, bounded feedback/gap refusal and contact-clear hover predicates. These are mocked/pure tests, not flight-control qualification.
+
+`pwsh -NoProfile -File scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath 'C:/Users/mattr/Documents/ChatGPT/Frontier Pilot/.tools/dotnet/dotnet.exe' -OutputDirectory .ci-output-offshore-hover-01`: **744 .NET passed / 0 failed / 0 skipped**, SDK 8.0.424, Release zero warnings/errors. Receipt source **f8a72a6157ef6192ef50b31fe7a6dedf98374314 / dirty**, with initial untracked controller/tests; subsequent controller refinements changed no .NET code. Hosted verification of committed continuation is recorded in handoff/PR.
+
+**Blocker:** present controller cannot sustain pad-sized hover. A human-flown instrumented approach is the shortest remaining acceptance path; otherwise dedicated controller tuning and airfield qualification are needed before another platform attempt. Neither needs a new platform or mission generator. After controlled hover and real deck landing/departure, add the isolated no-pay round-trip prototype through tracker authority. Production H125/platform gates remain disabled.
+
+Committed continuation **75c5022bbaebe85574751498c2d8b6d36824102e** passed [hosted run 51](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41444866937) on clean merge **dcd460e64891ea2b6834b3663d879a86130feb5c**: **744 .NET / 26 Python / 9 simulated guards / both WPF programs / packaging and uploads**, zero test failures/skips. [Diagnostics artifact](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41444866937/artifacts/13141956592), SHA256 `9af7ea284a1e7039c475a8bc627c5ff54e905a601567448a50f989681103eff7`, downloaded and verified against regression/smoke/package receipts (Passed, clean, SDK 8.0.424), TRX and logs. App bundle was not downloaded/executed. Subsequent checkpoint changes documentation only. Automated success does not qualify the flight controller or remaining simulator acceptance.
+
+## .NET continuation receipt
+The approved run54 read-only artifact has now confirmed actual OL400/H125 stable deck presence after20.218 s; actual H125 loading inspection returned nine stations. Initial paused capture correctly refused qualification. See [full receipt](offshore-platform-presence-v1.md#approved-read-only-execution--2026-11-02). This extends actual Python presence evidence to the .NET adapter, but neither proves a flown touchdown/departure nor qualifies production missions. A separate fixed5 kg on-pad diagnostic is prepared, not executed.
+
+## Actual physical payload test — 2026-11-02
+Matt approved and executed run56 fixed5kg diagnostic on native OL400 H01 using the H125. Cargo1 actual99.7903214 ->104.7903214 ->99.7903214kg; immediate/three-second retained checks passed, all unrelated stations preserved, gross delta agreed after observed fuel burn. Fresh stable deck presence20.2665s/20.2272s before the two operations. Exit0/Completed; no test weight remains. [Full evidence and exact acceptance boundary](offshore-platform-presence-v1.md#approved-physical-execution--ol400--h125-2026-11-02). Static test only; no actual flown takeoff/landing/mission/payment or production enablement. Simulator paused again on pad.

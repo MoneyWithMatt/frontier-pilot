@@ -31,6 +31,8 @@ jobs:
           global-json-file: global.json
       - name: Restore, Release build and xUnit
         run: ./scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath dotnet
+      - name: Offline offshore-probe packet tests (no simulator)
+        run: python -m unittest discover -s tests/OffshoreProbe -v
       - name: Verification script failure guards (simulated commands)
         run: pwsh -NoProfile -File ./scripts/Test-VerificationGuards.ps1
       - name: WPF smoke (synthetic data only)
@@ -58,4 +60,22 @@ jobs:
             .ci-output/tests/*.trx
             .ci-output/screenshots/*.png
           if-no-files-found: warn
+          retention-days: 7
+      - name: Upload experimental diagnostic CLI
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: FrontierPilot-experimental-cli-${{ github.sha }}
+          # Built by the same clean Release solution build; framework-dependent .NET 8.
+          # No live SDK, simulator configuration, recordings or user saves on this runner.
+          include-hidden-files: true
+          path: |
+            src/App/bin/Release/net8.0/
+            .ci-output/regression.json
+            .ci-output/smoke.json
+            .ci-output/package.json
+            scripts/offshore_vertical_contact_test.py
+            scripts/offshore_probe.py
+            scripts/offshore_static_placement.py
+            scripts/offshore_hover_test.py
+          if-no-files-found: error
           retention-days: 7

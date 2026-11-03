@@ -1,5 +1,9 @@
 # Build and testing
 
+Experimental .NET platform presence: `ExperimentalPlatformPresenceTests` adds 23 synthetic cases (767 .NET total at this checkpoint). Read-only CLI commands and their live approval/evidence boundary are documented in [platform presence](docs/offshore-platform-presence-v1.md). Hosted CI uploads the existing clean Release `src/App/bin/Release/net8.0` output plus stage receipts as a framework-dependent experimental CLI bundle; it is not automatically executed locally. Native .NET contact/loading inspection remains pending, separate from Python live tests.
+
+Offshore feasibility diagnostics: `python -m unittest discover -s tests/OffshoreProbe -v` runs 31 offline packet, identity, mutation-boundary, placement-layout/watchdog, rest-observation and experimental-controller guard/conversion cases without loading native code. The hosted Windows workflow runs these alongside the established .NET/WPF/guard/package stages. `scripts/offshore_rest_observer.py <recording.jsonl>` is an offline diagnostic; its rest candidates can include repositioning and never grant flight/mission proof. The separate `offshore_static_placement.py` and `offshore_hover_test.py` are bounded live-scenario mutation artifacts, never ordinary CI tests. Controller tests exercise pure functions/guards, never flight. Fixtures never establish simulator/aircraft/platform acceptance; [live procedure and evidence boundary](docs/offshore-landing-proof.md).
+
 ## Windows prerequisites
 
 Windows x64, Git, PowerShell 7.2+ and **.NET SDK 8.0.424**, pinned without roll-forward in `global.json`. Install the SDK from Microsoft's official distribution, or use GitHub's pinned `setup-dotnet` action. No MSFS installation, SDK, Community directory, private package source or personal save is needed for regression/build/publish.
@@ -74,3 +78,8 @@ For an explicitly requested local distribution, the existing `scripts/Publish-De
 ## Failure reporting
 
 Report command, exact commit/dirty status, runner/SDK, test totals, failures/skips, TRX/log location and evidence level. Distinguish infrastructure blockage from assertions. Never infer live MSFS acceptance from synthetic tests, UI screenshots or a successful publish. Never invoke `App build`, Package Tool or install scripts to make ordinary CI pass.
+
+Experimental platform payload coverage: `ExperimentalPlatformPayloadCycleTests` is synthetic (13 cases), with fake stations/frames, no SDK/real saves. It covers durable intents, retained readback, unrelated preservation, refusal/clamp/disconnect/manual conflict and advisory-only gross warnings. Native on-pad5 kg acceptance is separate, exact-build/scenario gated; see `docs/specs/offshore-platform-payload-diagnostic.md`. Do not run the physical CLI command as part of ordinary verification.
+
+## Restricted platform visit coverage
+`ExperimentalPlatformVisitTests` adds22synthetic cases (802.NET total); Python38includes7newconstrainedharness guard cases. `record-platform-visit`/`review-platform-visit` reuse create-only condition recordings, not user saves. Review tests use temporaryfiles and fake sources, never native SDK. Native constrained lift/contact loss remains unverified; both changed CLI and control-script artifacts/scenario require approval. See `docs/specs/offshore-platform-visit.md`. Previous “native inspection pending” checkpoint above is historical; run54/run56 live receipts in the platform report supersede it.

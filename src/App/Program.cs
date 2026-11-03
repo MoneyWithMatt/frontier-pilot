@@ -12,6 +12,88 @@ var json = new JsonSerializerOptions
 };
 try
 {
+    if (args.Length == 2 && args[0] == "review-platform-visit")
+    {
+        Console.WriteLine(JsonSerializer.Serialize(ExperimentalPlatformVisitRecording.Review(args[1]), json));
+        return 0;
+    }
+    if (args.Length == 4 && args[0] == "record-platform-visit")
+    {
+        if (!int.TryParse(args[2], out var seconds) || seconds is < 1 or > 900)
+            throw new ArgumentException("Platform visit observation duration must be 1–900 seconds.");
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(seconds));
+        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
+        Console.WriteLine("READ-ONLY EXPERIMENT: OL400 deck -> contact loss -> deck. No flight, payload, career or pay writes. Static/placed observations never become flown proof.");
+        PlatformVisitStatus? lastStatus = null;
+        await ExperimentalPlatformVisitRecording.RecordAsync(
+            new LiveAircraftCondition(args[3], new ExperimentalPlatformContactProfile()), args[1], stop.Token,
+            status =>
+            {
+                if (lastStatus?.Stage != status.Stage || lastStatus.CurrentDeckPermission != status.CurrentDeckPermission)
+                    Console.WriteLine(JsonSerializer.Serialize(status, json));
+                lastStatus = status;
+            });
+        Console.WriteLine("Recording closed; current permissions revoked. Review this create-only recording for historical diagnostic milestones.");
+        return 0;
+    }
+    if (args.Length == 4 && args[0] == "test-platform-payload" && args[3] == "--confirm-five-kilogram-diagnostic")
+    {
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
+        var source = new LiveAircraftCondition(args[2], new ExperimentalPlatformContactProfile());
+        await using var frames = source.ReadAsync(stop.Token).GetAsyncEnumerator(stop.Token);
+        async Task<ConditionFrame> Next(CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!await frames.MoveNextAsync()) throw new IOException("Platform observation source closed.");
+            return frames.Current;
+        }
+        Console.WriteLine("EXPERIMENTAL PHYSICAL TEST: 5 kg added to inspected H125 Cargo 1, retained/read back, then removed on OL400. No job, flight proof or money. Interruption leaves an unresolved journal; never blindly repeat.");
+        await new ExperimentalPlatformPayloadCycle(new SimConnectAircraftLoading(), Next)
+            .RunAsync(args[2], args[1], stop.Token);
+        Console.WriteLine("Diagnostic loading/unloading cycle completed. Review journal; no production transport qualification inferred.");
+        return 0;
+    }
+    if (args.Length > 0 && args[0] == "test-platform-payload")
+        throw new ArgumentException("Usage: test-platform-payload <new-private-journal.jsonl> <SDK root> --confirm-five-kilogram-diagnostic. Separate exact-build and physical-scenario approval required.");
+    if (args.Length == 3 && args[0] == "inspect-loading")
+    {
+        // Explicit create-only output; no personal stores or simulator setters.
+        await using var output = new FileStream(args[1], FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+        var snapshot = (await new SimConnectAircraftLoading().ReadAsync(args[2])).EnsureValid();
+        await JsonSerializer.SerializeAsync(output, snapshot, json);
+        Console.WriteLine($"Read-only loading inspection: {snapshot.Aircraft.Title} / {snapshot.Aircraft.Type}; {snapshot.PayloadStations.Count} stations. Saved {Path.GetFullPath(args[1])}. No payload/fuel writes.");
+        return 0;
+    }
+    if (args.Length == 4 && args[0] == "record-platform-contact")
+    {
+        if (!int.TryParse(args[2], out var seconds) || seconds is < 1 or > 300)
+            throw new ArgumentException("Platform observation duration must be 1–300 seconds.");
+        var presence = new ExperimentalPlatformPresence();
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(seconds));
+        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
+        Console.WriteLine("Experimental OL400/H125 contact monitor: READ ONLY, no flight/delivery proof or payment. A native start may establish diagnostic presence.");
+        PlatformPresenceStatus? previous = null;
+        try
+        {
+            var count = await new AircraftConditionRecorder().RecordAsync(
+                new LiveAircraftCondition(args[3], new ExperimentalPlatformContactProfile()), args[1], null, stop.Token,
+                onFrameRecorded: (_, frame) =>
+                {
+                    var status = presence.Observe(frame, DateTimeOffset.UtcNow);
+                    if (previous?.Stage != status.Stage)
+                        Console.WriteLine(JsonSerializer.Serialize(new { DiagnosticOnly = true, Platform = "OL400", Status = status }, json));
+                    previous = status;
+                });
+            Console.WriteLine($"Recorded {count} actual frames. Compatibility and mission acceptance remain separate.");
+            return count > 0 ? 0 : 1;
+        }
+        finally
+        {
+            Console.WriteLine(JsonSerializer.Serialize(new { DiagnosticOnly = true,
+                Status = presence.Reset("Monitor closed/disconnected; previous presence is no longer current.") }, json));
+        }
+    }
     if (args.Length == 7 && args[0] == "condition-airframe")
     {
         var record = AircraftConditionRecord.Create(args[2], args[3], args[4], args[5]);
@@ -48,7 +130,7 @@ try
     }
     if (args.Length is < 3 or > 4 || args[0] is not ("generate" or "build") || (args[0] == "generate" && args.Length != 3))
     {
-        Console.Error.WriteLine("Frontier Airport Builder 0.1 (CLI spike)\nUsage:\n  inspect <SDK root>\n  generate <airstrip.json> <new output directory>\n  build <airstrip.json> <new output directory> [SDK root]\n  record-condition <new.jsonl> <seconds 1-3600> <SDK root> [airframe.json]\n  condition-airframe <new.json> <label> <exact TITLE> <exact ATC MODEL> <package/version note> --confirm-model-binding\nAll geometry is in metres / true degrees. Output must not exist.");
+        Console.Error.WriteLine("Frontier Airport Builder 0.1 (CLI spike)\nUsage:\n  inspect <SDK root>\n  inspect-loading <new.json> <SDK root> (read only)\n  record-platform-contact <new.jsonl> <seconds 1-300> <SDK root> (experimental read only)\n  record-platform-visit <new.jsonl> <seconds 1-900> <SDK root> (experimental read only)\n  review-platform-visit <existing.jsonl> (offline historical review only)\n  generate <airstrip.json> <new output directory>\n  build <airstrip.json> <new output directory> [SDK root]\n  record-condition <new.jsonl> <seconds 1-3600> <SDK root> [airframe.json]\n  condition-airframe <new.json> <label> <exact TITLE> <exact ATC MODEL> <package/version note> --confirm-model-binding\nAll geometry is in metres / true degrees. Output must not exist.");
         return 2;
     }
     var input = JsonSerializer.Deserialize<AirstripDefinition>(await File.ReadAllTextAsync(args[1]), json)
