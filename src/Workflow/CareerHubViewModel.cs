@@ -45,7 +45,7 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
         Board = new(Navigation, cargo, passengers, offshore, fleet) { Reload = RefreshAsync, OpenLoad = () => OpenLoadAsync(Board!.Selected) };
         OwnerJobs = new(operations) { Reload = RefreshAsync };
         ActiveBoardCommand = new(() => { if (Active is {} a) Board.Selected = a; Show(CareerSection.JobBoard); });
-        ActiveLoadCommand = new(() => _ = OpenLoadAsync(Active), () => HasActive);
+        ActiveLoadCommand = new(() => _ = OpenLoadAsync(Active), () => Active is { Family: CareerJobFamily.Cargo or CareerJobFamily.Personnel });
         FleetLoadCommand = new(() => { Navigation.AircraftSection = (int)CareerAircraftSection.LoadManager; Show(CareerSection.Fleet); }, () => fleet.Selected is not null);
         fleet.FleetChanged += () => { Fleet.Notify(); Notify(); };
         foreach (var source in new INotifyPropertyChanged[] { cargo, passengers, offshore, operations }) source.PropertyChanged += (_, _) => Project();
@@ -81,7 +81,7 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
     }
     public async Task OpenLoadAsync(CareerJobRow? job)
     {
-        if (job is not { Accepted: true }) return;
+        if (job is not { Accepted: true, Family: CareerJobFamily.Cargo or CareerJobFamily.Personnel }) return;
         await RefreshAsync();
         job = Board.All.FirstOrDefault(j => j.Key == job.Key) ?? job;
         var candidates = fleet.Aircraft.Where(a => job.AircraftTypes.Length == 0 || job.AircraftTypes.Contains(a.CompanyTypeId!)).ToArray();

@@ -67,7 +67,7 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
             CareerJobFamily.Cargo => cargo.SelectedOffer?.JobId == Selected.SourceId && cargo.AcceptCommand.CanExecute(null) && (AircraftChoices.Count == 0 || SelectedAircraft is not null),
             CareerJobFamily.Personnel => passengers.SelectedTransfer?.Id == Selected.SourceId && passengers.AcceptCommand.CanExecute(null), CareerJobFamily.Observation => offshore.Selected?.Id == Selected.SourceId && offshore.AcceptCommand.CanExecute(null), _ => false }));
         RefreshCommand = new(() => _ = RefreshAsync(), () => !busy);
-        LoadCommand = new(() => _ = OpenLoad?.Invoke(), () => !busy && Selected is { Accepted: true });
+        LoadCommand = new(() => _ = OpenLoad?.Invoke(), () => !busy && Selected is { Accepted: true, Family: CareerJobFamily.Cargo or CareerJobFamily.Personnel });
     }
     public async Task RefreshAsync()
     {

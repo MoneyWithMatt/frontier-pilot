@@ -102,5 +102,19 @@ public sealed class CareerHubTests : IDisposable
         Assert.Equal(CareerCatalogue.Employers.Single(e=>e.Category=="Offshore").Role, new CareerStore(root).Load().Employment!.Role);
         await vm.Fleet.ShutdownAsync();
     }
+    [Fact] public async Task CargoDraftPreventsAircraftSwitchThroughBothCareerAndOriginalFleetSelector()
+    {
+        var vm = Create(); await Initialize(vm);
+        var before = vm.Fleet.Selected!.Id; var other = vm.Fleet.Aircraft.First(a => a.Id != before).Id;
+        var draft = new CargoConsignmentRow { JobId = "synthetic-draft", Description = "Synthetic cargo", Origin = "Synthetic origin", Destination = "Synthetic destination", Status = "Reserved", AvailableHere = 10, DesiredAboard = 10 };
+        vm.CargoJourney.Consignments.Add(draft);
+        Assert.False(vm.CargoJourney.CanChooseAircraft);
+        Assert.False(vm.Career.SelectAircraft(other)); Assert.Equal(before, vm.Fleet.SelectedAirframeId);
+        vm.Fleet.SelectedAirframeId = other; Assert.Equal(before, vm.Fleet.SelectedAirframeId);
+        Assert.Contains("No assignment was transferred", vm.Fleet.Status);
+        Assert.Contains(draft, vm.CargoJourney.Consignments); Assert.Equal(10, draft.DesiredAboard);
+        vm.CargoJourney.Consignments.Clear(); Assert.True(vm.Career.SelectAircraft(other)); Assert.Equal(other, vm.Fleet.SelectedAirframeId);
+        await vm.Fleet.ShutdownAsync();
+    }
     public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }
 }

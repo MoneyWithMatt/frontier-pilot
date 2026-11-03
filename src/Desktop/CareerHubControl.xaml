@@ -231,7 +231,7 @@
               <ComboBox ItemsSource="{Binding Filters}" SelectedIndex="{Binding Filter}" />
             </DockPanel>
             <ListBox x:Name="JobList" Grid.Row="1" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected,Mode=TwoWay}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-              <ListBox.Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+              <ListBox.Style>
                 <Style TargetType="ListBox">
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding IsBusy}" Value="True">
@@ -290,7 +290,7 @@
             <TextBlock Text="Create jobs" Style="{StaticResource Title}" />
             <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" Margin="0,0,0,16" />
             <TextBlock Text="{Binding EmptyState}" TextWrapping="Wrap" Foreground="#9FB4C1" Margin="0,0,0,12">
-              <TextBlock.Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+              <TextBlock.Style>
                 <Style TargetType="TextBlock">
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding HasOwnedOperations}" Value="True">
