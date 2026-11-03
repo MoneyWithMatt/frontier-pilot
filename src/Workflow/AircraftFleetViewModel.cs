@@ -400,6 +400,24 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
         => CheckDispatchCore(identity, jobs.Select(j => new DispatchAssignment(j.JobId, j.CompanyAircraftTypeId, j.LoadedCargoKilograms > 0, j.OriginLatitude, j.OriginLongitude)).ToArray());
     public string? CheckPassengerDispatch(FlightAircraftIdentity identity, PassengerTransfer transfer)
         => CheckDispatchCore(identity, [new(transfer.Id, transfer.AircraftTypeId, false, transfer.Origin.Latitude, transfer.Origin.Longitude)]);
+    public string? CheckOffshoreDispatch(FlightAircraftIdentity identity, OffshoreMission mission)
+        => CheckDispatchCore(identity, [new(mission.Id, "vision-jet", false, mission.Base.Latitude, mission.Base.Longitude)]);
+    public void ReconcileOffshoreHistory(EconomyWorld state)
+    {
+        lock (gate)
+        {
+            if (blocked || closed || maintenanceBusy) return;
+            foreach (var mission in state.OffshoreMissions.Where(m => m.State == OffshoreMissionState.Completed))
+            {
+                var a = fleet.Aircraft.SingleOrDefault(x => x.Id == mission.AirframeId);
+                var id = new Guid(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("offshore-return/" + mission.Id))[..16]);
+                if (a is null || !Authorized(a) || a.History.Any(h => h.Id == id) ||
+                    !a.Bindings.Any(b => b.Title == mission.Aircraft!.Title && b.Model == mission.Aircraft.Type)) continue;
+                Update(FleetOperations.Event(a, id, mission.CompletedUtc!.Value, "Offshore observation completed",
+                    mission.Area.Name + "; returned to " + mission.Base.Name + ". Verified airborne time " + TimeSpan.FromTicks(mission.AirborneTicks).TotalMinutes.ToString("0.0") + " min; economy ledger owns wages. No position, condition or hours inferred."), true);
+            }
+        }
+    }
     private sealed record DispatchAssignment(string Id, string? TypeId, bool AlreadyAboard, double? OriginLatitude, double? OriginLongitude);
     private string? CheckDispatchCore(FlightAircraftIdentity identity, IReadOnlyList<DispatchAssignment> assignments)
     {

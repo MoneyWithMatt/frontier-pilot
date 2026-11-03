@@ -130,6 +130,7 @@ internal static partial class Program
                 employedWindow.Close();
                 await CheckPassengerTransfers(folder);
                 await CheckCargoJourney(folder);
+                await CheckOffshoreMissions(folder);
                 result=0;
             }
             catch(Exception e){Console.Error.WriteLine(e);}

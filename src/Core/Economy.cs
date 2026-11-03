@@ -10,7 +10,7 @@ public enum EconomicLocationStatus { PrototypeOnly, ResearchCandidate, MsfsVerif
 public enum TransportRequirementState { Open, Reserved, Fulfilled, Cancelled }
 public enum EconomyJobState { Offered, Accepted, RoadInTransit, Completed, Cancelled, Forfeited, Expired }
 public enum ShipmentState { Available, Reserved, InTransit, Delivered, Consumed, Sold, Cancelled, Loaded, Forfeited }
-public enum FinancialTransactionKind { JobPayment, SiteFounding, LogisticsCargoPurchase, LogisticsSaleRevenue, RoadTransportCost, PilotWage, AircraftMaintenance, CargoLegWage }
+public enum FinancialTransactionKind { JobPayment, SiteFounding, LogisticsCargoPurchase, LogisticsSaleRevenue, RoadTransportCost, PilotWage, AircraftMaintenance, CargoLegWage, OffshoreMissionWage }
 public enum InventoryTransactionKind { LegacyOpeningBalance, SystemGatewaySupply, ShipmentReserved, DeliveryReceived, OperationInitialStock, OperationConsumption, OperationProduction, ShipmentReservationReleased, PartialDeliveryReceived, PersistentGatewayOpeningStock, PersistentTransferOut, PersistentTransferIn, PlayerContractReserved, PlayerContractReleased, PlayerContractDelivered }
 public enum ShipmentCargoTransferKind { LoadedToAircraft, UnloadedAtOrigin, UnloadedAtDestination, UnloadedAndForfeited }
 
@@ -99,6 +99,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
     IReadOnlyList<FinancialTransaction> FinancialLedger)
 {
     public IReadOnlyList<PassengerTransfer> PassengerTransfers { get; init; } = [];
+    public IReadOnlyList<OffshoreMission> OffshoreMissions { get; init; } = [];
     public IReadOnlyList<CargoAirframeManifest> CargoAirframes { get; init; } = [];
     public IReadOnlyList<PassengerTransport> PassengerTransports { get; init; } = [];
     public IReadOnlyList<MaintenanceCharge> MaintenanceCharges { get; init; } = [];
@@ -301,15 +302,17 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         PassengerTransportKernel.Validate(this);
         PassengerTransferKernel.Validate(this);
         CargoJourneyKernel.Validate(this);
+        OffshoreMissionKernel.Validate(this);
         foreach (var x in FinancialLedger)
         {
-            if(x.Kind is not (FinancialTransactionKind.PilotWage or FinancialTransactionKind.CargoLegWage) && x.Wage is not null)throw new InvalidDataException("Only wage entries may contain wage audit details.");
+            if(x.Kind is not (FinancialTransactionKind.PilotWage or FinancialTransactionKind.CargoLegWage or FinancialTransactionKind.OffshoreMissionWage) && x.Wage is not null)throw new InvalidDataException("Only wage entries may contain wage audit details.");
             EconomyValidation.Id(x.Id, "transaction ID");
             EconomyValidation.Id(x.EvidenceId, "transaction evidence ID"); EconomyValidation.Id(x.FromEntityId, "transaction source"); EconomyValidation.Id(x.ToEntityId, "transaction destination");
-            if(x.Kind is FinancialTransactionKind.PilotWage or FinancialTransactionKind.CargoLegWage)EconomyValidation.NonNegative(x.Amount,"wage amount");
+            if(x.Kind is FinancialTransactionKind.PilotWage or FinancialTransactionKind.CargoLegWage or FinancialTransactionKind.OffshoreMissionWage)EconomyValidation.NonNegative(x.Amount,"wage amount");
             else EconomyValidation.Positive(x.Amount, "transaction amount"); EconomyValidation.Currency(x.CurrencyCode);
             if (x.OccurredUtc == default) throw new InvalidDataException("Financial transaction timestamp is missing.");
             if (x.Kind == FinancialTransactionKind.CargoLegWage) { CargoJourneyKernel.ValidateWage(this, x); continue; }
+            if (x.Kind == FinancialTransactionKind.OffshoreMissionWage) { OffshoreMissionKernel.ValidateWage(this, x); continue; }
             if (x.Kind == FinancialTransactionKind.PilotWage && PassengerTransfers.SingleOrDefault(t => t.Id == x.JobId) is {} passenger)
             {
                 PassengerTransferKernel.ValidatePayment(this, passenger, x);

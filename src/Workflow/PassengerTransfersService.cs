@@ -36,6 +36,7 @@ public sealed class PassengerTransfersService
     public async Task RequireNoBoardedPassengersAsync(CancellationToken token)
     {
         var current = await store.LoadAsync(token).ConfigureAwait(false);
+        if (current is not null && OffshoreMissionKernel.Occupied(current)) throw new InvalidOperationException("Complete the active Offshore observation assignment before another aircraft loading/flight operation.");
         if (current is not null && CargoJourneyKernel.Occupied(current)) throw new InvalidOperationException("Use Cargo dispatch / manifest for the active multi-stop journey; legacy cargo writes are blocked.");
         if (current?.PassengerTransfers.Any(x => x.State == PassengerTransferState.Boarded) == true || current?.PassengerTransports.Any(x => x.State is PassengerCarriageState.Boarding or PassengerCarriageState.Aboard or PassengerCarriageState.Arrived or PassengerCarriageState.Disembarking) == true)
             throw new InvalidOperationException("Disembark the current passenger transfer before loading cargo. Passenger progress is retained.");
