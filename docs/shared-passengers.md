@@ -1,5 +1,7 @@
 # Shared passenger transport — 2026-10-29
 
+Current Offshore follow-up: [PR #10](offshore-missions.md) embeds this manager and adds two-specialist Windhoek requests with individual declared masses. No separate transport model, capacity assumption or physical profile. SF50/H125 boarding, seated models, platform generation and mixed ownership remain gated. PR #6's pilot-responsibility policy supersedes historical gross/CG dispatch vetoes below; actual station/interface, stock, ownership and readback safeguards remain.
+
 This supersedes the simulated-boarding and universal one-person restrictions in the historical [Offshore slice](offshore-passenger-transfers.md). [Specification](specs/shared-passengers.md). Draft PR #3; task #2. Implementation and mocked verification are separate from simulator acceptance. **No live passenger payload or visible-model acceptance has occurred.**
 
 ## Boundaries and source map
