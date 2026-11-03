@@ -37,3 +37,7 @@ No live simulator required to verify review timing/persistence. Synthetic tracke
 
 ## Open design decisions
 None blocking; pilot responsibility and post-completion optional reporting explicitly approved.
+
+## Startup freeze repair — 2026-11-03
+
+Matt reports the installed build freezes immediately after opening. Windows Application Hang records confirm an actual hang. Isolated regression: ten presentation-only loading updates rebuilt the Career board 200 times. Repair suppresses full collection replacement for unchanged committed snapshots, batches staged cargo/passenger snapshots until their busy boundary, keeps progress notifications lightweight, and indexes airport identity lookups with simulator-cache invalidation. No authority, save schema, mission, payload or wage changes. Regression and hosted WPF update-storm coverage are required; personal-save startup remains separate live UI acceptance.

@@ -30,7 +30,15 @@ public sealed partial class EmployerDestinationCatalogue
         var code=CareerCatalogue.Bases.Single(b=>b.Id==employer.BaseId).Identifier;
         return CanGenerateAtBase(employer) && (Reviews.Any(r=>r.Status=="Approved"&&r.Identifier==code) || SimulatorCache?.Routes.Any(r=>r.Airport.Identifier==code)==true);
     }
-    public DestinationResearch? ResearchFor(string locationId) => Research.FirstOrDefault(r => Resolve(r)?.StableId == locationId);
+    public DestinationResearch? ResearchFor(string locationId)
+    {
+        lock(airportIndexGate)
+        {
+            researchByLocation??=Research.Select(r=>(Row:r,Place:Resolve(r))).Where(x=>x.Place is not null)
+                .GroupBy(x=>x.Place!.StableId).ToDictionary(g=>g.Key,g=>g.First().Row);
+            return researchByLocation.GetValueOrDefault(locationId);
+        }
+    }
     public AirportVisit? LatestVisit(string key) => visits.Where(v => v.AirportKey == key).OrderByDescending(v => v.RecordedUtc).ThenByDescending(v => v.Id).FirstOrDefault();
     // AircraftUnsuitable is retained for schema-1 history only. It never blocks jobs.
     public AirportVisit? UnresolvedProblem(string key)=>visits.Where(p=>p.AirportKey==key&&p.Result==AirportVisitResult.Problematic&&p.Issue!=AirportIssue.AircraftUnsuitable&&

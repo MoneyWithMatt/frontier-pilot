@@ -42,7 +42,9 @@ public sealed partial class EmployerDestinationCatalogue
     private readonly NamibiaLocationCatalogueDocument legacy;
     public IReadOnlyList<DestinationReview> Reviews {get;}
     public SimulatorAirportCache? SimulatorCache {get; private set;}
-    public void ApplySimulatorCache(SimulatorAirportCache cache) => SimulatorCache = cache;
+    private readonly object airportIndexGate=new();
+    private IReadOnlyDictionary<string,DestinationResearch>? researchByLocation;
+    public void ApplySimulatorCache(SimulatorAirportCache cache) {lock(airportIndexGate){SimulatorCache=cache;researchByLocation=null;}}
     public EmployerDestinationCatalogue(IEnumerable<DestinationReview>? reviews=null, NamibiaLocationCatalogueDocument? legacy=null, SimulatorAirportCache? simulatorCache=null)
     {
         SimulatorCache=simulatorCache;

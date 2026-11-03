@@ -13,6 +13,10 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
     private readonly Func<Task<EconomyWorld?>> readWorld;
     private readonly Func<PassengerEndpoint?> baseAirport;
     private EconomyWorld? world;
+    private EconomyWorld? projectedWorld;
+    private IReadOnlyList<CargoJobDisplay>? projectedOffers,projectedReserved,projectedCompleted;
+    private IReadOnlyList<OffshoreMission> projectedOffshore=[];
+    private readonly OffshoreMissionsViewModel offshore;
     private bool projecting;
     private readonly object projectionGate = new();
     private readonly SemaphoreSlim refreshGate = new(1, 1);
@@ -42,7 +46,7 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
         CargoJourneyViewModel loading, ProspectingOperationsViewModel operations, Func<Task<EconomyWorld?>> readWorld,
         Func<PassengerEndpoint?>? baseAirport = null, EmployerDestinationCatalogue? destinations=null, IAirportVisitStore? airportVisits=null)
     {
-        this.fleet = fleet; this.loading = loading; this.cargo=cargo; this.passengers = passengers; this.readWorld = readWorld; this.baseAirport = baseAirport ?? (() => null);
+        this.fleet = fleet; this.loading = loading; this.cargo=cargo; this.passengers = passengers;this.offshore=offshore; this.readWorld = readWorld; this.baseAirport = baseAirport ?? (() => null);
         fleet.SelectionGuard = id => SelectionBlocked(id) ? "Keep the current airframe while cargo plans or passenger payload ownership/recovery are active. No assignment was transferred." : null;
         Overview = new(profile, employer, fleet); Work = new(employer); Fleet = new(fleet, employer, SelectAircraft);
         destinations??=new();
@@ -58,7 +62,7 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
         foreach (var source in new INotifyPropertyChanged[] { cargo, passengers, offshore, operations, loading }) source.PropertyChanged += (_, _) => Project();
         Board.SelectionChanged += ()=>{Airports.Select(Board.Selected?.DestinationLocationId);Airports.Notify();Notify();};
     }
-    private void Project()
+    private void Project(bool force=false)
     {
         lock (projectionGate)
         {
@@ -68,6 +72,15 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
                 // Immutable snapshots came from the same authoritative economy store. Use the newest
                 // committed revision, including loading/disembarkation outside the Job Board.
                 world=new[]{world,cargo.CommittedWorld,loading.CommittedWorld,passengers.CommittedWorld}.Where(w=>w is not null).OrderByDescending(w=>w!.Revision).FirstOrDefault();
+                // Each loading update publishes twenty presentation properties. None of those may
+                // replace the entire bound job collection unless committed job data actually changed.
+                // Cargo publishes its snapshot in stages: wait for its busy boundary before projecting.
+                if(cargo.IsBusy||passengers.IsBusy){Board.NotifyProgress();Notify();return;}
+                var missions=offshore.Missions;
+                if(!force&&ReferenceEquals(projectedWorld,world)&&ReferenceEquals(projectedOffers,cargo.Offers)&&
+                    ReferenceEquals(projectedReserved,cargo.ReservedJobs)&&ReferenceEquals(projectedCompleted,cargo.CompletedJobs)&&projectedOffshore.SequenceEqual(missions))
+                {Board.NotifyProgress();Notify();return;}
+                projectedWorld=world;projectedOffers=cargo.Offers;projectedReserved=cargo.ReservedJobs;projectedCompleted=cargo.CompletedJobs;projectedOffshore=missions.ToArray();
                 if(world is not null)AirportArrivals.Observe(world);
                 Airports.Notify();Board.Rebuild(world, baseAirport()); OwnerJobs.Update(world); Notify();
             }
@@ -77,7 +90,7 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
     public async Task RefreshAsync()
     {
         await refreshGate.WaitAsync();
-        try { world = await readWorld(); Project(); }
+        try { world = await readWorld(); Project(force:true); }
         catch (Exception e) { Error = "Career snapshot unavailable; existing records preserved. " + e.Message; Notify(); }
         finally { refreshGate.Release(); }
     }

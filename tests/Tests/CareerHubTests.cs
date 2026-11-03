@@ -19,6 +19,17 @@ public sealed class CareerHubTests : IDisposable
     private static async Task Initialize(BuilderViewModel vm)
     { await vm.Jobs.InitializeAsync(); await vm.Passengers.RefreshAsync(); await vm.Offshore.RefreshAsync(); await vm.Operations.RefreshAsync(); await vm.Career.RefreshAsync(); }
 
+    [Fact] public async Task CargoPresentationNotificationsDoNotRebuildUnchangedCareerJobCollections()
+    {
+        var vm=Create("Missionary");await Initialize(vm);
+        var rows=vm.Career.Board.All;var rebuilt=0;
+        vm.Career.Board.PropertyChanged+=(_,e)=>{if(string.IsNullOrEmpty(e.PropertyName)||e.PropertyName==nameof(vm.Career.Board.All))rebuilt++;};
+        for(var i=0;i<10;i++)vm.CargoJourney.ClosePickup();
+        var unchanged=ReferenceEquals(rows,vm.Career.Board.All);
+        await vm.Fleet.ShutdownAsync();
+        Assert.True(unchanged&&rebuilt==0,$"Ten presentation-only loading updates republished the Job Board {rebuilt} times; unchanged row collection retained: {unchanged}.");
+    }
+
     [Theory][InlineData("Offshore", 800)][InlineData("Missionary", 400)][InlineData("Industrial", 650)][InlineData("Safari", 400)]
     public async Task OverviewAndMarketplaceUseCatalogueWithoutInventingLocationsOrMaintenance(string category, int rate)
     {

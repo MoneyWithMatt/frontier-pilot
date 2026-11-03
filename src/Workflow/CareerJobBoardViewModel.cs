@@ -157,4 +157,5 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
         Notify(); if(Selected is not null||!SourcesUpdating)SelectionChanged?.Invoke();
     }
     public void Notify() { PropertyChanged?.Invoke(this, new("")); AcceptCommand.Refresh(); RefreshCommand.Refresh(); LoadCommand.Refresh(); }
+    public void NotifyProgress() {PropertyChanged?.Invoke(this,new(nameof(Progress)));AcceptCommand.Refresh();LoadCommand.Refresh();}
 }
