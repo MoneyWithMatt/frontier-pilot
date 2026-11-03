@@ -2,6 +2,8 @@
 
 ## Offshore staged missions — 2026-11-03
 
+Full-route qualification continuation: reuse the generic TransportMonitor and condition recorder to observe a no-pay H125 base/platform/base visit, not a new carrier or economy. Require a takeoff near the base and a return takeoff directly following known deck contact; late lifts after ground/water travel cannot qualify. Diagnostic interruptions retain history but terminate the session, with new tests beginning at base. This stricter qualification rule does not change normal careers' persistent transport recovery or wages. No automatic promotion, loading/seat claims or Jobs redesign.
+
 Matt approved observation, shared personnel and independently qualified platform development. Base on PR #8 ancestry without merging unrelated branches. Normal `FlightAttemptTracker` monitors use existing read-only native clock/physics telemetry; diagnostics never grant career proof. Schema 14 adds observation stages and atomic $800/hour airborne settlement, with temporary started-observation/transport exclusion to prevent overlapping wages. Reservations may coexist. Pilot performance responsibility is unchanged.
 
 OL400 visual geography locates a configurable broad 5 NM / 300-second local harbour observation; it does not enable landing destinations. Static contact and constrained lifts cannot replace flown departure/arrival/return evidence. Qualification is exact to platform, operation, aircraft and versions; supply/personnel gates are independent. Archived SF50/H125 effective configuration does not justify guessed capacity or seated models. [Details and live requirements](offshore-missions.md).

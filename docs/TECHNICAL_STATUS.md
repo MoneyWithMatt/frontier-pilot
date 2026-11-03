@@ -2,6 +2,8 @@
 
 ## Offshore missions — 2026-11-03
 
+Continuation adds a full-route no-pay H125 timed platform visit and return, shared TransportMonitor/condition recording/replay, strict native departures/continuity, and standalone CLI record/review commands that read only explicit destination metadata and create separate outputs. No personal career loading for this CLI scenario. Production H125/platform/physical passenger gates remain unchanged. Current tests/source and live access blocker are recorded in the handoff; no real flight claimed.
+
 [PR #10](https://github.com/MoneyWithMatt/frontier-pilot/pull/10): production observation round trip, schema14 progress/atomic hourly settlement and native recovery guards. Shared personnel UI carries engineering groups; SF50 physical configuration/boarding remains blocked. OL400 registry/normal outbound-plus-contact adapter and no-pay diagnostic recorder do not activate platform missions. [Implementation/live boundaries](offshore-missions.md), [verification/handoff](handoffs/offshore-missions.md). No new live simulator actions or personal saves changed.
 
 ## Fuselage station schematic — 2026-11-02

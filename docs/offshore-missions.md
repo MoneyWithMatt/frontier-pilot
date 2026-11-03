@@ -10,13 +10,13 @@ Offshore employees open **Offshore operations** from Jobs. Select the company Vi
 
 The Personnel tab embeds the existing passenger manager. Suitable resolved Eros/Hosea Kutako airport offers request two technical specialists through the shared manifest, retaining individual declared masses. This is a mission requirement, not an aircraft capacity claim. Existing other eligible airport routes and Missionary rules remain. SF50 physical boarding remains blocked pending effective configuration and qualification.
 
-The Platforms tab displays qualification evidence and unavailable operations. Its explicit, bounded, read-only experimental recorder watches stable contact → contact loss → stable return. It neither flies nor changes payload, career progress or money. Local JSONL diagnostics never enter the repository or normal mission economy.
+The Platforms tab displays qualification evidence and unavailable operations. Its explicit, bounded, read-only experiments can record either a static deck/contact-loss/return cycle or a full base → platform visit → base flight. Neither flies nor changes payload, career progress or money. Local JSONL diagnostics never enter the repository or normal mission economy.
 
 | Capability | Implementation | Remaining acceptance / restriction |
 |---|---|---|
 | Vision Jet observation and return | Production UI, tracker, persistence, atomic hourly wage | Automated and synthetic WPF; new live round trip pending |
 | Airport personnel transfers | Shared lifecycle/loading/recovery, role-based two-person offers | SF50 effective seat/station configuration unavailable; physical boarding blocked |
-| Platform visit | Registry, normal outbound-plus-deck adapter, separate no-pay recorder | OL400 static-contact only; no career platform mission generated |
+| Platform visit | Registry, normal outbound-plus-deck adapter, separate no-pay contact and full-route recorders | OL400 static-contact only; no career platform mission generated |
 | Platform cargo delivery and return | Per-operation qualification contract; shared cargo manager preserved | Not wired/enabled as a career mission; ballast diagnostic insufficient |
 | Platform personnel delivery/pickup | Per-operation gates; shared passenger manager preserved | H125 configuration/loading/flown completion unqualified; no offers |
 | Seated models / animations | No reliable mechanism established | Unsupported; mass does not prove a visible person |
@@ -32,6 +32,7 @@ The Platforms tab displays qualification evidence and unavailable operations. It
 - `Workflow/PlatformArrivalMonitor.cs`: future normal-platform adapter inside `FlightAttemptTracker`. Requires its own continuous loaded-origin rest, departure, movement, route distance and airborne time before 20 seconds of deck contact. Historical or diagnostic records cannot replace that native sequence. No production mission is connected while qualification is absent.
 - `Core/DeckSurfaceContact.cs`: shared pure geometry/motion predicate only. Diagnostic and normal consumers retain separate history and capability gates.
 - `Workflow/OffshorePlatformDiagnosticViewModel.cs`: explicit read-only PR #9 recorder, no economy service. Normal observation rejects its diagnostic profile.
+- `Workflow/ExperimentalOffshoreRoundTrip.cs`: no-pay full-route qualification using `FlightAttemptTracker.TransportMonitor` internally, shared strict native profile and `PlatformFlightContact` pure predicate. No internal flight/arrival proof is exported to the economy. `ExperimentalOffshoreRoundTripRecording` persists create-only context and raw frames, using the same bounded replay validator as the original contact experiment.
 - Existing `PassengerTransfersService`, `PassengerPayloadCoordinator`, `CargoJourneyService` and native operation lease retain physical ownership/readback/recovery. No parallel passenger/loading model or guessed mass accounting.
 
 ## Recovery and wages
@@ -53,6 +54,31 @@ Read-only inspection found streamed SF50 and H125 packages, but effective config
 Official SDK sources: [flight_model.cfg](https://docs.flightsimulator.com/msfs2024/retail/content-configuration/cfg-files/flight_model.cfg/), [native payload variables](https://docs.flightsimulator.com/msfs2024/retail/programming-apis/simvars/aircraft-simvars/aircraft-system-variables/), [authored passengers](https://docs.flightsimulator.com/msfs2024/retail/content-configuration/careers/commercial-flights-and-passengers/), [seats](https://docs.flightsimulator.com/msfs2024/retail/content-configuration/careers/general-career-information/aircraft-seats-and-seatbelts/). Existing adapters retain documented native indexing/units; configuration station indices must not be guessed. Authored seat graphs/native mission population do not establish a reliable dynamic SimConnect seated-person control. Physical payload, seated visuals and animations need separate evidence.
 
 ## Focused live acceptance — pending
+
+### Full-route H125 experiment
+
+Under Platforms → Experimental H125 contact test, **Observe experimental base–platform–base flight** is available only when the existing employer destination catalogue resolves the base. Start at that base in the exact H125 Passengers/H125. The recorder observes ten seconds of native stopped-base telemetry, a takeoff near base and credible outbound movement,20seconds of continuous deck contact,60seconds of continued deck visit, a takeoff immediately following known deck contact,3seconds of sustained airborne/all-contacts-clear separation, then the normal return leg and ten seconds of native stopped-base observations. Inspection duration is a constructor/context parameter (10–3600seconds); UI initial test is60seconds.45minute bound, explicit Stop, no aircraft control or writes.
+
+Leaving the deck before the visit finishes resets unconfirmed inspection time. Pause, rate/slew/freeze, disconnect/gaps, identity changes or implausible motion after base qualification terminate that diagnostic session while preserving its historical milestones. A fresh recorder must start at base; it never stitches partial flights. Starting on the pad or reproducing the old constrained lift cannot complete this route. Completion records six milestones once and never pays, updates a fleet/manifest or promotes the registry.
+
+The create-only `.jsonl.mission.json` context captures the resolved base, platform snapshot and test parameters before the raw JSONL begins. Each frame retains the existing recorder's native SDK/simulator/hash metadata. `ExperimentalOffshoreRoundTripRecording.Review` checks context schema, raw sequence/session/identity/end rules and replays historical progress; closing/reviewing revokes current presence and cannot resume a live flight. Corrupt/future files are preserved/refused; missing end is reported unclosed. No economy/save migration or payload ownership change.
+
+Actual acceptance requires the real flight and native recording, then a human review of exact scenery/aircraft versions and outcomes. A six-stage synthetic completion is only test coverage. The recorder cannot test loading or prove seated passenger models. This removes a qualification-tooling gap, not the production H125/platform gates.
+
+### Standalone recorder without opening personal career saves
+
+Hosted Windows CI also uploads the existing framework-dependent .NET8 CLI assembly/output as `FrontierPilot-offshore-cli-<merge SHA>`, after regression/WPF/offline CLI review/package checks. No simulator installation on CI. This developer CLI also contains its earlier authoring commands; only the two commands below belong to this read-only acceptance scenario. Do not run `build`, capture, controls or unrelated commands as part of it.
+
+```powershell
+# Exact hosted DLL/modules and SDK x64 dotnet must first be hash-checked and approved.
+# Paths are explicit; the CLI discovers neither personal careers nor a default data root.
+dotnet <approved-cli>/FrontierAirportBuilder.App.dll record-offshore-roundtrip <new-output.jsonl> 1200 <SDK-root> <existing-destination-metadata-root>
+dotnet <approved-cli>/FrontierAirportBuilder.App.dll review-offshore-roundtrip <output.jsonl>
+```
+
+`ResolveBase` reads only existing `destination-reviews.json` / `simulator-airports.json` through their established read-only loaders; it refuses an unresolved base and never saves or infers coordinates. No CareerStore, economy, fleet, loading or settings service is constructed. The record command reads native telemetry and creates its own context/raw output only. Exit0 means the diagnostic sequence completed, not a career completion or production qualification. Cancellation/incomplete recording exits1 and preserves history; review reports closed/unclosed and historical status. Live duration is bounded1–2700seconds, default visit60seconds. Offline review uses no simulator/SDK and never restores current presence.
+
+This standalone command removes the need for an isolated personal-career profile for **this read-only helicopter experiment**. The desktop career observation/passenger tests still require isolated stores. Exact-build plus allowlisted-scenario approval remains required for either candidate. Restored desktop control and an actual flight are necessary for the roundtrip; no new flight controller is supplied.
 
 Record the hosted artifact's full source SHA and executable SHA-256, review changes and obtain exact-build and allowlisted-scenario approval under AGENTS.md. Do not launch a schema-14 candidate against personal saves. Prepare an isolated Windows profile or separately reviewed temporary-store harness using the same production service with real read-only native telemetry; the app currently has no general data-root override. Any new harness also needs artifact approval. Previous PR #9 run59 approval does not cover this build; desktop activation last failed. No automatic install, scenery edit, flight controller or physical write is included in the observation scenario.
 

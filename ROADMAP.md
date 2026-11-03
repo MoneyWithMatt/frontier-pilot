@@ -2,6 +2,8 @@
 
 ## Offshore checkpoint — 2026-11-03
 
+Continuation: full-route experimental H125 base→OL400 timed visit→base recorder implemented through shared transport tracking and recording. Synthetic unit/WPF progress/completion coverage is separate from live qualification. Native base/deck takeoffs,20sdeck+60svisit+3sseparation+return/base10s; interruptions cannot stitch sessions. No wages, registry promotion, cargo/passenger write or production destination activation. Live desktop input remains blocked by window activation failure.
+
 [Draft PR #10](https://github.com/MoneyWithMatt/frontier-pilot/pull/10) starts from unmerged PR #8 (includes PR #3/6/7), selectively reusing PR #9 read-only contact logic. [Implementation/live procedure](docs/offshore-missions.md), [handoff](docs/handoffs/offshore-missions.md).
 
 - A implemented: Vision Jet observation round trip, configurable area/duration, guarded telemetry/recovery and once-only $800/hour airborne settlement. New live loop pending.

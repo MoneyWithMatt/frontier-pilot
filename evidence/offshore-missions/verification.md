@@ -1,5 +1,7 @@
 # Offshore missions: automated verification
 
+Continuation: [full-route H125 qualification / standalone CLI evidence](roundtrip-verification.md), runtime d0c30c0 / hosted run69,970/0/0. This report below retains the original observation milestone; newer exact evidence does not confer live aircraft acceptance.
+
 Runtime head **5a46a040dc125fc93952a353b23af89e3fb2af4a**, draft [PR #10](https://github.com/MoneyWithMatt/frontier-pilot/pull/10), based on PR #8 `47698b1`. No merges or changes to other branches.
 
 [Hosted run65](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41601718648) tested clean merge **19bc0eadc77501b14a61cecc2fe572f59a8a82fb**, Windows2022 / SDK8.0.424: **948 passed / 0 failed / 0 skipped**, Release zero warnings/errors, nine verification guards, both WPF programs, packaging and uploads passed. Regression/smoke/package receipts and TRX independently inspected; both WPF stderr logs empty. No unresolved failures in this checkpoint.

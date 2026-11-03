@@ -1,5 +1,7 @@
 # Backlog
 
+Offshore continuation: full-route no-pay H125 qualification and standalone read-only CLI prepared; shared tracker/recorder reused, no personal career initialization for CLI. Next is exact-artifact approval and actual flight after desktop activation is restored, then reviewed configuration/handling acceptance. Static tests cannot enable production jobs. Broader career/employment/freelance/company Jobs layout discussion remains a separate design task; no global redesign in PR10.
+
 Offshore PR #10: observation loop implemented and automated; exact-build live flight pending. Shared engineering-team airport offers integrated, SF50 boarding blocked by effective configuration. OL400 registry/normal arrival adapter/read-only diagnostics prepared; H125 supply/personnel/visit production missions remain gated by aircraft/scenery/flown operation-specific acceptance. Mixed ownership/accounting remains a coordinated follow-up. [Details/live procedure](offshore-missions.md), [handoff](handoffs/offshore-missions.md).
 
 Current visual follow-up: [compact fuselage station boxes](specs/cargo-station-schematic.md) implemented; run 44 automated verification and screenshot review passed. Live PC test still requires exact-artifact approval; no physical layout qualification or engine recovery claimed. [Handoff](handoffs/cargo-click-assign.md).
