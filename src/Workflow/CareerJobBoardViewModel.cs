@@ -107,7 +107,7 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
         var rows = new List<CareerJobRow>();
         foreach (var c in cargo.Offers.Concat(cargo.ReservedJobs).Concat(cargo.CompletedJobs).DistinctBy(c => c.JobId))
         {
-            var manifest = world?.CargoAirframes.FirstOrDefault(m => m.ManagedJobs.Contains(c.JobId) && m.Cargo.Any(x => x.JobId == c.JobId));
+            var manifest = world?.CargoAirframes.FirstOrDefault(m => m.ManagedJobs.Contains(c.JobId));
             CareerRoutePoint[] route = c.OriginLatitude is {} lat && c.OriginLongitude is {} lon && c.DestinationLatitude is {} dlat && c.DestinationLongitude is {} dlon ? [new(c.Origin, lat, lon), new(c.Destination, dlat, dlon)] : [];
             var legs = manifest?.Legs.Where(l => l.Carried.Any(x => x.JobId == c.JobId)).ToArray() ?? [];
             if (legs.Length > 0)

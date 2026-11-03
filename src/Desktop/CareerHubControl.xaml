@@ -232,7 +232,7 @@
             </DockPanel>
             <ListBox x:Name="JobList" Grid.Row="1" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected,Mode=TwoWay}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
               <ListBox.Style>
-                <Style TargetType="ListBox">
+                <Style TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding IsBusy}" Value="True">
                       <Setter Property="IsEnabled" Value="False" />
@@ -256,6 +256,7 @@
           </Grid>
           <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel DataContext="{Binding Board}">
+              <TextBlock Text="{Binding EmptyState}" TextWrapping="Wrap" Foreground="#A8CFC1" Margin="0,0,0,8" />
               <local:CareerJobMap x:Name="JobMap" Height="220" />
               <DockPanel Margin="0,4,0,12">
                 <Button DockPanel.Dock="Right" Content="Fit route" Click="FitRoute" Padding="8,3" />

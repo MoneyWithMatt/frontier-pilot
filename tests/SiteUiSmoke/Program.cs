@@ -29,6 +29,7 @@ internal static partial class Program
                 var edit=new BuilderViewModel(services.ReopenDryRun(),"");
                 var window=new MainWindow(edit){ShowInTaskbar=false};window.Show();
                 await Task.Delay(400);await edit.RefreshAirportsAsync();edit.SelectedAirport=edit.Airports.Single();
+                var mainNavigation=(TabControl)window.FindName("MainTabs");mainNavigation.SelectedItem=mainNavigation.Items.Cast<TabItem>().Single(t=>t.Header?.ToString()=="My Sites");Pump();
                 var button=Descendants<Button>(window).Single(b=>b.Content?.ToString()=="Edit selected site…");
                 button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));await Task.Delay(500);Pump();
                 Check(edit.IsEditingSavedSite&&edit.Layout.Objects.Count==1&&edit.Layout.Stands.Count==1,"Edit restored saved lodge and parking");

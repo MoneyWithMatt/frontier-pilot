@@ -40,7 +40,7 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
         Func<PassengerEndpoint?>? baseAirport = null)
     {
         this.fleet = fleet; this.loading = loading; this.passengers = passengers; this.readWorld = readWorld; this.baseAirport = baseAirport ?? (() => null);
-        fleet.SelectionGuard = _ => SelectionBlocked ? "Keep the current airframe while cargo plans or passenger payload ownership/recovery are active. No assignment was transferred." : null;
+        fleet.SelectionGuard = id => SelectionBlocked(id) ? "Keep the current airframe while cargo plans or passenger payload ownership/recovery are active. No assignment was transferred." : null;
         Overview = new(profile, employer, fleet); Work = new(employer); Fleet = new(fleet, employer, SelectAircraft);
         Board = new(Navigation, cargo, passengers, offshore, fleet) { Reload = RefreshAsync, OpenLoad = () => OpenLoadAsync(Board!.Selected) };
         OwnerJobs = new(operations) { Reload = RefreshAsync };
@@ -68,12 +68,12 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
         finally { refreshGate.Release(); }
     }
     public void Show(CareerSection section) { if (section == CareerSection.JobBoard) Board.FocusSelected(); Navigation.Section = (int)section; NavigationRequested?.Invoke(); }
-    private bool SelectionBlocked => !loading.CanChooseAircraft || passengers.IsBusy || passengers.HasBoardedPassengers || passengers.HasPayloadOwnership || world?.PassengerTransports.Any(t => t.Payload is not null && t.State is not (PassengerCarriageState.Disembarked or PassengerCarriageState.Planned or PassengerCarriageState.Reserved)) == true;
+    private bool SelectionBlocked(Guid? target) => !loading.CanChooseAircraft || passengers.IsBusy || passengers.HasBoardedPassengers || passengers.HasPayloadOwnership || world?.CargoAirframes.Any(m => m.Pending is not null && m.AirframeId != target) == true || world?.PassengerTransports.Any(t => t.Payload is not null && t.State is not (PassengerCarriageState.Disembarked or PassengerCarriageState.Planned or PassengerCarriageState.Reserved)) == true;
     public bool SelectAircraft(Guid id)
     {
         if (fleet.Selected?.Id == id) return true;
         if (!fleet.Aircraft.Any(a => a.Id == id)) { Error = "This physical aircraft is not authorised in the current fleet."; Notify(); return false; }
-        if (SelectionBlocked)
+        if (SelectionBlocked(id))
         { Error = "Keep the current airframe while cargo plans or passenger payload ownership/recovery are active. No assignment was transferred."; Notify(); return false; }
         fleet.SelectedAirframeId = id;
         if (fleet.Selected?.Id != id) { Error = fleet.Status; Notify(); return false; }
