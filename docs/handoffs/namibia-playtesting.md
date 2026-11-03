@@ -1,3 +1,7 @@
+## Local development distribution update — 2026-11-03
+
+Matt explicitly requested updating his local version after the tested build was identified. Installed the exact hosted `67b093a` executable (artifact 13252414736) at the existing Desktop shortcut target, after validating all 11 bundle checksums, clean win-x64 metadata and the prior deployment receipt/hash. Preserved the previous run-38 distribution in a sibling backup; the private local deployment receipt records its exact path. Post-install executable hash matches the hosted manifest and the shortcut still resolves to it. No application launch, live simulator operation, save/config access or migration performed. Older statements below that nothing was installed describe their earlier checkpoints. Future autonomous execution remains a separate scenario decision.
+
 # Current refinement checkpoint — airport verification / pilot responsibility
 
 - Approved scope: [airport-verification-refinement](../specs/airport-verification-refinement.md), Matt's explicit 2026-11-03 request. This supersedes the aircraft-specific review policy in the historical checkpoint below.
