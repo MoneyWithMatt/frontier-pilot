@@ -22,7 +22,7 @@ public sealed class DestinationDiagnosticsWindow : Window
         store=new(root);Title="Curated destinations — MSFS inspection";Width=1180;Height=850;MinWidth=850;MinHeight=650;
         var grid=new Grid{Margin=new Thickness(18)};Content=grid;
         grid.RowDefinitions.Add(new(){Height=GridLength.Auto});grid.RowDefinitions.Add(new(){Height=new GridLength(1,GridUnitType.Star)});grid.RowDefinitions.Add(new(){Height=GridLength.Auto});
-        var header=new StackPanel();header.Children.Add(new TextBlock{Text="Check all airports with a flight loaded anywhere in MSFS. Found airports enable company jobs automatically; missing airports are flagged. Runway suitability remains unassessed. Manual reviews are optional and apply after restart.",TextWrapping=TextWrapping.Wrap});
+        var header=new StackPanel();header.Children.Add(new TextBlock{Text="Curated airports can offer exploratory jobs before a simulator visit. Lookup provides reference points, not runway acceptance. Known identity/coordinate conflicts stay Held. Record visits and problems in Career → Job Board; advanced technical review changes below apply after restart.",TextWrapping=TextWrapping.Wrap});
         var check=new Button{Content="Check all airports in MSFS",HorizontalAlignment=HorizontalAlignment.Left,IsEnabled=allowLive};header.Children.Add(check);
         var cancel=new CancellationTokenSource();Closed+=(_,_)=>cancel.Cancel();
         check.Click+=async (_,_)=>
@@ -34,7 +34,7 @@ public sealed class DestinationDiagnosticsWindow : Window
                 var cache=new SimulatorAirportStore(root).Save(scan);
                 catalogue=store.Load();applied?.Invoke(cache);RefreshRows();
                 var missing=catalogue.Diagnose().Where(x=>x.Recognition.Contains("Not found")||x.Recognition.Contains("Ambiguous")||x.Recognition.Contains("Identifier missing")).Select(x=>x.Research.Key).Distinct().Count();
-                message.Text=$"Airport check saved: {cache.Scan.ObservedUtc:u}. {missing} destinations need attention. Found routes are available immediately; no individual approval needed.";
+                message.Text=$"Airport lookup saved: {cache.Scan.ObservedUtc:u}. {missing} identifiers need attention. Missing lookup alone does not reject a published exploratory route; conflicts remain Held. No runway usability was verified.";
             }
             catch(Exception ex){message.Text="Lookup incomplete; previous results preserved. "+ex.Message;}
             finally{check.IsEnabled=true;}

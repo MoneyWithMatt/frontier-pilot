@@ -11,10 +11,10 @@ public sealed class OffshoreCareerTests : IDisposable
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-10-29T12:00:00Z");
     private static CareerEmployer Employer => CareerCatalogue.Employers.Single(x => x.Category == "Offshore");
     private static DestinationReview Review(string code, params string[] aircraft) => new(code, "Approved", code,
-        code == "FYWB" ? -23 : -22, 15, "Synthetic automated fixture; no live acceptance", Now, aircraft);
+        CuratedNamibiaDestinations.Find(code)!.Latitude, CuratedNamibiaDestinations.Find(code)!.Longitude, "Synthetic automated fixture; no live acceptance", Now, aircraft);
     private EmployerDestinationCatalogue Airports()
     {
-        new SimulatorAirportStore(root).Save(new(Now, "Synthetic completed scan", [new("FYWB", -23, 15), new("FYWE", -22.6, 17), new("FYAR", -22.4, 15)]));
+        new SimulatorAirportStore(root).Save(new(Now, "Synthetic completed scan", new[]{"FYWB","FYWE","FYAR"}.Select(code=>new SimulatorAirport(code,CuratedNamibiaDestinations.Find(code)!.Latitude,CuratedNamibiaDestinations.Find(code)!.Longitude)).ToArray()));
         return new DestinationReviewStore(root).Load();
     }
     private static EmployedCargoJobsService Service(IEconomyStateStore store, EmployerDestinationCatalogue catalogue) =>
@@ -56,7 +56,7 @@ public sealed class OffshoreCareerTests : IDisposable
         await service.AcceptAsync(offer.JobId);
         var before = (await store.LoadAsync())!;
         var reviews = new DestinationReviewStore(root);
-        reviews.Save(new("FYWB", "Approved", "FYWB", -23, 15, "Synthetic base restriction", Now, ["c208"]));
+        reviews.Save(Review("FYWB","c208"));
         var restricted = reviews.Load();
         Assert.All(restricted.Diagnose("Offshore"), x => Assert.False(x.Enabled));
         Assert.Contains("both origin and destination", restricted.Diagnose("Offshore").First(x => x.Identifier == "FYWE").Reason);
@@ -77,13 +77,13 @@ public sealed class OffshoreCareerTests : IDisposable
     public void EndpointRestrictionsRequireOneCommonEnabledCompanyType()
     {
         var safari = CareerCatalogue.Employers.Single(x => x.Category == "Safari");
-        var catalogue = new EmployerDestinationCatalogue([Review("FYWE", "bonanza", "pa28"), Review("FYNG", "pa28", "savage-cub")]);
-        var destination = catalogue.Diagnose("Safari").Single(x => x.Identifier == "FYNG");
+        var catalogue = new EmployerDestinationCatalogue([Review("FYWE", "bonanza", "pa28"), Review("FYME", "pa28", "savage-cub")]);
+        var destination = catalogue.Diagnose("Safari").Single(x => x.Identifier == "FYME");
         Assert.True(destination.Enabled);
         Assert.Equal("pa28", Assert.Single(CompanyAircraft.Choices(safari, destination, 20)).Id);
         Assert.Equal("pa28", Assert.Single(CompanyAircraft.Choices(safari, destination, 50)).Id);
-        var disjoint = new EmployerDestinationCatalogue([Review("FYWE", "bonanza"), Review("FYNG", "pa28")]);
-        Assert.False(disjoint.Diagnose("Safari").Single(x => x.Identifier == "FYNG").Enabled);
+        var disjoint = new EmployerDestinationCatalogue([Review("FYWE", "bonanza"), Review("FYME", "pa28")]);
+        Assert.False(disjoint.Diagnose("Safari").Single(x => x.Identifier == "FYME").Enabled);
         var offshore = new EmployerDestinationCatalogue([Review("FYWB", "vision-jet")]);
         Assert.All(offshore.Diagnose("Offshore").Where(x => x.Enabled), x =>
             Assert.Equal("vision-jet", Assert.Single(CompanyAircraft.Choices(Employer, x, 20)).Id));
@@ -93,7 +93,7 @@ public sealed class OffshoreCareerTests : IDisposable
     [InlineData("missing")]
     [InlineData("ambiguous")]
     [InlineData("moved")]
-    public async Task LaterBaseLookupProblemBlocksNewWorkAndPreservesAcceptedEndpoints(string problem)
+    public async Task LaterBaseLookupMaintainsExploratoryPolicyAndPreservesAcceptedEndpoints(string problem)
     {
         var catalogue = Airports();
         var store = new LocalEconomyStateStore(Path.Combine(root, "economy-state.json"));
@@ -110,7 +110,7 @@ public sealed class OffshoreCareerTests : IDisposable
         new SimulatorAirportStore(root).Save(new(Now.AddMinutes(1), "Synthetic later scan", [..baseRows, new("FYWE", -22.6, 17), new("FYAR", -22.4, 15)]));
         var restarted = Service(new LocalEconomyStateStore(store.StoragePath), new DestinationReviewStore(root).Load());
         var board = await restarted.LoadAsync();
-        Assert.Empty(board.Offers);
+        if(problem=="missing") Assert.NotEmpty(board.Offers); else Assert.Empty(board.Offers);
         var reserved = Assert.Single(board.ReservedJobs);
         Assert.Equal(offer.OriginLatitude, reserved.OriginLatitude);
         Assert.Equal(offer.OriginLongitude, reserved.OriginLongitude);

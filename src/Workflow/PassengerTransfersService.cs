@@ -56,14 +56,14 @@ public sealed class PassengerTransfersService
     { this.store = store; this.employer = employer; this.destinations = destinations; this.bindings = bindings ?? (() => []); this.utcNow = utcNow ?? (() => DateTimeOffset.UtcNow); }
 
     private static PassengerEndpoint Endpoint(NamibiaLocation location) => new(location.StableId,
-        location.Name + " (" + location.AirportIdentifier.Value + ")", location.ApproximateCoordinates!.Latitude, location.ApproximateCoordinates.Longitude);
+        location.Name + (location.AirportIdentifier.Value is {} code?" ("+code+")":""), location.ApproximateCoordinates!.Latitude, location.ApproximateCoordinates.Longitude);
 
-    private IReadOnlyList<(PassengerEndpoint Origin, PassengerEndpoint Destination, string[] Types, string Code)> Routes()
+    private IReadOnlyList<(PassengerEndpoint Origin, PassengerEndpoint Destination, string[] Types, string Code)> Routes(bool generation=false)
     {
         if (!Enabled || destinations.Base(employer!) is not {} origin) return [];
-        return destinations.Diagnose(employer!.Category).Where(x => x.Enabled)
-            .OrderBy(x => employer.Category == "Offshore" && x.Identifier is "FYWE" or "FYWH" ? 0 : 1)
-            .ThenBy(x => CompanyEmployment.TimePenalty(origin, x.Resolved!, employer)).ThenBy(x => x.Identifier, StringComparer.Ordinal).Take(4)
+        var eligible=destinations.Diagnose(employer!.Category).Where(x=>x.Enabled);
+        if(generation)eligible=CompanyEmployment.SelectDestinations(employer,eligible,world is null?utcNow():CompanyEmployment.SelectionEpoch(world,utcNow()),4);
+        return eligible
             .Select(x => (Origin: Endpoint(origin), Destination: Endpoint(x.Resolved!), Types: CompanyAircraft.Choices(employer, x, 0)
                 .Where(a => EmployedPassengerMissions.SupportsType(employer.Category, a.Id)).Select(a => a.Id).ToArray(), Code: x.Identifier))
             .Where(x => x.Origin.CanGenerate && x.Destination.CanGenerate && x.Types.Length > 0).ToArray();
@@ -78,7 +78,8 @@ public sealed class PassengerTransfersService
         {
             // Uses the existing career initialization and persisted UTC cadence; no parallel world or clock.
             await new EmployedCargoJobsService(store, employer: employer, destinations: destinations, utcNow: utcNow).LoadAsync(token).ConfigureAwait(false);
-            var routes = Routes(); var utc = utcNow();
+            world=await store.LoadAsync(token).ConfigureAwait(false);
+            var routes = Routes(generation:true); var utc = utcNow();
             world = (await store.ApplyAsync(w =>
             {
                 var clock = w.RealTime!;

@@ -50,7 +50,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
         return destination is null?[]:CompanyAircraft.Choices(Employer,destination,job.CargoMassKilograms);
     }
     public string EmploymentStatus=>Employer is null?"Legacy / freelance board":$"{Employer.Name} · {Employer.WageDisplay} · paid for verified airborne time on successful delivery. {destinations!.Diagnose(Employer.Category).Count(x=>x.Enabled)} eligible destinations. "+
-        (Employer.Category=="Offshore"?"Cargo board; specialist transfers are on Passenger transfers.":"Cargo only; passenger transfers deferred.");
+        (Employer.Category is "Offshore" or "Missionary"?"Cargo and supported personnel work are available on Career → Job Board; physical passenger configuration restrictions remain.":"Cargo work available; this career's aircraft do not have a qualified passenger configuration.");
     private readonly EconomyService economy;
     private readonly NamibiaLocationCatalogueDocument catalogue;
     private readonly EmployedCargoPrototypeOptions options;

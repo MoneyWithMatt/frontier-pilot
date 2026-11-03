@@ -15,7 +15,7 @@ public static class ExperimentalOffshoreRoundTripRecording
         var catalogue = new DestinationReviewStore(destinationMetadataRoot).Load();
         var employer = CareerCatalogue.Employers.Single(e => e.Category == "Offshore");
         var location = catalogue.Base(employer);
-        if (location?.ApproximateCoordinates is not {} c)
+        if (location?.ApproximateCoordinates is not {} c || !catalogue.HasTechnicalBaseReference(employer))
             throw new IOException("Resolve the Offshore base in existing destination metadata first. No airport or coordinates inferred.");
         return new(location.StableId, location.Name, c.Latitude, c.Longitude);
     }

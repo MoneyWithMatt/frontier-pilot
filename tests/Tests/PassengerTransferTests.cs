@@ -276,7 +276,7 @@ public sealed class PassengerTransferTests : IDisposable
         var id = Guid.NewGuid();
         var visiting = new PassengerTransfersService(memory, missionary, catalogue, () => [new("Synthetic Caravan", "C208", "c208")], () => utc) {
             SelectedAirframe = () => id, Payload = new(memory, physical, physical, () => "synthetic", physical.WaitForRetentionAsync) };
-        await visiting.RefreshAsync(); var mission = Assert.Single(visiting.Transfers); visiting.SelectedId = mission.Id;
+        await visiting.RefreshAsync(); var mission = visiting.Transfers.Single(t=>t.Destination.Name.Contains("FYOP")); visiting.SelectedId = mission.Id;
         Assert.Equal(2, mission.PassengerCount); Assert.Contains("Doctor", mission.Purpose); Assert.Equal(400, mission.HourlyRate);
         Assert.DoesNotContain(visiting.AircraftChoices, x => x.Id == "c152");
         await visiting.AcceptAsync("c208"); await visiting.SetManifestAsync([75, 92]);
@@ -296,7 +296,7 @@ public sealed class PassengerTransferTests : IDisposable
         Assert.Equal(PassengerCarriageState.Disembarked, Assert.Single(world.PassengerTransports).State);
         Assert.Equal(33, physical.Weights[5]); Assert.Equal(0, physical.Weights[2]); Assert.Equal(0, physical.Weights[3]);
         var unresolved = new PassengerTransfersService(new MemoryEconomyStateStore(), missionary, new(), utcNow: () => utc);
-        await unresolved.RefreshAsync(); Assert.Empty(unresolved.Transfers);
+        await unresolved.RefreshAsync(); Assert.NotEmpty(unresolved.Transfers);Assert.All(unresolved.Transfers,t=>Assert.Contains("c208",t.EligibleAircraftTypes));
     }
 
     [Fact] public async Task RestartRequiresExplicitPayloadCheckBeforeFlightQualification()

@@ -1,4 +1,6 @@
 using FrontierAirportBuilder.Core;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace FrontierAirportBuilder.Workflow;
 
@@ -57,20 +59,18 @@ public static class CompanyEmployment
         if(origin is not null)
         {
             if(!locations.Any(x=>x.Id==origin.StableId))locations.Add(origin.ToEconomicLocation());
-            // At most four destinations on the board, biased toward the authored time envelope.
-            // 120 kt is a shared planning assumption, never an aircraft-performance claim.
-            eligible=eligible.OrderBy(x=>TimePenalty(origin,x.Resolved!,employer)).ThenBy(x=>x.Identifier,StringComparer.Ordinal).Take(4).ToArray();
+            eligible=SelectDestinations(employer,eligible,SelectionEpoch(world,now)).ToArray();
         }
         var desired=new HashSet<string>(StringComparer.Ordinal);
         foreach(var destination in eligible)
         {
             var place=destination.Resolved!;
-            if(!locations.Any(x=>x.Id==place.StableId))locations.Add(place.ToEconomicLocation());
+            if(!locations.Any(x=>x.Id==place.StableId))locations.Add(place.ToEconomicLocation() with {Status=place.VerificationState==LocationVerificationState.MsfsVerified?place.ToEconomicLocation().Status:EconomicLocationStatus.ExploratoryAirport});
             for(var i=0;i<employer.CargoMissions.Length;i++)
             {
                 var resourceId=$"company-{employer.Category.ToLowerInvariant()}-{i}";
                 if(!resources.Any(x=>x.Id==resourceId))resources.Add(new(resourceId,employer.CargoMissions[i],employer.Category.ToLowerInvariant(),"kg"));
-                var stem=employer.Category.ToLowerInvariant()+"-"+destination.Identifier.ToLowerInvariant()+"-"+i;
+                var stem=employer.Category.ToLowerInvariant()+"-"+destination.Research.Key.ToLowerInvariant()+"-"+i;
                 var mass=employer.PrototypeCargoKilograms[i];
                 if(CompanyAircraft.Choices(employer,destination,mass).Count==0)continue;
                 var need="need-"+stem;var id="demand-"+stem;desired.Add(id);
@@ -93,5 +93,23 @@ public static class CompanyEmployment
         var a=origin.ApproximateCoordinates!;var b=destination.ApproximateCoordinates!;
         var minutes=Geodesy.Inverse(new(a.Latitude,a.Longitude),new(b.Latitude,b.Longitude)).DistanceMeters/1852/120*60;
         return minutes<employer.PreferredMinimumMinutes?employer.PreferredMinimumMinutes-minutes:Math.Max(0,minutes-employer.PreferredMaximumMinutes);
+    }
+    public static IReadOnlyList<DestinationDiagnostic> SelectDestinations(CareerEmployer employer, IEnumerable<DestinationDiagnostic> candidates, DateTimeOffset utc, int count=6)
+    {
+        var rows=candidates.Where(x=>x.Enabled).ToArray();
+        var priority=employer.Category switch {
+            "Missionary" => new[]{"FYAM","NA-0114","NA-0014"}, "Industrial" => new[]{"FYUS","FYAR"},
+            "Safari" => new[]{"FYKN","FYME","FYSO","FYMO","FYDN"}, "Offshore" => count<=4?new[]{"FYAR","FYWE","FYWH"}:new[]{"FYAR","FYWE","FYWH","FYLZ","FYOG"}, _ => Array.Empty<string>() };
+        var bucket=utc.UtcTicks/TimeSpan.FromHours(3).Ticks;
+        string Rank(DestinationDiagnostic d)=>Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(employer.Id+":"+bucket+":"+d.Research.Key)));
+        var anchors=rows.Where(x=>priority.Contains(CuratedNamibiaDestinations.Find(x.Research.Key)?.Id??x.Research.Key));
+        if(employer.Category=="Safari")anchors=anchors.OrderBy(Rank).Take(3);
+        return anchors.Concat(rows.Where(x=>x.Resolved?.VerificationState==LocationVerificationState.MsfsVerified)).Concat(rows.OrderBy(Rank)).DistinctBy(x=>x.Research.Key).Take(count).ToArray();
+    }
+    public static DateTimeOffset SelectionEpoch(EconomyWorld world,DateTimeOffset now)
+    {
+        if(world.RealTime is not {} clock)return now;
+        var interval=TimeSpan.FromHours(clock.OfferIntervalHours);
+        return now<clock.NextOffersUtc?clock.NextOffersUtc-interval:clock.NextOffersUtc.AddTicks((now-clock.NextOffersUtc).Ticks/interval.Ticks*interval.Ticks);
     }
 }

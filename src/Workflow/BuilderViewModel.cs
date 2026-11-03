@@ -93,6 +93,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
     {
         this.services = services; this.sdkRoot = sdkRoot;
         var careerRoot=careerStore?.StorageRoot??CareerStore.DefaultRoot;
+        employerDestinations ??= careerStore is not null && !services.IsDryRun ? new DestinationReviewStore(careerRoot).Load() : new();
         var profile=careerStore?.Load();
         EmployerFleetResult? allocation=null;string? allocationError=null;
         try{allocation=careerStore?.EnsureEmployerFleet();}catch(IOException ex){allocationError="Company allocation blocked; existing fleet preserved: "+ex.Message;}
@@ -158,7 +159,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
             Path.Combine(careerRoot, "diagnostics", "offshore"),
             () => services.IsDryRun ? throw new InvalidOperationException("Live diagnostic disabled in dry-run.")
                 : new FrontierAirportBuilder.MsfsSdk.LiveAircraftCondition(this.sdkRoot, new PlatformMissionFlightProfile()),
-            () => employer?.Category == "Offshore" && (employerDestinations ?? new()).Base(employer) is { ApproximateCoordinates: {} c } b
+            () => employer?.Category == "Offshore" && employerDestinations!.HasTechnicalBaseReference(employer) && employerDestinations.Base(employer) is { ApproximateCoordinates: {} c } b
                 ? new PassengerEndpoint(b.StableId, b.Name, c.Latitude, c.Longitude) : null);
         var loadingCoordinator = new AircraftLoadingCoordinator(loadingStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(),
             flightAttemptTracker, () => this.sdkRoot, () => Tracking.World, () => Jobs.LoadingJobs)
@@ -210,7 +211,8 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         Operations = new(prospectingOperations);
         Career = new(profile, employer, Fleet, Jobs, Passengers, Offshore, CargoJourney, Operations,
             () => economyStore.LoadAsync(), () => employer is not null && (employerDestinations ?? new()).Base(employer) is { ApproximateCoordinates: {} c } b
-                ? new PassengerEndpoint(b.StableId, b.Name, c.Latitude, c.Longitude) : null);
+                ? new PassengerEndpoint(b.StableId, b.Name, c.Latitude, c.Longitude) : null, employerDestinations,
+                services.IsDryRun?new MemoryAirportVisitStore():new AirportVisitStore(careerRoot));
         Tracking.TelemetryChanged += sample => { _ = Jobs.ObserveTelemetryAsync(sample?.Aircraft); _ = AircraftLoading.ObserveAsync(sample); _ = Passengers.ObserveAsync(sample?.Aircraft); _ = CargoJourney.ObserveAsync(sample?.Aircraft); };
         Layout = new(()=>CanLayout,()=>new(LayoutRunwayLength,LayoutRunwayWidth,LayoutRunwayHeading,runwayEast,runwayNorth),()=>hasRunway);
         Layout.Edited += (_,_)=>Invalidate();

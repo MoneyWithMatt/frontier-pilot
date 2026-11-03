@@ -102,7 +102,7 @@ internal static partial class Program
                 ((ListBox)screen.FindName("EmployersList")).SelectedIndex=2;Pump();Save(careerWindow,Path.Combine(folder,"career-offshore.png"));
                 CareerButton("Back").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();Check(careerStore.Load().Stage==CareerStage.Region,"Back navigation preserves draft");
                 var diagnostic=new DestinationDiagnosticsWindow(careerRoot){ShowInTaskbar=false};diagnostic.Show();Pump();
-                Check(Descendants<DataGrid>(diagnostic).Single().Items.Count==53,"Diagnostics retains all 53 memberships");
+                Check(Descendants<DataGrid>(diagnostic).Single().Items.Count==EmployerDestinationCatalogue.Research.Count,"Diagnostics retains the original memberships and curated additions");
                 Save(diagnostic,Path.Combine(folder,"employer-destinations.png"));diagnostic.Close();
                 foreach(var employer in CareerCatalogue.Employers)
                 {
@@ -131,6 +131,7 @@ internal static partial class Program
                 Check(employedModel.Jobs.ReservedJobs.Count==1&&employedModel.Jobs.ReservedJobs[0].CompanyAircraftTypeId=="c208","Aircraft selector and bound accept command reserve company dispatch: "+employedModel.Jobs.Error);
                 employedWindow.Close();
                 await CheckCareerHub(folder);
+                await CheckNamibiaAirportReviews(folder);
                 await CheckPassengerTransfers(folder);
                 await CheckCargoJourney(folder);
                 await CheckOffshoreMissions(folder);

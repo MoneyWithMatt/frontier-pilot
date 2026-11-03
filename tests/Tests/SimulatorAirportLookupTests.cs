@@ -10,7 +10,7 @@ public sealed class SimulatorAirportLookupTests : IDisposable
     private readonly string root=Path.Combine(Path.GetTempPath(),"FrontierAirportLookupTests",Guid.NewGuid().ToString("N"));
     private static readonly DateTimeOffset Now=DateTimeOffset.Parse("2026-10-16T12:00:00Z");
     private static SimulatorAirportScan Scan(params SimulatorAirport[] airports)=>new(Now,"Synthetic test; not live simulator evidence",airports);
-    private static SimulatorAirportScan All()=>Scan(EmployerDestinationCatalogue.Research.Where(x=>x.Identifier.Length>0).DistinctBy(x=>x.Identifier).Select((x,i)=>new SimulatorAirport(x.Identifier,-22-i*.01,16)).ToArray());
+    private static SimulatorAirportScan All()=>Scan(EmployerDestinationCatalogue.Research.Where(x=>x.Identifier.Length>0).DistinctBy(x=>x.Identifier).Select(x=>CuratedNamibiaDestinations.Find(x.Key) is {} c?new SimulatorAirport(x.Identifier,c.Latitude,c.Longitude):new SimulatorAirport(x.Identifier,-22,16)).ToArray());
     private static byte[] Packet(uint number,uint total, string id="FYNG")
     {
         var bytes=new byte[64];
@@ -63,26 +63,28 @@ public sealed class SimulatorAirportLookupTests : IDisposable
         var board=await service.LoadAsync();Assert.NotEmpty(board.Offers);
         var enabled=catalogue.Diagnose(category).Where(x=>x.Enabled).Select(x=>x.Resolved!.StableId).ToHashSet();
         Assert.All(board.Offers,x=>Assert.Contains(x.DestinationLocationId!,enabled));
-        Assert.All(catalogue.Diagnose().Where(x=>x.Research.Identifier.Length==0),x=>Assert.False(x.Enabled));
-        Assert.Equal("SimConnectAirportCatalogue",catalogue.Resolve(EmployerDestinationCatalogue.Research.First(x=>x.Identifier=="FYNG"))!.VerificationEvidence!.Method);
+        Assert.Contains(catalogue.Diagnose(),x=>x.Research.Key=="NA-0114"&&x.Enabled&&x.Resolved!.AirportIdentifier.Value is null);
+        Assert.Null(catalogue.Resolve(EmployerDestinationCatalogue.Research.First(x=>x.Identifier=="FYMO"))!.VerificationEvidence);
+        Assert.False(catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYNG").Enabled);
     }
-    [Fact] public void MissingAndAmbiguousAirportsAreFlaggedAndExcluded()
+    [Fact] public void AmbiguousAirportsStayHeldWhileAbsentLookupDoesNotRejectPublishedExploratoryFields()
     {
-        new SimulatorAirportStore(root).Save(Scan(new("FYWE",-22.6,17),new("FYNG",-22,16),new("FYNG",-21,16)));
+        new SimulatorAirportStore(root).Save(Scan(new("FYWE",-22.6,17),new("FYMO",-22,16),new("FYMO",-21,16)));
         var catalogue=new DestinationReviewStore(root).Load();
-        Assert.Contains("Ambiguous",catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYNG").Recognition);
-        Assert.Contains("Not found",catalogue.Diagnose("Industrial").Single(x=>x.Identifier=="FYAR").Recognition);
-        Assert.Empty(catalogue.Diagnose().Where(x=>x.Enabled));
-        Assert.Empty(CompanyEmployment.Create(CareerCatalogue.Employers.First(),catalogue,Now).Jobs);
+        Assert.Contains("Ambiguous",catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYMO").Recognition);
+        Assert.False(catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYMO").Enabled);
+        Assert.True(catalogue.Diagnose("Missionary").Single(x=>x.Identifier=="FYAM").Enabled);
+        Assert.NotEmpty(CompanyEmployment.Create(CareerCatalogue.Employers.First(),catalogue,Now).Jobs);
     }
     [Fact] public void ChangedAndMissingAirportsRetainAcceptedRouteCoordinates()
     {
         var store=new SimulatorAirportStore(root);store.Save(All());var catalogue=new DestinationReviewStore(root).Load();
-        var row=EmployerDestinationCatalogue.Research.First(x=>x.Identifier=="FYNG");var first=catalogue.Resolve(row)!;
-        var changed=All();changed=changed with {Airports=changed.Airports.Select(x=>x.Identifier=="FYNG"?x with {Latitude=-20}:x).ToArray()};
+        var row=EmployerDestinationCatalogue.Research.First(x=>x.Identifier=="FYMO");var first=catalogue.Resolve(row)!;
+        Assert.True(catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYMO").Enabled);
+        var changed=All();changed=changed with {Airports=changed.Airports.Select(x=>x.Identifier=="FYMO"?x with {Latitude=-20}:x).ToArray()};
         catalogue.ApplySimulatorCache(store.Save(changed));Assert.Equal(first.ApproximateCoordinates,catalogue.Resolve(row)!.ApproximateCoordinates);
-        Assert.False(catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYNG").Enabled);
-        catalogue.ApplySimulatorCache(store.Save(Scan()));Assert.NotNull(catalogue.Find(first.StableId));Assert.Empty(catalogue.Diagnose().Where(x=>x.Enabled));
+        Assert.False(catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYMO").Enabled);
+        catalogue.ApplySimulatorCache(store.Save(Scan()));Assert.NotNull(catalogue.Find(first.StableId));Assert.False(catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYMO").Enabled);
     }
     [Fact] public void ReviewsOverrideAutomaticResolutionAndResetPreservesCache()
     {

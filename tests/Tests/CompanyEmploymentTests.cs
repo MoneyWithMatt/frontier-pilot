@@ -8,7 +8,7 @@ public sealed class CompanyEmploymentTests : IDisposable
     private readonly string root=Path.Combine(Path.GetTempPath(),"FrontierEmployerTests",Guid.NewGuid().ToString("N"));
     private static readonly DateTimeOffset Now=DateTimeOffset.Parse("2026-10-15T12:00:00Z");
     private static CareerEmployer Employer(string category)=>CareerCatalogue.Employers.Single(x=>x.Category==category);
-    private static DestinationReview Synthetic(string code,double latitude=-22,double longitude=16,string[]? aircraft=null)=>new(code,"Approved",code,latitude,longitude,"Synthetic automated fixture; not live MSFS evidence",Now,aircraft??[]);
+    private static DestinationReview Synthetic(string code,double latitude=-22,double longitude=16,string[]? aircraft=null)=>new(code,"Approved",code,code=="FYME"&&latitude==-22&&longitude==16?CuratedNamibiaDestinations.Find(code)!.Latitude:latitude,code=="FYME"&&latitude==-22&&longitude==16?CuratedNamibiaDestinations.Find(code)!.Longitude:longitude,"Synthetic automated fixture; not live MSFS evidence",Now,aircraft??[]);
     [Theory]
     [InlineData("Missionary","eros","c152,c208")]
     [InlineData("Industrial","eros","c208,baron-g58")]
@@ -22,7 +22,9 @@ public sealed class CompanyEmploymentTests : IDisposable
     }
     [Fact] public void ResearchRetainsAllMembershipsUnknownRunwaysAndSharedAirports()
     {
-        var rows=EmployerDestinationCatalogue.Research;Assert.Equal(53,rows.Count);
+        using var stream=typeof(EmployerDestinationCatalogue).Assembly.GetManifestResourceStream("FrontierAirportBuilder.Workflow.NamibiaDestinationResearch.json")!;
+        var rows=System.Text.Json.JsonSerializer.Deserialize<DestinationResearch[]>(stream,new System.Text.Json.JsonSerializerOptions{PropertyNamingPolicy=System.Text.Json.JsonNamingPolicy.SnakeCaseLower})!;Assert.Equal(53,rows.Length);
+        Assert.All(rows,r=>Assert.Contains(EmployerDestinationCatalogue.Research,x=>x.Career==r.Career&&x.Key==r.Key));
         Assert.Equal(16,rows.Count(x=>x.Career=="Missionary"));Assert.Equal(12,rows.Count(x=>x.Career=="Industrial"));
         Assert.Equal(17,rows.Count(x=>x.Career=="Safari"));Assert.Equal(8,rows.Count(x=>x.Career=="Offshore"));
         Assert.Equal(48,rows.Select(x=>x.Key).Distinct().Count());
@@ -33,9 +35,9 @@ public sealed class CompanyEmploymentTests : IDisposable
     [Fact] public void RecognitionDoesNotPromoteRealWorldResearchOrBaseMapMarker()
     {
         var catalogue=new EmployerDestinationCatalogue();var diagnostics=catalogue.Diagnose();
-        Assert.Equal(4,diagnostics.Count(x=>x.Resolved is not null)); // FYAR belongs to two pools.
-        Assert.Equal(2,diagnostics.Count(x=>x.Enabled));Assert.All(diagnostics.Where(x=>x.Enabled),x=>Assert.Equal("Industrial",x.Employer));
-        Assert.Null(catalogue.Base(Employer("Offshore")));
+        Assert.Equal(4,diagnostics.Count(x=>x.Resolved?.VerificationState==LocationVerificationState.MsfsVerified)); // Existing inspections retained.
+        Assert.True(diagnostics.Count(x=>x.Enabled)>20);Assert.All(diagnostics.Where(x=>x.Resolved?.VerificationState==LocationVerificationState.ResearchCandidate),x=>Assert.Null(x.Resolved!.VerificationEvidence));
+        Assert.NotNull(catalogue.Base(Employer("Offshore")));
         Assert.All(diagnostics.Where(x=>x.Resolved is null),x=>Assert.False(x.Enabled));
     }
     [Theory][InlineData("Missionary")][InlineData("Industrial")][InlineData("Safari")][InlineData("Offshore")]
@@ -49,10 +51,10 @@ public sealed class CompanyEmploymentTests : IDisposable
         Assert.Equal(saved.PlayerId,store.AcceptEmployment(Employer(category).Id).PlayerId);
         Assert.Throws<IOException>(()=>store.AcceptEmployment(CareerCatalogue.Employers.First(e=>e.Id!=saved.Employment.EmployerId).Id));
     }
-    [Theory][InlineData("Missionary","FYOJ")][InlineData("Industrial","FYAR")][InlineData("Safari","FYNG")][InlineData("Offshore","FYWE")]
+    [Theory][InlineData("Missionary","FYOJ")][InlineData("Industrial","FYAR")][InlineData("Safari","FYME")][InlineData("Offshore","FYWE")]
     public async Task SharedGeneratorUsesEmployerPoolCategoriesAndNormalReservation(string category,string destination)
     {
-        var catalogue=new EmployerDestinationCatalogue(new[]{Synthetic("FYOJ"),Synthetic("FYNG"),Synthetic("FYWB",-23,14.6)});
+        var catalogue=new EmployerDestinationCatalogue(new[]{Synthetic("FYOJ"),Synthetic("FYME"),Synthetic("FYWB",-23,14.6)});
         var store=new LocalEconomyStateStore(Path.Combine(root,"economy-state.json"));
         var service=new EmployedCargoJobsService(store,utcNow:()=>Now,employer:Employer(category),destinations:catalogue);
         var board=await service.LoadAsync();Assert.NotEmpty(board.Offers);
@@ -72,10 +74,10 @@ public sealed class CompanyEmploymentTests : IDisposable
         Assert.Equal(choice.Id,Assert.Single((await resumed.LoadAsync()).ReservedJobs).CompanyAircraftTypeId);
     }
     [Theory][InlineData("Missionary")][InlineData("Safari")][InlineData("Offshore")]
-    public async Task UnresolvedPoolsCannotCreateBrokenJobs(string category)
+    public async Task UnverifiedCuratedPoolsGenerateExploratoryJobsWithValidEndpoints(string category)
     {
         var service=new EmployedCargoJobsService(new MemoryEconomyStateStore(),utcNow:()=>Now,employer:Employer(category));
-        Assert.Empty((await service.LoadAsync()).Offers);
+        Assert.All((await service.LoadAsync()).Offers,j=>{Assert.NotNull(j.DestinationLatitude);Assert.NotEqual(j.OriginLocationId,j.DestinationLocationId);});
     }
     [Fact] public async Task LegacyGeneratorAndExistingHistoryRemainUnchanged()
     {
@@ -96,8 +98,8 @@ public sealed class CompanyEmploymentTests : IDisposable
     }
     [Fact] public void CuratedAircraftConstraintsAndExactAddonMappingsDoNotGuessAliases()
     {
-        var catalogue=new EmployerDestinationCatalogue([Synthetic("FYNG",aircraft:["savage-cub"])]);
-        var destination=catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYNG");
+        var catalogue=new EmployerDestinationCatalogue([Synthetic("FYME",aircraft:["savage-cub"])]);
+        var destination=catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYME");
         Assert.Equal("savage-cub",Assert.Single(CompanyAircraft.Choices(Employer("Safari"),destination,10)).Id);
         Assert.Equal("savage-cub",Assert.Single(CompanyAircraft.Choices(Employer("Safari"),destination,20)).Id);
         Assert.Null(CompanyAircraft.Resolve(new("Addon Caravan","C208"),[]));
@@ -107,23 +109,23 @@ public sealed class CompanyEmploymentTests : IDisposable
     }
     [Fact] public void ReviewStorePreservesCorruptFutureAndImmutableApprovedCoordinates()
     {
-        var store=new DestinationReviewStore(root);store.Save(Synthetic("FYNG"));Assert.NotNull(store.Load().Find("namibia.ongava-lodge"));
-        Assert.Throws<IOException>(()=>store.Save(Synthetic("FYNG",-21,15)));
+        var store=new DestinationReviewStore(root);store.Save(Synthetic("FYME"));Assert.NotNull(store.Load().Find("namibia.mount-etjo"));
+        Assert.Throws<IOException>(()=>store.Save(Synthetic("FYME",-21,15)));
         var path=Path.Combine(root,"destination-reviews.json");File.WriteAllText(path,"{\"SchemaVersion\":999,\"Reviews\":[]}");
-        Assert.Throws<IOException>(()=>store.Save(Synthetic("FYNG")));Assert.Contains("999",File.ReadAllText(path));
+        Assert.Throws<IOException>(()=>store.Save(Synthetic("FYME")));Assert.Contains("999",File.ReadAllText(path));
     }
     [Fact] public void RejectionRetainsOriginalInspectionAndResetRetainsCuration()
     {
-        var store=new DestinationReviewStore(root);store.Save(Synthetic("FYNG"));
-        store.Save(Synthetic("FYNG") with {Status="Rejected",Evidence="Synthetic later rejection",RecordedUtc=Now.AddDays(1)});
-        var catalogue=store.Load();Assert.False(catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYNG").Enabled);
-        Assert.Equal("Synthetic automated fixture; not live MSFS evidence",catalogue.Find("namibia.ongava-lodge")!.VerificationEvidence!.Notes);
+        var store=new DestinationReviewStore(root);store.Save(Synthetic("FYME"));
+        store.Save(Synthetic("FYME") with {Status="Rejected",Evidence="Synthetic later rejection",RecordedUtc=Now.AddDays(1)});
+        var catalogue=store.Load();Assert.False(catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYME").Enabled);
+        Assert.Equal("Synthetic automated fixture; not live MSFS evidence",catalogue.Find("namibia.mount-etjo")!.VerificationEvidence!.Notes);
         var career=new CareerStore(root);career.RequestReset(true);career.Load();Assert.Single(store.Load().Reviews);
     }
     [Fact] public void ResearchWithUnapprovedCoordinatesDoesNotBecomeSimulatorEvidence()
     {
-        var catalogue=new EmployerDestinationCatalogue([Synthetic("FYNG") with {Status="Needs investigation"}]);
-        Assert.Null(catalogue.Find("namibia.ongava-lodge"));
+        var catalogue=new EmployerDestinationCatalogue([Synthetic("FYME") with {Status="Needs investigation"}]);
+        Assert.Null(catalogue.Find("namibia.mount-etjo")!.VerificationEvidence);Assert.False(catalogue.Diagnose("Safari").Single(d=>d.Identifier=="FYME").Enabled);
         var rejectedBase=new EmployerDestinationCatalogue([new("FYWE","Rejected","",null,null,"Synthetic rejected base",Now,[])]);
         Assert.Empty(rejectedBase.Diagnose("Industrial").Where(x=>x.Enabled));
     }

@@ -267,6 +267,7 @@
               <TextBlock Text="{Binding Selected.Purpose}" TextWrapping="Wrap" Margin="0,8" />
               <TextBlock Text="{Binding Selected.RouteText}" TextWrapping="Wrap" FontWeight="SemiBold" />
               <TextBlock Text="{Binding Selected.Distance}" Margin="0,6" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Selected.DestinationKnowledge}" Margin="0,6" Foreground="#A8CFC1" TextWrapping="Wrap" />
               <TextBlock Text="{Binding Estimate}" Foreground="#9FB4C1" TextWrapping="Wrap" />
               <TextBlock Text="{Binding Selected.Payload}" TextWrapping="Wrap" Margin="0,10" />
               <TextBlock Text="{Binding Selected.Aircraft}" TextWrapping="Wrap" />
@@ -279,6 +280,7 @@
               </WrapPanel>
               <TextBlock Text="{Binding Progress}" TextWrapping="Wrap" />
               <TextBlock Text="{Binding Error}" TextWrapping="Wrap" Foreground="#F0B47B" />
+              <local:AirportReviewControl x:Name="AirportReview" DataContext="{Binding DataContext.Airports,RelativeSource={RelativeSource AncestorType={x:Type local:CareerHubControl}}}"/>
               <Expander Header="Mission operations / recovery">
                 <ContentControl x:Name="MissionWorkspace" />
               </Expander>

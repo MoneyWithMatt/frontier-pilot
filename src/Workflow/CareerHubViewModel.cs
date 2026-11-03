@@ -22,6 +22,7 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
     public CareerFleetViewModel Fleet { get; }
     public CareerJobBoardViewModel Board { get; }
     public CareerOwnerJobsViewModel OwnerJobs { get; }
+    public AirportReviewViewModel Airports { get; }
     public string Error { get; private set; } = "";
     public string Connection => fleet.ConnectionStatus;
     public CareerJobRow? Active => Board.Selected is { Accepted: true, Started: true } selected ? selected : Board.All.FirstOrDefault(j => j.Accepted && j.Started) ?? (Board.Selected is { Accepted: true } reserved ? reserved : Board.All.FirstOrDefault(j => j.Accepted));
@@ -37,19 +38,21 @@ public sealed class CareerHubViewModel : INotifyPropertyChanged
     public CareerHubViewModel(CareerProfile? profile, CareerEmployer? employer, AircraftFleetViewModel fleet,
         EmployedCargoJobsViewModel cargo, PassengerTransfersViewModel passengers, OffshoreMissionsViewModel offshore,
         CargoJourneyViewModel loading, ProspectingOperationsViewModel operations, Func<Task<EconomyWorld?>> readWorld,
-        Func<PassengerEndpoint?>? baseAirport = null)
+        Func<PassengerEndpoint?>? baseAirport = null, EmployerDestinationCatalogue? destinations=null, IAirportVisitStore? airportVisits=null)
     {
         this.fleet = fleet; this.loading = loading; this.passengers = passengers; this.readWorld = readWorld; this.baseAirport = baseAirport ?? (() => null);
         fleet.SelectionGuard = id => SelectionBlocked(id) ? "Keep the current airframe while cargo plans or passenger payload ownership/recovery are active. No assignment was transferred." : null;
         Overview = new(profile, employer, fleet); Work = new(employer); Fleet = new(fleet, employer, SelectAircraft);
-        Board = new(Navigation, cargo, passengers, offshore, fleet) { Reload = RefreshAsync, OpenLoad = () => OpenLoadAsync(Board!.Selected) };
+        destinations??=new();
+        Board = new(Navigation, cargo, passengers, offshore, fleet) { Reload = RefreshAsync, OpenLoad = () => OpenLoadAsync(Board!.Selected), Destinations=destinations };
+        Airports=new(destinations,airportVisits??new MemoryAirportVisitStore(),fleet,()=>Board.RefreshAsync());
         OwnerJobs = new(operations) { Reload = RefreshAsync };
         ActiveBoardCommand = new(() => { if (Active is {} a) Board.Selected = a; Show(CareerSection.JobBoard); });
         ActiveLoadCommand = new(() => _ = OpenLoadAsync(Active), () => Active is { Family: CareerJobFamily.Cargo or CareerJobFamily.Personnel });
         FleetLoadCommand = new(() => { Navigation.AircraftSection = (int)CareerAircraftSection.LoadManager; Show(CareerSection.Fleet); }, () => fleet.Selected is not null);
-        fleet.FleetChanged += () => { Fleet.Notify(); Notify(); };
+        fleet.FleetChanged += () => { Fleet.Notify(); Project(); };
         foreach (var source in new INotifyPropertyChanged[] { cargo, passengers, offshore, operations }) source.PropertyChanged += (_, _) => Project();
-        Board.SelectionChanged += Notify;
+        Board.SelectionChanged += ()=>{Airports.Select(Board.Selected?.DestinationLocationId);Airports.Notify();Notify();};
     }
     private void Project()
     {

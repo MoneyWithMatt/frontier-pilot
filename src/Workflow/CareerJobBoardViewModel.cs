@@ -10,6 +10,8 @@ public sealed record CareerJobRow(string Key, string SourceId, CareerJobFamily F
     Guid? AirframeId, string[] AircraftTypes, IReadOnlyList<CareerRoutePoint> Route, string Compensation, string Requirements,
     double? AreaRadiusNauticalMiles = null, bool Started = false, bool OfferAvailable = true, string Objective = "")
 {
+    public string? DestinationLocationId {get;init;}
+    public string DestinationKnowledge {get;init;}="";
     public bool Available => OfferAvailable && !Accepted && !Completed && Family != CareerJobFamily.Platform;
     public string Category => Family.ToString();
     public string RouteText => Origin + " → " + Destination;
@@ -33,6 +35,7 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
     public event Action? SelectionChanged;
     public Func<Task>? Reload { get; set; }
     public Func<Task>? OpenLoad { get; set; }
+    public EmployerDestinationCatalogue? Destinations {get;set;}
     public string Error { get; private set; } = "";
     public bool IsBusy => busy;
     public string EmptyState => Items.Count == 0 ? "No work in this view. Refresh the board, choose another filter, or inspect employer and aircraft restrictions." : "";
@@ -138,7 +141,11 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
             rows.Add(new("platform:" + p.Id, p.Id, CareerJobFamily.Platform, p.Name, "Platform work · qualification required", origin?.Name ?? "Base unresolved", p.Name,
                 "Supply / personnel / visit · unavailable", p.Status, false, false, null, ["h125"], origin is null ? [new(p.Name, p.Latitude, p.Longitude)] : [new(origin.Name, origin.Latitude, origin.Longitude), new(p.Name, p.Latitude, p.Longitude)],
                 "No available mission", p.BlockedReason));
-        jobs = rows.OrderBy(j => j.Accepted ? 0 : j.Available ? 1 : j.Completed ? 3 : 2).ToArray();
+        jobs = rows.Select(j=> {
+            var id=j.Family==CareerJobFamily.Cargo?cargo.Offers.Concat(cargo.ReservedJobs).Concat(cargo.CompletedJobs).FirstOrDefault(c=>c.JobId==j.SourceId)?.DestinationLocationId:
+                j.Family==CareerJobFamily.Personnel?passengers.Transfers.FirstOrDefault(p=>p.Id==j.SourceId)?.Destination.Id:null;
+            return j with {DestinationLocationId=id,DestinationKnowledge=Destinations?.Describe(id,fleet.Selected?.CompanyTypeId)??""};
+        }).OrderBy(j => j.Accepted ? 0 : j.Available ? 1 : j.Completed ? 3 : 2).ToArray();
         if (!Items.Any(j => j.Key == navigation.SelectedJobKey)) { navigation.SelectedJobKey = Items.FirstOrDefault()?.Key; SelectSource(); }
         Notify(); SelectionChanged?.Invoke();
     }

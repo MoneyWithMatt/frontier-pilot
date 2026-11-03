@@ -14,7 +14,7 @@ public sealed class OffshoreMissionsService(IEconomyStateStore store, CareerEmpl
     public bool Enabled => employer?.Category == "Offshore";
     public decimal HourlyRate => employer?.HourlyWage ?? 0;
     public bool CanAccept => Selected is { State: OffshoreMissionState.Offered } m && m.ExpiresUtc > Now &&
-        selectedAirframe() is not null && SelectedCompanyType() == "vision-jet" && Active is null;
+        selectedAirframe() is not null && SelectedCompanyType() == "vision-jet" && Active is null && destinations.CanGenerateAtBase(employer!);
     public Func<ConditionAircraftIdentity, bool> LiveIdentityGuard { get; init; } = _ => false;
     public Func<string?> SelectedCompanyType { get; init; } = () => null;
     public Func<FlightAircraftIdentity, string?> ContinuityGuard { get; init; } = _ => null;
@@ -72,7 +72,7 @@ public sealed class OffshoreMissionsService(IEconomyStateStore store, CareerEmpl
                 if (!initialized)
                     missions = missions.Select(m => m.Active && m.Aircraft is not null && m.State != OffshoreMissionState.ReadyToComplete
                         ? m with { RecoveryRequired = true, ObservationSeconds = m.ObservationCompletedUtc is null ? 0 : m.ObservationSeconds } : m).ToList();
-                if (!missions.Any(m => m.Active || m.State == OffshoreMissionState.Offered))
+                if (destinations.CanGenerateAtBase(employer!) && !missions.Any(m => m.Active || m.State == OffshoreMissionState.Offered))
                 {
                     var id = OffshoreMissionKernel.OfferId(employer!.Id, w.RealTime!.NextOffersUtc.UtcTicks);
                     if (!missions.Any(m => m.Id == id))
@@ -94,7 +94,7 @@ public sealed class OffshoreMissionsService(IEconomyStateStore store, CareerEmpl
     {
         var m = w.OffshoreMissions.Single(m => m.Id == SelectedId);
         if (m.State != OffshoreMissionState.Offered) return new(w, false);
-        if (m.ExpiresUtc <= Now || selectedAirframe() is not {} id || SelectedCompanyType() != "vision-jet" || w.OffshoreMissions.Any(x => x.Active))
+        if (m.ExpiresUtc <= Now || !destinations.CanGenerateAtBase(employer!) || selectedAirframe() is not {} id || SelectedCompanyType() != "vision-jet" || w.OffshoreMissions.Any(x => x.Active))
             throw new InvalidOperationException("Select the assigned Vision Jet airframe and an unexpired offer; complete the active observation mission first.");
         return OffshoreMissionKernel.Replace(w, m with { State = OffshoreMissionState.Accepted, AirframeId = id, AcceptedUtc = Now });
     }, token);

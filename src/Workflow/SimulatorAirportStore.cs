@@ -1,19 +1,22 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FrontierAirportBuilder.MsfsSdk;
+using FrontierAirportBuilder.Core;
 
 namespace FrontierAirportBuilder.Workflow;
 
 public sealed record SavedSimulatorAirport(SimulatorAirport Airport, DateTimeOffset ObservedUtc, string Source);
+public sealed record SavedAirportConflict(string Identifier,string Reason,DateTimeOffset ObservedUtc);
 public sealed record SimulatorAirportCache(int SchemaVersion, SimulatorAirportScan Scan, SavedSimulatorAirport[] Routes)
 {
+    public SavedAirportConflict[] Conflicts {get;init;}=[];
     public string? Problem(string identifier)
     {
         var found = Scan.Airports.Where(x => x.Identifier == identifier).Distinct().ToArray();
-        if (found.Length == 0) return "Not found in MSFS airport catalogue";
+        if (found.Length == 0) return Conflicts.FirstOrDefault(c=>c.Identifier==identifier)?.Reason ?? "Not found in MSFS airport catalogue";
         if (found.Length != 1) return "Ambiguous identifier in MSFS airport catalogue";
         var original = Routes.SingleOrDefault(x => x.Airport.Identifier == identifier);
-        return original is not null && original.Airport != found[0] ? "Airport coordinates changed; investigate before new jobs" : null;
+        return original is not null && original.Airport != found[0] ? "Airport coordinates changed; investigate before new jobs" : Conflicts.FirstOrDefault(c=>c.Identifier==identifier)?.Reason;
     }
 }
 
@@ -37,7 +40,7 @@ public sealed class SimulatorAirportStore(string root)
     }
     private static void Validate(SimulatorAirportCache data)
     {
-        if (data.SchemaVersion != 1 || data.Scan is null || data.Scan.ObservedUtc == default || string.IsNullOrWhiteSpace(data.Scan.Source) ||
+        if (data.SchemaVersion is < 1 or > 2 || data.Conflicts is null || data.Conflicts.Any(c=>c is null||c.ObservedUtc==default||string.IsNullOrWhiteSpace(c.Reason)||!EmployerDestinationCatalogue.Research.Any(r=>r.Identifier==c.Identifier)) || data.Conflicts.DistinctBy(c=>c.Identifier).Count()!=data.Conflicts.Length || data.Scan is null || data.Scan.ObservedUtc == default || string.IsNullOrWhiteSpace(data.Scan.Source) ||
             data.Scan.Airports is null || data.Routes is null || data.Routes.Any(x=>x.Airport is null||x.ObservedUtc==default||string.IsNullOrWhiteSpace(x.Source)) || data.Routes.DistinctBy(x => x.Airport.Identifier).Count() != data.Routes.Length)
             throw new IOException("Unsupported airport cache preserved.");
         foreach (var row in data.Scan.Airports.Concat(data.Routes.Select(x=>x.Airport)))
@@ -56,7 +59,16 @@ public sealed class SimulatorAirportStore(string root)
             var codes = EmployerDestinationCatalogue.Research.Select(x => x.Identifier).Where(x => x.Length > 0).ToHashSet();
             var scan = completeScan with { Airports = completeScan.Airports.Where(x => codes.Contains(x.Identifier)).Distinct().ToArray() };
             var routes = (prior?.Routes ?? []).Concat(scan.Airports.GroupBy(x => x.Identifier).Where(x => x.Count() == 1).Select(x => new SavedSimulatorAirport(x.Single(),scan.ObservedUtc,scan.Source))).DistinctBy(x => x.Airport.Identifier).ToArray();
-            var result = new SimulatorAirportCache(1, scan, routes); Validate(result);
+            var conflicts=(prior?.Conflicts??[]).ToList();
+            foreach(var group in scan.Airports.GroupBy(a=>a.Identifier))
+            {
+                var first=group.First();var original=prior?.Routes.FirstOrDefault(r=>r.Airport.Identifier==group.Key);
+                var research=EmployerDestinationCatalogue.Research.First(r=>r.Identifier==group.Key);var published=CuratedNamibiaDestinations.Find(research.Key);
+                var reason=group.Count()>1?"Ambiguous identifier retained; reconcile before new jobs":original is not null&&original.Airport!=first?"Airport coordinates changed; reconcile before new jobs":
+                    published is not null&&WorldTracking.DistanceMeters(first.Latitude,first.Longitude,published.Latitude,published.Longitude)>5*1852?"Facility point conflicts with published geography by over 5 NM; reconcile identity":null;
+                if(reason is not null&&!conflicts.Any(c=>c.Identifier==group.Key))conflicts.Add(new(group.Key,reason,scan.ObservedUtc));
+            }
+            var result = new SimulatorAirportCache(2, scan, routes){Conflicts=conflicts.ToArray()}; Validate(result);
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             var temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
             try

@@ -5,7 +5,7 @@ on:
     branches: [master]
   push:
     # Verify the isolated Career integration branch while PR creation permissions are unavailable.
-    branches: [master, codex/career-hub]
+    branches: [master, codex/career-hub, codex/namibia-playtesting]
   workflow_dispatch:
 
 permissions:
