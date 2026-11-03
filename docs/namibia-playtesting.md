@@ -38,9 +38,9 @@ Accepted/reserved/in-transit jobs remain after a report. No cargo/personnel disa
 
 ## Persistence and verification
 
-Economy schema 15 reads prior schemas and preserves jobs, inventory, ledger, flights and aircraft ownership. It appends an explicit location status rather than mislabelling exploratory airports MSFS-verified. Cache schema 2 reads schema 1; player visits have their own schema 1. All development tests use temporary or memory stores, not Matt's saves.
+Economy schema 15 reads prior schemas and preserves jobs, inventory, ledger, flights and aircraft ownership. It appends an explicit location status rather than mislabelling exploratory airports MSFS-verified. Cache schema 2 reads schema 1; player visits use schema 2 with schema-1 compatibility. All development tests use temporary or memory stores, not Matt's saves.
 
-`NamibiaPlaytestingTests` covers all four pools, source identities/coordinates, held cases, deterministic variety/cadence, per-aircraft reports, restart/reset/retries, problematic-offer exclusion and preserved accepted cargo/money, technical conflicts and schema-14 migration. Existing cargo, passenger, wage and flight regressions remain required. `NamibiaAirportReviewSmoke` drives actual reserve/review/problem buttons in the Career Hub and captures synthetic screenshots. Hosted WPF and packaging are separate from real simulator acceptance. Exact results are maintained in the [handoff](handoffs/namibia-playtesting.md).
+`NamibiaPlaytestingTests` covers all four pools, source identities/coordinates, held cases, deterministic variety/cadence, airport-level reports with aircraft context, restart/reset/retries, problematic-offer exclusion and preserved accepted cargo/money, technical conflicts and schema-14 migration. Existing cargo, passenger, wage and flight regressions remain required. `NamibiaAirportReviewSmoke` drives actual reserve/review/problem buttons in the Career Hub and captures synthetic screenshots. Hosted WPF and packaging are separate from real simulator acceptance. Exact results are maintained in the [handoff](handoffs/namibia-playtesting.md).
 
 ## Matt's playtest
 
@@ -53,4 +53,4 @@ Economy schema 15 reads prior schemas and preserves jobs, inventory, ledger, fli
 
 ## Automated release checkpoint
 
-Implementation `38a6bf76595a0dc4ee12eaebb92d59e6c9d8ab79` passed [Windows CI](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41674240167): 1,009 xUnit tests, 198 site/Career and 7 loading WPF assertions, 9 guard scenarios, historical CLI review and Windows packaging. [Download exact Windows bundle](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41674240167/artifacts/13249557417). Screenshots and receipts remain synthetic evidence; real airport usability is Matt's playtest.
+Implementation `67b093afb57c8bdb69a64eaea13e9fb0c2e9648f` passed [Windows CI](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41681372600): 1,013 xUnit tests, 206 site/Career and 7 loading WPF assertions, 9 guard scenarios, historical CLI review and Windows packaging. [Download exact Windows bundle](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41681372600/artifacts/13252414736). Screenshots and receipts remain synthetic evidence; real airport usability is Matt's playtest.

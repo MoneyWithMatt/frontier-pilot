@@ -1,40 +1,42 @@
-# Prepared draft PR — Activate Namibia exploratory careers and player airport reviews
+# Prepared draft PR — Namibia exploratory careers and optional airport reviews
 
-Head: `codex/namibia-playtesting`; target: `master`; draft: true. GitHub connector creation failed with HTTP 403, Resource not accessible by integration. Check for an existing PR before creating one; nothing merged.
+Head: `codex/namibia-playtesting`; target: `master`; draft: true. Prior scoped connector creation failed with HTTP403, Resource not accessible by integration. Check for an existing PR before creating one; nothing merged.
 
 ## Summary
 
-All four Namibia starting careers can offer plausible curated airport work before individual live airport acceptance. The existing demand engine selects six cargo destinations on its saved cadence, retaining original resources/quantities, shared personnel, physical fleet, loading, tracker proof and hourly wage services. Career Job Board adds destination status/cautions and persistent per-aircraft player visit/problem records. Problems withhold future offers without removing accepted cargo/personnel or financial history.
+All four Namibia starting careers offer suitable curated airport work without individual live airport acceptance. Six-destination rotating cargo pools, existing passenger sources and Career mapped dispatch reuse the existing fleet, loading, economy, flight proof and hourly wages.
 
-57 dated PR #4 references are selectively imported with provenance and stable legacy aliases. FYKW/FYHV/FYHO/FYNG/FYAD and other identity/closure conflicts remain Held. Facility lookup is not runway acceptance; database keys are not invented ICAO codes. Reports cannot move route coordinates or grant aircraft/platform qualification. SF50 physical boarding and H125/platform restrictions remain.
+Airport verification now records MSFS representation at airport level. Runway size, surface, terrain and aircraft performance are pilot decisions. Historical compatible-aircraft lists and AircraftUnsuitable observations remain readable but cannot exclude jobs. Known identity/geography conflicts remain Held. Exact company/type identity, physical payload, SF50/H125/platform restrictions and flight/payment safeguards remain.
 
-Stacked integration: based on Career Hub `21b1f78`, which includes PR #10 and its unmerged dependencies. Review this feature after that commit and review dependencies before merging. Other branches/master are preserved.
+After committed cargo delivery or personnel disembarkation and settlement, Career presents an optional inline Yes — Verify airport / Report a problem / Skip for now prompt. Skip persists an airport acknowledgement only. Verified airports do not repeatedly prompt. Manual simulator-problem reporting remains available before completion. Genuine problems withhold future offers without touching accepted cargo/passengers, completed history or wages. No cancellation/rerouting.
+
+Stacked integration: based on Career Hub `21b1f78`, which includes PR #10 and its unmerged dependencies. Review dependencies before merging. Other branches/master are preserved.
 
 ## Specification
 
-[Approved scope](https://github.com/MoneyWithMatt/frontier-pilot/blob/codex/namibia-playtesting/docs/specs/namibia-playtesting.md), [implementation/player procedure](https://github.com/MoneyWithMatt/frontier-pilot/blob/codex/namibia-playtesting/docs/namibia-playtesting.md), [handoff and failure history](https://github.com/MoneyWithMatt/frontier-pilot/blob/codex/namibia-playtesting/docs/handoffs/namibia-playtesting.md).
+[Original approved scope](https://github.com/MoneyWithMatt/frontier-pilot/blob/codex/namibia-playtesting/docs/specs/namibia-playtesting.md), [superseding pilot-responsibility refinement](https://github.com/MoneyWithMatt/frontier-pilot/blob/codex/namibia-playtesting/docs/specs/airport-verification-refinement.md), [playtest procedure](https://github.com/MoneyWithMatt/frontier-pilot/blob/codex/namibia-playtesting/docs/namibia-playtesting.md), [exact evidence/handoff](https://github.com/MoneyWithMatt/frontier-pilot/blob/codex/namibia-playtesting/docs/handoffs/namibia-playtesting.md).
 
 ## Test results
 
-Clean implementation `38a6bf76595a0dc4ee12eaebb92d59e6c9d8ab79`: [full hosted Windows CI passed](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41674240167). 1,009 xUnit / 0 failures / 0 skips, 198 SiteUiSmoke and 7 LoadingWpfSmoke assertions, 9 simulated verification-guard scenarios, historical CLI assertions and self-contained Windows packaging. Zero build warnings/errors. Exact commands, source states and retained earlier failures are in the handoff. Synthetic screenshots were inspected, including accepted Aminuis cargo retained after a problem report, readable issue choices and visible save confirmation.
+Implementation `67b093afb57c8bdb69a64eaea13e9fb0c2e9648f`: local BuildTest passed 1,013 / 0 failures / 0 skips, zero build warnings/errors. [Hosted Windows run 41681372600 passed](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41681372600): 1,013 tests / 0 failures / 0 skips, 206 SiteUiSmoke and 7 LoadingWpfSmoke assertions, 9 guards, historical CLI review and packaging; exact source clean. Three synthetic screenshots inspected, including the optional first-visit prompt. Tests exercise actual synthetic tracker payment followed by all three answers, real passenger disembarkation timing, airport-level legacy compatibility, dismissal persistence and retained accepted work. No assertions skipped/weakened to bypass physical/proof/pay safeguards.
 
 ## Persistence / migrations
 
-Economy schema 15 appends explicit ExploratoryAirport status and preserves prior jobs/inventory/ledger/flight/payload ownership. Airport cache schema 2 reads schema 1 and retains technical conflicts. Separate `airport-visits.json` schema 1 stores append-only player observations with scoped aircraft context and corruption/atomic-write safeguards. Normal runtime upgrades are versioned; development did not access or modify Matt's personal saves.
+Economy schema 15 and airport cache schema 2 remain from the original slice. Airport visits schema 2 reads schema 1 unchanged on load, preserving every observation and aircraft metadata; adds idempotent per-airport prompt dismissals under existing bounded atomic/mutex/backup/corrupt-file guards. Skip does not create a review. Existing positive reports become airport-level through compatibility logic, without duplicating them. Development has not accessed personal data.
 
 ## Simulator verification and limitations
 
-No live MSFS acceptance, actual airport usability test, scenery installation, Package Tool or new executable run on Matt's PC. Automated fixtures and WPF screens are synthetic. Safari passenger profiles, SF50 physical boarding and H125/platform operations remain restricted. Cancellation/re-routing/disposition and versioned technical route repair are separate follow-ups; incomplete flights are not paid. Active-employer switching remains unsupported.
+No live MSFS acceptance or actual airport-usability test. WPF/synthetic tracker checks prove software behavior only. Safari passenger profiles, SF50 physical boarding and H125/platform operations remain restricted. Cancellation/re-routing/disposition and technical coordinate repair remain separate follow-ups. No incomplete flight payment. Active employer switching remains unsupported.
 
 ## Development artifact
 
-[Exact 38a6bf7 Windows bundle](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41674240167/artifacts/13249557417); [screenshots/logs/TRX/receipts](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41674240167/artifacts/13250126473). Build metadata/checksums identify exact source. Download is not approval for autonomous execution on the gaming PC. A subsequent documentation-only checkpoint runs the same pipeline; inspect the head check before review.
+[New Windows build at 67b093a](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41681372600/artifacts/13252414736); [screenshots/logs/TRX/receipts](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41681372600/artifacts/13253915604). Metadata/checksums identify exact source. Download is not approval for autonomous execution on the gaming PC.
 
 ## Short playtesting checklist
 
-- [ ] Choose a Namibia career; inspect varied mapped routes, distance, manifest, aircraft and destination caution.
-- [ ] Accept supported unverified work without individual airport-approval prompts.
-- [ ] Use existing physical loading, flight and completion controls; confirm ordinary hourly pay once.
-- [ ] Record a visit for the actual tested aircraft; another aircraft remains unverified.
-- [ ] Report a problem; future offers disappear while accepted custody/history remains.
-- [ ] Restart and confirm knowledge persists; Held identities and unqualified aircraft remain unavailable.
+- [ ] Inspect varied mapped routes, aircraft/manifest and destination caution; accept unverified work without verification prompts.
+- [ ] Use existing physical loading, flight and completion controls; hourly pay settles once.
+- [ ] Optional first-visit prompt appears after completion/payment; Yes records airport representation across aircraft.
+- [ ] Skip preserves all mission/economic state, persists across restart and does not pretend the airport is verified.
+- [ ] Manual problem report works before completion and removes future offers while preserving accepted custody/history/pay.
+- [ ] Held identities and unqualified loading/platform operations remain blocked; runway/performance decisions remain with the pilot.
