@@ -130,5 +130,15 @@ public sealed class CareerHubTests : IDisposable
         Assert.Equal("c208",vm.Fleet.Selected!.CompanyTypeId);Assert.Equal(offer.Key,hub.Board.Selected!.Key);Assert.Equal(2,hub.Navigation.AircraftSection);
         await vm.Fleet.ShutdownAsync();
     }
+    [Fact] public async Task AirportReviewFollowsActualFleetSelectionUntilThePlayerStartsEditingTheirReport()
+    {
+        var vm=Create("Missionary");await Initialize(vm);var hub=vm.Career;
+        hub.Board.Selected=hub.Board.All.First(j=>j.Family==CareerJobFamily.Cargo&&j.Destination.Contains("FYAM"));
+        var caravan=vm.Fleet.Aircraft.Single(a=>a.CompanyTypeId=="c208");var trainer=vm.Fleet.Aircraft.Single(a=>a.CompanyTypeId=="c152");
+        Assert.True(hub.SelectAircraft(caravan.Id));Assert.Equal("c208",hub.Airports.SelectedAircraft!.Id);
+        hub.Airports.Note="Synthetic in-progress Caravan finding";Assert.True(hub.SelectAircraft(trainer.Id));
+        Assert.Equal("c208",hub.Airports.SelectedAircraft!.Id);Assert.Equal("Synthetic in-progress Caravan finding",hub.Airports.Note);
+        await vm.Fleet.ShutdownAsync();
+    }
     public void Dispose() { if (Directory.Exists(root)) Directory.Delete(root, true); }
 }

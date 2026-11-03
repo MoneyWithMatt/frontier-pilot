@@ -8,6 +8,6 @@ public partial class AirportReviewControl : UserControl
     private void ShowSavedStatus(object sender,DataTransferEventArgs e)
     {
         if(sender is not TextBlock status||status.Text==lastStatus)return;
-        lastStatus=status.Text;if(lastStatus.Length>0)status.BringIntoView();
+        lastStatus=status.Text;if(lastStatus.Length>0&&IsVisible&&status.IsVisible)status.BringIntoView();
     }
 }

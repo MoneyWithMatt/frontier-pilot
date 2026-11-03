@@ -12,13 +12,14 @@ public sealed class AirportReviewViewModel : INotifyPropertyChanged
     private readonly Func<Task> refresh;
     private string? endpoint;
     private bool busy;
+    private bool aircraftEdited,descriptionEdited;
     private string note="", simulatorVersion="", aircraftDescription="";
     private CompanyAircraftType? selectedAircraft;
     private AirportIssue issue=AirportIssue.AirportMissing;
     public string Note {get=>note;set{note=value;Notify();}}
     public string SimulatorVersion {get=>simulatorVersion;set{simulatorVersion=value;Notify();}}
-    public string AircraftDescription {get=>aircraftDescription;set{aircraftDescription=value;Notify();}}
-    public CompanyAircraftType? SelectedAircraft {get=>selectedAircraft;set{if(aircraftDescription==selectedAircraft?.Name||string.IsNullOrWhiteSpace(aircraftDescription)||aircraftDescription==fleet.Selected?.AllocatedTypeName)aircraftDescription=value?.Name??"";selectedAircraft=value;Notify();}}
+    public string AircraftDescription {get=>aircraftDescription;set{if(value!=aircraftDescription)descriptionEdited=true;aircraftDescription=value;Notify();}}
+    public CompanyAircraftType? SelectedAircraft {get=>selectedAircraft;set{if(value is null||value.Id==selectedAircraft?.Id)return;aircraftEdited=true;if(!descriptionEdited)aircraftDescription=value.Name;selectedAircraft=value;Notify();}}
     public AirportIssue SelectedIssue {get=>issue;set{issue=value;Notify();}}
     public IReadOnlyList<CompanyAircraftType> AircraftTypes=>CompanyAircraft.Types;
     public IReadOnlyList<AirportIssue> Issues {get;}=Enum.GetValues<AirportIssue>().Where(x=>x!=AirportIssue.None).ToArray();
@@ -42,8 +43,15 @@ public sealed class AirportReviewViewModel : INotifyPropertyChanged
     }
     public void Select(string? locationId)
     {
-        if(endpoint==locationId)return;endpoint=locationId;note="";Status="";Error="";
+        if(endpoint==locationId){FollowSelectedAirframe();return;}endpoint=locationId;note="";Status="";Error="";aircraftEdited=false;descriptionEdited=false;
         selectedAircraft=CompanyAircraft.Types.FirstOrDefault(t=>t.Id==fleet.Selected?.CompanyTypeId);
+        aircraftDescription=fleet.Selected?.AllocatedTypeName??fleet.Selected?.Identity.SimulatorModel??"";Notify();
+    }
+    private void FollowSelectedAirframe()
+    {
+        if(busy||aircraftEdited||descriptionEdited||!string.IsNullOrWhiteSpace(note))return;
+        var current=CompanyAircraft.Types.FirstOrDefault(t=>t.Id==fleet.Selected?.CompanyTypeId);
+        if(current?.Id==selectedAircraft?.Id)return;selectedAircraft=current;
         aircraftDescription=fleet.Selected?.AllocatedTypeName??fleet.Selected?.Identity.SimulatorModel??"";Notify();
     }
     public async Task SaveAsync(AirportVisitResult result)
