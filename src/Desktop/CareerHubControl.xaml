@@ -228,13 +228,15 @@
           <Grid Margin="0,0,14,0" DataContext="{Binding Board}">
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
               <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <DockPanel Margin="0,0,0,10">
               <Button DockPanel.Dock="Right" Content="Refresh work" Command="{Binding RefreshCommand}" />
               <ComboBox ItemsSource="{Binding Filters}" SelectedIndex="{Binding Filter}" />
             </DockPanel>
-            <ListBox x:Name="JobList" Grid.Row="1" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected,Mode=TwoWay}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <TextBlock Grid.Row="1" Text="{Binding RefreshSchedule}" TextWrapping="Wrap" FontSize="10" Foreground="#9FB4C1" Margin="0,0,0,8" />
+            <ListBox x:Name="JobList" Grid.Row="2" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected,Mode=TwoWay}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
               <ListBox.Style>
                 <Style TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
                   <Style.Triggers>

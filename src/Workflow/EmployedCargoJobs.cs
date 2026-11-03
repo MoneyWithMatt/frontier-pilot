@@ -245,7 +245,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     public CompanyAircraftType? SelectedCompanyAircraft
     {
         get=>CompanyAircraftChoices.FirstOrDefault(x=>x.Id==(jobs as EmployedCargoJobsService)?.SelectedAircraftTypeId);
-        set {if(jobs is EmployedCargoJobsService service)service.SelectedAircraftTypeId=value?.Id;Changed();}
+        set {if(jobs is not EmployedCargoJobsService service||service.SelectedAircraftTypeId==value?.Id)return;service.SelectedAircraftTypeId=value?.Id;Changed();}
     }
     public IReadOnlyList<CargoJobDisplay> ReservedJobs { get => reservedJobs; private set { reservedJobs = value; Changed(); Changed(nameof(ReservedSummary)); } }
     public IReadOnlyList<CargoJobDisplay> LoadingJobs { get => loadingJobs; private set { loadingJobs = value; Changed(); Changed(nameof(LoadingSelectionSummary)); } }

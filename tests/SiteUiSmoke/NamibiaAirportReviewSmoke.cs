@@ -28,6 +28,11 @@ internal static partial class Program
         await host.Dispatcher.InvokeAsync(()=>{},System.Windows.Threading.DispatcherPriority.Background);
         Check(ReferenceEquals(stableRows,board.All)&&board.Selected?.Key==job.Key,"One hundred loading presentation updates preserve the bound Job Board and selected job without rebuilding collections");
         var aircraftSelector=Descendants<ComboBox>(hub).Single(c=>c.GetBindingExpression(ItemsControl.ItemsSourceProperty)?.ParentBinding.Path.Path=="AircraftChoices");
+        for(var i=0;i<20;i++)
+        {
+            aircraftSelector.SelectedItem=board.AircraftChoices.Single(t=>t.Id==(i%2==0?"c208":"c152"));Pump();
+        }
+        Check(board.Selected?.Key==job.Key&&ReferenceEquals(stableRows,board.All),"Repeated real WPF aircraft selection preserves the mission/list without recursive refresh");
         aircraftSelector.SelectedItem=board.AircraftChoices.Single(t=>t.Id=="c208");Pump();
         Check(board.AcceptCommand.CanExecute(null),$"Exploratory acceptance enabled for selected job {board.Selected?.SourceId}, source {model.Jobs.SelectedOffer?.JobId}, aircraft {board.SelectedAircraft?.Id}: {board.Error}");
         await board.AcceptAsync();Pump();

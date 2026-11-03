@@ -30,6 +30,24 @@ public sealed class CareerHubTests : IDisposable
         Assert.True(unchanged&&rebuilt==0,$"Ten presentation-only loading updates republished the Job Board {rebuilt} times; unchanged row collection retained: {unchanged}.");
     }
 
+    [Fact] public async Task AircraftSelectorBindingWritebackIsIdempotentAndDoesNotRepublishJobLists()
+    {
+        var vm=Create("Missionary");await Initialize(vm);var board=vm.Career.Board;
+        board.Selected=board.All.First(j=>j.Available&&j.Family==CareerJobFamily.Cargo);
+        var before=board.All;var notifications=0;
+        board.PropertyChanged+=(_,e)=>{
+            if(string.IsNullOrEmpty(e.PropertyName)||e.PropertyName==nameof(board.SelectedAircraft))
+            {
+                if(++notifications>5)throw new InvalidOperationException("Recursive aircraft binding writeback.");
+                board.SelectedAircraft=board.SelectedAircraft;
+            }
+        };
+        var error=Record.Exception(()=>board.SelectedAircraft=board.AircraftChoices.Single(t=>t.Id=="c208"));
+        Assert.Null(error);Assert.Equal("c208",board.SelectedAircraft!.Id);Assert.InRange(notifications,0,1);
+        Assert.Same(before,board.All);Assert.True(board.AcceptCommand.CanExecute(null));
+        await vm.Fleet.ShutdownAsync();
+    }
+
     [Theory][InlineData("Offshore", 800)][InlineData("Missionary", 400)][InlineData("Industrial", 650)][InlineData("Safari", 400)]
     public async Task OverviewAndMarketplaceUseCatalogueWithoutInventingLocationsOrMaintenance(string category, int rate)
     {

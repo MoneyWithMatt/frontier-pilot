@@ -40,6 +40,7 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
     private bool SourcesUpdating=>busy||cargo.IsBusy||passengers.IsBusy;
     public bool IsBusy => busy;
     public string EmptyState => Items.Count == 0 ? "No work in this view. Refresh the board, choose another filter, or inspect employer and aircraft restrictions." : "";
+    public string RefreshSchedule=>cargo.BoardTiming;
     public IReadOnlyList<string> Filters { get; } = ["All work", "Available", "Accepted", "Completed"];
     public int Filter { get => filter; set { if (value is < 0 or > 3 || value == filter) return; filter = value; if (!Items.Any(j => j.Key == navigation.SelectedJobKey)) { navigation.SelectedJobKey = Items.FirstOrDefault()?.Key; SelectSource(); SelectionChanged?.Invoke(); } Notify(); } }
     public IReadOnlyList<CareerJobRow> All => jobs;
@@ -56,7 +57,15 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
     public CompanyAircraftType? SelectedAircraft
     {
         get => Selected?.Family == CareerJobFamily.Cargo ? cargo.SelectedCompanyAircraft : passengers.SelectedAircraft;
-        set { if(value is null||!AircraftChoices.Any(a=>a.Id==value.Id))return; if (Selected?.Family == CareerJobFamily.Cargo) cargo.SelectedCompanyAircraft = value; else if (Selected?.Family == CareerJobFamily.Personnel) passengers.SelectedAircraft = value; Notify(); }
+        set
+        {
+            // WPF writes SelectedItem back while refreshing the binding. Re-publishing ItemsSource
+            // here recursively re-enters this setter until the process exhausts its stack.
+            if(value is null||value.Id==SelectedAircraft?.Id||!AircraftChoices.Any(a=>a.Id==value.Id))return;
+            if(Selected?.Family==CareerJobFamily.Cargo)cargo.SelectedCompanyAircraft=value;
+            else if(Selected?.Family==CareerJobFamily.Personnel)passengers.SelectedAircraft=value;
+            PropertyChanged?.Invoke(this,new(nameof(SelectedAircraft)));AcceptCommand.Refresh();
+        }
     }
     public string Estimate => Selected?.Family == CareerJobFamily.Observation ? offshore.Estimate : "Flight-time estimate unavailable; plan fuel, weather and aircraft performance.";
     public string Progress => Selected?.Family switch
