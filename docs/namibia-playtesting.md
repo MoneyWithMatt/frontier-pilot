@@ -53,4 +53,10 @@ Economy schema 15 reads prior schemas and preserves jobs, inventory, ledger, fli
 
 ## Automated release checkpoint
 
-Implementation `67b093afb57c8bdb69a64eaea13e9fb0c2e9648f` passed [Windows CI](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41681372600): 1,013 xUnit tests, 206 site/Career and 7 loading WPF assertions, 9 guard scenarios, historical CLI review and Windows packaging. [Download exact Windows bundle](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41681372600/artifacts/13252414736). Screenshots and receipts remain synthetic evidence; real airport usability is Matt's playtest.
+Implementation `1939202748d682841d0295bd917293ace4f882a9` passed [Windows CI](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41702499937): 1,016 xUnit tests, 208 site/Career and 7 loading WPF assertions, 9 guard scenarios, historical CLI review and Windows packaging. [Download exact Windows bundle](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41702499937/artifacts/13263234488). Screenshots and receipts remain synthetic evidence; real airport usability is Matt's playtest.
+
+## Job Board refresh and aircraft selector
+
+Changing the eligible company aircraft type in the Job Board does not select or transfer a physical aircraft. Repeated WPF binding writes must be idempotent. The selector repair preserves the current mission/list and existing fleet/loading checks.
+
+Refresh work reloads current work; the existing persisted schedule generates SYSTEM offers every three real hours, with six-hour unaccepted expiry. The schedule and next update appear above the job list. New offers are shown first; still-valid older offers remain available. Accepted/loaded work never expires through board refresh. Immediate manual replacement of unaccepted offers has not been enabled without a separate explicit policy decision.

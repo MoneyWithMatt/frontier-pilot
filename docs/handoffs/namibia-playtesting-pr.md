@@ -43,3 +43,7 @@ No live MSFS acceptance or actual airport-usability test. WPF/synthetic tracker 
 ## Startup freeze repair follow-up
 
 Installed 67b093a produced Windows application hangs. Isolated regression found ten loading presentation updates republished the Career board 200 times. Fix 7de3ca0 skips unchanged collection projection, batches staged snapshots and indexes airport identity; no gameplay/schema/safety changes. Hosted run 41699597542 passes 1,014 tests, both WPF programs (including 100-update stability), guards/CLI/package. Exact artifact and pending personal-career startup acceptance are recorded in the handoff. The repaired local distribution is installed with its prior build backed up, not yet launched.
+
+## Aircraft-selector / fresh-offer display repair
+
+Current source 1939202 passes hosted Windows run 41702499937: 1,016 regression tests, 208 SiteUiSmoke and 7 LoadingWpfSmoke assertions, guards/CLI/package. Same-value WPF selector writes no longer recursively notify; aircraft selection does not republish ItemsSource or change physical assignment. Actual WPF selector alternates C152/Caravan twenty times. New offers sort first, scheduled refresh is tested and the saved next-update time is visible. Existing three-hour/six-hour generation/expiry semantics remain pending Matt's optional immediate-replacement policy choice. Installed exact tested build at the existing shortcut after eleven hashes/receipt/backup checks; no launch or save mutation. Latest artifact/evidence links are in the handoff.
