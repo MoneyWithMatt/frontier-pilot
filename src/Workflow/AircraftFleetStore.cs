@@ -23,6 +23,7 @@ public sealed class AircraftFleetStore(string path)
     }
     public AircraftFleet Commit(AircraftFleet next, long expectedRevision)
     {
+        next = next with { SchemaVersion = 2 };
         next.Validate();
         var name = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(StoragePath.ToUpperInvariant())))[..24];
         using var gate = new Semaphore(1, 1, "Local\\Frontier-Fleet-" + name);
@@ -34,6 +35,8 @@ public sealed class AircraftFleetStore(string path)
             foreach (var old in prior.Aircraft)
             {
                 var current = next.Aircraft.SingleOrDefault(x => x.Id == old.Id) ?? throw new IOException("Physical aircraft history cannot be deleted.");
+                if (old.OwnerEntityId is not null && (current.OwnerEntityId != old.OwnerEntityId || old.AssignedPlayerId is not null && current.AssignedPlayerId != old.AssignedPlayerId || old.AllocationKey is not null && current.AllocationKey != old.AllocationKey))
+                    throw new IOException("Company ownership and historical assignment require an explicit future transfer workflow; provisioning cannot replace them.");
                 if (!old.History.SequenceEqual(current.History.Take(old.History.Count))) throw new IOException("Existing history cannot be rewritten.");
                 if(old.Components.Any(c=>!current.Components.Any(next=>next.Id==c.Id&&(!c.Removed||next.Removed))) || old.Faults.Any(f=>!current.Faults.Any(next=>next.Id==f.Id)))
                     throw new IOException("Component instances and fault history must be retained.");

@@ -36,6 +36,12 @@ jobs:
       - name: WPF smoke (synthetic data only)
         timeout-minutes: 6
         run: ./scripts/Invoke-Verification.ps1 -Stage Smoke -DotnetPath dotnet
+      - name: Offshore CLI historical review (synthetic WPF fixture only)
+        run: |
+          dotnet src/App/bin/Release/net8.0/FrontierAirportBuilder.App.dll review-offshore-roundtrip .ci-output/screenshots/synthetic-offshore-roundtrip.jsonl > .ci-output/offshore-cli-review.json
+          if ($LASTEXITCODE -ne 0) { throw 'Synthetic CLI review failed.' }
+          $review = Get-Content -Raw .ci-output/offshore-cli-review.json | ConvertFrom-Json
+          if (!$review.RecordingClosed -or !$review.HistoricalStatus.Completed -or $review.HistoricalStatus.CurrentBasePresence -or $review.HistoricalStatus.CurrentDeckPresence -or $review.HistoricalStatus.Events.Count -ne 6) { throw 'CLI historical authority check failed.' }
       - name: Publish traceable development bundle
         run: ./scripts/Invoke-Verification.ps1 -Stage Package -DotnetPath dotnet
       - name: Upload development build
@@ -58,4 +64,17 @@ jobs:
             .ci-output/tests/*.trx
             .ci-output/screenshots/*.png
           if-no-files-found: warn
+          retention-days: 7
+      - name: Upload Offshore diagnostic CLI
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: FrontierPilot-offshore-cli-${{ github.sha }}
+          # Existing Release solution output, framework-dependent .NET 8; no simulator or personal data.
+          include-hidden-files: true
+          path: |
+            src/App/bin/Release/net8.0/
+            .ci-output/regression.json
+            .ci-output/smoke.json
+            .ci-output/package.json
+          if-no-files-found: error
           retention-days: 7

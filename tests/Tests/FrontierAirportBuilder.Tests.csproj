@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="../SyntheticPassengerAircraft.cs" Link="SyntheticPassengerAircraft.cs"/>
   </ItemGroup>
 
   <ItemGroup>
@@ -30,4 +31,6 @@
     <None Include="..\..\src\Desktop\MainWindow.xaml" Link="Desktop\MainWindow.xaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+<ItemGroup><Compile Include="../SyntheticOffshoreFlight.cs" Link="SyntheticOffshoreFlight.cs"/></ItemGroup>
+<ItemGroup><Compile Include="../SyntheticOffshoreRoundTrip.cs" Link="SyntheticOffshoreRoundTrip.cs"/></ItemGroup>
 </Project>

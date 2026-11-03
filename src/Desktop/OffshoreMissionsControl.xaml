@@ -1,0 +1,52 @@
+<UserControl x:Class="FrontierAirportBuilder.Desktop.OffshoreMissionsControl" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:FrontierAirportBuilder.Desktop">
+ <Grid Margin="24"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+  <TextBlock Text="Offshore operations" Style="{StaticResource Title}"/>
+  <TextBlock Grid.Row="1" Text="{Binding WagePolicy}" Margin="0,4,0,16" TextWrapping="Wrap"/>
+  <TabControl Grid.Row="2">
+   <TabItem Header="Observation missions"><Grid Margin="12"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="3*"/></Grid.ColumnDefinitions>
+    <DockPanel Margin="0,0,20,0"><Button DockPanel.Dock="Top" Content="Refresh mission board" Command="{Binding RefreshCommand}" HorizontalAlignment="Left"/>
+     <ListBox ItemsSource="{Binding Missions}" SelectedItem="{Binding Selected}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemTemplate><DataTemplate><StackPanel Margin="8">
+      <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontWeight="SemiBold"/><TextBlock Text="{Binding Route}" TextWrapping="Wrap" Margin="0,6"/><TextBlock Text="{Binding State}"/>
+     </StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox>
+    </DockPanel>
+    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
+     <TextBlock Text="{Binding Selected.Title}" TextWrapping="Wrap" FontSize="22" FontWeight="SemiBold"/>
+     <TextBlock Text="{Binding Selected.Purpose}" TextWrapping="Wrap" Margin="0,10"/>
+     <TextBlock Text="{Binding Selected.AircraftRequirement}" TextWrapping="Wrap"/>
+     <TextBlock Text="{Binding Estimate}" TextWrapping="Wrap" Margin="0,10"/>
+     <TextBlock Text="1. Select the employer Vision Jet in Fleet, then accept. 2. Connect tracking; stop at Walvis Bay for ten seconds, then Begin. 3. Fly to the area and observe continuously. 4. Return, stop and complete." TextWrapping="Wrap" Margin="0,6,0,12"/>
+     <TextBlock Text="{Binding AreaStatus}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+     <TextBlock Text="{Binding AreaCoordinates}" TextWrapping="Wrap" Margin="0,6"/>
+     <TextBlock Text="{Binding AreaDistance}" TextWrapping="Wrap" Margin="0,6"/>
+     <TextBlock Text="Observation needs airborne telemetry at least 100 ft above the reported surface. Choose a safe operating altitude; the mission does not approve aircraft performance." TextWrapping="Wrap" Opacity="0.75"/>
+     <ProgressBar Value="{Binding Selected.ObservationSeconds}" Maximum="{Binding Selected.Area.ObservationSeconds}" Height="16" Margin="0,8"/>
+     <TextBlock Text="{Binding Progress}"/><TextBlock Text="{Binding FlightTime}" Margin="0,6"/>
+     <WrapPanel><Button Content="Accept mission" Command="{Binding AcceptCommand}"/><Button Content="Connect mission tracking" Command="{Binding ConnectCommand}"/><Button Content="Begin at base" Command="{Binding StartCommand}"/><Button Content="Resume recorded flight" Command="{Binding ResumeCommand}"/><Button Content="Complete mission" Command="{Binding CompleteCommand}"/><Button Content="Disconnect" Command="{Binding DisconnectCommand}"/></WrapPanel>
+     <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,12"/>
+     <TextBlock Text="{Binding Error}" TextWrapping="Wrap" Foreground="#F0B47B"/>
+     <TextBlock Text="Observation time is a gameplay objective. No equipment condition or maritime incident is being detected. Paused, accelerated, slewed or frozen telemetry cannot advance progress or wages." TextWrapping="Wrap" Opacity="0.75" Margin="0,16"/>
+    </StackPanel></ScrollViewer>
+   </Grid></TabItem>
+   <TabItem Header="Personnel transfers"><local:PassengerTransfersControl DataContext="{Binding DataContext.Passengers, RelativeSource={RelativeSource AncestorType=Window}}"/></TabItem>
+   <TabItem Header="Platforms / helicopter work"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="16">
+    <TextBlock Text="Helicopter operations — qualification required" TextWrapping="Wrap" FontSize="22" FontWeight="SemiBold"/>
+    <TextBlock Text="Supply delivery · personnel delivery and pickup · timed inspection visits" TextWrapping="Wrap" Margin="0,8"/>
+    <ItemsControl ItemsSource="{Binding Platforms}"><ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="#405360" BorderThickness="1" Padding="16" Margin="0,8"><StackPanel>
+     <TextBlock Text="{Binding Name}" FontSize="18"/><TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,8"/>
+     <TextBlock Text="{Binding BlockedReason}" TextWrapping="Wrap"/>
+     <TextBlock Text="Recorded support: H125 static deck contact and fixed 5 kg Cargo 1 diagnostic only. Passenger capacity, flown arrivals/departures and complete platform missions are not accepted." TextWrapping="Wrap" Margin="0,8"/>
+     <Expander Header="Qualification evidence"><TextBlock Text="{Binding EvidenceSummary}" TextWrapping="Wrap" Margin="0,8"/></Expander>
+    </StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+    <TextBlock Text="These are qualification records, not available destinations. No platform mission is generated until its aircraft, operation and tested versions are individually qualified. Diagnostic starts and constrained lifts never grant career rewards." TextWrapping="Wrap" Margin="0,12"/>
+    <Expander Header="Experimental H125 contact test — no pay" Margin="0,16" DataContext="{Binding DataContext.OffshoreDiagnostic, RelativeSource={RelativeSource AncestorType=Window}}"><StackPanel>
+     <TextBlock Text="Contact cycle: start H125 Passengers on OL400 H01 and observe contact loss and a stable return. Full round trip: start at the resolved base, fly to the platform for a timed visit, depart and return to base. Both are read-only experiments; native starts or constrained lifts cannot satisfy the full route. No flight controls, payload changes or career pay." TextWrapping="Wrap" Margin="0,8"/>
+     <WrapPanel><Button Content="Observe experimental contact cycle" Command="{Binding StartCommand}"/><Button Content="Stop diagnostic" Command="{Binding StopCommand}"/></WrapPanel>
+     <TextBlock Text="{Binding RoundTripRequirements}" TextWrapping="Wrap" Margin="0,12,0,6"/>
+     <Button Content="Observe experimental base–platform–base flight" Command="{Binding RoundTripCommand}" HorizontalAlignment="Left"/>
+     <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,8"/>
+     <TextBlock Text="{Binding RecordingPath}" TextWrapping="Wrap" Opacity="0.7"/>
+    </StackPanel></Expander>
+   </StackPanel></ScrollViewer></TabItem>
+  </TabControl>
+ </Grid>
+</UserControl>

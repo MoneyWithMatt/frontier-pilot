@@ -12,6 +12,25 @@ var json = new JsonSerializerOptions
 };
 try
 {
+    if (args.Length == 5 && args[0] == "record-offshore-roundtrip")
+    {
+        if (!int.TryParse(args[2], out var seconds) || seconds is < 1 or > 2700)
+            throw new ArgumentException("Diagnostic recording duration must be 1–2700 seconds.");
+        var origin = ExperimentalOffshoreRoundTripRecording.ResolveBase(args[4]);
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(seconds));
+        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
+        Console.WriteLine("READ-ONLY H125 qualification: base → OL400 visit → base. No controls, payload, personal career saves, pay or destination activation. Ctrl+C stops.");
+        var roundTripResult = await ExperimentalOffshoreRoundTripRecording.RecordAsync(new LiveAircraftCondition(args[3], new PlatformMissionFlightProfile()),
+            origin, OffshorePlatformRegistry.Find("ol400-h01"), args[1], stop.Token,
+            changed: status => Console.WriteLine($"{status.Stage}: {status.Reason} Visit {status.InspectionSeconds:0}/60s, milestones {status.Events.Count}/6."));
+        Console.WriteLine(roundTripResult.Authority);
+        return roundTripResult.Completed ? 0 : 1;
+    }
+    if (args.Length == 2 && args[0] == "review-offshore-roundtrip")
+    {
+        Console.WriteLine(JsonSerializer.Serialize(ExperimentalOffshoreRoundTripRecording.Review(args[1]), json));
+        return 0;
+    }
     if (args.Length == 7 && args[0] == "condition-airframe")
     {
         var record = AircraftConditionRecord.Create(args[2], args[3], args[4], args[5]);
@@ -48,7 +67,7 @@ try
     }
     if (args.Length is < 3 or > 4 || args[0] is not ("generate" or "build") || (args[0] == "generate" && args.Length != 3))
     {
-        Console.Error.WriteLine("Frontier Airport Builder 0.1 (CLI spike)\nUsage:\n  inspect <SDK root>\n  generate <airstrip.json> <new output directory>\n  build <airstrip.json> <new output directory> [SDK root]\n  record-condition <new.jsonl> <seconds 1-3600> <SDK root> [airframe.json]\n  condition-airframe <new.json> <label> <exact TITLE> <exact ATC MODEL> <package/version note> --confirm-model-binding\nAll geometry is in metres / true degrees. Output must not exist.");
+        Console.Error.WriteLine("Frontier Airport Builder 0.1 (CLI spike)\nUsage:\n  inspect <SDK root>\n  generate <airstrip.json> <new output directory>\n  build <airstrip.json> <new output directory> [SDK root]\n  record-condition <new.jsonl> <seconds 1-3600> <SDK root> [airframe.json]\n  record-offshore-roundtrip <new.jsonl> <seconds 1-2700> <SDK root> <destination metadata root>\n  review-offshore-roundtrip <existing.jsonl>\n  condition-airframe <new.json> <label> <exact TITLE> <exact ATC MODEL> <package/version note> --confirm-model-binding\nAll geometry is in metres / true degrees. Output must not exist.");
         return 2;
     }
     var input = JsonSerializer.Deserialize<AirstripDefinition>(await File.ReadAllTextAsync(args[1]), json)
@@ -71,7 +90,7 @@ try
     Console.WriteLine(JsonSerializer.Serialize(result, json));
     return result.Validation.Success ? 0 : 1;
 }
-catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or JsonException or ArithmeticException or PlatformNotSupportedException or System.ComponentModel.Win32Exception or OperationCanceledException)
+catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or JsonException or ArithmeticException or PlatformNotSupportedException or System.ComponentModel.Win32Exception or OperationCanceledException)
 {
     Console.Error.WriteLine(error.Message);
     return 1;

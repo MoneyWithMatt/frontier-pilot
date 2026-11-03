@@ -34,9 +34,9 @@ public sealed record FlightAircraftIdentity(string Title, string Type)
 {
     public FlightAircraftIdentity EnsureValid()
     {
+        if (string.IsNullOrWhiteSpace(Title) || Title.Equals("Unknown aircraft", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(Type))
+            throw new InvalidDataException("MSFS aircraft identity is incomplete (TITLE or ATC MODEL missing). Wait for the aircraft to finish loading, then refresh. No aircraft identity was inferred.");
         EconomyValidation.Text(Title, nameof(Title), 128); EconomyValidation.Text(Type, nameof(Type), 128);
-        if (Title.Equals("Unknown aircraft", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("Aircraft identity is not available yet.");
         return this with { Title = Title.Trim(), Type = Type.Trim() };
     }
 

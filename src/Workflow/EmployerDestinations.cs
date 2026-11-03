@@ -24,6 +24,7 @@ public sealed record DestinationReviewDocument(int SchemaVersion, DestinationRev
 public sealed record DestinationDiagnostic(DestinationResearch Research, NamibiaLocation? Resolved,
     string Recognition, bool Enabled, string Reason, string[] CompatibleAircraft)
 {
+    public string[] OriginCompatibleAircraft { get; init; } = [];
     public string Employer => Research.Career;
     public string Airport => Research.VerifiedName;
     public string Identifier => Resolved?.AirportIdentifier.Value ?? Research.Identifier;
@@ -119,9 +120,11 @@ public sealed class EmployerDestinationCatalogue
             }
             var baseReview=Reviews.FirstOrDefault(x=>x.Key==baseCode||x.Identifier==baseCode);
             if(baseReview is {Status:not "Approved"})reason="Employer base review: "+baseReview.Status;
-            if(reason.StartsWith("Eligible route",StringComparison.Ordinal)&&review?.CompatibleAircraft is {Length:>0} compatible&&!CompanyAircraft.Types.Any(x=>x.Enabled&&employer.Fleet.Contains(x.Id)&&compatible.Contains(x.Id)))
-                reason="No compatible aircraft in this employer's enabled fleet";
-            return new DestinationDiagnostic(row,location,recognition,reason.StartsWith("Eligible route",StringComparison.Ordinal),reason,review?.CompatibleAircraft??[]);
+            var diagnostic = new DestinationDiagnostic(row,location,recognition,reason.StartsWith("Eligible route",StringComparison.Ordinal),reason,review?.CompatibleAircraft??[])
+            { OriginCompatibleAircraft = baseReview?.CompatibleAircraft ?? [] };
+            if(diagnostic.Enabled && CompanyAircraft.Choices(employer,diagnostic,0).Count == 0)
+                diagnostic = diagnostic with { Enabled = false, Reason = "No compatible aircraft in this employer's enabled fleet for both origin and destination" };
+            return diagnostic;
         }).ToArray();
     }
 }

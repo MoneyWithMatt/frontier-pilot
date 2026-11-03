@@ -49,7 +49,8 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
         var destination=destinations!.Diagnose(Employer.Category).SingleOrDefault(x=>x.Resolved?.StableId==job.DestinationLocationId&&x.Enabled);
         return destination is null?[]:CompanyAircraft.Choices(Employer,destination,job.CargoMassKilograms);
     }
-    public string EmploymentStatus=>Employer is null?"Legacy / freelance board":$"{Employer.Name} · {Employer.WageDisplay} · paid for verified airborne time on successful delivery. {destinations!.Diagnose(Employer.Category).Count(x=>x.Enabled)} eligible destinations. Cargo only; passengers deferred.";
+    public string EmploymentStatus=>Employer is null?"Legacy / freelance board":$"{Employer.Name} · {Employer.WageDisplay} · paid for verified airborne time on successful delivery. {destinations!.Diagnose(Employer.Category).Count(x=>x.Enabled)} eligible destinations. "+
+        (Employer.Category=="Offshore"?"Cargo board; specialist transfers are on Passenger transfers.":"Cargo only; passenger transfers deferred.");
     private readonly EconomyService economy;
     private readonly NamibiaLocationCatalogueDocument catalogue;
     private readonly EmployedCargoPrototypeOptions options;
@@ -129,14 +130,17 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
             var employer = world.Businesses.Single(x => x.Id == job.EmployerBusinessId);
             var resource = world.Resources.Single(x => x.Id == requirement.ResourceId);
             var shipment = world.Shipments.SingleOrDefault(x => x.JobId == job.Id);
+            var minutes = Math.Max(1, (int)Math.Round(Geodesy.Inverse(new(origin.Latitude, origin.Longitude),
+                new(destination.Latitude, destination.Longitude)).DistanceMeters / 1852 / 120 * 60));
+            var knownDestination = destination.Known + $" · about {minutes} min direct from {origin.Display} at 120 kt (planning estimate)";
             return new(job.Id, employer.Name, origin.Display, destination.Display,
                 requirement.Purpose ?? destination.Purpose, resource.Name, requirement.Quantity,
-                requirement.PaymentAmount, requirement.CurrencyCode, destination.Known, shipment?.Id, shipment?.State,
+                requirement.PaymentAmount, requirement.CurrencyCode, knownDestination, shipment?.Id, shipment?.State,
                 requirement.OriginLocationId, requirement.DestinationLocationId, origin.Latitude, origin.Longitude,
                 destination.Latitude, destination.Longitude, shipment?.LoadedQuantity ?? 0, shipment?.DeliveredQuantity ?? 0) {
                     ExpiresUtc = job.ExpiresUtc,CompanyAircraftTypeId=job.CompanyAircraftTypeId,
                     HourlyWage=job.State==EconomyJobState.Completed||world.LogisticsContracts.Any(x=>x.JobId==job.Id)?null:employer.PilotHourlyRate,
-                    WageHistory=job.CompletedWage is {} wage?WageHistory(world,wage):null };
+                    WageHistory=job.CompletedCargoLegId is {} legId ? "Hourly wages settled once for flight leg " + legId + "; no separate job payment." : job.CompletedWage is {} wage?WageHistory(world,wage):null };
         }
 
         var operationNeedIds = world.Operations.SelectMany(x => new[] { ProspectingCampKernel.InboundNeed(x.Id), ProspectingCampKernel.OutboundNeed(x.Id) }).ToHashSet(StringComparer.Ordinal);
@@ -165,10 +169,9 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
                 var coordinates = authored.ApproximateCoordinates is { } point
                     ? $"published position {point.Latitude.ToString("F6", CultureInfo.InvariantCulture)}, {point.Longitude.ToString("F6", CultureInfo.InvariantCulture)}"
                     : "published position unavailable";
-                var timing = authored.ApproximateFlightMinutesFromErosAt120Knots is { } minutes ? $" · about {minutes} min direct at 120 kt" : "";
                 var cataloguePoint = authored.ApproximateCoordinates ?? throw new InvalidDataException("Job location has no configured coordinates.");
                 return ($"{authored.Name} ({identifier})", authored.EconomicRole,
-                    $"{identifier} · {coordinates}{timing} · {authored.VerificationEvidence?.Method ?? "MSFS verification unavailable"}", cataloguePoint.Latitude, cataloguePoint.Longitude);
+                    $"{identifier} · {coordinates} · {authored.VerificationEvidence?.Method ?? "MSFS verification unavailable"}", cataloguePoint.Latitude, cataloguePoint.Longitude);
             }
             var site = world.Sites.SingleOrDefault(x => x.LocationId == id) ?? throw new InvalidDataException("Job refers to an unknown authored or player-created location.");
             return ($"{site.Name} ({site.AirportIdentifier})", "Player-owned economic operation",
