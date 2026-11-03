@@ -154,7 +154,11 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
         OffshoreDiagnostic = new(() => services.IsDryRun
             ? throw new InvalidOperationException("Native diagnostics disabled in dry-run; synthetic tests use an isolated source.")
             : new FrontierAirportBuilder.MsfsSdk.LiveAircraftCondition(this.sdkRoot, new ExperimentalPlatformContactProfile()),
-            Path.Combine(careerRoot, "diagnostics", "offshore"));
+            Path.Combine(careerRoot, "diagnostics", "offshore"),
+            () => services.IsDryRun ? throw new InvalidOperationException("Live diagnostic disabled in dry-run.")
+                : new FrontierAirportBuilder.MsfsSdk.LiveAircraftCondition(this.sdkRoot, new PlatformMissionFlightProfile()),
+            () => employer?.Category == "Offshore" && (employerDestinations ?? new()).Base(employer) is { ApproximateCoordinates: {} c } b
+                ? new PassengerEndpoint(b.StableId, b.Name, c.Latitude, c.Longitude) : null);
         var loadingCoordinator = new AircraftLoadingCoordinator(loadingStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(),
             flightAttemptTracker, () => this.sdkRoot, () => Tracking.World, () => Jobs.LoadingJobs)
             { RecoverManifestJobsAsync = Jobs.RecoverManifestJobsAsync, TransportDispatchGuard = passengerService.RequireNoBoardedPassengersAsync, CompanyAircraftGuard=(identity,jobs)=>

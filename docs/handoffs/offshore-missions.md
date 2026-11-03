@@ -1,5 +1,13 @@
 # Handoff: offshore-missions
 
+## Resumed continuation: experimental full route
+
+Resumed same PR10/base11cdfbb; all PR3/7/8/9/10 heads inspected and remain unchanged/unmerged/draft. Implemented read-only H125 base→OL400→base qualification sequence using shared TransportMonitor (no cargo/passenger/economy adapter), pure native deck predicate shared with normal gated arrival, mandatory running/rate/slew/freeze/identity/time/plausibility guards,20sdeck+60svisit+3sseparation+normalreturn/base10s. All6milestones once; interruption terminal with history retained, new recordings start atbase. No live action, registry promotion, wages or aircraft profile enabled.
+
+Create-only raw condition recording plus `.mission.json` context; common bounded replay validator reused by old contact test and new roundtrip. Replay retains historical facts and clears current presence, never resumes or pays. Existing logging corruption/version/sequence/end guards preserved. UI adds one explicit no-pay full-route button under existing diagnostic expander; shared Running/Stop/shutdown prevents duplicate/concurrent recorder starts. Base comes from existing resolved employer catalogue, no hardcoded new airport coordinates.
+
+Local BuildTest command below with `-OutputDirectory .ci-output-offshore-roundtrip-03`: **967 passed/0 failed/0 skipped**, SDK8.0.424, zero warnings/errors,11cdfbbdirty+continuation.19new tests. Initial01 compile failed two ambiguous target-typed TransportMonitor overload calls; fixed explicit TransportFlightContext, preserved logs.02 962/0/0;03 967/0/0. Synthetic WPF source shared with unit tests, production button/inspection/completion/closed-record/no-extra-pay assertions added; hosted verification pending this milestone. No native/published executable run. Next: commit/push, inspect hosted WPF/package, fix failures, update exact evidence/PR/task2.
+
 ## Scope and branch
 
 Draft PR #10 https://github.com/MoneyWithMatt/frontier-pilot/pull/10, `codex/offshore-missions`, target master. Isolated worktree starts PR8 `47698b1704039f12dc3875fb6e2359a12b0ac13f`; PR3/6/7 are verified ancestors but unmerged. Master `d5ff51650789e45e46c8828893acaba071d957e7` unchanged. PR9 `80abb045b4a615fc49c8413423ebd47a8b272e5a` separate; selected pure contact/visit/read-only recording and45tests reused. No controller/diagnostic payload writer, PR merges or other-worktree changes.

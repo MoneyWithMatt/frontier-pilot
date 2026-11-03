@@ -37,11 +37,22 @@ public static class ExperimentalPlatformVisitRecording
 
     public static PlatformVisitReview Review(string path)
     {
+        var visit = new ExperimentalPlatformVisit();
+        var log = ConditionDiagnosticReplay.Read(path, frame => visit.Observe(frame, frame.CompletedUtc));
+        var historical = visit.Observe(null, log.LastFrameUtc ?? DateTimeOffset.UtcNow);
+        return new(log.SessionId, log.Frames, log.RecordingClosed, log.Outcome, historical);
+    }
+}
+
+internal sealed record ConditionDiagnosticLog(Guid SessionId, int Frames, bool RecordingClosed, string? Outcome, DateTimeOffset? LastFrameUtc);
+internal static class ConditionDiagnosticReplay
+{
+    internal static ConditionDiagnosticLog Read(string path, Action<ConditionFrame> observe)
+    {
         // Streaming and bounded; corrupt/future/truncated records are never rewritten or silently repaired.
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         if (stream.Length is <= 0 or > 64 * 1024 * 1024) throw new InvalidDataException("Invalid diagnostic recording size; original preserved.");
         using var reader = new StreamReader(stream);
-        var visit = new ExperimentalPlatformVisit();
         Guid session = default; int count = 0; bool ended = false; string? outcome = null;
         ConditionAircraftIdentity? identity = null; DateTimeOffset? last = null;
         while (reader.ReadLine() is { } line)
@@ -75,13 +86,12 @@ public static class ExperimentalPlatformVisitRecording
                 AircraftConditionRecorder.ValidateFrame(frame, last);
                 identity ??= frame.Aircraft;
                 if (identity != frame.Aircraft) throw new InvalidDataException("Mixed aircraft recording.");
-                visit.Observe(frame, frame.CompletedUtc); // Recorded clock, explicitly offline; no wall-time credit.
+                observe(frame); // Recorded clock is historical only, never live authority.
                 last = frame.CompletedUtc;
             }
             else throw new InvalidDataException("Unknown diagnostic record kind; original preserved.");
         }
         if (session == default) throw new InvalidDataException("Missing diagnostic header.");
-        var historical = visit.Observe(null, last ?? DateTimeOffset.UtcNow);
-        return new(session, count, ended, outcome, historical);
+        return new(session, count, ended, outcome, last);
     }
 }

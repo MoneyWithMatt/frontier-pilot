@@ -73,12 +73,7 @@ public sealed partial class FlightAttemptTracker
             var nativeOutbound = observed.FirstAirborneUtc is not null && observed.MovementObservedUtc is not null &&
                 observed.OriginDepartedUtc is not null && observed.VerifiedAirborneTicks >= TimeSpan.FromSeconds(5).Ticks &&
                 observed.MaximumDistanceFromOriginNauticalMiles >= observed.RequiredMaximumDistanceNauticalMiles;
-            var values = frame!.Readings.ToDictionary(r => r.Field.Key, r => r.Value!.Value);
-            var distance = WorldTracking.DistanceMeters(sample.Position.Latitude, sample.Position.Longitude, platform.Latitude, platform.Longitude);
-            var stable = nativeOutbound && sample.Position.IsOnGround && Enumerable.Range(0, 20).Any(i => values[$"CONTACT POINT IS ON GROUND:{i}"] == 1) &&
-                DeckSurfaceContact.WithinEnvelope(distance, sample.Position.AltitudeFeet * .3048 - platform.DeckMeters,
-                    Math.Abs(sample.GroundAltitudeFeet * .3048 - platform.DeckMeters), platform.ContactRadiusMeters) &&
-                DeckSurfaceContact.StableMotion(sample.Position.GroundSpeedKnots, sample.VerticalSpeedFeetPerSecond, values["PLANE BANK DEGREES"], values["PLANE PITCH DEGREES"]);
+            var stable = nativeOutbound && PlatformFlightContact.Stable(platform, sample, frame!);
             if (!stable) contactSince = null; else contactSince ??= sample.SimulationSeconds;
             var duration = contactSince is {} since ? sample.SimulationSeconds - since : 0;
             Reason = nativeOutbound ? $"Platform contact {duration:0.#} / 20 seconds; no hover/water or incomplete contact qualifies." : "Normal outbound flight must precede platform contact. No static start or old diagnostic credit.";

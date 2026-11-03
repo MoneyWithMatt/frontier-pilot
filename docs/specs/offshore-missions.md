@@ -36,6 +36,8 @@ Full Windows regression, targeted mission lifecycle/wages/telemetry/restart/corr
 Separate actual SF50 observation flight, aircraft configuration/physical passenger loading and exact H125/platform operation qualification. Build artifacts and allowlisted scenario need explicit approval under AGENTS.md; current run59 approval belongs to PR9's old constrained diagnostic only. Desktop activation last failed; no simulator actions are implied by this implementation. Prepare a focused acceptance procedure and distinguish all automated/replay/live categories.
 
 ## Open design decisions
+
+Continuation: extend the experimental platform visit to a read-only base → OL400 timed visit → base recorder, using the existing generic transport monitor inside FlightAttemptTracker and shared deck predicate. It never exports internal flight proofs into the economy or enables destinations. Persist create-only context/raw frames; offline review is historical, interrupted sessions cannot stitch dwell/flight. This is qualification tooling behind the existing restrictions, not another pay/loading system or a Jobs redesign.
 No unresolved decisions block the first broad-area observation loop. H125/platform/physical SF50 restrictions depend on missing live/configuration evidence; continue independent implementation without guessing them.
 
 Read-only installed package follow-up (2026-11-03): streamed SF50/H125 effective configuration is archived; no readable seat/station definitions obtained. No archive protections bypassed or profiles guessed. Two-specialist Windhoek offers are requested counts, not capacity claims. Physical boarding stays blocked, native seated models unsupported. [Implementation/live procedure](../offshore-missions.md).

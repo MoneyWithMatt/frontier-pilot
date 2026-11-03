@@ -39,8 +39,10 @@
     </StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
     <TextBlock Text="These are qualification records, not available destinations. No platform mission is generated until its aircraft, operation and tested versions are individually qualified. Diagnostic starts and constrained lifts never grant career rewards." TextWrapping="Wrap" Margin="0,12"/>
     <Expander Header="Experimental H125 contact test — no pay" Margin="0,16" DataContext="{Binding DataContext.OffshoreDiagnostic, RelativeSource={RelativeSource AncestorType=Window}}"><StackPanel>
-     <TextBlock Text="Load the exact H125 Passengers on OL400 H01. This read-only experiment watches stable deck contact, sustained contact loss and a stable return. Native starts or diagnostic constraints are not a normal flown mission. No flight controls or payload changes are issued." TextWrapping="Wrap" Margin="0,8"/>
+     <TextBlock Text="Contact cycle: start H125 Passengers on OL400 H01 and observe contact loss and a stable return. Full round trip: start at the resolved base, fly to the platform for a timed visit, depart and return to base. Both are read-only experiments; native starts or constrained lifts cannot satisfy the full route. No flight controls, payload changes or career pay." TextWrapping="Wrap" Margin="0,8"/>
      <WrapPanel><Button Content="Observe experimental contact cycle" Command="{Binding StartCommand}"/><Button Content="Stop diagnostic" Command="{Binding StopCommand}"/></WrapPanel>
+     <TextBlock Text="{Binding RoundTripRequirements}" TextWrapping="Wrap" Margin="0,12,0,6"/>
+     <Button Content="Observe experimental base–platform–base flight" Command="{Binding RoundTripCommand}" HorizontalAlignment="Left"/>
      <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,8"/>
      <TextBlock Text="{Binding RecordingPath}" TextWrapping="Wrap" Opacity="0.7"/>
     </StackPanel></Expander>

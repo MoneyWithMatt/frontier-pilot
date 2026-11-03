@@ -3,4 +3,5 @@
 <ItemGroup><ProjectReference Include="../../src/Desktop/FrontierAirportBuilder.Desktop.csproj"/></ItemGroup>
 <ItemGroup><Compile Include="../SyntheticPassengerAircraft.cs" Link="SyntheticPassengerAircraft.cs"/></ItemGroup>
 <ItemGroup><Compile Include="../SyntheticOffshoreFlight.cs" Link="SyntheticOffshoreFlight.cs"/></ItemGroup>
+<ItemGroup><Compile Include="../SyntheticOffshoreRoundTrip.cs" Link="SyntheticOffshoreRoundTrip.cs"/></ItemGroup>
 </Project>

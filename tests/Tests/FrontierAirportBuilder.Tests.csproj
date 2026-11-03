@@ -32,4 +32,5 @@
   </ItemGroup>
 
 <ItemGroup><Compile Include="../SyntheticOffshoreFlight.cs" Link="SyntheticOffshoreFlight.cs"/></ItemGroup>
+<ItemGroup><Compile Include="../SyntheticOffshoreRoundTrip.cs" Link="SyntheticOffshoreRoundTrip.cs"/></ItemGroup>
 </Project>
