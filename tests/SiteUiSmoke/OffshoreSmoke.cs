@@ -25,6 +25,7 @@ internal static partial class Program
             Check(vm.Error == "", "Offshore production command succeeded: " + vm.Error);
         }
         Check(Descendants<TextBlock>(control).Any(t => t.Text.Contains("$800")), "Offshore employer hourly policy rendered without per-job reward");
+        Check(Descendants<TextBlock>(control).Any(t => t.Text.Contains("WGS84 decimal degrees")), "Observation briefing provides navigable coordinates");
         Save(host, Path.Combine(folder, "offshore-observation-offered.png"));
         await Click("Accept mission");
         for (int i = 0; i <= 10; i++) await fixture.Observe(i);

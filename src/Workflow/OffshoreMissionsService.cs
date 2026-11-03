@@ -31,6 +31,15 @@ public sealed class OffshoreMissionsService(IEconomyStateStore store, CareerEmpl
     public decimal Balance => world?.Players.SingleOrDefault(p => p.Id == EmployedCargoPrototype.PlayerId)?.CachedBalance ?? 0;
     public double AreaDistance => Selected is {} mission && monitor.Latest is {} latest ?
         WorldTracking.DistanceMeters(latest.Position.Latitude, latest.Position.Longitude, mission.Area.Latitude, mission.Area.Longitude) / 1852 : double.NaN;
+    public double AreaBearing
+    {
+        get
+        {
+            if (Selected is not {} mission || monitor.Latest is not {} latest) return double.NaN;
+            try { return Geodesy.Inverse(new(latest.Position.Latitude, latest.Position.Longitude), new(mission.Area.Latitude, mission.Area.Longitude)).InitialBearingDegrees; }
+            catch (ArithmeticException) { return double.NaN; }
+        }
+    }
     private DateTimeOffset Now => clock?.Invoke() ?? DateTimeOffset.UtcNow;
     private PassengerEndpoint? Base => destinations.Base(employer!) is { ApproximateCoordinates: {} c } b
         ? new(b.StableId, b.Name + " (" + b.AirportIdentifier.Value + ")", c.Latitude, c.Longitude) : null;

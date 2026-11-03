@@ -20,10 +20,11 @@ public sealed class OffshoreMissionsViewModel : INotifyPropertyChanged
     public IReadOnlyList<OffshoreMission> Missions => service.Missions;
     public IReadOnlyList<OffshorePlatform> Platforms => OffshorePlatformRegistry.Platforms;
     public OffshoreMission? Selected { get => service.Selected; set { if (value is not null) { service.SelectedId = value.Id; Notify(); } } }
-    public string WagePolicy => $"{service.HourlyRate:C0} / verified airborne hour · one flight assignment at a time · no per-job reward";
+    public string WagePolicy => $"{DollarDisplay.Format(service.HourlyRate)} / verified airborne hour · one flight assignment at a time · no per-job reward";
     public string AreaStatus => Selected is {} m ? $"{m.Area.Name} · {m.Area.RadiusNauticalMiles:0.#} NM radius · {m.Area.ObservationSeconds / 60d:0.#} minutes continuously airborne" : "Select an observation mission.";
+    public string AreaCoordinates => Selected is {} m ? FormattableString.Invariant($"Area centre: {m.Area.Latitude:0.000000}, {m.Area.Longitude:0.000000} · WGS84 decimal degrees") : "";
     public string AreaDistance => double.IsNaN(service.AreaDistance) ? "Connect tracking for operating-area distance." :
-        $"{service.AreaDistance:0.0} NM from the area centre · {(service.AreaDistance <= Selected!.Area.RadiusNauticalMiles ? "inside" : "outside")} the observation area";
+        $"{service.AreaDistance:0.0} NM from the area centre · {(double.IsNaN(service.AreaBearing) ? "bearing unavailable" : $"{service.AreaBearing:000}° true to centre")} · {(service.AreaDistance <= Selected!.Area.RadiusNauticalMiles ? "inside" : "outside")} the observation area";
     public string Progress => Selected?.ObservationDisplay ?? "No assignment selected.";
     public string FlightTime => Selected is {} m ? $"Verified airborne time: {TimeSpan.FromTicks(m.AirborneTicks).TotalMinutes:0.0} minutes" : "";
     public string Estimate => Selected is {} m ? $"Planning estimate: about {Math.Ceiling(m.Area.ObservationSeconds / 60d + 10 + 2 * WorldTracking.DistanceMeters(m.Base.Latitude, m.Base.Longitude, m.Area.Latitude, m.Area.Longitude) / 1852 / 120 * 60):0} minutes total. Pilot assesses fuel, weather and performance." : "";

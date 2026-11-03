@@ -8,6 +8,25 @@ namespace FrontierAirportBuilder.Tests;
 public sealed class OffshoreMissionsTests
 {
     [Fact]
+    public async Task MissionBriefingGivesNavigableCoordinatesAndDollarsUnderBritishCulture()
+    {
+        var previous = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
+            var f = new SyntheticOffshoreFlight(); await f.Initialize();
+            var vm = new OffshoreMissionsViewModel(f.Service, () => throw new Exception("No native source in unit test"));
+            Assert.StartsWith("$800", vm.WagePolicy);
+            Assert.Contains("-23.000000, 15.050000", vm.AreaCoordinates);
+            await f.Observe(0);
+            Assert.Contains("° true to centre", vm.AreaDistance);
+            Assert.InRange(f.Service.AreaBearing, 89, 91);
+            Assert.True(vm.AcceptCommand.CanExecute(null));
+            f.CompanyType = "h125"; Assert.False(vm.AcceptCommand.CanExecute(null));
+        }
+        finally { System.Globalization.CultureInfo.CurrentCulture = previous; }
+    }
+    [Fact]
     public void AuthoredObservationParametersUseKnownGeographyWithoutActivatingPlatformOperations()
     {
         var area = Assert.Single(OffshoreMissionDefinitions.Areas);

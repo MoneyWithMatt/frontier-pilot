@@ -16,6 +16,7 @@
      <TextBlock Text="{Binding Estimate}" TextWrapping="Wrap" Margin="0,10"/>
      <TextBlock Text="1. Select the employer Vision Jet in Fleet, then accept. 2. Connect tracking; stop at Walvis Bay for ten seconds, then Begin. 3. Fly to the area and observe continuously. 4. Return, stop and complete." TextWrapping="Wrap" Margin="0,6,0,12"/>
      <TextBlock Text="{Binding AreaStatus}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+     <TextBlock Text="{Binding AreaCoordinates}" TextWrapping="Wrap" Margin="0,6"/>
      <TextBlock Text="{Binding AreaDistance}" TextWrapping="Wrap" Margin="0,6"/>
      <TextBlock Text="Observation needs airborne telemetry at least 100 ft above the reported surface. Choose a safe operating altitude; the mission does not approve aircraft performance." TextWrapping="Wrap" Opacity="0.75"/>
      <ProgressBar Value="{Binding Selected.ObservationSeconds}" Maximum="{Binding Selected.Area.ObservationSeconds}" Height="16" Margin="0,8"/>
