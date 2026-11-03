@@ -7,6 +7,37 @@ namespace FrontierAirportBuilder.Tests;
 public sealed class PilotWageTests
 {
     private static readonly DateTimeOffset Start=DateTimeOffset.Parse("2026-10-17T10:00:00Z");
+    [Theory][InlineData("skip")][InlineData("verify")][InlineData("problem")]
+    public async Task AirportPromptOnlyFollowsCommittedCompletionAndPaymentIsIndependentOfTheAnswer(string answer)
+    {
+        var h=await Harness.Create("Missionary","FYAM");
+        var visits=new MemoryAirportVisitStore();
+        var fleet=new AircraftFleetViewModel(null,()=>throw new InvalidOperationException("No live simulator in this regression."));
+        var prompt=new AirportCompletionReviewViewModel(h.Catalogue,visits,fleet,()=>Task.CompletedTask,EmployedCargoPrototype.PlayerId);
+        prompt.Observe((await h.Economy.LoadAsync())!);Assert.False(prompt.HasPrompt);
+        Assert.False(prompt.Review.VerifyCommand.CanExecute(null));
+        await h.Load();await h.Fly(1800);
+        prompt.Observe((await h.Economy.LoadAsync())!);Assert.False(prompt.HasPrompt);Assert.Empty((await h.Economy.LoadAsync())!.FinancialLedger);
+        await h.Tracker.UnloadCargoAsync();var paid=(await h.Economy.LoadAsync())!;
+        Assert.Equal(200,Assert.Single(paid.FinancialLedger).Amount);Assert.Empty(visits.Load());
+        prompt.Observe(paid);Assert.True(prompt.HasPrompt);Assert.Equal("Aminuis Airstrip",prompt.Airport);
+        if(answer=="skip")await prompt.SkipAsync();
+        else if(answer=="verify")await prompt.AnswerAsync(true);
+        else {prompt.Review.Note="Synthetic MSFS runway representation defect";await prompt.AnswerAsync(false);}
+        Assert.False(prompt.HasPrompt);Assert.Equal("",prompt.Error);
+        var resumed=new AirportCompletionReviewViewModel(h.Catalogue,visits,fleet,()=>Task.CompletedTask,EmployedCargoPrototype.PlayerId);
+        resumed.Observe(paid);Assert.False(resumed.HasPrompt);
+        var unchanged=(await h.Economy.LoadAsync())!;Assert.Equal(paid,unchanged);Assert.Single(unchanged.FinancialLedger);
+        await h.Tracker.UnloadCargoAsync();Assert.Single((await h.Economy.LoadAsync())!.FinancialLedger);
+        if(answer=="skip"){Assert.Empty(visits.Load());Assert.Single(visits.LoadDismissals());}
+        if(answer=="verify")
+        {
+            Assert.Single(visits.Load());Assert.Contains("Verified by player",h.Catalogue.Describe(h.Offer.DestinationLocationId,"baron-g58"));
+            await prompt.AnswerAsync(true);Assert.Single(visits.Load());
+        }
+        if(answer=="problem")Assert.NotNull(h.Catalogue.UnresolvedProblem("FYAM"));
+        await fleet.ShutdownAsync();
+    }
     [Theory][InlineData("Missionary",400)][InlineData("Safari",400)][InlineData("Industrial",650)][InlineData("Offshore",800)]
     public void ConfiguredRatesAndOnboardingUseSameValue(string category,decimal rate)
     {
@@ -130,12 +161,12 @@ public sealed class PilotWageTests
         public MemoryEconomyStateStore Economy=new();public MemoryFlightAttemptStore Attempts=new();
         public required CareerEmployer Employer;public required EmployerDestinationCatalogue Catalogue;
         public required EmployedCargoJobsService Service;public required CargoJobDisplay Offer;public FlightAttemptTracker Tracker=null!;
-        public static async Task<Harness> Create(string category)
+        public static async Task<Harness> Create(string category,string? destination=null)
         {
             var employer=CareerCatalogue.Employers.Single(x=>x.Category==category);
             var catalogue=new EmployerDestinationCatalogue(new[]{"FYOJ","FYNG","FYWB"}.Select((code,i)=>new DestinationReview(code,"Approved",code,-22+i*.1,16,"Synthetic wage test",Start,[])));
             var economy=new MemoryEconomyStateStore();var service=new EmployedCargoJobsService(economy,utcNow:()=>Start,employer:employer,destinations:catalogue);
-            var offer=(await service.LoadAsync()).Offers.First(x=>x.CargoMassKilograms<=20);service.SelectedAircraftTypeId=service.AircraftChoices(offer).First().Id;
+            var offer=(await service.LoadAsync()).Offers.First(x=>x.CargoMassKilograms<=20&&(destination is null||x.Destination.Contains(destination)));service.SelectedAircraftTypeId=service.AircraftChoices(offer).First().Id;
             await service.AcceptAsync(offer.JobId);var h=new Harness{Economy=economy,Employer=employer,Catalogue=catalogue,Service=service,Offer=offer};h.Restart();await h.Tracker.InitializeAsync();await h.Tracker.SelectJobsAsync([offer.JobId]);return h;
         }
         public void Restart()=>Tracker=new(Economy,Attempts,utcNow:()=>Start.AddHours(2)){AdditionalLocationResolver=Catalogue.Find};

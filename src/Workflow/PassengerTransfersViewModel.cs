@@ -6,6 +6,7 @@ namespace FrontierAirportBuilder.Workflow;
 public sealed class PassengerTransfersViewModel : INotifyPropertyChanged
 {
     private readonly PassengerTransfersService service;
+    internal EconomyWorld? CommittedWorld=>service.CommittedWorld;
     private readonly SynchronizationContext? context = SynchronizationContext.Current;
     private readonly Action? connect;
     private bool busy;

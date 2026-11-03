@@ -21,9 +21,9 @@ public static class CompanyAircraft
         return bindings.SingleOrDefault(x=>x.Title==identity.Title&&x.Model==identity.Type)?.AircraftTypeId;
     }
     public static IReadOnlyList<CompanyAircraftType> Choices(CareerEmployer employer,DestinationDiagnostic destination,decimal kilograms)=>
-        Types.Where(x=>x.Enabled&&employer.Fleet.Contains(x.Id)&&
-            (destination.OriginCompatibleAircraft.Length==0||destination.OriginCompatibleAircraft.Contains(x.Id))&&
-            (destination.CompatibleAircraft.Length==0||destination.CompatibleAircraft.Contains(x.Id))).ToArray();
+        // Airport runway/performance suitability belongs to the pilot. Retained review lists
+        // describe historical observations, not company/type or physical loading authority.
+        Types.Where(x=>x.Enabled&&employer.Fleet.Contains(x.Id)).ToArray();
     public static string? CheckDispatch(FlightAircraftIdentity identity,IReadOnlyList<CargoJobDisplay> jobs,IEnumerable<AircraftTypeBinding> bindings)
     {
         var required=jobs.Where(x=>x.CompanyAircraftTypeId is not null).Select(x=>x.CompanyAircraftTypeId).Distinct().ToArray();

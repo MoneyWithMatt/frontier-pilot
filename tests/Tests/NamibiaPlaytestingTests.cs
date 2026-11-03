@@ -60,31 +60,32 @@ public sealed class NamibiaPlaytestingTests : IDisposable
         now=Now.AddHours(3).AddMinutes(59); // 15:59; before the saved 16:15 cadence, past a UTC three-hour boundary.
         var same=(await service.LoadAsync()).Offers.Select(j=>j.DestinationLocationId).Distinct().Order().ToArray();Assert.Equal(first,same);
     }
-    [Fact] public void VisitPersistenceIsIndependentOfAirportTechnicalDataAndPerAircraft()
+    [Fact] public void VisitPersistenceIsAirportLevelWithAircraftAsContextOnly()
     {
         var c=new EmployerDestinationCatalogue();var store=new AirportVisitStore(root);var report=Visit(c,"FYAM");
         var before=c.Resolve(EmployerDestinationCatalogue.Research.First(r=>r.Key=="FYAM"))!;
         store.Append(report);store.Append(report);Assert.Single(new AirportVisitStore(root).Load());
         var resumed=new DestinationReviewStore(root).Load();
-        Assert.Contains("Verified by player",resumed.Describe(before.StableId,"c208"));Assert.Contains("Unverified for this aircraft",resumed.Describe(before.StableId,"c152"));
+        Assert.Contains("Verified by player",resumed.Describe(before.StableId,"c208"));Assert.Equal(resumed.Describe(before.StableId,"c208"),resumed.Describe(before.StableId,"c152"));
         var resolved=resumed.Find(before.StableId)!;Assert.Equal(before.ApproximateCoordinates,resolved.ApproximateCoordinates);Assert.Equal(before.VerificationState,resolved.VerificationState);Assert.Null(resolved.VerificationEvidence);Assert.False(Directory.Exists(Path.Combine(root,"economy")));
         Assert.Empty(resumed.Reviews);Assert.Throws<IOException>(()=>store.Append(report with{Note="Conflicting retry"}));
         new CareerStore(root).RequestReset(true);new CareerStore(root).Load();Assert.Single(store.Load());
     }
-    [Fact] public void MultipleAircraftReportsRemainScopedAndNeitherPlayerVerificationNorLookupCanClearTechnicalHolds()
+    [Fact] public void AircraftContextNeverScopesAirportVerificationAndPlayerReportsCannotClearTechnicalHolds()
     {
         var c=new EmployerDestinationCatalogue();var a=Visit(c,"FYAM");var b=Visit(c,"FYAM",type:"c152",time:Now.AddMinutes(1));
         c.ApplyVisits([a,b]);var id=a.LocationId;
-        Assert.Contains("Verified by player",c.Describe(id,"c208"));Assert.Contains("Verified by player",c.Describe(id,"c152"));Assert.Contains("Unverified for this aircraft",c.Describe(id,"baron-g58"));
+        Assert.Contains("Verified by player",c.Describe(id,"c208"));Assert.Contains("Verified by player",c.Describe(id,"c152"));Assert.Contains("Verified by player",c.Describe(id,"baron-g58"));
         var held=new EmployerDestinationCatalogue([new("FYNG","Approved","FYNG",-19,16,"Synthetic retained route",Now,[])]);
         held.ApplyVisits([Visit(held,"FYNG",type:"h125")]);Assert.False(Destination(held,"FYNG","Safari").Enabled);Assert.Contains("Held",held.Describe(held.Visits.Single().LocationId,"h125"));
         Assert.False(CompanyAircraft.Types.Single(t=>t.Id=="h125").Enabled);
     }
-    [Fact] public void AGoodVisitInAnotherAircraftDoesNotClearAnAircraftUnsuitableProblem()
+    [Fact] public void LegacyAircraftUnsuitableReportsNeverBlockJobsAndGoodVisitsApplyToTheAirport()
     {
         var c=new EmployerDestinationCatalogue();var bad=Visit(c,"FYAM",AirportVisitResult.Problematic) with{Issue=AirportIssue.AircraftUnsuitable};
+        c.ApplyVisits([bad]);Assert.True(Destination(c,"FYAM").Enabled);Assert.Null(c.UnresolvedProblem("FYAM"));
         var goodOther=Visit(c,"FYAM",type:"c152",time:Now.AddMinutes(1));c.ApplyVisits([bad,goodOther]);
-        Assert.False(Destination(c,"FYAM").Enabled);Assert.Contains("Problematic",c.Describe(bad.LocationId,"c208"));
+        Assert.True(Destination(c,"FYAM").Enabled);Assert.Contains("Verified by player",c.Describe(bad.LocationId,"c208"));
         c.ApplyVisits([bad,goodOther,Visit(c,"FYAM",type:"c208",time:Now.AddMinutes(2))]);Assert.True(Destination(c,"FYAM").Enabled);
         Assert.Contains("Verified by player",c.Describe(bad.LocationId,"c208"));
     }
@@ -106,6 +107,16 @@ public sealed class NamibiaPlaytestingTests : IDisposable
         Directory.CreateDirectory(root);var store=new AirportVisitStore(root);File.WriteAllText(store.StoragePath,"{\"SchemaVersion\":999,\"Visits\":[]}");
         Assert.Throws<IOException>(()=>store.Append(Visit(new(),"FYAM")));Assert.Contains("999",File.ReadAllText(store.StoragePath));
         File.WriteAllText(store.StoragePath,"broken");Assert.Throws<IOException>(()=>store.Load());Assert.Equal("broken",File.ReadAllText(store.StoragePath));
+    }
+    [Fact] public void SchemaOneReviewsRemainIntactAndDismissalMigrationIsIdempotentWithoutAddingVisits()
+    {
+        Directory.CreateDirectory(root);var store=new AirportVisitStore(root);var report=Visit(new(),"FYAM",AirportVisitResult.Problematic) with {Issue=AirportIssue.AircraftUnsuitable};
+        var json=new System.Text.Json.JsonSerializerOptions{Converters={new System.Text.Json.Serialization.JsonStringEnumConverter()}};
+        File.WriteAllText(store.StoragePath,System.Text.Json.JsonSerializer.Serialize(new {SchemaVersion=1,Visits=new[]{report}},json));
+        var original=File.ReadAllText(store.StoragePath);Assert.Equal(report,Assert.Single(store.Load()));Assert.Empty(store.LoadDismissals());Assert.Equal(original,File.ReadAllText(store.StoragePath));
+        store.Dismiss(new("FYAM",Now));store.Dismiss(new("FYAM",Now.AddMinutes(1)));
+        var resumed=new AirportVisitStore(root);Assert.Single(resumed.LoadDismissals());Assert.Equal(report,Assert.Single(resumed.Load()));Assert.Equal(2,JsonNode.Parse(File.ReadAllText(store.StoragePath))!["SchemaVersion"]!.GetValue<int>());
+        var catalogue=new DestinationReviewStore(root).Load();Assert.True(Destination(catalogue,"FYAM").Enabled);
     }
     [Fact] public void InconsistentFacilityPointIsHeldAndDatabasePresenceNeverClaimsRunwayAcceptance()
     {

@@ -26,7 +26,7 @@ public sealed record CargoJobDisplay(string JobId, string Employer, string Origi
 public sealed record EmployedCargoJobsSnapshot(IReadOnlyList<CargoJobDisplay> Offers, CargoJobDisplay? ActiveJob,
     IReadOnlyList<CargoJobDisplay> ReservedJobs, IReadOnlyList<CargoJobDisplay> RecentCompletedJobs,
     string StoragePath, int EconomyRevision, decimal PlayerBalance, string CurrencyCode)
-{ public EconomyRealTimeState? RealTime { get; init; } }
+{ public EconomyRealTimeState? RealTime { get; init; } internal EconomyWorld? CommittedWorld {get;init;} }
 public sealed record FlightDiagnosticEventDisplay(string Utc, string Event, string Details);
 
 /// <summary>The employee-facing boundary deliberately exposes selection and acceptance only. Delivery requires a later evidence provider.</summary>
@@ -158,7 +158,7 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
         var completed = world.Jobs.Where(x => x.State == EconomyJobState.Completed).OrderByDescending(x => x.CompletedUtc)
             .ThenBy(x => x.Id, StringComparer.Ordinal).Take(12).Select(Display).ToArray();
         var player = world.Players.Single(x => x.Id == EmployedCargoPrototype.PlayerId);
-        return new(offers, currentJob, reserved, completed, StoragePath, world.Revision, player.CachedBalance, player.CurrencyCode) { RealTime = world.RealTime };
+        return new(offers, currentJob, reserved, completed, StoragePath, world.Revision, player.CachedBalance, player.CurrencyCode) { RealTime = world.RealTime, CommittedWorld=world };
 
         (string Display, string Purpose, string Known, double Latitude, double Longitude) Place(string id)
         {
@@ -209,6 +209,7 @@ public sealed class MemoryEconomyStateStore : IEconomyStateStore
 
 public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
 {
+    internal EconomyWorld? CommittedWorld {get;private set;}
     private readonly IEmployedCargoJobs jobs;
     private readonly IFlightAttemptTracker flight;
     private readonly SynchronizationContext? context;
@@ -376,6 +377,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
     }
     private Task ApplySnapshotAsync(EmployedCargoJobsSnapshot snapshot)
     {
+        CommittedWorld=snapshot.CommittedWorld;
         realTime = snapshot.RealTime; Changed(nameof(BoardTiming));
         Offers = snapshot.Offers; ActiveJob = snapshot.ActiveJob; ReservedJobs = snapshot.ReservedJobs; CompletedJobs = snapshot.RecentCompletedJobs;
         Changed(nameof(ShowOfferCompensation));Changed(nameof(ShowReservedCompensation));Changed(nameof(EmploymentStatus));

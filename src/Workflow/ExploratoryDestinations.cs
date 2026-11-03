@@ -32,23 +32,21 @@ public sealed partial class EmployerDestinationCatalogue
     }
     public DestinationResearch? ResearchFor(string locationId) => Research.FirstOrDefault(r => Resolve(r)?.StableId == locationId);
     public AirportVisit? LatestVisit(string key) => visits.Where(v => v.AirportKey == key).OrderByDescending(v => v.RecordedUtc).ThenByDescending(v => v.Id).FirstOrDefault();
-    public AirportVisit? UnresolvedProblem(string key)=>visits.Where(p=>p.AirportKey==key&&p.Result==AirportVisitResult.Problematic&&
-        !visits.Any(v=>v.AirportKey==key&&v.Result==AirportVisitResult.Verified&&v.RecordedUtc>p.RecordedUtc&&
-            (p.Issue!=AirportIssue.AircraftUnsuitable||v.AircraftTypeId==p.AircraftTypeId))).OrderByDescending(p=>p.RecordedUtc).FirstOrDefault();
+    // AircraftUnsuitable is retained for schema-1 history only. It never blocks jobs.
+    public AirportVisit? UnresolvedProblem(string key)=>visits.Where(p=>p.AirportKey==key&&p.Result==AirportVisitResult.Problematic&&p.Issue!=AirportIssue.AircraftUnsuitable&&
+        !visits.Any(v=>v.AirportKey==key&&v.Result==AirportVisitResult.Verified&&v.RecordedUtc>p.RecordedUtc)).OrderByDescending(p=>p.RecordedUtc).FirstOrDefault();
+    public bool IsPlayerVerified(string key)=>UnresolvedProblem(key) is null&&visits.Any(v=>v.AirportKey==key&&v.Result==AirportVisitResult.Verified);
     public string Describe(string? locationId, string? aircraftType = null)
     {
         if (locationId is null || ResearchFor(locationId) is not {} row) return "Airport review unavailable for this operating area.";
         if (TechnicalProblem(row) is {} conflict) return "Held — "+conflict+"; not available for generated jobs.";
-        var latest = LatestVisit(row.Key);
         if (UnresolvedProblem(row.Key) is {} problem) return $"Problematic — {problem.Issue} ({problem.AircraftDescription}): {problem.Note}. New jobs withheld; accepted work/history retained.";
-        if (latest is { Result: AirportVisitResult.Verified })
+        if (IsPlayerVerified(row.Key))
         {
-            var lastProblem=visits.Where(v=>v.AirportKey==row.Key&&v.Result==AirportVisitResult.Problematic).Select(v=>v.RecordedUtc).DefaultIfEmpty(DateTimeOffset.MinValue).Max();
-            var tested=aircraftType is null?latest:visits.Where(v=>v.AirportKey==row.Key&&v.AircraftTypeId==aircraftType&&v.Result==AirportVisitResult.Verified&&v.RecordedUtc>lastProblem).OrderByDescending(v=>v.RecordedUtc).FirstOrDefault();
-            var shown=tested??latest;
-            return (tested is not null ? "Verified by player" : "Unverified for this aircraft") + $" — tested in {shown.AircraftDescription} on {shown.RecordedUtc:dd MMM yyyy}. {shown.Note}";
+            var shown=visits.Where(v=>v.AirportKey==row.Key&&v.Result==AirportVisitResult.Verified).OrderByDescending(v=>v.RecordedUtc).First();
+            return $"Verified by player — airport representation confirmed on {shown.RecordedUtc:dd MMM yyyy}. Aircraft observed: {shown.AircraftDescription} (context only). {shown.Note}";
         }
-        if (Resolve(row)?.VerificationState == LocationVerificationState.MsfsVerified) return "Prior airport inspection recorded; aircraft/runway suitability remains unassessed unless explicitly reviewed.";
+        if (Resolve(row)?.VerificationState == LocationVerificationState.MsfsVerified) return "Prior airport inspection recorded. Aircraft suitability and performance remain the pilot's responsibility.";
         return "Unverified — not yet visited; help verify this airstrip. Published position/facility lookup is not runway acceptance.";
     }
     private NamibiaLocation? ResolveExploratory(DestinationResearch row, NamibiaLocation? prior)

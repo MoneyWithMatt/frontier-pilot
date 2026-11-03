@@ -50,3 +50,7 @@ Current product priority is completing Offshore through the staged tasks above. 
 # Namibia playtesting priority (2026-11-03)
 
 Exploratory starter destinations and player airport reports are implemented on `codex/namibia-playtesting`. Clean implementation 009b0f2 passed hosted 1,008-test regression, both WPF programs, guards, historical CLI and packaging; synthetic screenshots reviewed. Draft PR creation is blocked by connector 403. [Scope and player procedure](docs/namibia-playtesting.md), [current evidence/handoff](docs/handoffs/namibia-playtesting.md). Known identities/conflicts stay Held; individual live airport approval is no longer required for plausible curated exploratory routes. Aircraft/loading/platform and mission-proof safeguards remain.
+
+## Airport review refinement — 2026-11-03
+
+Airport-level representation knowledge supersedes aircraft-specific suitability policy. Pilot responsibility applies to runway dimensions, surface, terrain and performance; old endpoint lists and AircraftUnsuitable reports no longer block work. Optional first-visit prompt follows committed cargo/passenger completion and wage settlement; manual simulator-problem reporting remains available beforehand. Schema-1 reports are preserved through schema-2 compatibility. [Scope](docs/specs/airport-verification-refinement.md), [latest evidence](docs/handoffs/namibia-playtesting.md). No cancellation/rerouting, aircraft capability or live acceptance changes.

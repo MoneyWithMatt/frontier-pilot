@@ -38,7 +38,10 @@
         </StackPanel>
       </Grid>
     </Border>
-    <TextBlock Grid.Row="2" Text="{Binding Error}" Foreground="#F0B47B" TextWrapping="Wrap" />
+    <StackPanel Grid.Row="2">
+      <TextBlock Text="{Binding Error}" Foreground="#F0B47B" TextWrapping="Wrap" />
+      <local:AirportCompletionReviewControl x:Name="AirportArrivalReview" DataContext="{Binding AirportArrivals}" />
+    </StackPanel>
     <TabControl x:Name="Sections" Grid.Row="3" SelectedIndex="{Binding Navigation.Section,Mode=TwoWay}">
       <TabItem Header="Overview">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">

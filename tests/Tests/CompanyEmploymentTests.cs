@@ -96,12 +96,14 @@ public sealed class CompanyEmploymentTests : IDisposable
         var after=await next.LoadAsync();Assert.DoesNotContain(after.Offers,x=>x.Destination.Contains("FYAR"));Assert.Single(after.ReservedJobs);
         Assert.Equal(before.Shipments,(await store.LoadAsync())!.Shipments);Assert.Equal(before.FinancialLedger,(await store.LoadAsync())!.FinancialLedger);
     }
-    [Fact] public void CuratedAircraftConstraintsAndExactAddonMappingsDoNotGuessAliases()
+    [Fact] public void HistoricalAirportAircraftListsDoNotRestrictFleetAndExactAddonMappingsDoNotGuessAliases()
     {
         var catalogue=new EmployerDestinationCatalogue([Synthetic("FYME",aircraft:["savage-cub"])]);
         var destination=catalogue.Diagnose("Safari").Single(x=>x.Identifier=="FYME");
-        Assert.Equal("savage-cub",Assert.Single(CompanyAircraft.Choices(Employer("Safari"),destination,10)).Id);
-        Assert.Equal("savage-cub",Assert.Single(CompanyAircraft.Choices(Employer("Safari"),destination,20)).Id);
+        Assert.Equal(Employer("Safari").Fleet,CompanyAircraft.Choices(Employer("Safari"),destination,10).Select(a=>a.Id));
+        Assert.Equal(Employer("Safari").Fleet,CompanyAircraft.Choices(Employer("Safari"),destination,20000).Select(a=>a.Id));
+        var challenging=destination with {Research=destination.Research with {RunwayDetail="300 m x 10 m gravel; steep terrain; pilot must assess performance",RunwayDataVerified="Unknown"}};
+        Assert.Equal(CompanyAircraft.Choices(Employer("Safari"),destination,10),CompanyAircraft.Choices(Employer("Safari"),challenging,20000));
         Assert.Null(CompanyAircraft.Resolve(new("Addon Caravan","C208"),[]));
         AircraftTypeBinding[] mappings=[new("Addon Caravan","C208","c208")];
         Assert.Equal("c208",CompanyAircraft.Resolve(new("Addon Caravan","C208"),mappings));

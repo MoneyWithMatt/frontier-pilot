@@ -322,3 +322,7 @@ Career consolidates existing views and delegates gameplay commands; it does not 
 # Exploratory airport policy — 2026-11-03
 
 Matt explicitly approved plausible curated unverified airports for exploratory jobs. This supersedes the earlier requirement for individual live acceptance before every airport offer. It does not supersede physical aircraft/type/station/loading, flight evidence, wages, identity-conflict or platform qualification guards. Reference geography and manual player usability reports remain distinct from simulator/aircraft qualification. Per-aircraft player reports cannot move immutable routes or clear known technical holds. Problem reports withhold future work, retaining accepted custody/history; incomplete flights remain unpaid. [Scope](specs/namibia-playtesting.md).
+
+## Airport representation and pilot responsibility — 2026-11-03 refinement
+
+Matt explicitly supersedes aircraft-specific airport suitability: runway size, surface, terrain and performance are pilot decisions. Historical endpoint aircraft lists and AircraftUnsuitable reports remain data but cannot exclude jobs. Verification is airport-level, recording MSFS existence/identity/location/landing-area/scenery functionality. Optional first-visit review follows authoritative completion and settlement; skip has no economic consequences. Manual simulator-problem reports remain available before completion. Technical geographic holds, exact company aircraft identity, loading and flight/pay guards remain. [Approved refinement](specs/airport-verification-refinement.md).

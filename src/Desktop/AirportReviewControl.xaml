@@ -1,10 +1,10 @@
 <UserControl x:Class="FrontierAirportBuilder.Desktop.AirportReviewControl" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Expander x:Name="ReviewPanel" Header="Visited this airport? Record your findings" Margin="0,12" Visibility="{Binding HasAirport,Converter={StaticResource BoolVisibility}}">
+  <Expander x:Name="ReviewPanel" Header="Airport details / Report a simulator problem" Margin="0,12" Visibility="{Binding HasAirport,Converter={StaticResource BoolVisibility}}">
     <StackPanel Margin="0,8">
       <TextBlock Text="{Binding Airport}" FontWeight="SemiBold" TextWrapping="Wrap" />
       <TextBlock Text="{Binding Knowledge}" Foreground="#A8CFC1" TextWrapping="Wrap" Margin="0,8" />
       <TextBlock Text="{Binding Cautions}" TextWrapping="Wrap" FontSize="11" />
-      <TextBlock Text="Aircraft you tested" Margin="0,8,0,0" />
+      <TextBlock Text="Aircraft observed (context only)" Margin="0,8,0,0" />
       <ComboBox ItemsSource="{Binding AircraftTypes}" SelectedItem="{Binding SelectedAircraft}" DisplayMemberPath="Name" />
       <TextBox Text="{Binding AircraftDescription,UpdateSourceTrigger=PropertyChanged}" MaxLength="160" />
       <TextBlock Text="MSFS version / scenery (optional)" />

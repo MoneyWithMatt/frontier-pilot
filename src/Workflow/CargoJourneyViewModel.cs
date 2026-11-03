@@ -117,6 +117,7 @@ public static class CargoDispatchDocument
 
 public sealed class CargoJourneyViewModel : INotifyPropertyChanged
 {
+    internal EconomyWorld? CommittedWorld=>service.World;
     private readonly CargoJourneyService service;
     private readonly Func<Task> refreshJobs;
     private readonly Func<EconomyWorld, IEnumerable<PassengerEndpoint>> destinations;

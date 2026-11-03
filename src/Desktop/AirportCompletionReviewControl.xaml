@@ -1,0 +1,23 @@
+<UserControl x:Class="FrontierAirportBuilder.Desktop.AirportCompletionReviewControl" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <StackPanel>
+    <Border x:Name="ArrivalPrompt" Background="#203C35" CornerRadius="7" Padding="12,8" Margin="0,0,0,10" Visibility="{Binding HasPrompt,Converter={StaticResource BoolVisibility}}">
+      <StackPanel>
+        <TextBlock Text="{Binding Question}" TextWrapping="Wrap" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding Airport}" TextWrapping="Wrap" Foreground="#A8CFC1" />
+        <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" FontSize="11" Margin="0,4" />
+        <WrapPanel>
+          <Button x:Name="VerifyArrival" Content="Yes — Verify airport" Command="{Binding VerifyCommand}" Padding="10,4" />
+          <Button x:Name="ReportArrival" Content="Report a problem" Command="{Binding ReportCommand}" Padding="10,4" />
+          <Button x:Name="SkipArrival" Content="Skip for now" Command="{Binding SkipCommand}" Padding="10,4" />
+        </WrapPanel>
+        <StackPanel Visibility="{Binding Reporting,Converter={StaticResource BoolVisibility}}" Margin="0,6" MaxHeight="185">
+          <TextBlock Text="Report missing, incorrect or broken simulator representation. Aircraft performance is your responsibility." TextWrapping="Wrap" FontSize="11" />
+          <ComboBox ItemsSource="{Binding Review.IssueOptions}" DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding Review.SelectedIssue}" />
+          <TextBox x:Name="ArrivalNote" Text="{Binding Review.Note,UpdateSourceTrigger=PropertyChanged}" MaxLength="500" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="40" MaxHeight="65" VerticalScrollBarVisibility="Auto" />
+          <Button x:Name="SaveArrivalProblem" Content="Save problem report" Command="{Binding SaveProblemCommand}" HorizontalAlignment="Left" Padding="10,4" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+    <TextBlock Text="{Binding Error}" Foreground="#F0B47B" TextWrapping="Wrap" />
+  </StackPanel>
+</UserControl>

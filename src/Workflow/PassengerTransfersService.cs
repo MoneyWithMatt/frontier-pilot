@@ -13,6 +13,7 @@ public sealed class PassengerTransfersService
     private readonly SemaphoreSlim gate = new(1, 1);
     private readonly FlightAttemptTracker.TransportMonitor monitor = new();
     private EconomyWorld? world;
+    internal EconomyWorld? CommittedWorld=>world;
     public bool Enabled => employer?.Category is "Offshore" or "Missionary";
     public PassengerPayloadCoordinator? Payload { get; init; }
     private bool payloadContinuity;

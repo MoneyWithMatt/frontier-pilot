@@ -156,7 +156,7 @@ public sealed class PassengerTransferTests : IDisposable
         utc = Start.AddSeconds(35); await Assert.ThrowsAsync<InvalidOperationException>(() => service.BoardAsync());
         var restricted = new EmployerDestinationCatalogue([new("FYWB", "Approved", "FYWB", -23, 15, "Synthetic aircraft exclusion", Start, ["c208"])]);
         service = NewService(restricted); await service.RefreshAsync(); service.SelectedId = transfer.Id;
-        Assert.DoesNotContain(service.VisibleTransfers, x => x.State == PassengerTransferState.Offered);
+        Assert.Contains(service.VisibleTransfers, x => x.State == PassengerTransferState.Offered);
         for (var i = 36; i <= 46; i++) await Observe(i);
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.BoardAsync());
     }
@@ -246,15 +246,15 @@ public sealed class PassengerTransferTests : IDisposable
     }
 
     [Theory][InlineData("FYWB")][InlineData("FYAR")]
-    public async Task NewPassengerMissionsRespectEndpointAircraftExclusions(string excluded)
+    public async Task HistoricalAirportAircraftContextDoesNotExcludePersonnelMissions(string excluded)
     {
         await Setup();
         var reviews = new[] { new DestinationReview("FYWB", "Approved", "FYWB", -23, 15, "Synthetic base", Start, excluded == "FYWB" ? ["c208"] : []),
             new DestinationReview("FYAR", "Approved", "FYAR", -22.4, 15, "Synthetic destination", Start, excluded == "FYAR" ? ["c208"] : []) };
         var restricted = new PassengerTransfersService(new MemoryEconomyStateStore(), Employer, new(reviews), utcNow: () => utc);
         await restricted.RefreshAsync();
-        Assert.DoesNotContain(restricted.Transfers, x => x.Destination.Name.Contains("FYAR"));
-        if (excluded == "FYWB") Assert.Empty(restricted.Transfers);
+        Assert.Contains(restricted.Transfers, x => x.Destination.Name.Contains("FYAR"));
+        Assert.All(restricted.Transfers,t=>Assert.Contains("vision-jet",t.EligibleAircraftTypes));
     }
 
     [Fact] public async Task LoadedCargoRefusesPassengerBoardingAndWrongLocationCannotDisembark()
@@ -304,8 +304,13 @@ public sealed class PassengerTransferTests : IDisposable
         await visiting.BoardAsync(); Assert.Equal(75, physical.Weights[2]); Assert.Equal(92, physical.Weights[3]);
         for (var i = 11; i <= 131; i++) await Sample(i, i > 11, false);
         for (var i = 132; i <= 142; i++) await Sample(i, true);
+        var reviewFleet=new AircraftFleetViewModel(null,()=>throw new InvalidOperationException("Synthetic test only"));
+        var review=new AirportCompletionReviewViewModel(new(),new MemoryAirportVisitStore(),reviewFleet,()=>Task.CompletedTask,EmployedCargoPrototype.PlayerId);
+        review.Observe((await memory.LoadAsync())!);Assert.False(review.HasPrompt);
         await visiting.DisembarkAsync(); await visiting.DisembarkAsync();
         var world = (await memory.LoadAsync())!; var wage = Assert.Single(world.FinancialLedger);
+        review.Observe(world);Assert.True(review.HasPrompt);await review.SkipAsync();Assert.False(review.HasPrompt);
+        Assert.Equal(world,(await memory.LoadAsync())!);await reviewFleet.ShutdownAsync();
         Assert.Equal(400, wage.Wage!.HourlyRate); Assert.Equal(13.33m, wage.Amount);
         Assert.Equal(PassengerCarriageState.Disembarked, Assert.Single(world.PassengerTransports).State);
         Assert.Equal(33, physical.Weights[5]); Assert.Equal(0, physical.Weights[2]); Assert.Equal(0, physical.Weights[3]);

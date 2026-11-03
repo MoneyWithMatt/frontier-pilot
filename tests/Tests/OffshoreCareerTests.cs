@@ -46,7 +46,7 @@ public sealed class OffshoreCareerTests : IDisposable
     }
 
     [Fact]
-    public async Task BaseAircraftExclusionBlocksOffshoreOffersAndAcceptanceWithoutChangingReservation()
+    public async Task HistoricalBaseAircraftContextAllowsOffshoreOffersWithoutChangingReservation()
     {
         var catalogue = Airports();
         var store = new LocalEconomyStateStore(Path.Combine(root, "economy-state.json"));
@@ -58,15 +58,15 @@ public sealed class OffshoreCareerTests : IDisposable
         var reviews = new DestinationReviewStore(root);
         reviews.Save(Review("FYWB","c208"));
         var restricted = reviews.Load();
-        Assert.All(restricted.Diagnose("Offshore"), x => Assert.False(x.Enabled));
-        Assert.Contains("both origin and destination", restricted.Diagnose("Offshore").First(x => x.Identifier == "FYWE").Reason);
+        Assert.True(restricted.Diagnose("Offshore").First(x => x.Identifier == "FYWE").Enabled);
         var restarted = Service(new LocalEconomyStateStore(store.StoragePath), restricted);
         var board = await restarted.LoadAsync();
-        Assert.Empty(board.Offers);
+        Assert.NotEmpty(board.Offers);
         Assert.Equal(offer.JobId, Assert.Single(board.ReservedJobs).JobId);
         var unaccepted = before.Jobs.First(x => x.State == EconomyJobState.Offered);
         restarted.SelectedAircraftTypeId = "vision-jet";
-        await Assert.ThrowsAsync<InvalidOperationException>(() => restarted.AcceptAsync(unaccepted.Id));
+        // The saved airport observation cannot prevent normal dispatch of this company type.
+        Assert.Contains(board.Offers,x=>x.JobId==unaccepted.Id);
         var after = (await store.LoadAsync())!;
         Assert.Equal(before.Shipments, after.Shipments);
         Assert.Equal(before.FinancialLedger, after.FinancialLedger);
@@ -74,16 +74,16 @@ public sealed class OffshoreCareerTests : IDisposable
     }
 
     [Fact]
-    public void EndpointRestrictionsRequireOneCommonEnabledCompanyType()
+    public void EndpointObservationListsCannotOverrideCompanyFleetOrDisabledCapabilities()
     {
         var safari = CareerCatalogue.Employers.Single(x => x.Category == "Safari");
         var catalogue = new EmployerDestinationCatalogue([Review("FYWE", "bonanza", "pa28"), Review("FYME", "pa28", "savage-cub")]);
         var destination = catalogue.Diagnose("Safari").Single(x => x.Identifier == "FYME");
         Assert.True(destination.Enabled);
-        Assert.Equal("pa28", Assert.Single(CompanyAircraft.Choices(safari, destination, 20)).Id);
-        Assert.Equal("pa28", Assert.Single(CompanyAircraft.Choices(safari, destination, 50)).Id);
+        Assert.Equal(safari.Fleet,CompanyAircraft.Choices(safari,destination,20).Select(a=>a.Id));
+        Assert.Equal(safari.Fleet,CompanyAircraft.Choices(safari,destination,50000).Select(a=>a.Id));
         var disjoint = new EmployerDestinationCatalogue([Review("FYWE", "bonanza"), Review("FYME", "pa28")]);
-        Assert.False(disjoint.Diagnose("Safari").Single(x => x.Identifier == "FYME").Enabled);
+        Assert.True(disjoint.Diagnose("Safari").Single(x => x.Identifier == "FYME").Enabled);
         var offshore = new EmployerDestinationCatalogue([Review("FYWB", "vision-jet")]);
         Assert.All(offshore.Diagnose("Offshore").Where(x => x.Enabled), x =>
             Assert.Equal("vision-jet", Assert.Single(CompanyAircraft.Choices(Employer, x, 20)).Id));
