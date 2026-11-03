@@ -1,6 +1,6 @@
 # Career Hub
 
-Status: Approved scope, implementation in progress.
+Status: Implemented on the isolated feature branch; automated verification passed, human review pending.
 Approved by: Matt's “Build the Career Hub UI” request, 2026-11-03.
 
 ## Objective
@@ -44,7 +44,9 @@ No schema/version/migration changes. Career refresh reads the existing economy s
 
 ## Required tests
 
-`CareerHubTests`: catalogue/pay, read-only refresh and GUID persistence, passenger reservation once, loading context, source-selection mismatch, platform gating, observation geography, owner permissions. Existing full regression covers cargo/passenger recovery and settlement. `SiteUiSmoke/CareerHubSmoke.cs`: actual navigation and controls, acceptance, original workspace identity, map update, capability states and 1280×900 / 1024×768 screenshots. Existing SiteUiSmoke cargo acceptance now exercises Career Job Board rather than a hidden legacy tab.
+`CareerHubTests`: catalogue/pay, read-only refresh and GUID persistence, passenger reservation once, loading context, source-selection mismatch, platform gating, observation geography, owner permissions, transient selection clearing and cargo-draft selection guards. Existing full regression covers cargo/passenger recovery and settlement. `SiteUiSmoke/CareerHubSmoke.cs`: actual navigation and controls, acceptance, original workspace identity, map update, capability states, visible selection through immutable refresh, reachable passenger actions and 1280×900 / 1024×768 layouts. Existing SiteUiSmoke cargo acceptance now exercises Career Job Board rather than a hidden legacy tab. `DesktopBindingTests` guards read-only aircraft label bindings, after hosted WPF found an actual Run.Text writeback crash.
+
+Hosted Windows verification for implementation `ea32975ea8ef9a1b1b1941aec85969053627bc98`: [981 regression tests, WPF, historical CLI review and packaging passed](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41630988204). [Synthetic screenshots and logs](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41630988204/artifacts/13228037288). Subsequent documentation/test-only validation is visible in branch Actions history. No personal save or live MSFS testing occurred.
 
 ## Simulator testing requirements
 

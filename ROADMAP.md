@@ -44,6 +44,6 @@ Sources: [physical aircraft](docs/physical-aircraft-v1.md), [wages](docs/employe
 Current product priority is completing Offshore through the staged tasks above. Passenger/platform/survey mission designs and gameplay balancing require approved specifications. Other deferred work includes qualified failure/position effects, permanent wear calibration, individual fuel/payload migration, broader live acceptance, customer signing/updating and production map service selection.
 # Career Hub checkpoint (2026-11-03)
 
-- In development: unified Career Overview, Fleet/condition/shared Load Manager, employer browsing, mapped Job Board and authorised owned-site job creation. [Scope and boundaries](docs/career-hub.md).
-- Pending: hosted WPF/screenshots and packaging on the feature commit, then human UI review.
+- Implemented on `codex/career-hub`: unified Career Overview, Fleet/condition/shared Load Manager, employer browsing, mapped Job Board and authorised owned-site job creation. [Scope and boundaries](docs/career-hub.md).
+- Automated verification passed at `ea32975`: 981 regression tests, both WPF smoke programs, historical CLI review and packaging. [Evidence](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41630988204). Human UI review remains pending. Draft PR creation is blocked by connector write permissions; prepared description is committed in the handoff directory.
 - Deferred: active employer switching, aviation-company manager permissions, freelance/business marketplace and multiplayer hiring. Existing SF50/H125/platform qualification gates stay in force.

@@ -50,7 +50,11 @@ internal static partial class Program
         Save(host, Path.Combine(folder, "career-hub-passenger-loading.png"));
         var passengerScroller = Descendants<ScrollViewer>((DependencyObject)passengers).First();
         Check(passengerScroller.ScrollableHeight > 0, "Embedded passenger manifest and recovery actions remain reachable by scrolling at ordinary desktop height");
-        passengerScroller.ScrollToBottom(); Pump(); Save(host, Path.Combine(folder, "career-hub-passenger-actions.png"));
+        var manifestInput = Descendants<TextBox>((DependencyObject)passengers).Single(t => t.Name == "PassengerManifestWeights");
+        manifestInput.BringIntoView(); Pump();
+        var inputPosition = manifestInput.TransformToAncestor(passengerScroller).Transform(new Point(0, 0));
+        Check(inputPosition.Y >= 0 && inputPosition.Y + manifestInput.ActualHeight <= passengerScroller.ActualHeight + 1, "Passenger manifest input can be brought fully into the embedded viewport");
+        Save(host, Path.Combine(folder, "career-hub-passenger-actions.png"));
         model.Career.Navigation.LoadingSection = 0; Pump(); Save(host, Path.Combine(folder, "career-hub-cargo-loading.png"));
         model.Career.Show(CareerSection.Overview); model.Career.FleetLoadCommand.Execute(null); Pump();
         Check(ReferenceEquals(cargo, ((ContentControl)hub.FindName("CargoWorkspace")).Content), "Fleet re-entry reuses exact cargo control instance");
