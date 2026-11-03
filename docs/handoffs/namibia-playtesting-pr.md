@@ -16,7 +16,7 @@ Stacked integration: based on Career Hub `21b1f78`, which includes PR #10 and it
 
 ## Test results
 
-Clean implementation `009b0f260c856ae9ab8f613b1421efefd7171295`: [full hosted Windows CI passed](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41671407695). 1,008 xUnit / 0 failures / 0 skips, 198 SiteUiSmoke and 7 LoadingWpfSmoke assertions, 9 simulated verification-guard scenarios, historical CLI assertions and self-contained Windows packaging. Zero build warnings/errors. Exact commands, source states and retained earlier failures are in the handoff. Synthetic screenshots were inspected, including accepted Aminuis cargo retained after a problem report, readable issue choices and visible save confirmation.
+Clean implementation `38a6bf76595a0dc4ee12eaebb92d59e6c9d8ab79`: [full hosted Windows CI passed](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41674240167). 1,009 xUnit / 0 failures / 0 skips, 198 SiteUiSmoke and 7 LoadingWpfSmoke assertions, 9 simulated verification-guard scenarios, historical CLI assertions and self-contained Windows packaging. Zero build warnings/errors. Exact commands, source states and retained earlier failures are in the handoff. Synthetic screenshots were inspected, including accepted Aminuis cargo retained after a problem report, readable issue choices and visible save confirmation.
 
 ## Persistence / migrations
 
@@ -28,7 +28,7 @@ No live MSFS acceptance, actual airport usability test, scenery installation, Pa
 
 ## Development artifact
 
-[Exact 009b0f2 Windows bundle](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41671407695/artifacts/13249051668); [screenshots/logs/TRX/receipts](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41671407695/artifacts/13249061550). Build metadata/checksums identify exact source. Download is not approval for autonomous execution on the gaming PC. A subsequent documentation-only checkpoint runs the same pipeline; inspect the head check before review.
+[Exact 38a6bf7 Windows bundle](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41674240167/artifacts/13249557417); [screenshots/logs/TRX/receipts](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41674240167/artifacts/13250126473). Build metadata/checksums identify exact source. Download is not approval for autonomous execution on the gaming PC. A subsequent documentation-only checkpoint runs the same pipeline; inspect the head check before review.
 
 ## Short playtesting checklist
 
