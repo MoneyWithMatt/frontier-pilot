@@ -37,13 +37,15 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
     public bool IsBusy => busy;
     public string EmptyState => Items.Count == 0 ? "No work in this view. Refresh the board, choose another filter, or inspect employer and aircraft restrictions." : "";
     public IReadOnlyList<string> Filters { get; } = ["All work", "Available", "Accepted", "Completed"];
-    public int Filter { get => filter; set { if (value is < 0 or > 3 || value == filter) return; filter = value; if (!Items.Any(j => j.Key == navigation.SelectedJobKey)) Selected = Items.FirstOrDefault(); Notify(); } }
+    public int Filter { get => filter; set { if (value is < 0 or > 3 || value == filter) return; filter = value; if (!Items.Any(j => j.Key == navigation.SelectedJobKey)) { navigation.SelectedJobKey = Items.FirstOrDefault()?.Key; SelectSource(); SelectionChanged?.Invoke(); } Notify(); } }
     public IReadOnlyList<CareerJobRow> All => jobs;
     public IReadOnlyList<CareerJobRow> Items => jobs.Where(j => filter switch { 1 => j.Available, 2 => j.Accepted, 3 => j.Completed, _ => true }).ToArray();
     public CareerJobRow? Selected
     {
         get => jobs.FirstOrDefault(j => j.Key == navigation.SelectedJobKey);
-        set { if (busy || value?.Key == navigation.SelectedJobKey) return; navigation.SelectedJobKey = value?.Key; SelectSource(); Notify(); SelectionChanged?.Invoke(); }
+        // WPF transiently clears SelectedItem while replacing immutable source snapshots.
+        // Only a filter/rebuild may clear the stored identity; refresh cannot erase selection.
+        set { if (busy || value is null || value.Key == navigation.SelectedJobKey) return; navigation.SelectedJobKey = value.Key; SelectSource(); Notify(); SelectionChanged?.Invoke(); }
     }
     public IReadOnlyList<CompanyAircraftType> AircraftChoices => Selected?.Family switch
     { CareerJobFamily.Cargo => cargo.CompanyAircraftChoices, CareerJobFamily.Personnel => passengers.AircraftChoices, _ => [] };

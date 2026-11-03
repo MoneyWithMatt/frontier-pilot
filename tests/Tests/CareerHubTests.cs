@@ -89,6 +89,9 @@ public sealed class CareerHubTests : IDisposable
         hub.Show(CareerSection.JobBoard); await hub.RefreshAsync();
         Assert.Equal(row.Key, hub.Board.Selected!.Key); Assert.Equal(3, hub.Navigation.Section);
         Assert.Equal(row.SourceId, vm.Offshore.Selected!.Id);
+        hub.Board.Selected = null; Assert.Equal(row.Key, hub.Board.Selected!.Key);
+        hub.Board.Filter = 3; Assert.Empty(hub.Board.Items); Assert.Null(hub.Board.Selected);
+        Assert.False(hub.Board.AcceptCommand.CanExecute(null)); Assert.NotEmpty(hub.Board.EmptyState);
         await vm.Fleet.ShutdownAsync();
     }
     [Fact] public async Task EmployeesCannotPublishNpcCompanyContractsOrEnableHelicopterCapability()

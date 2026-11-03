@@ -32,6 +32,9 @@ internal static partial class Program
         model.Career.Board.Selected = model.Career.Board.All.First(j => j.Family == CareerJobFamily.Observation); Pump();
         var map = (CareerJobMap)hub.FindName("JobMap");
         Check(map.RoutePointCount == 3 && map.HasObservationArea && map.DisplayedJobKey == model.Career.Board.Selected.Key, "Job selection draws ordered return route and observation area");
+        var selectedJobKey = model.Career.Board.Selected.Key;
+        for (int i = 0; i < 2; i++) { await model.Career.RefreshAsync(); Pump(); }
+        Check(model.Career.Board.Selected?.Key == selectedJobKey && ((ListBox)hub.FindName("JobList")).SelectedItem is CareerJobRow visible && visible.Key == selectedJobKey, "Visible job selection survives immutable refresh without transient null writeback");
         Save(host, Path.Combine(folder, "career-hub-job-board.png"));
         model.Career.Board.Selected = model.Career.Board.All.First(j => j.Family == CareerJobFamily.Personnel && j.Available); Pump();
         model.Career.Board.SelectedAircraft = model.Career.Board.AircraftChoices.Single(a => a.Id == "vision-jet");
