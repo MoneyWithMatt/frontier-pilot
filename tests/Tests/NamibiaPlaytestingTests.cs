@@ -80,6 +80,14 @@ public sealed class NamibiaPlaytestingTests : IDisposable
         held.ApplyVisits([Visit(held,"FYNG",type:"h125")]);Assert.False(Destination(held,"FYNG","Safari").Enabled);Assert.Contains("Held",held.Describe(held.Visits.Single().LocationId,"h125"));
         Assert.False(CompanyAircraft.Types.Single(t=>t.Id=="h125").Enabled);
     }
+    [Fact] public void AGoodVisitInAnotherAircraftDoesNotClearAnAircraftUnsuitableProblem()
+    {
+        var c=new EmployerDestinationCatalogue();var bad=Visit(c,"FYAM",AirportVisitResult.Problematic) with{Issue=AirportIssue.AircraftUnsuitable};
+        var goodOther=Visit(c,"FYAM",type:"c152",time:Now.AddMinutes(1));c.ApplyVisits([bad,goodOther]);
+        Assert.False(Destination(c,"FYAM").Enabled);Assert.Contains("Problematic",c.Describe(bad.LocationId,"c208"));
+        c.ApplyVisits([bad,goodOther,Visit(c,"FYAM",type:"c208",time:Now.AddMinutes(2))]);Assert.True(Destination(c,"FYAM").Enabled);
+        Assert.Contains("Verified by player",c.Describe(bad.LocationId,"c208"));
+    }
     [Fact] public async Task ProblemReportWithdrawsFutureOffersAndPreservesAcceptedCargoAndFinancialHistoryAcrossRestart()
     {
         var c=new EmployerDestinationCatalogue();var e=Employer("Missionary");var path=Path.Combine(root,"economy","economy-state.json");var store=new LocalEconomyStateStore(path);

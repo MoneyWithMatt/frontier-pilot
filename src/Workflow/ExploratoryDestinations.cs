@@ -23,7 +23,7 @@ public sealed partial class EmployerDestinationCatalogue
         var code=CareerCatalogue.Bases.Single(b=>b.Id==employer.BaseId).Identifier;
         var row=Research.FirstOrDefault(r=>r.Identifier==code);
         return Base(employer) is not null && (row is null || TechnicalProblem(row) is null) &&
-            Reviews.All(r=>(r.Key!=code&&r.Identifier!=code)||r.Status=="Approved") && LatestVisit(code)?.Result!=AirportVisitResult.Problematic;
+            Reviews.All(r=>(r.Key!=code&&r.Identifier!=code)||r.Status=="Approved") && UnresolvedProblem(code) is null;
     }
     public bool HasTechnicalBaseReference(CareerEmployer employer)
     {
@@ -32,12 +32,15 @@ public sealed partial class EmployerDestinationCatalogue
     }
     public DestinationResearch? ResearchFor(string locationId) => Research.FirstOrDefault(r => Resolve(r)?.StableId == locationId);
     public AirportVisit? LatestVisit(string key) => visits.Where(v => v.AirportKey == key).OrderByDescending(v => v.RecordedUtc).ThenByDescending(v => v.Id).FirstOrDefault();
+    public AirportVisit? UnresolvedProblem(string key)=>visits.Where(p=>p.AirportKey==key&&p.Result==AirportVisitResult.Problematic&&
+        !visits.Any(v=>v.AirportKey==key&&v.Result==AirportVisitResult.Verified&&v.RecordedUtc>p.RecordedUtc&&
+            (p.Issue!=AirportIssue.AircraftUnsuitable||v.AircraftTypeId==p.AircraftTypeId))).OrderByDescending(p=>p.RecordedUtc).FirstOrDefault();
     public string Describe(string? locationId, string? aircraftType = null)
     {
         if (locationId is null || ResearchFor(locationId) is not {} row) return "Airport review unavailable for this operating area.";
         if (TechnicalProblem(row) is {} conflict) return "Held — "+conflict+"; not available for generated jobs.";
         var latest = LatestVisit(row.Key);
-        if (latest?.Result == AirportVisitResult.Problematic) return $"Problematic — {latest.Issue}: {latest.Note}. New jobs withheld; accepted work/history retained.";
+        if (UnresolvedProblem(row.Key) is {} problem) return $"Problematic — {problem.Issue} ({problem.AircraftDescription}): {problem.Note}. New jobs withheld; accepted work/history retained.";
         if (latest is { Result: AirportVisitResult.Verified })
         {
             var lastProblem=visits.Where(v=>v.AirportKey==row.Key&&v.Result==AirportVisitResult.Problematic).Select(v=>v.RecordedUtc).DefaultIfEmpty(DateTimeOffset.MinValue).Max();

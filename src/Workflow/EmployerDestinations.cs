@@ -107,7 +107,7 @@ public sealed partial class EmployerDestinationCatalogue
             var baseReview=Reviews.FirstOrDefault(x=>x.Key==baseCode||x.Identifier==baseCode);
             var recognition=TechnicalProblem(row) is {} conflict?"Held: "+conflict:location is null?"Held: airport identity or coordinates unresolved":
                 location.VerificationState==LocationVerificationState.MsfsVerified?"Prior manual inspection":SimulatorCache?.Routes.Any(x=>x.Airport.Identifier==row.Identifier)==true?"Facility lookup only; runway unverified":"Published reference; simulator unverified";
-            var latest=LatestVisit(row.Key);var baseVisit=LatestVisit(baseCode);
+            var latest=UnresolvedProblem(row.Key);var baseVisit=UnresolvedProblem(baseCode);
             var technical=TechnicalProblem(row);var baseTechnical=Research.FirstOrDefault(r=>r.Identifier==baseCode) is {} baseRow?TechnicalProblem(baseRow):null;
             var reason=IsHeld(row)?recognition:review is {Status:not "Approved"}?review.Status:latest?.Result==AirportVisitResult.Problematic?"Problematic: "+latest.Issue+" — "+latest.Note:
                 location is null?recognition:origin is null?"Employer base unresolved":origin.StableId==location.StableId?"Base / return only; no same-airport job":
