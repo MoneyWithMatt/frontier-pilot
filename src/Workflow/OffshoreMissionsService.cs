@@ -74,7 +74,7 @@ public sealed class OffshoreMissionsService(IEconomyStateStore store, CareerEmpl
                         ? m with { RecoveryRequired = true, ObservationSeconds = m.ObservationCompletedUtc is null ? 0 : m.ObservationSeconds } : m).ToList();
                 if (destinations.CanGenerateAtBase(employer!) && !missions.Any(m => m.Active || m.State == OffshoreMissionState.Offered))
                 {
-                    var id = OffshoreMissionKernel.OfferId(employer!.Id, w.RealTime!.NextOffersUtc.UtcTicks);
+                    var id = OffshoreMissionKernel.OfferId(employer!.Id, w.RealTime!.NextOffersUtc.UtcTicks,CompanyOfferRefresh.Sequence(w,employer.Id));
                     if (!missions.Any(m => m.Id == id))
                         missions.Add(new(id, employer!.Id, EmployedCargoPrototype.PlayerId, "Offshore operations observation",
                             "Observe the known OL400 harbour operating area and its surroundings, then return to Walvis Bay. A gameplay patrol, not equipment or incident detection.",

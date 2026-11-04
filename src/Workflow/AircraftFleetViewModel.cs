@@ -430,6 +430,18 @@ public sealed class AircraftFleetViewModel : INotifyPropertyChanged
         }
     }
     private sealed record DispatchAssignment(string Id, string? TypeId, bool AlreadyAboard, double? OriginLatitude, double? OriginLongitude);
+    public string? CheckFuelIdentity(FlightAircraftIdentity identity)
+    {
+        lock(gate)
+        {
+            var a=Selected;
+            if(blocked||bindingConfirmationRequired||world is null||a is null||!Authorized(a)||!a.Bindings.Any(b=>b.Title==identity.Title&&b.Model==identity.Type))
+                return "Select and bind the physical aircraft in Fleet before changing fuel.";
+            if(a.CompanyTypeId is {} type&&(!CompanyAircraft.Types.Any(t=>t.Id==type&&t.Enabled)||ResolveCompanyType?.Invoke(world.Aircraft)!=type))
+                return "Selected company airframe does not match the confirmed live aircraft type.";
+            return null;
+        }
+    }
     private string? CheckDispatchCore(FlightAircraftIdentity identity, IReadOnlyList<DispatchAssignment> assignments)
     {
         lock(gate)

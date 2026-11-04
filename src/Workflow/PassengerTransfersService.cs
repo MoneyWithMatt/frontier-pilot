@@ -63,7 +63,7 @@ public sealed class PassengerTransfersService
     {
         if (!Enabled || destinations.Base(employer!) is not {} origin) return [];
         var eligible=destinations.Diagnose(employer!.Category).Where(x=>x.Enabled);
-        if(generation)eligible=CompanyEmployment.SelectDestinations(employer,eligible,world is null?utcNow():CompanyEmployment.SelectionEpoch(world,utcNow()),4);
+        if(generation)eligible=CompanyEmployment.SelectDestinations(employer,eligible,world is null?utcNow():CompanyEmployment.SelectionEpoch(world,utcNow()),4,world is null?0:CompanyOfferRefresh.Sequence(world,employer.Id));
         return eligible
             .Select(x => (Origin: Endpoint(origin), Destination: Endpoint(x.Resolved!), Types: CompanyAircraft.Choices(employer, x, 0)
                 .Where(a => EmployedPassengerMissions.SupportsType(employer.Category, a.Id)).Select(a => a.Id).ToArray(), Code: x.Identifier))
@@ -89,7 +89,7 @@ public sealed class PassengerTransfersService
                 foreach (var route in routes)
                 {
                     if (transfers.Count(x => x.Origin.Id == route.Origin.Id && x.Destination.Id == route.Destination.Id && x.State == PassengerTransferState.Offered) >= clock.OfferSlotsPerDemand) continue;
-                    var id = PassengerTransferKernel.OfferId(employer!.Id, route.Destination.Id, clock.NextOffersUtc);
+                    var id = PassengerTransferKernel.OfferId(employer!.Id, route.Destination.Id, clock.NextOffersUtc,CompanyOfferRefresh.Sequence(w,employer.Id));
                     if (transfers.Any(x => x.Id == id)) continue;
                     var count = EmployedPassengerMissions.Count(employer.Category, route.Code);
                     transfers.Add(new(id, employer.Id, EmployedCargoPrototype.PlayerId, route.Origin, route.Destination, count, route.Types,

@@ -146,7 +146,7 @@ public sealed class NamibiaPlaytestingTests : IDisposable
         var json=JsonNode.Parse(File.ReadAllText(store.StoragePath))!;json["SchemaVersion"]=14;File.WriteAllText(store.StoragePath,json.ToJsonString());
         var after=(await new LocalEconomyStateStore(store.StoragePath).LoadAsync())!;
         Assert.Equal(before.Jobs,after.Jobs);Assert.Equal(before.Inventories,after.Inventories);Assert.Equal(before.FinancialLedger,after.FinancialLedger);Assert.Equal(before.Shipments,after.Shipments);Assert.Equal(before.CargoAirframes,after.CargoAirframes);Assert.Equal(before.PassengerTransports,after.PassengerTransports);
-        Assert.Equal(15,JsonNode.Parse(File.ReadAllText(store.StoragePath))!["SchemaVersion"]!.GetValue<int>());
+        Assert.Equal(LocalEconomyStateStore.CurrentSchemaVersion,JsonNode.Parse(File.ReadAllText(store.StoragePath))!["SchemaVersion"]!.GetValue<int>());
     }
     public void Dispose(){if(Directory.Exists(root))Directory.Delete(root,true);}
 }

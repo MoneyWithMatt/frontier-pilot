@@ -36,6 +36,7 @@ public sealed class AircraftLoadingCoordinator
     public Func<CargoLoadManifest, CancellationToken, Task>? RecoverManifestJobsAsync { get; init; }
     public Func<FlightAircraftIdentity,IReadOnlyList<CargoJobDisplay>,string?>? CompanyAircraftGuard {get;init;}
     public Func<CancellationToken, Task>? TransportDispatchGuard { get; init; }
+    public Func<FlightAircraftIdentity,string?>? FuelAircraftGuard {get;init;}
     private bool continuouslyConnected; private DateTimeOffset? lastFuelCheckpoint;
     public AircraftLoadingStatus Current { get; private set; } = AircraftLoadingStatus.Empty;
     public event Action<AircraftLoadingStatus>? Changed;
@@ -630,7 +631,7 @@ public sealed class AircraftLoadingCoordinator
         if(now-world.Player.ObservedUtc>options.MaximumAge)return "Walking-avatar observation is stale.";if(!world.Player.IsOnGround)return "Walking avatar must be on the ground.";if(world.DistanceFromAircraftMeters is not { } distance||distance>options.AvatarRadiusMeters)return $"Walking avatar must be within {options.AvatarRadiusMeters:F0} m of the aircraft.";
         if(FlightAircraftIdentity.From(world.Aircraft).ClearlyDiffersFrom(LoadingIdentityExtensions.FromSnapshot(live)))return "Live loading aircraft identity differs from tracked aircraft.";
         if(flight.Current.Attempt is {State:not FlightAttemptState.Delivered} activeAttempt&&activeAttempt.Aircraft.ClearlyDiffersFrom(LoadingIdentityExtensions.FromSnapshot(live)))return "Live aircraft identity differs from the active flight attempt.";
-        if(fuel){if(live.Engines.Count==0||live.Engines.Any(x=>x.IsRunning is null))return "Engine state is unavailable; fuel changes are refused.";if(live.Engines.Any(x=>x.IsRunning==true))return "Every detected engine must be off before changing fuel.";}
+        if(fuel){if(FuelAircraftGuard?.Invoke(live.Aircraft) is {} fuelGuard)return fuelGuard;if(live.Engines.Count==0||live.Engines.Any(x=>x.IsRunning is null))return "Engine state is unavailable; fuel changes are refused.";if(live.Engines.Any(x=>x.IsRunning==true))return "Every detected engine must be off before changing fuel.";}
         return "Ready.";
     }
     private CargoLoadManifest AuthorizeBoardedApplication(CargoLoadManifest manifest,AircraftLoadingSnapshot outside,decimal expectedDelta,string result)

@@ -38,6 +38,35 @@ public sealed class CargoJourneyTests : IDisposable
     }
     private async Task Handle(CargoJourneyService s, Dictionary<string, decimal> desired, params CargoStationAllocation[] allocations)
     { await s.PrepareAsync(desired, allocations); await s.ApplyAsync(); }
+    [Fact] public async Task FuelChangeWhileReturningToCockpitUsesCurrentFuelBeforeFirstPayloadWrite()
+    {
+        var service=await Create();await service.PrepareAsync(new Dictionary<string,decimal>{{"job-mine",10}},[new CargoStationAllocation(6,10)]);
+        sim.FuelGallons=9.5m;service=NewService();await service.ApplyAsync();
+        Assert.Equal(9.5m,sim.FuelGallons);Assert.Equal(0,sim.FuelWrites);Assert.Equal(43,sim.Weights[5]);
+        Assert.Equal(10,(await Store.LoadAsync())!.Shipments.Single(j=>j.JobId=="job-mine").LoadedQuantity);
+    }
+    [Fact] public async Task FuelChangeAfterWriteRemainsUnconfirmedUntilExplicitGuardedOutsideRecheck()
+    {
+        var outside=true;var service=await Create();service=NewService(authorize:(_,walk)=>{if(walk&&!outside)throw new InvalidOperationException("Outside authorization required");});
+        await service.PrepareAsync(new Dictionary<string,decimal>{{"job-mine",10}},[new CargoStationAllocation(6,10)]);
+        sim.DuringRetention=()=>sim.FuelGallons=9.5m;await Assert.ThrowsAsync<InvalidOperationException>(()=>service.ApplyAsync());
+        Assert.True(service.Manifest!.Pending!.WriteStarted);Assert.False(service.Manifest.Pending.Verified);Assert.Equal(1,sim.Writes);Assert.Equal(0,(await Store.LoadAsync())!.Shipments.Single(j=>j.JobId=="job-mine").LoadedQuantity);
+        sim.DuringRetention=null;await Assert.ThrowsAsync<InvalidOperationException>(()=>service.ApplyAsync());Assert.Equal(1,sim.Writes);
+        outside=false;await Assert.ThrowsAsync<InvalidOperationException>(()=>service.RenewAuthorizationAsync());
+        var vm=new CargoJourneyViewModel(service,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        Assert.Equal("Recheck fuel outside",vm.PrimaryActionText);await vm.HandleCargoAsync();Assert.Equal(10,service.Manifest!.Pending!.FuelBefore.Single().QuantityGallons);
+        outside=true;await vm.HandleCargoAsync();Assert.Equal(9.5m,service.Manifest!.Pending!.FuelBefore.Single().QuantityGallons);Assert.Equal("Apply cargo in cockpit",vm.PrimaryActionText);
+        await vm.HandleCargoAsync();Assert.Null(service.Manifest!.Pending);Assert.Equal(1,sim.Writes);Assert.Equal(0,sim.FuelWrites);Assert.Equal(43,sim.Weights[5]);
+        Assert.Equal(10,(await Store.LoadAsync())!.Shipments.Single(j=>j.JobId=="job-mine").LoadedQuantity);
+    }
+    [Fact] public async Task FuelRecheckCannotAdoptConflictingPayloadOrMoveToAnotherAircraft()
+    {
+        var service=await Create();await service.PrepareAsync(new Dictionary<string,decimal>{{"job-mine",10}},[new CargoStationAllocation(6,10)]);
+        sim.FuelGallons=9;sim.Weights[5]=77;
+        await Assert.ThrowsAsync<InvalidOperationException>(()=>service.RenewAuthorizationAsync());Assert.Equal(10,service.Manifest!.Pending!.FuelBefore.Single().QuantityGallons);Assert.Equal(0,sim.Writes);
+        sim.Weights[5]=33;sim.Sample=sim.Sample with {AircraftTitle="Different aircraft"};
+        await Assert.ThrowsAsync<InvalidOperationException>(()=>service.RenewAuthorizationAsync());Assert.Equal(0,sim.FuelWrites);
+    }
     private async Task Observe(CargoJourneyService s, double lat, double lon, bool ground = true, int seconds = 1)
     {
         sim.Sample = sim.Sample with { ObservedUtc = sim.Sample.ObservedUtc.AddSeconds(seconds), Latitude=lat, Longitude=lon, IsOnGround=ground, GroundSpeedKnots=ground?0:100 };

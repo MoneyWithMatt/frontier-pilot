@@ -130,7 +130,7 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
         finally { gate.Release(); }
     }
 
-    private void CheckOperation(CargoAirframeManifest m, CargoOperation p, AircraftLoadingSnapshot live, bool complete)
+    private void CheckOperation(CargoAirframeManifest m, CargoOperation p, AircraftLoadingSnapshot live, bool complete,bool recheckFuel=false)
     {
         Ground(live, m);
         if (location(World!, live.Position)?.Id != p.LocationId || WorldTracking.DistanceMeters(live.Position.Latitude, live.Position.Longitude, p.Position.Latitude, p.Position.Longitude) > 25)
@@ -145,8 +145,10 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
                 Math.Abs(actual.CurrentWeightKilograms - target) > .25m && (complete || Math.Abs(actual.CurrentWeightKilograms - before.CurrentWeightKilograms) > .25m))
                 throw new InvalidOperationException("Station readback conflicts with saved before/target mass or MSFS refused/clamped a write. Intent retained; no manual payload was overwritten.");
         }
-        if (p.FuelBefore.Length != live.FuelTanks.Count || p.FuelBefore.Any(b => live.FuelTanks.SingleOrDefault(x => x.Id == b.Id) is not {} f || Math.Abs(f.QuantityGallons - b.QuantityGallons) > .05m))
-            throw new InvalidOperationException("Fuel changed during cargo handling. Cargo intent retained; fuel was never written.");
+        if(p.FuelBefore.Length!=live.FuelTanks.Count||p.FuelBefore.Any(b=>live.FuelTanks.SingleOrDefault(x=>x.Id==b.Id) is not {} f||f.Name!=b.Name||f.CapacityGallons!=b.CapacityGallons))
+            throw new InvalidOperationException("Fuel tank layout changed. Cargo plan retained; verify the aircraft configuration.");
+        if(!recheckFuel&&p.FuelBefore.Any(b=>Math.Abs(live.FuelTanks.Single(f=>f.Id==b.Id).QuantityGallons-b.QuantityGallons)>.05m))
+            throw new InvalidOperationException("Fuel changed during cargo handling. Plan retained; fuel was never written. Keep fuel stable, exit near the aircraft and use Recheck fuel / renew plan, then retry from the cockpit.");
     }
     public async Task ApplyAsync(CancellationToken token = default)
     {
@@ -160,13 +162,13 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
             var p = m.Pending ?? throw new InvalidOperationException("Prepare an explicit loading preview first.");
             try
             {
-                var before = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid(); CheckOperation(m, p, before, false);
+                var before = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid(); CheckOperation(m, p, before, false,recheckFuel:!p.WriteStarted);
                 if (p.AuthorizedUtc is not {} authorized || Now < authorized || Now - authorized > TimeSpan.FromMinutes(5)) throw new InvalidOperationException("Outside authorization expired. Exit near the same aircraft and renew the pending operation's authorization.");
                 AuthorizeHandling?.Invoke(before, false);
                 var targets = p.Targets.Where(x => Math.Abs(before.PayloadStations.Single(s => s.Index == x.StationIndex).CurrentWeightKilograms - x.TargetKilograms) > .25m).ToDictionary(x => x.StationIndex, x => x.TargetKilograms);
                 if (!p.WriteStarted)
                 {
-                    p = p with { WriteStarted=true, ExpectedGrossKilograms=before.Weights.CurrentGrossWeightKilograms + targets.Sum(t=>t.Value-before.PayloadStations.Single(s=>s.Index==t.Key).CurrentWeightKilograms) };
+                    p = p with { WriteStarted=true,FuelBefore=before.FuelTanks.ToArray(), ExpectedGrossKilograms=before.Weights.CurrentGrossWeightKilograms + targets.Sum(t=>t.Value-before.PayloadStations.Single(s=>s.Index==t.Key).CurrentWeightKilograms) };
                     World = (await store.ApplyAsync(w=>
                     {
                         NoPassengers(w);var current=w.CargoAirframes.Single(x=>x.Id==m.Id);
@@ -225,13 +227,14 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
             World = await store.LoadAsync(token).ConfigureAwait(false) ?? throw new InvalidOperationException("No economy.");
             var m = Manifest ?? throw new InvalidOperationException("Select the cargo airframe.");
             var p = m.Pending ?? throw new InvalidOperationException("No pending cargo operation.");
-            Live = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid(); CheckOperation(m, p, Live, false); AuthorizeHandling?.Invoke(Live, true);
+            Live = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid(); CheckOperation(m, p, Live, false,recheckFuel:true); AuthorizeHandling?.Invoke(Live, true);
+            var expectedGross=Live.Weights.CurrentGrossWeightKilograms+p.Targets.Sum(t=>t.TargetKilograms-Live.PayloadStations.Single(s=>s.Index==t.StationIndex).CurrentWeightKilograms);
             World = (await store.ApplyAsync(w =>
             {
                 if (w.Revision != World.Revision) throw new IOException("Manifest changed. Refresh.");
-                return CargoJourneyKernel.Replace(w, m with { Revision = m.Revision + 1, Pending = p with { AuthorizedUtc = Now } });
+                return CargoJourneyKernel.Replace(w, m with { Revision = m.Revision + 1, Pending = p with { AuthorizedUtc = Now,FuelBefore=Live.FuelTanks.ToArray(),ExpectedGrossKilograms=expectedGross,Verified=false,VerifiedUtc=null,Problem=null } });
             }, token).ConfigureAwait(false)).World;
-            Reason = "Outside authorization renewed for the same immutable targets. Board the same aircraft and retry Apply."; Changed?.Invoke();
+            Reason = "Current fuel rechecked without writing it; outside authorization renewed for the same cargo targets. Board the same aircraft and retry Apply with fuel stable. Cargo remains unconfirmed until retained readback."; Changed?.Invoke();
         }
         finally { gate.Release(); }
     }

@@ -117,6 +117,8 @@ public static class CargoDispatchDocument
 
 public sealed class CargoJourneyViewModel : INotifyPropertyChanged
 {
+    public AircraftLoadingViewModel? FuelLoading {get;}
+    public bool HasFuelLoading=>FuelLoading is not null;
     internal EconomyWorld? CommittedWorld=>service.World;
     private readonly CargoJourneyService service;
     private readonly Func<Task> refreshJobs;
@@ -149,11 +151,13 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     public bool CanEditCargo=>!busy&&service.Manifest?.Pending is null&&service.Manifest?.Legs.Any(l=>l.SettledUtc is null)!=true;
     public decimal RequestedKilograms=>Consignments.Sum(c=>c.DesiredAboard);
     public string CargoSummary=>$"Confirmed aboard: {Consignments.Sum(c=>c.Aboard):0.###} kg  |  After this operation: {RequestedKilograms:0.###} kg";
-    public string PrimaryActionText=>service.Manifest?.Pending is not null?"Apply cargo in cockpit":"Confirm loading / unloading plan";
+    private bool FuelNeedsRecheck=>service.Manifest?.Pending?.Problem?.StartsWith("Fuel changed",StringComparison.OrdinalIgnoreCase)==true;
+    public string PrimaryActionText=>FuelNeedsRecheck?"Recheck fuel outside":service.Manifest?.Pending is not null?"Apply cargo in cockpit":"Confirm loading / unloading plan";
     public string NextStep
     {
         get
         {
+            if(FuelNeedsRecheck)return "Fuel changed. Keep fuel stable, walk outside near this aircraft, then Recheck fuel. The cargo plan is retained.";
             if(service.Manifest?.Pending is {} pending)return pending.Problem is not null?
                 "Loading needs attention. Read the message below before retrying; the saved plan is retained.":
                 "2. Review the proposed dispatch sheet, board this aircraft, then apply cargo. Nothing is aboard until verified.";
@@ -194,9 +198,9 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     public ActionCommand RenewCommand { get; }
     public ActionCommand CancelPlanCommand { get; }
     public ActionCommand MatchMassCommand { get; }
-    public CargoJourneyViewModel(CargoJourneyService service, Func<Task> refreshJobs, Func<EconomyWorld, IEnumerable<PassengerEndpoint>> destinations, Func<string> registration, AircraftFleetViewModel? fleet = null)
+    public CargoJourneyViewModel(CargoJourneyService service, Func<Task> refreshJobs, Func<EconomyWorld, IEnumerable<PassengerEndpoint>> destinations, Func<string> registration, AircraftFleetViewModel? fleet = null,AircraftLoadingViewModel? fuelLoading=null)
     {
-        Fleet=fleet; this.service = service; this.refreshJobs = refreshJobs; this.destinations = destinations; this.registration = registration;
+        Fleet=fleet;FuelLoading=fuelLoading; this.service = service; this.refreshJobs = refreshJobs; this.destinations = destinations; this.registration = registration;
         PrimaryCommand=new(()=>_=HandleCargoAsync(),()=>!busy&&service.Live is not null&&
             (service.Manifest?.Pending is not null||CanEditCargo&&PickupCargo is null&&Consignments.Any(c=>c.DesiredAboard!=c.Aboard)));
         LoadAvailableCommand=new(()=>SetQuantities(false),()=>CanEditCargo&&Consignments.Any(c=>c.AvailableHere>0));
@@ -305,6 +309,7 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     }
     public Task HandleCargoAsync()=>Run(async()=>
     {
+        if(FuelNeedsRecheck){await service.RenewAuthorizationAsync();ReloadRows();return;}
         if(service.Manifest?.Pending is not null){await service.ApplyAsync();ReloadRows();return;}
         DistributeMass();
         await service.PrepareAsync(Consignments.ToDictionary(c=>c.JobId,c=>c.DesiredAboard),Stations.Select(s=>new CargoStationAllocation(s.Index,s.DesiredCargo)).ToArray());

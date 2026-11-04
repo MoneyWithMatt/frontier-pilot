@@ -54,3 +54,7 @@ Exploratory starter destinations and player airport reports are implemented on `
 ## Airport review refinement — 2026-11-03
 
 Airport-level representation knowledge supersedes aircraft-specific suitability policy. Pilot responsibility applies to runway dimensions, surface, terrain and performance; old endpoint lists and AircraftUnsuitable reports no longer block work. Optional first-visit prompt follows committed cargo/passenger completion and wage settlement; manual simulator-problem reporting remains available beforehand. Schema-1 reports are preserved through schema-2 compatibility. [Scope](docs/specs/airport-verification-refinement.md), [latest evidence](docs/handoffs/namibia-playtesting.md). No cancellation/rerouting, aircraft capability or live acceptance changes.
+
+## Immediate work refresh and inline fuel — 2026-11-04
+
+Matt approved immediate replacement of available company offers on Refresh work, retaining accepted custody/wages and the background clock. Schema 16 adds refresh command receipts/route sequence. Cargo fuel mismatch now has an explicit outside recheck preserving station intent and re-verifying before confirmation. Existing fuel controls are visible below the station diagram and share one loading service. Scope/evidence: docs/specs/manual-company-work-refresh.md and docs/handoffs/namibia-playtesting.md. Live fuel/loading acceptance remains separate.

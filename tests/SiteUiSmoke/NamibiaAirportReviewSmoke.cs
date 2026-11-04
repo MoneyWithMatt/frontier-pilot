@@ -37,6 +37,21 @@ internal static partial class Program
         Check(board.AcceptCommand.CanExecute(null),$"Exploratory acceptance enabled for selected job {board.Selected?.SourceId}, source {model.Jobs.SelectedOffer?.JobId}, aircraft {board.SelectedAircraft?.Id}: {board.Error}");
         await board.AcceptAsync();Pump();
         Check(board.Selected!.Accepted&&board.Selected.DestinationKnowledge.Contains("Unverified"),$"Unverified Aminuis job accepts without an airport approval prompt: {board.Selected?.Status}, {board.Selected?.DestinationKnowledge}, {board.Error}");
+        var oldAvailable=board.All.Where(j=>j.Available&&j.Family==CareerJobFamily.Cargo).Select(j=>j.Key).ToHashSet();
+        var refreshButton=Descendants<Button>(hub).Single(b=>ReferenceEquals(b.Command,board.RefreshCommand));
+        refreshButton.Command.Execute(null);while(board.IsBusy)await Task.Delay(10);Pump();
+        Check(board.Error==""&&board.All.Where(j=>j.Available&&j.Family==CareerJobFamily.Cargo).All(j=>!oldAvailable.Contains(j.Key)),"Actual Refresh work button immediately replaces available company cargo offers");
+        Check(board.Selected?.Key==job.Key&&board.Selected.Accepted&&model.Jobs.ReservedJobs.Any(j=>j.JobId==job.SourceId),"Manual board refresh retains the selected accepted mission and its reservation");
+        Save(host,Path.Combine(folder,"namibia-manual-refresh.png"));
+        await model.Career.OpenLoadAsync(board.Selected);Pump();
+        var cargoView=Descendants<CargoJourneyControl>(hub).Single();var fuelPanel=(AircraftFuelControl)cargoView.FindName("FuelPanel");
+        Check(fuelPanel.IsVisible&&ReferenceEquals(fuelPanel.DataContext,model.AircraftLoading),"Fuel panel beneath loading stations shares the existing aircraft loading service");
+        var syntheticTank=new FuelTankViewModel{Id="synthetic-fuel",Name="SYNTHETIC fuel tank",CurrentGallons=12,CapacityGallons=30,PlannedGallons=12};
+        model.AircraftLoading.FuelTanks.Add(syntheticTank);fuelPanel.BringIntoView();Pump();
+        var fuelInput=Descendants<TextBox>(fuelPanel).Single(t=>t.GetBindingExpression(TextBox.TextProperty)?.ParentBinding.Path.Path=="PlannedGallonsText");
+        fuelInput.Text="15.5";Pump();Check(syntheticTank.PlannedGallons==15.5m,"Inline fuel input writes its declared gallon plan to the shared fuel model");
+        Check(!((Button)fuelPanel.FindName("ApplyFuel")).IsEnabled,"Unqualified/disconnected fuel controls cannot write simulator fuel");
+        Save(host,Path.Combine(folder,"career-inline-fuel.png"));model.AircraftLoading.FuelTanks.Remove(syntheticTank);model.Career.Show(CareerSection.JobBoard);Pump();
         Check(board.Items.Where(j=>j.Family==CareerJobFamily.Cargo).Select(j=>j.DestinationLocationId).Distinct().Count()>=6,"Missionary board shows six distinct curated destinations");
         Check(!model.Career.AirportArrivals.HasPrompt&&!model.Career.Airports.VerifyCommand.CanExecute(null),"No verification prompt or verification prerequisite before mission completion");
         var cargo=model.Jobs.ReservedJobs.Single(j=>j.JobId==job.SourceId);
@@ -88,6 +103,7 @@ internal static partial class Program
         while(skipped.HasPrompt&&skipped.Error=="")await Task.Delay(10);Pump();
         Check(!skipped.HasPrompt&&skipped.Error=="","Actual Skip for now dismisses optional review");
         Check(paid.FinancialLedger.SequenceEqual((await economy.LoadAsync())!.FinancialLedger),"Verification, problem reports and skipping cannot alter the settled wage");
+        Check((await economy.LoadAsync())!.CompanyOfferRefreshes.Count==1,"Internal reloads and airport review actions do not reroll the board");
         host.Close();
     }
 }

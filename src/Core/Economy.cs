@@ -99,6 +99,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
     IReadOnlyList<FinancialTransaction> FinancialLedger)
 {
     public IReadOnlyList<PassengerTransfer> PassengerTransfers { get; init; } = [];
+    public IReadOnlyList<CompanyOfferRefreshReceipt> CompanyOfferRefreshes {get;init;}=[];
     public IReadOnlyList<OffshoreMission> OffshoreMissions { get; init; } = [];
     public IReadOnlyList<CargoAirframeManifest> CargoAirframes { get; init; } = [];
     public IReadOnlyList<PassengerTransport> PassengerTransports { get; init; } = [];
@@ -123,6 +124,7 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
         EconomyValidation.Collection(Resources, nameof(Resources)); EconomyValidation.Collection(Inventories, nameof(Inventories));
         EconomyValidation.Collection(Needs, nameof(Needs)); EconomyValidation.Collection(Requirements, nameof(Requirements));
         EconomyValidation.Collection(Players, nameof(Players)); EconomyValidation.Collection(Jobs, nameof(Jobs));
+        CompanyOfferRefresh.Validate(this);
         EconomyValidation.Collection(PassengerTransfers, nameof(PassengerTransfers));
         EconomyValidation.Collection(Shipments, nameof(Shipments)); EconomyValidation.Collection(FinancialLedger, nameof(FinancialLedger));
         EconomyValidation.Collection(InventoryLedger, nameof(InventoryLedger)); EconomyValidation.Collection(RecurringDemand, nameof(RecurringDemand));

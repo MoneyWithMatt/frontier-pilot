@@ -91,8 +91,8 @@ public sealed record PassengerTransfer(string Id, string EmployerId, string Play
 
 public static class PassengerTransferKernel
 {
-    public static string OfferId(string employerId, string destinationId, DateTimeOffset cycle) =>
-        EconomyIds.Derive("passenger-", employerId + "-" + destinationId + "-" + cycle.UtcTicks);
+    public static string OfferId(string employerId, string destinationId, DateTimeOffset cycle,long refreshSequence=0) =>
+        EconomyIds.Derive("passenger-", employerId + "-" + destinationId + "-" + cycle.UtcTicks+(refreshSequence==0?"":"-refresh-"+refreshSequence));
     public static void Validate(EconomyWorld world)
     {
         EconomyValidation.Collection(world.PassengerTransfers, "passenger transfers");

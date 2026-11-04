@@ -326,3 +326,7 @@ Matt explicitly approved plausible curated unverified airports for exploratory j
 ## Airport representation and pilot responsibility — 2026-11-03 refinement
 
 Matt explicitly supersedes aircraft-specific airport suitability: runway size, surface, terrain and performance are pilot decisions. Historical endpoint aircraft lists and AircraftUnsuitable reports remain data but cannot exclude jobs. Verification is airport-level, recording MSFS existence/identity/location/landing-area/scenery functionality. Optional first-visit review follows authoritative completion and settlement; skip has no economic consequences. Manual simulator-problem reports remain available before completion. Technical geographic holds, exact company aircraft identity, loading and flight/pay guards remain. [Approved refinement](specs/airport-verification-refinement.md).
+
+## Explicit manual company refresh — 2026-11-04
+
+Matt chose fresh available jobs on each Refresh work click. This supersedes the prior reload-only button policy. Unaccepted generated NPC-company offers can be retired/replaced; accepted custody/proof/wages and player contracts remain intact. Automatic maintenance retains its existing clock. Command receipts prevent lost-response retries rerolling twice. [Scope](specs/manual-company-work-refresh.md).

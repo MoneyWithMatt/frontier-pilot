@@ -59,7 +59,7 @@ public static class CompanyEmployment
         if(origin is not null)
         {
             if(!locations.Any(x=>x.Id==origin.StableId))locations.Add(origin.ToEconomicLocation());
-            eligible=SelectDestinations(employer,eligible,SelectionEpoch(world,now)).ToArray();
+            eligible=SelectDestinations(employer,eligible,SelectionEpoch(world,now),refreshSequence:CompanyOfferRefresh.Sequence(world,employer.Id)).ToArray();
         }
         var desired=new HashSet<string>(StringComparer.Ordinal);
         foreach(var destination in eligible)
@@ -94,14 +94,14 @@ public static class CompanyEmployment
         var minutes=Geodesy.Inverse(new(a.Latitude,a.Longitude),new(b.Latitude,b.Longitude)).DistanceMeters/1852/120*60;
         return minutes<employer.PreferredMinimumMinutes?employer.PreferredMinimumMinutes-minutes:Math.Max(0,minutes-employer.PreferredMaximumMinutes);
     }
-    public static IReadOnlyList<DestinationDiagnostic> SelectDestinations(CareerEmployer employer, IEnumerable<DestinationDiagnostic> candidates, DateTimeOffset utc, int count=6)
+    public static IReadOnlyList<DestinationDiagnostic> SelectDestinations(CareerEmployer employer, IEnumerable<DestinationDiagnostic> candidates, DateTimeOffset utc, int count=6,long refreshSequence=0)
     {
         var rows=candidates.Where(x=>x.Enabled).ToArray();
         var priority=employer.Category switch {
             "Missionary" => new[]{"FYAM","NA-0114","NA-0014"}, "Industrial" => new[]{"FYUS","FYAR"},
             "Safari" => new[]{"FYKN","FYME","FYSO","FYMO","FYDN"}, "Offshore" => count<=4?new[]{"FYAR","FYWE","FYWH"}:new[]{"FYAR","FYWE","FYWH","FYLZ","FYOG"}, _ => Array.Empty<string>() };
         var bucket=utc.UtcTicks/TimeSpan.FromHours(3).Ticks;
-        string Rank(DestinationDiagnostic d)=>Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(employer.Id+":"+bucket+":"+d.Research.Key)));
+        string Rank(DestinationDiagnostic d)=>Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(employer.Id+":"+bucket+":"+d.Research.Key+(refreshSequence==0?"":"/refresh/"+refreshSequence))));
         var anchors=rows.Where(x=>priority.Contains(CuratedNamibiaDestinations.Find(x.Research.Key)?.Id??x.Research.Key));
         if(employer.Category=="Safari")anchors=anchors.OrderBy(Rank).Take(3);
         return anchors.Concat(rows.Where(x=>x.Resolved?.VerificationState==LocationVerificationState.MsfsVerified)).Concat(rows.OrderBy(Rank)).DistinctBy(x=>x.Research.Key).Take(count).ToArray();

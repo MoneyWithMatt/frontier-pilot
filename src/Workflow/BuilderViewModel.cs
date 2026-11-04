@@ -163,7 +163,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
                 ? new PassengerEndpoint(b.StableId, b.Name, c.Latitude, c.Longitude) : null);
         var loadingCoordinator = new AircraftLoadingCoordinator(loadingStore, new FrontierAirportBuilder.MsfsSdk.SimConnectAircraftLoading(),
             flightAttemptTracker, () => this.sdkRoot, () => Tracking.World, () => Jobs.LoadingJobs)
-            { RecoverManifestJobsAsync = Jobs.RecoverManifestJobsAsync, TransportDispatchGuard = passengerService.RequireNoBoardedPassengersAsync, CompanyAircraftGuard=(identity,jobs)=>
+            { FuelAircraftGuard=identity=>profile?.IsActive==true?Fleet.CheckFuelIdentity(identity):null,RecoverManifestJobsAsync = Jobs.RecoverManifestJobsAsync, TransportDispatchGuard = passengerService.RequireNoBoardedPassengersAsync, CompanyAircraftGuard=(identity,jobs)=>
                 {
                     return CompanyAircraft.CheckDispatch(identity,jobs,careerStore?.Load().AircraftBindings??[]) ?? Fleet.CheckDispatch(identity,jobs);
                 } };
@@ -202,7 +202,7 @@ public sealed partial class BuilderViewModel : INotifyPropertyChanged
                 return CompanyAircraft.CheckDispatch(identity, jobs, careerStore?.Load().AircraftBindings ?? []) ?? Fleet.CheckDispatch(identity, jobs);
             }
         };
-        CargoJourney = new(cargoJourneyService, () => Jobs.RefreshLiveAsync(), CargoLocations, () => Fleet.Selected?.Registration ?? "unavailable", Fleet);
+        CargoJourney = new(cargoJourneyService, () => Jobs.RefreshLiveAsync(), CargoLocations, () => Fleet.Selected?.Registration ?? "unavailable", Fleet,AircraftLoading);
         if (flightAttemptTracker is FlightAttemptTracker concreteFlightTracker) concreteFlightTracker.AircraftLoadingDiagnosticProvider = loadingCoordinator.CreateDiagnosticSnapshot;
         if (services is BuilderServices concrete) concrete.SetEconomyDependencyStore(economyStore);
         prospectingOperations ??= services is IAirportManagement management

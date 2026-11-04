@@ -69,6 +69,22 @@ public sealed class EmployedCargoJobsService : IEmployedCargoJobs
     public static EmployedCargoJobsService CreateLocal() => new(new LocalEconomyStateStore());
     public static EmployedCargoJobsService CreateMemory() => new(new MemoryEconomyStateStore());
 
+    public async Task<EmployedCargoJobsSnapshot> RefreshOffersAsync(string requestId,CancellationToken token=default)
+    {
+        if(Employer is null)return await LoadAsync(token).ConfigureAwait(false);
+        if((await store.LoadAsync(token).ConfigureAwait(false))?.RealTime is null)await LoadAsync(token).ConfigureAwait(false);
+        var utc=utcNow();
+        var result=await store.ApplyAsync(w=>{
+            var replaced=CompanyOfferRefresh.ReplaceAvailable(w,Employer.Id,EmployedCargoPrototype.PlayerId,requestId,utc);
+            if(!replaced.Changed)return replaced;
+            var configured=CompanyEmployment.Configure(replaced.World,Employer,destinations!,utc,increment:false).World;
+            // Even when every offer was already accepted, refill through the existing audited supply engine.
+            configured=EconomyJobBoard.Maintain(configured,utc,false,scheduledGeneration:true).World;
+            return new EconomyTransition(configured.EnsureValid(),true);
+        },token).ConfigureAwait(false);
+        return Present(RequirePrototype(result.World));
+    }
+
     public async Task<EmployedCargoJobsSnapshot> LoadAsync(CancellationToken cancellationToken = default)
     {
         var world = await economy.LoadAsync(cancellationToken).ConfigureAwait(false);
@@ -297,6 +313,7 @@ public sealed class EmployedCargoJobsViewModel : INotifyPropertyChanged
         if (Error == "") try { await flight.InitializeAsync(cancellationToken); } catch (Exception error) { Error = error.Message; Status = "Flight-attempt data could not be loaded. Existing files were preserved."; }
     }
     public Task RefreshLiveAsync(CancellationToken cancellationToken = default) => RunAsync(() => jobs.LoadAsync(cancellationToken), "SYSTEM board follows real time: new offers every 3 hours; unaccepted offers expire after 6 hours.");
+    public Task RefreshAvailableAsync(string requestId)=>RunAsync(()=>jobs is EmployedCargoJobsService service?service.RefreshOffersAsync(requestId):jobs.LoadAsync(),"Fresh available company work generated. Accepted work retained.");
     public async Task AcceptSelectedAsync(CancellationToken cancellationToken = default)
     {
         var selected = SelectedOffer; if (selected is null) return;

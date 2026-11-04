@@ -52,6 +52,7 @@ public sealed class CareerHubTests : IDisposable
     public async Task OverviewAndMarketplaceUseCatalogueWithoutInventingLocationsOrMaintenance(string category, int rate)
     {
         var vm = Create(category); await Initialize(vm); var hub = vm.Career;
+        Assert.Same(vm.AircraftLoading,vm.CargoJourney.FuelLoading);
         var employer = CareerCatalogue.Employers.Single(e => e.Category == category);
         Assert.Equal(employer.Name, hub.Overview.Company);
         Assert.StartsWith("$" + rate, hub.Overview.Pay);

@@ -77,7 +77,7 @@ public sealed record OffshoreMission(string Id, string EmployerId, string Player
 
 public static class OffshoreMissionKernel
 {
-    public static string OfferId(string employer, long cycleTicks) => EconomyIds.Derive("offshore-", employer + "-" + cycleTicks);
+    public static string OfferId(string employer, long cycleTicks,long refreshSequence=0) => EconomyIds.Derive("offshore-", employer + "-" + cycleTicks+(refreshSequence==0?"":"-refresh-"+refreshSequence));
     public static bool Occupied(EconomyWorld world) => world.OffshoreMissions.Any(m => m.Active && m.Aircraft is not null);
     public static void RequireTransportIdle(EconomyWorld w)
     {

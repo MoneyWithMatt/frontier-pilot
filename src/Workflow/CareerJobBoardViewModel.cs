@@ -30,6 +30,7 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
     private readonly AircraftFleetViewModel fleet;
     private IReadOnlyList<CareerJobRow> jobs = [];
     private bool busy;
+    private string? refreshRequest;
     private int filter;
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? SelectionChanged;
@@ -40,7 +41,7 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
     private bool SourcesUpdating=>busy||cargo.IsBusy||passengers.IsBusy;
     public bool IsBusy => busy;
     public string EmptyState => Items.Count == 0 ? "No work in this view. Refresh the board, choose another filter, or inspect employer and aircraft restrictions." : "";
-    public string RefreshSchedule=>cargo.BoardTiming;
+    public string RefreshSchedule=>"Refresh work generates fresh available company offers. Accepted work stays reserved. Automatic schedule: "+cargo.BoardTiming;
     public IReadOnlyList<string> Filters { get; } = ["All work", "Available", "Accepted", "Completed"];
     public int Filter { get => filter; set { if (value is < 0 or > 3 || value == filter) return; filter = value; if (!Items.Any(j => j.Key == navigation.SelectedJobKey)) { navigation.SelectedJobKey = Items.FirstOrDefault()?.Key; SelectSource(); SelectionChanged?.Invoke(); } Notify(); } }
     public IReadOnlyList<CareerJobRow> All => jobs;
@@ -81,13 +82,27 @@ public sealed class CareerJobBoardViewModel : INotifyPropertyChanged
         AcceptCommand = new(() => _ = AcceptAsync(), () => !busy && Selected is { Available: true } && (Selected.Family switch {
             CareerJobFamily.Cargo => cargo.SelectedOffer?.JobId == Selected.SourceId && cargo.AcceptCommand.CanExecute(null) && (AircraftChoices.Count == 0 || SelectedAircraft is not null),
             CareerJobFamily.Personnel => passengers.SelectedTransfer?.Id == Selected.SourceId && passengers.AcceptCommand.CanExecute(null), CareerJobFamily.Observation => offshore.Selected?.Id == Selected.SourceId && offshore.AcceptCommand.CanExecute(null), _ => false }));
-        RefreshCommand = new(() => _ = RefreshAsync(), () => !busy);
+        RefreshCommand = new(() => _ = RefreshAvailableAsync(), () => !busy&&!cargo.IsBusy&&!passengers.IsBusy);
         LoadCommand = new(() => _ = OpenLoad?.Invoke(), () => !busy && Selected is { Accepted: true, Family: CareerJobFamily.Cargo or CareerJobFamily.Personnel });
     }
-    public async Task RefreshAsync()
+    public Task RefreshAsync()=>RefreshCoreAsync(false);
+    public Task RefreshAvailableAsync()=>RefreshCoreAsync(true);
+    private async Task RefreshCoreAsync(bool replace)
     {
-        if (busy) return; busy = true; Notify();
-        try { await Task.WhenAll(cargo.RefreshLiveAsync(), passengers.RefreshAsync(), offshore.RefreshAsync()); if (Reload is not null) await Reload(); }
+        if (busy||replace&&(cargo.IsBusy||passengers.IsBusy)) return; busy = true; Notify();
+        Error="";
+        try
+        {
+            if(replace)
+            {
+                refreshRequest??=Guid.NewGuid().ToString("N");await cargo.RefreshAvailableAsync(refreshRequest);
+                if(cargo.Error.Length>0)throw new InvalidOperationException(cargo.Error);
+            }
+            await Task.WhenAll(cargo.RefreshLiveAsync(), passengers.RefreshAsync(), offshore.RefreshAsync());
+            if(cargo.Error.Length>0||passengers.Error.Length>0||offshore.Error.Length>0)throw new InvalidOperationException(string.Join(" ",new[]{cargo.Error,passengers.Error,offshore.Error}.Where(e=>e.Length>0)));
+            if (Reload is not null) await Reload();
+            if(replace)refreshRequest=null;
+        }
         catch (Exception e) { Error = e.Message; } finally { busy = false; ReconcileSelection(); Notify(); SelectionChanged?.Invoke(); }
     }
     public async Task AcceptAsync()

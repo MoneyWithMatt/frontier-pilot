@@ -6,6 +6,13 @@ namespace FrontierAirportBuilder.Tests;
 
 public sealed class AircraftLoadingTests
 {
+    [Fact] public async Task FuelControlsRequireTheSelectedPhysicalAircraftBindingBeforeAnyFuelWrite()
+    {
+        var h=Harness(fuelGuard:_=>"Selected airframe binding mismatch");await h.coordinator.InitializeAsync();await h.coordinator.RefreshAsync();
+        Assert.False(h.coordinator.Current.CanApplyFuel);Assert.Contains("binding mismatch",h.coordinator.Current.FuelActionReason);
+        await Assert.ThrowsAsync<InvalidOperationException>(()=>h.coordinator.ApplyFuelAsync(new Dictionary<string,decimal>{{"left",25}}));
+        Assert.Equal(0,h.sim.FuelWrites);Assert.Equal(0,h.sim.PayloadWrites);
+    }
     [Fact] public void OutsideCargoAuthorizationRejectsIncompleteTrackingWithoutGuessingModel()
     {
         var h=Harness();var world=World();h.setWorld(world with{Aircraft=world.Aircraft with{AircraftType=""}});
@@ -759,8 +766,8 @@ public sealed class AircraftLoadingTests
     }
     private static ShipmentCargoTransferRequest Transfer(string id,string jobId,decimal desired,string? location,DateTimeOffset time,bool confirm=false,VerifiedDeliveryEvidence? evidence=null)=>
         new("transfer-"+id,"command-"+id,jobId,desired,location,-22.5,17.1,time,confirm,evidence);
-    private static (AircraftLoadingCoordinator coordinator,MemoryAircraftLoadingStore store,FakeSimulator sim,FakeTracker tracker,Action<TrackingWorldState?> setWorld) Harness(AircraftLoadingSnapshot? snapshot=null,TrackingWorldState? world=null,bool noActiveJob=false,bool requireBoarded=false,CargoJobDisplay? cargoJob=null,Func<CancellationToken,Task>? transportGuard=null)
-    {var now=new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);snapshot??=Snapshot(now:now);world??=World(now:now);var currentWorld=world;var sim=new FakeSimulator(snapshot);var tracker=new FakeTracker();var store=new MemoryAircraftLoadingStore();var job=cargoJob??new CargoJobDisplay("job-test","Employer","Origin","Destination","Purpose","General Supplies",120,240,"TPC","Test","shipment-test",ShipmentState.Reserved,"origin-test","destination-test",-22.5,15,-21,15);var c=new AircraftLoadingCoordinator(store,sim,tracker,()=>"sdk",()=>currentWorld,()=>noActiveJob?null:job,new(TelemetryMaximumAge:TimeSpan.FromHours(1),RequirePostBoardingCargoVerification:requireBoarded),()=>now,(_,_)=>Task.CompletedTask){TransportDispatchGuard=transportGuard};return(c,store,sim,tracker,value=>currentWorld=value);}
+    private static (AircraftLoadingCoordinator coordinator,MemoryAircraftLoadingStore store,FakeSimulator sim,FakeTracker tracker,Action<TrackingWorldState?> setWorld) Harness(AircraftLoadingSnapshot? snapshot=null,TrackingWorldState? world=null,bool noActiveJob=false,bool requireBoarded=false,CargoJobDisplay? cargoJob=null,Func<CancellationToken,Task>? transportGuard=null,Func<FlightAircraftIdentity,string?>? fuelGuard=null)
+    {var now=new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);snapshot??=Snapshot(now:now);world??=World(now:now);var currentWorld=world;var sim=new FakeSimulator(snapshot);var tracker=new FakeTracker();var store=new MemoryAircraftLoadingStore();var job=cargoJob??new CargoJobDisplay("job-test","Employer","Origin","Destination","Purpose","General Supplies",120,240,"TPC","Test","shipment-test",ShipmentState.Reserved,"origin-test","destination-test",-22.5,15,-21,15);var c=new AircraftLoadingCoordinator(store,sim,tracker,()=>"sdk",()=>currentWorld,()=>noActiveJob?null:job,new(TelemetryMaximumAge:TimeSpan.FromHours(1),RequirePostBoardingCargoVerification:requireBoarded),()=>now,(_,_)=>Task.CompletedTask){TransportDispatchGuard=transportGuard,FuelAircraftGuard=fuelGuard};return(c,store,sim,tracker,value=>currentWorld=value);}
     private static AircraftLoadingSnapshot Snapshot(DateTimeOffset? now=null,IReadOnlyList<PayloadStationReading>? stations=null,IReadOnlyList<FuelTankReading>? fuel=null,IReadOnlyList<AircraftEngineReading>? engines=null,AircraftWeightReading? weights=null)
     {var t=now??new DateTimeOffset(2026,9,15,12,0,0,TimeSpan.Zero);return new AircraftLoadingSnapshot(t,new("Piper PA28","PA28"),new(t,-22.5,15,100,90,0,true),stations??[new(1,"Front",10),new(2,"Rear",20)],fuel??[new("left","Left",20,50)],engines??[new(1,false)],2.72m,weights??new(700,1300,900,null,25,20,30),"test adapter").EnsureValid();}
     private static TrackingWorldState World(DateTimeOffset? now=null,double avatarLat=-22.5,bool seated=false)

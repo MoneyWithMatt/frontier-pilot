@@ -38,7 +38,7 @@ Accepted/reserved/in-transit jobs remain after a report. No cargo/personnel disa
 
 ## Persistence and verification
 
-Economy schema 15 reads prior schemas and preserves jobs, inventory, ledger, flights and aircraft ownership. It appends an explicit location status rather than mislabelling exploratory airports MSFS-verified. Cache schema 2 reads schema 1; player visits use schema 2 with schema-1 compatibility. All development tests use temporary or memory stores, not Matt's saves.
+Economy schema 16 reads prior schemas and preserves jobs, inventory, ledger, flights and aircraft ownership. It appends an explicit location status rather than mislabelling exploratory airports MSFS-verified. Cache schema 2 reads schema 1; player visits use schema 2 with schema-1 compatibility. All development tests use temporary or memory stores, not Matt's saves.
 
 `NamibiaPlaytestingTests` covers all four pools, source identities/coordinates, held cases, deterministic variety/cadence, airport-level reports with aircraft context, restart/reset/retries, problematic-offer exclusion and preserved accepted cargo/money, technical conflicts and schema-14 migration. Existing cargo, passenger, wage and flight regressions remain required. `NamibiaAirportReviewSmoke` drives actual reserve/review/problem buttons in the Career Hub and captures synthetic screenshots. Hosted WPF and packaging are separate from real simulator acceptance. Exact results are maintained in the [handoff](handoffs/namibia-playtesting.md).
 
@@ -59,4 +59,9 @@ Implementation `1939202748d682841d0295bd917293ace4f882a9` passed [Windows CI](ht
 
 Changing the eligible company aircraft type in the Job Board does not select or transfer a physical aircraft. Repeated WPF binding writes must be idempotent. The selector repair preserves the current mission/list and existing fleet/loading checks.
 
-Refresh work reloads current work; the existing persisted schedule generates SYSTEM offers every three real hours, with six-hour unaccepted expiry. The schedule and next update appear above the job list. New offers are shown first; still-valid older offers remain available. Accepted/loaded work never expires through board refresh. Immediate manual replacement of unaccepted offers has not been enabled without a separate explicit policy decision.
+Refresh work immediately replaces unaccepted generated company offers with fresh work. Accepted cargo/passengers, active flights, history, wages and player contracts remain intact. The background three-hour schedule and six-hour offer expiry continue independently. Repeated internal reads or airport reviews do not regenerate work; retrying a failed manual command does not replace twice. Newest offers are shown first. The persisted route sequence survives restart.
+## Fuel below loading stations
+
+Open Career → Fleet → Load Manager → Cargo & dispatch. Fuel appears directly beneath Aircraft loading stations. Read aircraft fuel, enter the target quantities in US gallons, then Apply fuel changes while stopped, engines off and walking near the selected/bound aircraft. Actual capacities and write/readback feedback come from the existing simulator adapter. Fuel remains free under the existing prototype policy.
+
+For the reported Fuel changed cargo error, the main action becomes Recheck fuel outside. Keep fuel stable, walk outside near the same aircraft and use that action; the saved cargo targets are retained. Then board and Apply cargo in cockpit. The recheck never writes fuel or confirms cargo by itself. Apply must verify actual station weights and retained total weight before cargo is confirmed. Pending operations with conflicting station weights, identity, location or tank layout remain blocked for explicit recovery. No personal save or simulator payload was edited during development.
