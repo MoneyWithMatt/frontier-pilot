@@ -32,4 +32,5 @@ public partial class CareerHubControl : UserControl
         { CareerJobFamily.Observation => observationActions, CareerJobFamily.Platform => platformActions, _ => null };
     }
     private void FitRoute(object sender, RoutedEventArgs e) => JobMap.Fit();
+    private void AcknowledgeRelocation(object sender, RoutedEventArgs e) => AircraftFleetPanel.ConfirmRelocation(viewModel?.Fleet.Source);
 }

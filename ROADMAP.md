@@ -1,5 +1,7 @@
 # Frontier Pilot roadmap and current status
 
+Live loading follow-up (2026-11-04): cc74814 C152/FYWE readback worked; preview recovery exposed missing relocation acknowledgement in Career Hub. [Existing-action UI repair](docs/specs/career-aircraft-relocation-recovery.md) preserves all fleet/dispatch safeguards. Hosted WPF/package and exact patched-build live retry pending; neither cargo/fuel writes nor seated passengers are newly accepted. [Handoff](docs/handoffs/namibia-playtesting.md).
+
 ## Offshore checkpoint — 2026-11-03
 
 Continuation: full-route experimental H125 base→OL400 timed visit→base recorder implemented through shared transport tracking and recording. Synthetic unit/WPF progress/completion coverage is separate from live qualification. Native base/deck takeoffs,20sdeck+60svisit+3sseparation+return/base10s; interruptions cannot stitch sessions. No wages, registry promotion, cargo/passenger write or production destination activation. Live desktop input remains blocked by window activation failure.

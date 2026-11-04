@@ -1,3 +1,11 @@
+## Approved live retry / missing recovery UI repair — 2026-11-04
+
+- Matt approved guarded discard/recreation. Installed cc74814 action succeeded: manifest revision 8, no pending intent, committed 0 kg, accepted 10+10 kg medical jobs unchanged. Recreated both cargo cards → stations 3/4 using UI. Confirm outside then refused fleet LocationReconciliationRequired: review external relocation before new dispatch. No payload/fuel writes, no flight/pay. Plan is local unsaved UI state, not a durable new intent; both apps remain running.
+- Root cause: MainWindow hides legacy aircraft Fleet tab; Career Hub did not expose its existing acknowledgement, although dispatch still requires it. Repair reuses the exact existing confirmation/service in Career → Fleet → Aircraft and displays refusal/status. No persistence schema, tolerance, authority or simulator control changes. [Specification](../specs/career-aircraft-relocation-recovery.md).
+- Local BuildTest: pwsh -NoProfile -File scripts/Invoke-Verification.ps1 -Stage BuildTest -DotnetPath 'C:/Users/mattr/Documents/ChatGPT/Frontier Pilot/.tools/dotnet/dotnet.exe' -OutputDirectory .ci-output-location-recovery-buildtest passed 1,029 / 0 failures / 0 skips, SDK8.0.424, zero warnings/errors. Source dirty 135e493 plus this repair. Compile-only SiteUiSmoke Release passed zero warnings/errors using same SDK/cache. Initial compile failed CS1061 on test-only RefreshAsync; corrected to existing RefreshLiveAsync, original log preserved .ci-output-location-recovery-compile.log. No local WPF execution.
+- Next: hosted exact-commit WPF/package, inspect new synthetic recovery screenshot. Obtain exact patched-artifact execution approval, replace distribution with receipt/hash backup, reopen and reobserve MSFS before acknowledgement/reconstruction/application. Matt's approval covers the prior installed-build test and preview discard; new binary is not yet executed/qualified. Never directly edit fleet/economy JSON. No merge.
+
+---
 ## Live loading / passenger visuals checkpoint — 2026-11-04
 
 - Matt authorised the installed cc74814 loading test. Real desktop access restored; MSFS 1.9.21.0 and Frontier Pilot launched. FYWE parking 6/C152, selected binding LIVE, all four actual stations 0 kg, existing two 10 kg cargo targets retained.

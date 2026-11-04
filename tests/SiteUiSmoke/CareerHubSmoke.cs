@@ -64,6 +64,25 @@ internal static partial class Program
         Save(host, Path.Combine(folder, "career-hub-owner-empty.png"));
         host.Width = 1024; host.Height = 768; model.Career.Show(CareerSection.JobBoard); Pump();
         Check(hub.ActualWidth > 650 && map.ActualWidth > 250, "Career two-panel board fits ordinary desktop width");
-        Save(host, Path.Combine(folder, "career-hub-1024.png")); host.Close();
+        Save(host, Path.Combine(folder, "career-hub-1024.png"));
+        model.Career.Show(CareerSection.Fleet); model.Career.Navigation.AircraftSection = 0; Pump();
+        var recovery = (Button)hub.FindName("AcknowledgeAircraftRelocation");
+        Check(!recovery.IsVisible, "Career aircraft move recovery is hidden when no relocation needs review");
+        model.Fleet.ResolveCompanyType = _ => "vision-jet";
+        var basis = CareerCatalogue.Bases.Single(b => b.Id == employer.BaseId);
+        var sample = new AircraftTelemetry(DateTimeOffset.UtcNow.AddSeconds(-12), "Synthetic location recovery", "Synthetic model", basis.Latitude, basis.Longitude, 500, 0, 0, true);
+        for (var i = 0; i <= 11; i++) model.Fleet.ObserveTracking(new(sample with { ObservedUtc = sample.ObservedUtc.AddSeconds(i) }, 42, 42, null, PlayerControlMode.InAircraft, null, "Synthetic UI recovery"), null);
+        model.Fleet.ObserveTracking(null, null);
+        var moved = sample with { ObservedUtc = DateTimeOffset.UtcNow, Latitude = sample.Latitude + 3 };
+        model.Fleet.ObserveTracking(new(moved, 42, 42, null, PlayerControlMode.InAircraft, null, "Synthetic UI recovery"), null); Pump();
+        recovery.BringIntoView(); Pump();
+        Check(model.Fleet.Selected!.LocationReconciliationRequired && recovery.IsVisible && recovery.IsEnabled, "Career Hub exposes the existing recovery action after an unobserved move");
+        Save(host, Path.Combine(folder, "career-aircraft-relocation-review.png"));
+        var transportBeforeRecovery = System.Text.Json.JsonSerializer.Serialize(new { model.Passengers.Transfers, model.Jobs.ReservedJobs, model.Passengers.Balance });
+        model.Fleet.AcknowledgeRelocation(); Pump();
+        Check(!recovery.IsVisible && !model.Fleet.Selected!.LocationReconciliationRequired && model.Fleet.Selected.Latest!.State == AirframePositionState.Uncertain, "Acknowledgement hides recovery without certifying a flown arrival");
+        await model.Passengers.RefreshAsync(); await model.Jobs.RefreshLiveAsync(); Pump();
+        Check(transportBeforeRecovery == System.Text.Json.JsonSerializer.Serialize(new { model.Passengers.Transfers, model.Jobs.ReservedJobs, model.Passengers.Balance }), "Aircraft move acknowledgement preserves accepted transport and balance after authoritative reload");
+        host.Close();
     }
 }

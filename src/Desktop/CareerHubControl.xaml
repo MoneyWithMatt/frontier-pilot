@@ -122,6 +122,11 @@
                   <TextBlock Text="{Binding Fleet.Selected.Assignment}" />
                   <TextBlock Text="{Binding Fleet.Selected.Base}" TextWrapping="Wrap" Margin="0,8" />
                   <TextBlock Text="{Binding Fleet.Selected.Location}" TextWrapping="Wrap" />
+                  <StackPanel Visibility="{Binding Fleet.Source.Selected.LocationReconciliationRequired,Converter={StaticResource BoolVisibility}}" Margin="0,10">
+                    <TextBlock Text="Aircraft position changed outside a recorded flight. Review this move before loading or dispatch. Acknowledgement records an unobserved move; it does not move cargo or award flight time or pay." TextWrapping="Wrap" Foreground="#F0B47B" />
+                    <Button x:Name="AcknowledgeAircraftRelocation" Content="Review external aircraft move…" Click="AcknowledgeRelocation" HorizontalAlignment="Left" />
+                  </StackPanel>
+                  <TextBlock Text="{Binding Fleet.Source.Status}" TextWrapping="Wrap" Foreground="#F0B47B" Margin="0,5" />
                   <TextBlock Text="Simulator compatibility" Style="{StaticResource Title}" Margin="0,18,0,8" />
                   <TextBlock Text="{Binding Fleet.Selected.Binding}" TextWrapping="Wrap" />
                   <TextBlock Text="{Binding Fleet.Source.SelectedInstructions}" TextWrapping="Wrap" Margin="0,10" />
