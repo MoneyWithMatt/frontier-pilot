@@ -224,10 +224,12 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
         await gate.WaitAsync(token).ConfigureAwait(false);
         try
         {
+            using var lease=await AircraftPayloadOperationLease.AcquireAsync(token).ConfigureAwait(false);
             World = await store.LoadAsync(token).ConfigureAwait(false) ?? throw new InvalidOperationException("No economy.");
             var m = Manifest ?? throw new InvalidOperationException("Select the cargo airframe.");
             var p = m.Pending ?? throw new InvalidOperationException("No pending cargo operation.");
             Live = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid(); CheckOperation(m, p, Live, false,recheckFuel:true); AuthorizeHandling?.Invoke(Live, true);
+            if(p.WriteStarted&&Live.Weights.CurrentGrossWeightKilograms is null)throw new InvalidOperationException("MSFS total aircraft weight is unavailable for fuel recovery. Pending cargo and its prior weight anchor are retained.");
             var expectedGross=Live.Weights.CurrentGrossWeightKilograms+p.Targets.Sum(t=>t.TargetKilograms-Live.PayloadStations.Single(s=>s.Index==t.StationIndex).CurrentWeightKilograms);
             World = (await store.ApplyAsync(w =>
             {
