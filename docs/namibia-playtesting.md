@@ -53,7 +53,7 @@ Economy schema 16 reads prior schemas and preserves jobs, inventory, ledger, fli
 
 ## Automated release checkpoint
 
-Implementation `1939202748d682841d0295bd917293ace4f882a9` passed [Windows CI](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41702499937): 1,016 xUnit tests, 208 site/Career and 7 loading WPF assertions, 9 guard scenarios, historical CLI review and Windows packaging. [Download exact Windows bundle](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41702499937/artifacts/13263234488). Screenshots and receipts remain synthetic evidence; real airport usability is Matt's playtest.
+Implementation `cc748146757771b1f303d3c59c0cb53dba2e0838` passed [Windows CI](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41853639269): 1,029 xUnit tests, 216 site/Career and 7 loading WPF assertions, 9 guard scenarios, historical CLI review and Windows packaging. [Download exact Windows bundle](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41853639269/artifacts/13336731100). Screenshots and receipts remain synthetic evidence; real airport usability is Matt's playtest.
 
 ## Job Board refresh and aircraft selector
 
