@@ -47,11 +47,16 @@ internal static partial class Program
         var cargoView=Descendants<CargoJourneyControl>(hub).Single();var fuelPanel=(AircraftFuelControl)cargoView.FindName("FuelPanel");
         Check(fuelPanel.IsVisible&&ReferenceEquals(fuelPanel.DataContext,model.AircraftLoading),"Fuel panel beneath loading stations shares the existing aircraft loading service");
         var syntheticTank=new FuelTankViewModel{Id="synthetic-fuel",Name="SYNTHETIC fuel tank",CurrentGallons=12,CapacityGallons=30,PlannedGallons=12};
-        model.AircraftLoading.FuelTanks.Add(syntheticTank);fuelPanel.BringIntoView();Pump();
+        model.AircraftLoading.FuelTanks.Add(syntheticTank);Pump();
+        var fuelScroll=(ScrollViewer)cargoView.FindName("CargoWorkflowScroll");
+        Check(fuelScroll.ViewportHeight>=80,$"Loading workspace retains a usable viewport at the ordinary window size: {fuelScroll.ViewportHeight:0} pixels");
+        host.Height=1200;Pump();fuelPanel.BringIntoView();Pump();
         var fuelInput=Descendants<TextBox>(fuelPanel).Single(t=>t.GetBindingExpression(TextBox.TextProperty)?.ParentBinding.Path.Path=="PlannedGallonsText");
         fuelInput.Text="15.5";Pump();Check(syntheticTank.PlannedGallons==15.5m,"Inline fuel input writes its declared gallon plan to the shared fuel model");
+        fuelInput.Focus();fuelInput.BringIntoView();Pump();var fuelPosition=fuelInput.TransformToAncestor(host).Transform(new Point(0,0));
+        Check(fuelPosition.Y>=0&&fuelPosition.Y+fuelInput.ActualHeight<=host.ActualHeight,"Inline fuel input can be brought into the visible window viewport");
         Check(!((Button)fuelPanel.FindName("ApplyFuel")).IsEnabled,"Unqualified/disconnected fuel controls cannot write simulator fuel");
-        Save(host,Path.Combine(folder,"career-inline-fuel.png"));model.AircraftLoading.FuelTanks.Remove(syntheticTank);model.Career.Show(CareerSection.JobBoard);Pump();
+        Save(host,Path.Combine(folder,"career-inline-fuel.png"));model.AircraftLoading.FuelTanks.Remove(syntheticTank);host.Height=900;model.Career.Show(CareerSection.JobBoard);Pump();
         Check(board.Items.Where(j=>j.Family==CareerJobFamily.Cargo).Select(j=>j.DestinationLocationId).Distinct().Count()>=6,"Missionary board shows six distinct curated destinations");
         Check(!model.Career.AirportArrivals.HasPrompt&&!model.Career.Airports.VerifyCommand.CanExecute(null),"No verification prompt or verification prerequisite before mission completion");
         var cargo=model.Jobs.ReservedJobs.Single(j=>j.JobId==job.SourceId);

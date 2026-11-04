@@ -109,11 +109,12 @@
    <WrapPanel><Button Content="Recheck fuel / renew plan (outside)" Command="{Binding RenewCommand}" ToolTip="Outside the stopped aircraft: preserve the cargo plan, recheck station weights and use the current fuel reading. Fuel is never written."/><Button Content="Discard unapplied / unarmed plan" Command="{Binding CancelPlanCommand}"/></WrapPanel>
    <TextBlock Text="{Binding Warnings}" TextWrapping="Wrap" Margin="0,8" Foreground="#E4BA76"/>
    <TextBox Text="{Binding TechnicalDetails, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="140" VerticalScrollBarVisibility="Auto"/>
-  </StackPanel></Expander> </StackPanel></ScrollViewer><StackPanel Grid.Row="1">  <Border Background="#203C35" Padding="12" Margin="0,6"><StackPanel>
-   <TextBlock Text="{Binding NextStep}" TextWrapping="Wrap" FontWeight="SemiBold"/>
-   <Button x:Name="PrimaryCargoAction" Content="{Binding PrimaryActionText}" Command="{Binding PrimaryCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" Padding="14,9"/>
-  </StackPanel></Border>
+  </StackPanel></Expander>
   <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,8" FontWeight="SemiBold"/>
+ </StackPanel></ScrollViewer><StackPanel Grid.Row="1">  <Border Background="#203C35" Padding="10,8" Margin="0,6"><StackPanel>
+   <TextBlock Text="{Binding NextStep}" ToolTip="{Binding NextStep}" TextWrapping="Wrap" FontSize="12" MaxHeight="36" FontWeight="SemiBold"/>
+   <Button x:Name="PrimaryCargoAction" Content="{Binding PrimaryActionText}" Command="{Binding PrimaryCommand}" HorizontalAlignment="Left" Margin="0,5,0,0" Padding="10,6"/>
+  </StackPanel></Border>
 </StackPanel></Grid>
  <Border Grid.Column="1" Background="#F0EBD9" BorderBrush="#B8B19D" BorderThickness="1" Padding="15">
   <Grid><Grid.Background><DrawingBrush TileMode="Tile" Viewport="0,0,6,6" ViewportUnits="Absolute"><DrawingBrush.Drawing><GeometryDrawing Brush="#08A29270" Geometry="M 0,0 L 6,0 6,0.5 0,0.5 Z"/></DrawingBrush.Drawing></DrawingBrush></Grid.Background>
