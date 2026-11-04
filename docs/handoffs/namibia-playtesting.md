@@ -1,3 +1,11 @@
+## Live loading / passenger visuals checkpoint — 2026-11-04
+
+- Matt authorised the installed cc74814 loading test. Real desktop access restored; MSFS 1.9.21.0 and Frontier Pilot launched. FYWE parking 6/C152, selected binding LIVE, all four actual stations 0 kg, existing two 10 kg cargo targets retained.
+- Recheck fuel outside refused because this session is over 25 m from the saved handling position. No cargo/fuel write or successful loading acceptance. Fuel UI real readback: 5.75 US gal in each tank, capacity 13 each, engine off. [Detailed result and primary-source passenger research](../research/loading-and-passenger-visuals-2026-11-04.md).
+- Last production/automated validation cc748146757771b1f303d3c59c0cb53dba2e0838; current docs baseline 345d40d. No production edits or repeated CI. No seated-person mechanism qualified; no mods installed, no SF50/H125 gate changes.
+- Awaiting specific action-time reply to discard only the unapplied/unarmed preview through the existing guarded UI and recreate identical loads. Accepted jobs remain reserved. Do not edit save JSON or weaken position/ownership checks. Both apps left running; reobserve before any further input. No flight/payment test performed. PR creation remains connector-403 blocked; no merge.
+
+---
 ## Final installed manual-refresh / fuel build — 2026-11-04
 
 - Final production source: `cc748146757771b1f303d3c59c0cb53dba2e0838`, clean, SDK 8.0.424. [Hosted run 41853639269](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41853639269) passed 1,029 tests / 0 failures / 0 skips, 216 SiteUiSmoke and 7 LoadingWpfSmoke assertions, 9 simulated guards, historical CLI and Windows packaging. Commands: existing Invoke-Verification BuildTest / Test-VerificationGuards / Smoke / CLI / Package workflow. [Build](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41853639269/artifacts/13336731100), [screenshots/logs/TRX](https://github.com/MoneyWithMatt/frontier-pilot/actions/runs/41853639269/artifacts/13336955935).
