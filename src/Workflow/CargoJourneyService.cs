@@ -27,6 +27,44 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
         try { World = await store.LoadAsync(token).ConfigureAwait(false); Live = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid(); Changed?.Invoke(); }
         finally { gate.Release(); }
     }
+    public async Task PrepareCancellationAsync(string jobId,CancellationToken token=default)
+    {
+        await RefreshAsync(token).ConfigureAwait(false);
+        var w=World??throw new InvalidOperationException("No economy.");
+        var shipment=w.Shipments.Single(s=>s.JobId==jobId);
+        if(w.Jobs.Single(j=>j.Id==jobId).CargoCancellation is not null)return;
+        if(shipment.LoadedQuantity==0){await CancelEmptyJobAsync(jobId,token).ConfigureAwait(false);return;}
+        var m=Manifest??throw new InvalidOperationException("Select the airframe that owns this cargo.");
+        if(!m.Cargo.Any(c=>c.JobId==jobId))throw new InvalidOperationException("This cargo belongs to another aircraft.");
+        var desired=m.Cargo.ToDictionary(c=>c.JobId,c=>c.JobId==jobId?0:c.Kilograms);
+        var remove=shipment.LoadedQuantity;
+        var allocations=m.Stations.OrderByDescending(s=>s.FrontierCargoKilograms).Select(s=>
+        {var take=Math.Min(remove,s.FrontierCargoKilograms);remove-=take;return new CargoStationAllocation(s.StationIndex,s.FrontierCargoKilograms-take);}).ToArray();
+        await PrepareAsync(desired,allocations,token,jobId).ConfigureAwait(false);
+        Reason="Cancellation plan saved. Board this aircraft and apply the unload. No penalty; cancellation commits only after retained payload verification.";
+        Changed?.Invoke();
+    }
+    private async Task CancelEmptyJobAsync(string jobId,CancellationToken token)
+    {
+        await gate.WaitAsync(token).ConfigureAwait(false);
+        try
+        {
+            using var lease=await AircraftPayloadOperationLease.AcquireAsync(token).ConfigureAwait(false);
+            if(LegacyRecoveryGuard is {} guard)await guard(token).ConfigureAwait(false);
+            World=await store.LoadAsync(token).ConfigureAwait(false)??throw new InvalidOperationException("No economy.");
+            NoPassengers(World);
+            Live=(await simulator.ReadAsync(sdkRoot(),token).ConfigureAwait(false)).EnsureValid();Ground(Live,Manifest);
+            AuthorizeHandling?.Invoke(Live,false);
+            if(Manifest is {} m){if(m.Pending is not null)throw new InvalidOperationException("Resolve the saved physical handling plan first.");Claims(m,Live);}
+            if(World.CargoAirframes.Any(a=>a.AirframeId!=selectedAirframe()&&a.ManagedJobs.Contains(jobId)))throw new InvalidOperationException("Select this job's recorded airframe.");
+            var dispatch=DispatchGuard?.Invoke(Live.Aircraft,[jobId]);if(dispatch is not null)throw new InvalidOperationException(dispatch);
+            var here=Here??throw new InvalidOperationException("Stop at one unambiguous known cargo location.");
+            World=(await store.ApplyAsync(w=>CargoCancellationKernel.Commit(w,jobId,here.Id,Now),token).ConfigureAwait(false)).World;
+            Reason="Job cancelled without penalty. Reserved cargo released at origin; no delivery or payment awarded.";
+            WorldObserved?.Invoke(World);Changed?.Invoke();
+        }
+        finally{gate.Release();}
+    }
     private static void NoPassengers(EconomyWorld w)
     {
         if (OffshoreMissionKernel.Occupied(w)) throw new InvalidOperationException("Complete the active Offshore observation flight before loading or arming cargo; the same airborne time cannot earn two wages.");
@@ -52,7 +90,7 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
     }
 
     public async Task<CargoOperation> PrepareAsync(IReadOnlyDictionary<string, decimal> desired,
-        IReadOnlyList<CargoStationAllocation> allocations, CancellationToken token = default)
+        IReadOnlyList<CargoStationAllocation> allocations, CancellationToken token = default, string? cancelJobId = null)
     {
         await gate.WaitAsync(token).ConfigureAwait(false);
         var stage="checking existing loading records";
@@ -71,14 +109,16 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
             stage="checking cargo, aircraft eligibility and station distribution";
             var here = location(w, live.Position) ?? throw new InvalidOperationException("Stop at one unambiguous known cargo location.");
             if (m?.Pending is not null) throw new InvalidOperationException("Resolve the persisted cargo preview/operation before preparing another.");
-            if (m?.Legs.Any(x => x.SettledUtc is null) == true) throw new InvalidOperationException("Complete the current armed leg before changing cargo.");
+            if (cancelJobId is null && m?.Legs.Any(x => CargoJourneyKernel.IsActive(x)) == true) throw new InvalidOperationException("Complete the current armed leg before changing cargo.");
             if (w.Shipments.Any(s => s.LoadedQuantity > 0 && !w.CargoAirframes.Any(a => a.ManagedJobs.Contains(s.JobId))))
                 throw new InvalidOperationException("Legacy loaded cargo requires its existing Aircraft recovery flow before multi-stop handling. No ownership was inferred.");
-            if (w.CargoAirframes.Any(a => a.AirframeId != id && (a.Cargo.Length > 0 || a.Pending is not null || a.Legs.Any(l => l.SettledUtc is null))))
+            if (w.CargoAirframes.Any(a => a.AirframeId != id && (a.Cargo.Length > 0 || a.Pending is not null || a.Legs.Any(l => CargoJourneyKernel.IsActive(l)))))
                 throw new InvalidOperationException("Finish the other airframe's cargo journey before starting another active flight.");
             if (m is not null) Claims(m, live);
             var changes = desired.Select(x => new CargoChange(x.Key, w.Shipments.Single(s => s.JobId == x.Key).LoadedQuantity, x.Value)).Where(x => x.Before != x.After).ToArray();
             if (changes.Length == 0) throw new InvalidOperationException("Select at least one consignment quantity change.");
+            if(cancelJobId is not null && (changes.Length!=1 || changes[0].JobId!=cancelJobId || changes[0].After!=0 || w.LogisticsContracts.Any(c=>c.JobId==cancelJobId)))
+                throw new InvalidOperationException("Cancellation must unload exactly one complete ordinary cargo consignment.");
             foreach (var c in changes)
             {
                 var job = w.Jobs.Single(x => x.Id == c.JobId); var shipment = w.Shipments.Single(x => x.JobId == c.JobId);
@@ -88,9 +128,9 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
                     c.Before > 0 && m?.Cargo.Any(x => x.JobId == c.JobId) != true || w.CargoAirframes.Any(a => a.AirframeId != id && a.ManagedJobs.Contains(c.JobId)))
                     throw new InvalidOperationException("Consignment quantity, acceptance or aircraft ownership is incompatible.");
                 if (c.After > c.Before && shipment.OriginLocationId != here.Id) throw new InvalidOperationException("Additional reserved cargo is only available at its origin.");
-                if (c.After < c.Before && shipment.DestinationLocationId != here.Id && (shipment.OriginLocationId != here.Id || shipment.State == ShipmentState.InTransit))
+                if (cancelJobId is null && c.After < c.Before && shipment.DestinationLocationId != here.Id && shipment.OriginLocationId != here.Id)
                     throw new InvalidOperationException("Deliver at this consignment's destination, or return unflown cargo at its origin. Off-route disposal is not part of this flow.");
-                if (c.After < c.Before && here.Id == shipment.DestinationLocationId)
+                if (cancelJobId is null && c.After < c.Before && here.Id == shipment.DestinationLocationId)
                 {
                     var leg = m is null ? throw new InvalidOperationException("No flight leg.") : CargoJourneyKernel.DeliveryLeg(w, m.Id, c.JobId);
                     var carried = leg.Carried.Single(x => x.JobId == c.JobId);
@@ -111,10 +151,12 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
             var plan = total > 0 ? AircraftLoadPlan.Create(baselineSnapshot, total, allocations) :
                 new AircraftLoadPlan(0, live.PayloadStations.Select(s => new PlannedPayloadStation(s.Index, baselines[s.Index], 0, baselines[s.Index])).ToArray(), baselines.Values.Sum(), null, null, []);
             var operation = new CargoOperation("cargo-op-" + Guid.NewGuid().ToString("N"), here.Id, Now, changes,
-                live.PayloadStations.ToArray(), plan.Stations.ToArray(), live.Position) { FuelBefore = live.FuelTanks.ToArray(), AuthorizedUtc = Now };
+                live.PayloadStations.ToArray(), plan.Stations.ToArray(), live.Position) { FuelBefore = live.FuelTanks.ToArray(), AuthorizedUtc = Now, CancelJobId=cancelJobId };
             m ??= new CargoAirframeManifest(CargoJourneyKernel.ManifestId(id), id, live.Aircraft, w.Jobs.Single(x => x.Id == changes[0].JobId).PlayerId, 1, here.Id, [], [], [], null, [], []) { StationLayout = live.PayloadStations.ToArray() };
             var expected = m.Revision;
-            var updated = m with { LocationId = here.Id, Revision = expected + 1, Pending = operation, ManagedJobs = m.ManagedJobs.Concat(changes.Select(x => x.JobId)).Distinct().ToArray() };
+            var updated = m with { LocationId = here.Id, Revision = expected + 1, Pending = operation,
+                Legs=cancelJobId is null?m.Legs:m.Legs.Select(l=>CargoJourneyKernel.IsActive(l)?l with {AbortedUtc=Now}:l).ToArray(),
+                ManagedJobs = m.ManagedJobs.Concat(changes.Select(x => x.JobId)).Distinct().ToArray() };
             stage="saving the loading plan";
             World = (await store.ApplyAsync(current =>
             {
@@ -251,11 +293,11 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
             Live = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid(); Ground(Live, m);
             if (m.Pending is {} p && p.BeforeStations.Any(b => Live.PayloadStations.SingleOrDefault(s => s.Index == b.Index) is not {} actual || actual.Name != b.Name || Math.Abs(actual.CurrentWeightKilograms-b.CurrentWeightKilograms)>.25m))
                 throw new InvalidOperationException("This operation may already have changed payload. Resolve it with Apply/retry; it cannot be discarded.");
-            if (m.Legs.Any(l => l.SettledUtc is null && l.Flight is not null)) throw new InvalidOperationException("An armed leg cannot be discarded; its recorded progress is retained.");
+            if (m.Legs.Any(l => CargoJourneyKernel.IsActive(l) && l.Flight is not null)) throw new InvalidOperationException("An armed leg cannot be discarded; its recorded progress is retained.");
             World = (await store.ApplyAsync(w =>
             {
                 if (w.Revision != World.Revision) throw new IOException("Manifest changed. Refresh.");
-                return CargoJourneyKernel.Replace(w, m with { Revision=m.Revision+1, Pending=null, Legs=m.Legs.Where(l=>l.SettledUtc is not null).ToArray() });
+                return CargoJourneyKernel.Replace(w, m with { Revision=m.Revision+1, Pending=null, Legs=m.Legs.Where(l=>!CargoJourneyKernel.IsActive(l)).ToArray() });
             }, token).ConfigureAwait(false)).World;
             monitor.Reset(); Reason="Unapplied preview / unarmed next-stop plan discarded. Committed cargo and history are unchanged."; Changed?.Invoke();
         }
@@ -274,7 +316,7 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
             var m = Manifest ?? throw new InvalidOperationException("Load cargo in the recorded airframe first.");
             Live = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid(); Ground(Live, m); Claims(m, Live);
             var here = location(World, Live.Position) ?? throw new InvalidOperationException("Stop at a known location.");
-            if (!destination.CanGenerate || destination.Id == here.Id || !World.Locations.Any(x => x.Id == destination.Id) || m.Pending is not null || m.Cargo.Length == 0 || m.Legs.Any(x => x.SettledUtc is null))
+            if (!destination.CanGenerate || destination.Id == here.Id || !World.Locations.Any(x => x.Id == destination.Id) || m.Pending is not null || m.Cargo.Length == 0 || m.Legs.Any(x => CargoJourneyKernel.IsActive(x)))
                 throw new InvalidOperationException("Select another known qualified location with cargo aboard, no pending operation and no active leg.");
             var employers = m.Cargo.Select(c => World.Jobs.Single(j => j.Id == c.JobId)).Where(j => !World.LogisticsContracts.Any(c => c.JobId == j.Id))
                 .Select(j => World.Businesses.Single(b => b.Id == j.EmployerBusinessId)).Where(b => b.PilotHourlyRate is not null).DistinctBy(b => b.Id).ToArray();
@@ -295,7 +337,7 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
         try
         {
             World = await store.LoadAsync(token).ConfigureAwait(false) ?? throw new InvalidOperationException("No economy."); NoPassengers(World);
-            var m = Manifest ?? throw new InvalidOperationException("No cargo manifest."); var leg = m.Legs.Single(x => x.SettledUtc is null);
+            var m = Manifest ?? throw new InvalidOperationException("No cargo manifest."); var leg = m.Legs.Single(x => CargoJourneyKernel.IsActive(x));
             if (leg.Flight is not null) return;
             Live = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid(); Ground(Live, m); Claims(m, Live);
             var flight = monitor.Board(Context(m, leg), Now);
@@ -316,7 +358,7 @@ public sealed class CargoJourneyService(IEconomyStateStore store, IAircraftLoadi
         {
             World = await store.LoadAsync(token).ConfigureAwait(false);
             if(World is {} observed)WorldObserved?.Invoke(observed);
-            if (Manifest is not {} m || m.Legs.SingleOrDefault(x => x.SettledUtc is null) is not {} leg) return;
+            if (Manifest is not {} m || m.Legs.SingleOrDefault(x => CargoJourneyKernel.IsActive(x)) is not {} leg) return;
             if (sample is null) { monitor.Reset(); Reason = "Tracking disconnected. Cargo and proven progress retained; no gap time accrues."; Changed?.Invoke(); return; }
             NoPassengers(World!);
             Live = (await simulator.ReadAsync(sdkRoot(), token).ConfigureAwait(false)).EnsureValid(); Claims(m, Live);

@@ -32,6 +32,9 @@ public sealed class CargoConsignmentRow : CargoCardRow
     public required string Status { get; init; }
     public bool CanPickup=>AvailableHere>Math.Max(0,DesiredAboard-Aboard);
     public bool CanDeliver=>Status=="DELIVER HERE"&&Aboard>0;
+    public bool CanReturnAtOrigin {get;init;}
+    public bool IsAtOrigin {get;init;}
+    public bool CanCancelJob {get;init;}
     private decimal desiredAboard;
     public Action? Edited { get; init; }
     public decimal DesiredAboard { get=>desiredAboard; set {desiredAboard=value;Edited?.Invoke();} }
@@ -82,7 +85,7 @@ public static class CargoDispatchDocument
         b.AppendLine("LAST COMMITTED STOP: " + w.Locations.Single(x => x.Id == m.LocationId).Name);
         if (m.Legs.LastOrDefault() is {} leg)
         {
-            b.AppendLine($"LEG: {leg.Origin.Name} -> {leg.Destination.Name}\n{leg.Id} / {(leg.SettledUtc is null ? leg.Flight is null ? "PLANNED / NOT ARMED" : "IN PROGRESS" : "ARRIVED / QUALIFIED")}");
+            b.AppendLine($"LEG: {leg.Origin.Name} -> {leg.Destination.Name}\n{leg.Id} / {(leg.AbortedUtc is not null ? "ABORTED / NO ARRIVAL CREDIT" : leg.SettledUtc is null ? leg.Flight is null ? "PLANNED / NOT ARMED" : "IN PROGRESS" : "ARRIVED / QUALIFIED")}");
             if (leg.EmployerId is not null) b.AppendLine(w.FinancialLedger.SingleOrDefault(t=>t.Kind==FinancialTransactionKind.CargoLegWage&&t.EvidenceId==leg.Id) is {} paid ?
                 $"LEG WAGES: {DollarDisplay.Format(paid.Amount)} paid once / {paid.OccurredUtc:u}" : "LEG WAGES: pending successful consignment delivery.");
         }
@@ -104,13 +107,14 @@ public static class CargoDispatchDocument
         b.AppendLine("Simulator observation is live information, not ownership.");
         if (m.Pending is {} p)
         {
+            if(p.CancelJobId is {} cancel)b.AppendLine("CANCEL JOB AFTER VERIFIED UNLOAD: "+cancel+" / NO PENALTY / NO DELIVERY PAY");
             Rule(); b.AppendLine("PROPOSED / PENDING - NOT CONFIRMED ABOARD"); b.AppendLine(p.Id);
             foreach (var c in p.Changes) b.AppendLine($"{c.JobId}: {c.Before:0.###} -> {c.After:0.###} kg aboard");
             foreach (var s in p.Targets) b.AppendLine($"Station {s.StationIndex}: TARGET {s.TargetKilograms:0.###} kg / Frontier {s.FrontierCargoKilograms:0.###}");
             if (p.Problem is not null) b.AppendLine("RECOVERY REQUIRED: " + p.Problem);
         }
         Rule(); b.AppendLine("RECENT COMMITTED PICKUPS / DELIVERIES");
-        foreach (var h in m.History.TakeLast(6)) b.AppendLine($"{h.Utc:u} / {w.Locations.Single(x => x.Id == h.LocationId).Name}\n{h.Id} / retained {h.KilogramsAboard:0.###} kg");
+        foreach (var h in m.History.TakeLast(6)) b.AppendLine($"{h.Utc:u} / {w.Locations.Single(x => x.Id == h.LocationId).Name}\n{h.Id} / retained {h.KilogramsAboard:0.###} kg"+(h.CancelledJobId is {} cancelled?$" / cancelled {cancelled}, no penalty":""));
         Rule(); b.AppendLine("PILOT RESPONSIBILITY: weight, balance and performance.\nNo dispatch clearance or approval is implied."); return b.ToString();
     }
 }
@@ -140,6 +144,14 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
         $"{station.StationLabel}: " + (string.IsNullOrEmpty(station.AssignmentText) ? "No proposed pickup assignments. Confirmed cargo ownership is tracked in the manifest." : station.AssignmentText) : "Click a station to inspect its proposed consignments.";
     public string SelectedStationDetails => SelectedStation is {} station ? $"{station.StationLabel} · {station.Detail}\n{StationAssignments}" : "Click a station to inspect its reported limit and proposed consignments.";
     public CargoConsignmentRow? PickupCargo { get; private set; }
+    public CargoConsignmentRow? CancellationJob {get;private set;}
+    public bool HasCancellationPreview=>CancellationJob is not null;
+    public string CancellationPreview=>CancellationJob is {} c?$"Cancel {c.Description} ({c.JobId})? No financial penalty during playtesting. "+
+        (c.IsAtOrigin?"Cargo will be returned/released at its origin.":"Cargo aboard away from origin is recorded as abandoned, without delivery credit. Reserved stock at origin is released.")+
+        " Other jobs stay aboard. Any unfinished flight leg will be aborted without arrival credit; start a new leg for remaining cargo.":"";
+    public string CancellationActionText=>CancellationJob?.Aboard>0?"Prepare cancellation (outside)":"Confirm cancellation";
+    public ActionCommand ConfirmCancellationCommand {get;}
+    public ActionCommand KeepJobCommand {get;}
     public string PickupQuantityText { get; set; } = "";
     public bool IsChoosingStation=>CanEditCargo&&PickupCargo is not null;
     public string PickupHeading=>PickupCargo is {} c?$"Load {c.Description} → {c.Destination}":"";
@@ -148,7 +160,7 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     public CargoStop? SelectedStop { get; set; }
     public string Status => status;
     public string TechnicalDetails=>technicalDetails;
-    public bool CanEditCargo=>!busy&&service.Manifest?.Pending is null&&service.Manifest?.Legs.Any(l=>l.SettledUtc is null)!=true;
+    public bool CanEditCargo=>!busy&&service.Manifest?.Pending is null&&service.Manifest?.Legs.Any(l=>CargoJourneyKernel.IsActive(l))!=true;
     public decimal RequestedKilograms=>Consignments.Sum(c=>c.DesiredAboard);
     public string CargoSummary=>$"Confirmed aboard: {Consignments.Sum(c=>c.Aboard):0.###} kg  |  After this operation: {RequestedKilograms:0.###} kg";
     private bool FuelNeedsRecheck=>service.Manifest?.Pending?.Problem?.StartsWith("Fuel changed",StringComparison.OrdinalIgnoreCase)==true;
@@ -161,14 +173,14 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
             if(service.Manifest?.Pending is {} pending)return pending.Problem is not null?
                 "Loading needs attention. Read the message below before retrying; the saved plan is retained.":
                 "2. Review the proposed dispatch sheet, board this aircraft, then apply cargo. Nothing is aboard until verified.";
-            if(service.Manifest?.Legs.SingleOrDefault(l=>l.SettledUtc is null) is {} leg)return leg.Flight is null?
+            if(service.Manifest?.Legs.SingleOrDefault(l=>CargoJourneyKernel.IsActive(l)) is {} leg)return leg.Flight is null?
                 "3. Remain stopped for ten tracking seconds, then Start flight recording before takeoff.":
                 "Flight recording active. Fly to the planned stop; remaining cargo stays aboard.";
             return service.Manifest?.Cargo.Length>0?"Cargo confirmed aboard. Choose your next destination below, or select cargo for a pickup or delivery here.":
                 "Click cargo, then a station. Confirm the plan while walking near this aircraft.";
         }
     }
-    public string DepartureActionText=>service.Manifest?.Legs.Any(l=>l.SettledUtc is null)==true?"Start flight recording":"Prepare departure";
+    public string DepartureActionText=>service.Manifest?.Legs.Any(l=>CargoJourneyKernel.IsActive(l))==true?"Start flight recording":"Prepare departure";
     public ActionCommand PrimaryCommand { get; }
     public ActionCommand LoadAvailableCommand { get; }
     public ActionCommand DeliverHereCommand { get; }
@@ -205,7 +217,7 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
             (service.Manifest?.Pending is not null||CanEditCargo&&PickupCargo is null&&Consignments.Any(c=>c.DesiredAboard!=c.Aboard)));
         LoadAvailableCommand=new(()=>SetQuantities(false),()=>CanEditCargo&&Consignments.Any(c=>c.AvailableHere>0));
         DeliverHereCommand=new(()=>SetQuantities(true),()=>CanEditCargo&&Consignments.Any(c=>c.Status=="DELIVER HERE"&&c.Aboard>0));
-        DepartureCommand=new(()=>_=PrepareDepartureAsync(),()=>!busy&&service.Manifest is {Pending:null} m&&m.Cargo.Length>0&&m.Legs.All(l=>l.SettledUtc is not null||l.Flight is null));
+        DepartureCommand=new(()=>_=PrepareDepartureAsync(),()=>!busy&&service.Manifest is {Pending:null} m&&m.Cargo.Length>0&&m.Legs.All(l=>!CargoJourneyKernel.IsActive(l)||l.Flight is null));
         ReadCommand = new(() => _ = RefreshAsync(), () => !busy);
         PrepareCommand = new(() => _ = Run(async () => { await service.PrepareAsync(Consignments.ToDictionary(x => x.JobId, x => x.DesiredAboard), Stations.Select(x => new CargoStationAllocation(x.Index, x.DesiredCargo)).ToArray()); }, false), () => !busy);
         ApplyCommand = new(() => _ = Run(() => service.ApplyAsync(), true), () => !busy);
@@ -214,10 +226,12 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
         RenewCommand = new(() => _ = Run(() => service.RenewAuthorizationAsync(), false), () => !busy);
         CancelPlanCommand = new(() => _ = Run(() => service.CancelUnappliedPlanAsync(), true), () => !busy);
         MatchMassCommand = new(MatchMass, () => !busy);
+        ConfirmCancellationCommand=new(()=>_=ConfirmCancellationAsync(),()=>!busy&&CancellationJob is not null&&service.Manifest?.Pending is null);
+        KeepJobCommand=new(()=>{CancellationJob=null;Update(false);},()=>!busy);
         service.Changed += () => { if (ui is not null) ui.Post(_ => Update(false), null); else Update(false); };
     }
     public async Task ObserveAsync(AircraftTelemetry? sample)
-    {await service.ObserveAsync(sample);if(!busy&&service.Manifest?.Legs.Any(l=>l.SettledUtc is null)==true){status=service.Reason;Update(false);}}
+    {await service.ObserveAsync(sample);if(!busy&&service.Manifest?.Legs.Any(l=>CargoJourneyKernel.IsActive(l))==true){status=service.Reason;Update(false);}}
     public Task RefreshAsync()=>Run(async()=>{await refreshJobs();await service.RefreshAsync();},true);
     public void BeginPickup(CargoConsignmentRow cargo)
     {
@@ -293,6 +307,28 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
         catch(Exception ex){cargo.DesiredAboard=before;status=ex.Message;}
         PickupCargo=null;RefreshEditableRows();Update(false);
     }
+    public void ReturnConsignment(CargoConsignmentRow cargo)
+    {
+        if(!CanEditCargo||!Consignments.Contains(cargo)||!cargo.CanReturnAtOrigin)return;
+        var before=cargo.DesiredAboard;
+        try{cargo.DesiredAboard=0;DistributeMass();status="Return selected at origin. Confirm outside and apply in cockpit; the job remains accepted until you cancel it.";}
+        catch(Exception ex){cargo.DesiredAboard=before;status=ex.Message;}
+        PickupCargo=null;Update(false);
+    }
+    public void PreviewCancellation(CargoConsignmentRow cargo)
+    {
+        if(busy||service.Manifest?.Pending is not null||!Consignments.Contains(cargo)||!cargo.CanCancelJob)return;
+        CancellationJob=cargo;Update(false);
+    }
+    public Task ConfirmCancellationAsync()=>Run(async()=>
+    {
+        var job=CancellationJob??throw new InvalidOperationException("Select a job to cancel.");
+        if(Pickups.Count>0||Consignments.Any(c=>c.Aboard!=c.DesiredAboard))throw new InvalidOperationException("Apply or clear other loading edits before cancelling a job.");
+        await service.PrepareCancellationAsync(job.JobId);
+        CancellationJob=null;
+        await refreshJobs();
+        ReloadRows();
+    },false);
     private void RefreshEditableRows()
     {
         RefreshCards();
@@ -310,13 +346,13 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     public Task HandleCargoAsync()=>Run(async()=>
     {
         if(FuelNeedsRecheck){await service.RenewAuthorizationAsync();ReloadRows();return;}
-        if(service.Manifest?.Pending is not null){await service.ApplyAsync();ReloadRows();return;}
+        if(service.Manifest?.Pending is not null){await service.ApplyAsync();await refreshJobs();ReloadRows();return;}
         DistributeMass();
         await service.PrepareAsync(Consignments.ToDictionary(c=>c.JobId,c=>c.DesiredAboard),Stations.Select(s=>new CargoStationAllocation(s.Index,s.DesiredCargo)).ToArray());
     },false);
     public Task PrepareDepartureAsync()=>Run(async()=>
     {
-        if(service.Manifest?.Legs.Any(l=>l.SettledUtc is null)==true)await service.ArmLegAsync();
+        if(service.Manifest?.Legs.Any(l=>CargoJourneyKernel.IsActive(l))==true)await service.ArmLegAsync();
         else await service.PlanLegAsync(SelectedStop?.Endpoint??throw new InvalidOperationException("Choose your next destination first."));
     },false);
     private void MatchMass()
@@ -362,17 +398,20 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
     }
     private void ReloadRows()
     {
-        Consignments.Clear(); Stations.Clear(); Stops.Clear();Pickups.Clear();PickupCargo=null;changingPickup=null;
+        Consignments.Clear(); Stations.Clear(); Stops.Clear();Pickups.Clear();PickupCargo=null;changingPickup=null;CancellationJob=null;
         if (service.World is not {} w) return;
         var m = service.Manifest; var here = service.Here?.Id;
         foreach (var job in w.Jobs.Where(j => j.State == EconomyJobState.Accepted))
         {
             var s = w.Shipments.Single(x => x.JobId == job.Id);
             var aboard = m?.Cargo.SingleOrDefault(x => x.JobId == job.Id)?.Kilograms ?? 0;
-            if (s.OriginLocationId != here && aboard == 0) continue;
+            if(w.CargoAirframes.Any(a=>a.AirframeId!=m?.AirframeId&&a.ManagedJobs.Contains(job.Id)))continue;
             Consignments.Add(new() { JobId = job.Id, Description = w.Resources.Single(x=>x.Id==s.ResourceId).Name,
                 Origin = w.Locations.Single(x=>x.Id==s.OriginLocationId).Name, Destination = destinations(w).SingleOrDefault(p=>p.Id==s.DestinationLocationId)?.Name ?? w.Locations.Single(x=>x.Id==s.DestinationLocationId).Name,
                 Aboard = aboard, AvailableHere = s.OriginLocationId == here ? s.Quantity - s.DeliveredQuantity - s.LoadedQuantity : 0,
+                CanReturnAtOrigin=s.OriginLocationId==here&&aboard>0,
+                IsAtOrigin=s.OriginLocationId==here,
+                CanCancelJob=!w.LogisticsContracts.Any(c=>c.JobId==job.Id),
                 Delivered = s.DeliveredQuantity, DesiredAboard = m?.Pending?.Changes.SingleOrDefault(c=>c.JobId==job.Id)?.After??aboard, Status = s.DestinationLocationId == here ? "DELIVER HERE" : s.State.ToString(), Edited=()=>Update(false) });
         }
         foreach (var s in (service.Live?.PayloadStations ?? []).OrderBy(s=>s.Index))
@@ -414,6 +453,8 @@ public sealed class CargoJourneyViewModel : INotifyPropertyChanged
         RefreshCards();
         foreach (var name in new[] { nameof(Status), nameof(ManifestText), nameof(AircraftStatus), nameof(Warnings), nameof(SelectedStop),nameof(SelectedStation),nameof(TechnicalDetails),nameof(CanEditCargo),nameof(CargoSummary),nameof(PrimaryActionText),nameof(NextStep),nameof(DepartureActionText),nameof(IsChoosingStation),nameof(PickupQuantityText),nameof(PickupHeading),nameof(PickupHelp), nameof(StationAssignments), nameof(SelectedStationDetails), nameof(LoadingBayHeading), nameof(CanChooseAircraft) }) PropertyChanged?.Invoke(this, new(name));
         PrimaryCommand?.Refresh();LoadAvailableCommand?.Refresh();DeliverHereCommand?.Refresh();DepartureCommand?.Refresh();
+        foreach(var name in new[]{nameof(HasCancellationPreview),nameof(CancellationPreview),nameof(CancellationActionText)})PropertyChanged?.Invoke(this,new(name));
+        ConfirmCancellationCommand?.Refresh();KeepJobCommand?.Refresh();
         ReadCommand.Refresh(); PrepareCommand.Refresh(); ApplyCommand.Refresh(); PlanLegCommand.Refresh(); ArmLegCommand.Refresh(); RenewCommand.Refresh(); CancelPlanCommand.Refresh(); MatchMassCommand.Refresh();
     }
 }

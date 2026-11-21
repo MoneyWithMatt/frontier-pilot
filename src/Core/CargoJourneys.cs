@@ -10,12 +10,15 @@ public sealed record CargoOperation(string Id, string LocationId, DateTimeOffset
     public DateTimeOffset? AuthorizedUtc { get; init; }
     public DateTimeOffset? VerifiedUtc { get; init; }
     public bool WriteStarted { get; init; }
+    public string? CancelJobId { get; init; }
     public decimal? ExpectedGrossKilograms { get; init; }
 }
-public sealed record CargoHandlingReceipt(string Id, string LocationId, DateTimeOffset Utc, CargoChange[] Changes, decimal KilogramsAboard);
+public sealed record CargoHandlingReceipt(string Id, string LocationId, DateTimeOffset Utc, CargoChange[] Changes, decimal KilogramsAboard)
+{ public string? CancelledJobId { get; init; } }
 public sealed record CargoFlightLeg(string Id, PassengerEndpoint Origin, PassengerEndpoint Destination,
     DateTimeOffset CreatedUtc, CargoPlacement[] Carried, FlightAttempt? Flight = null, DateTimeOffset? SettledUtc = null,
-    string? EmployerId = null, decimal? HourlyRate = null);
+    string? EmployerId = null, decimal? HourlyRate = null)
+{ public DateTimeOffset? AbortedUtc { get; init; } }
 public sealed record CargoAirframeManifest(string Id, Guid AirframeId, FlightAircraftIdentity Aircraft, string PlayerId,
     int Revision, string LocationId, CargoPlacement[] Cargo, PlannedPayloadStation[] Stations, string[] ManagedJobs,
     CargoOperation? Pending, CargoFlightLeg[] Legs, CargoHandlingReceipt[] History)
@@ -23,11 +26,12 @@ public sealed record CargoAirframeManifest(string Id, Guid AirframeId, FlightAir
 
 public static class CargoJourneyKernel
 {
+    public static bool IsActive(CargoFlightLeg leg) => leg.SettledUtc is null && leg.AbortedUtc is null;
     public static bool Manages(EconomyWorld w, string job) => w.CargoAirframes.Any(m => m.ManagedJobs.Contains(job));
     public static string ManifestId(Guid id) => "aircargo-" + id.ToString("N");
     public static EconomyTransition Replace(EconomyWorld w, CargoAirframeManifest m) => new((w with {
         Revision = w.Revision + 1, CargoAirframes = w.CargoAirframes.Where(x => x.Id != m.Id).Append(m).ToArray() }).EnsureValid(), true);
-    public static bool Occupied(EconomyWorld w) => w.CargoAirframes.Any(x => x.Cargo.Length > 0 || x.Pending is not null || x.Legs.Any(l => l.SettledUtc is null));
+    public static bool Occupied(EconomyWorld w) => w.CargoAirframes.Any(x => x.Cargo.Length > 0 || x.Pending is not null || x.Legs.Any(l => CargoJourneyKernel.IsActive(l)));
 
     public static void Validate(EconomyWorld w)
     {
@@ -64,6 +68,8 @@ public static class CargoJourneyKernel
                 throw new InvalidDataException("Cargo station claims do not match consignment mass.");
             if (m.Pending is {} p)
             {
+                if(p.CancelJobId is {} cancel && (p.Changes.Length!=1 || p.Changes[0].JobId!=cancel || p.Changes[0].After!=0))
+                    throw new InvalidDataException("Cancellation intent must unload exactly one complete consignment.");
                 EconomyValidation.Id(p.Id, "cargo operation");
                 p.Position.EnsureValid();
                 if (!p.Position.IsOnGround || p.Position.GroundSpeedKnots > 5 || p.CreatedUtc == default || p.AuthorizedUtc < p.CreatedUtc || p.LocationId != m.LocationId || p.Changes.Length == 0 || p.Changes.Any(x => x.Before < 0 || x.After < 0 || x.Before == x.After || !m.ManagedJobs.Contains(x.JobId)))
@@ -80,9 +86,11 @@ public static class CargoJourneyKernel
             }
             EconomyValidation.Unique(m.History.Select(x => x.Id), "cargo handling receipt");
             EconomyValidation.Unique(m.Legs.Select(x => x.Id), "flight leg");
-            if (m.Legs.Count(x => x.SettledUtc is null) > 1) throw new InvalidDataException("Only one current leg may operate one airframe.");
+            if (m.Legs.Count(x => CargoJourneyKernel.IsActive(x)) > 1) throw new InvalidDataException("Only one current leg may operate one airframe.");
             foreach (var l in m.Legs)
             {
+                if(l.AbortedUtc is {} aborted && (aborted<l.CreatedUtc || l.SettledUtc is not null || l.Flight?.DeliveryProof is not null))
+                    throw new InvalidDataException("Aborted cargo leg cannot qualify arrival or settlement.");
                 EconomyValidation.Id(l.Id, "cargo leg"); l.Origin.EnsureValid(); l.Destination.EnsureValid(); l.Flight?.EnsureValid();
                 if (l.CreatedUtc == default || !l.Origin.CanGenerate || !l.Destination.CanGenerate || l.Origin.Id == l.Destination.Id || l.Carried.Length == 0 || l.HourlyRate is <= 0 || (l.EmployerId is null) != (l.HourlyRate is null))
                     throw new InvalidDataException("Invalid cargo leg booking.");
@@ -130,6 +138,7 @@ public static class CargoJourneyKernel
 
     public static EconomyTransition SettleLeg(EconomyWorld w, CargoAirframeManifest m, CargoFlightLeg leg, DateTimeOffset utc)
     {
+        if (leg.AbortedUtc is not null) throw new InvalidOperationException("Aborted cargo leg cannot settle.");
         if (leg.Flight?.DeliveryProof is null) throw new InvalidOperationException("Flight leg has not qualified arrival.");
         if (m.Legs.Single(x => x.Id == leg.Id).SettledUtc is not null) return new(w, false);
         var completed = leg with { SettledUtc = utc };
@@ -169,6 +178,8 @@ public static class CargoJourneyKernel
         var m = w.CargoAirframes.Single(x => x.Id == manifestId);
         if (m.History.Any(x => x.Id == operationId)) return new(w, false);
         var p = m.Pending is { Verified: true } verified && verified.Id == operationId ? verified : throw new InvalidOperationException("Payload operation has not been verified.");
+        if(p.CancelJobId is {} cancelledJob)
+            return CargoCancellationKernel.Commit(w, cancelledJob, p.LocationId, p.CreatedUtc, m.Id, p.Id);
         foreach (var c in p.Changes)
         {
             var shipment=w.Shipments.Single(s=>s.JobId==c.JobId);

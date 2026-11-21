@@ -29,6 +29,10 @@ public partial class CargoJourneyControl : UserControl
     }
     private void DeliverCargo_Click(object sender,RoutedEventArgs e)
     {if(DataContext is CargoJourneyViewModel vm && ((FrameworkElement)sender).DataContext is CargoConsignmentRow cargo)vm.DeliverConsignment(cargo);}
+    private void ReturnCargo_Click(object sender,RoutedEventArgs e)
+    {if(DataContext is CargoJourneyViewModel vm && ((FrameworkElement)sender).DataContext is CargoConsignmentRow cargo)vm.ReturnConsignment(cargo);}
+    private void CancelCargo_Click(object sender,RoutedEventArgs e)
+    {if(DataContext is CargoJourneyViewModel vm && ((FrameworkElement)sender).DataContext is CargoConsignmentRow cargo)vm.PreviewCancellation(cargo);}
     private void RemovePickup_Click(object sender,RoutedEventArgs e)
     {if(DataContext is CargoJourneyViewModel vm && ((FrameworkElement)sender).DataContext is CargoPickupPlan pickup)vm.RemovePickup(pickup);}
     private void ClosePicker_Click(object sender,RoutedEventArgs e)

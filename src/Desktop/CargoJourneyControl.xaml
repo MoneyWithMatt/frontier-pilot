@@ -23,19 +23,25 @@
   <TextBlock Text="{Binding AircraftStatus}" TextWrapping="Wrap" Margin="0,6"/>
   <TextBlock Text="{Binding LoadingBayHeading}" FontSize="17" FontWeight="SemiBold" Margin="0,10,0,4"/>
   <TextBlock Text="Blue: selected. Green: proposed pairing, not loaded. Tab between cards; Enter or Space selects." FontSize="11"/>
-  <ItemsControl x:Name="CargoConsignments" ItemsSource="{Binding Consignments}" IsEnabled="{Binding CanEditCargo}" Margin="0,5">
+  <ItemsControl x:Name="CargoConsignments" ItemsSource="{Binding Consignments}" Margin="0,5">
    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
    <ItemsControl.ItemTemplate><DataTemplate><StackPanel Width="174" Margin="0,0,4,4">
-    <Button Click="LoadCargo_Click" Style="{StaticResource AssignmentCard}" AutomationProperties.Name="{Binding AccessibleDescription}" MinHeight="150">
+    <Button Click="LoadCargo_Click" Style="{StaticResource AssignmentCard}" IsEnabled="{Binding DataContext.CanEditCargo,RelativeSource={RelativeSource AncestorType=ItemsControl}}" AutomationProperties.Name="{Binding AccessibleDescription}" MinHeight="150">
      <StackPanel><TextBlock Text="{Binding Description}" FontWeight="SemiBold"/>
       <TextBlock Text="{Binding WeightLabel}" Margin="0,6"/><TextBlock Text="{Binding DestinationLabel, StringFormat='TO: {0}'}" FontSize="12"/>
       <TextBlock Text="{Binding JobId}" FontSize="10" Foreground="{StaticResource MutedBrush}"/>
       <TextBlock Text="{Binding StateText}" FontSize="10" Margin="0,3,0,0"/><TextBlock Text="{Binding AssignmentText}" FontSize="11"/>
      </StackPanel>
     </Button>
-    <Button Content="Deliver" Click="DeliverCargo_Click" Visibility="{Binding CanDeliver, Converter={StaticResource VisibleWhenTrue}}"/>
+    <Button Content="Deliver" Click="DeliverCargo_Click" IsEnabled="{Binding DataContext.CanEditCargo,RelativeSource={RelativeSource AncestorType=ItemsControl}}" Visibility="{Binding CanDeliver, Converter={StaticResource VisibleWhenTrue}}"/>
+    <Button Content="Unload at origin" Click="ReturnCargo_Click" IsEnabled="{Binding DataContext.CanEditCargo,RelativeSource={RelativeSource AncestorType=ItemsControl}}" Visibility="{Binding CanReturnAtOrigin, Converter={StaticResource VisibleWhenTrue}}"/>
+    <Button Content="Cancel job…" Click="CancelCargo_Click" Visibility="{Binding CanCancelJob, Converter={StaticResource VisibleWhenTrue}}"/>
    </StackPanel></DataTemplate></ItemsControl.ItemTemplate>
   </ItemsControl>
+  <Border Style="{StaticResource Card}" Padding="10" Visibility="{Binding HasCancellationPreview, Converter={StaticResource VisibleWhenTrue}}"><StackPanel>
+   <TextBlock Text="{Binding CancellationPreview}" TextWrapping="Wrap"/>
+   <WrapPanel><Button Content="{Binding CancellationActionText}" Command="{Binding ConfirmCancellationCommand}"/><Button Content="Keep job" Command="{Binding KeepJobCommand}"/></WrapPanel>
+  </StackPanel></Border>
   <Border Visibility="{Binding IsChoosingStation, Converter={StaticResource VisibleWhenTrue}}" Style="{StaticResource Card}" Padding="10" Margin="0,5">
    <StackPanel><TextBlock Text="{Binding PickupHeading}" FontWeight="SemiBold"/><TextBlock Text="{Binding PickupHelp}" FontSize="12"/>
     <WrapPanel><Expander Header="Partial amount / split" Margin="0,3,8,3"><StackPanel><TextBlock Text="Amount to assign (kg)"/><TextBox x:Name="PickupQuantity" Text="{Binding PickupQuantityText, UpdateSourceTrigger=PropertyChanged}" Width="100" HorizontalAlignment="Left"/></StackPanel></Expander>

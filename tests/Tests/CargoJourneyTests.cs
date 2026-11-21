@@ -522,5 +522,106 @@ public sealed class CargoJourneyTests : IDisposable
         outside=true;await vm.HandleCargoAsync();Assert.NotNull(service.Manifest!.Pending);await vm.HandleCargoAsync();Assert.Equal(0,sim.Writes);Assert.NotNull(service.Manifest.Pending);
         seated=true;await vm.HandleCargoAsync();Assert.Null(service.Manifest.Pending);Assert.Equal(43,sim.Weights[5]);
     }
+    [Fact] public async Task OriginReturnThenCancellationReleasesStockAndPreservesOtherCargoAndMoney()
+    {
+        var s=await Create();await Handle(s,new(){{"job-mine",10},{"job-community",25}},new CargoStationAllocation(6,35));
+        var vm=new CargoJourneyViewModel(s,()=>Task.CompletedTask,_=>Places,()=>"SYNTHETIC");await vm.RefreshAsync();
+        var cargo=vm.Consignments.Single(c=>c.JobId=="job-mine");Assert.True(cargo.CanReturnAtOrigin);
+        vm.ReturnConsignment(cargo);Assert.Equal(25,vm.RequestedKilograms);await vm.HandleCargoAsync();await vm.HandleCargoAsync();
+        Assert.Equal(58,sim.Weights[5]);Assert.Equal(EconomyJobState.Accepted,s.World!.Jobs.Single(j=>j.Id==cargo.JobId).State);
+        vm.PreviewCancellation(vm.Consignments.Single(c=>c.JobId==cargo.JobId));Assert.True(vm.HasCancellationPreview);Assert.Contains("No financial penalty",vm.CancellationPreview);
+        var money=s.World.FinancialLedger.ToArray();await vm.ConfirmCancellationAsync();
+        Assert.False(vm.HasCancellationPreview);Assert.Equal(EconomyJobState.Cancelled,s.World.Jobs.Single(j=>j.Id==cargo.JobId).State);
+        Assert.Equal(100,s.World.Inventories.Single(i=>i.LocationId==Origin.Id&&i.ResourceId=="medicine").AvailableQuantity);
+        Assert.Equal(money,s.World.FinancialLedger);Assert.Equal(25,Assert.Single(s.Manifest!.Cargo).Kilograms);
+        await s.PrepareCancellationAsync(cargo.JobId);Assert.Equal(100,s.World.Inventories.Single(i=>i.LocationId==Origin.Id&&i.ResourceId=="medicine").AvailableQuantity);
+    }
+    [Theory][InlineData(false)][InlineData(true)]
+    public async Task CancellationUnloadsOnlySelectedConsignmentAtOriginOrRemoteWithoutPay(bool remote)
+    {
+        var s=await Create(true);await Handle(s,new(){{"job-mine",10},{"job-community",25}},new CargoStationAllocation(6,35));
+        if(remote)await Fly(s,Origin,A);
+        var before=s.World!;await s.PrepareCancellationAsync("job-community");
+        Assert.Equal(35,s.Manifest!.Cargo.Sum(c=>c.Kilograms));Assert.Equal(EconomyJobState.Accepted,s.World!.Jobs.Single(j=>j.Id=="job-community").State);
+        Assert.Contains("CANCEL JOB",CargoDispatchDocument.Render(s.World,s.Manifest,"TEST",s.Live));
+        s=NewService();await s.RefreshAsync();await s.ApplyAsync();
+        Assert.Equal(43,sim.Weights[5]);Assert.Equal(10,Assert.Single(s.Manifest!.Cargo).Kilograms);Assert.Equal(0,sim.FuelWrites);
+        var cancelled=s.World!.Jobs.Single(j=>j.Id=="job-community");Assert.NotNull(cancelled.CargoCancellation);
+        Assert.Equal(remote?EconomyJobState.Forfeited:EconomyJobState.Cancelled,cancelled.State);
+        Assert.Equal(remote?25:0,cancelled.CargoCancellation.Abandoned);
+        Assert.Equal(before.FinancialLedger,s.World.FinancialLedger);Assert.Equal(before.Players,s.World.Players);
+        var revision=s.World.Revision;await s.PrepareCancellationAsync("job-community");Assert.Equal(revision,s.World.Revision);
+    }
+    [Fact] public async Task FailedCancellationWriteRetainsCustodyAndRetryDoesNotUnloadTwice()
+    {
+        var s=await Create();await Handle(s,new(){{"job-mine",10}},new CargoStationAllocation(6,10));
+        await s.PrepareCancellationAsync("job-mine");sim.FailAfterStation=1;
+        await Assert.ThrowsAsync<IOException>(()=>s.ApplyAsync());Assert.Equal(10,s.World!.Shipments.Single(x=>x.JobId=="job-mine").LoadedQuantity);
+        Assert.Null(s.World.Jobs.Single(x=>x.Id=="job-mine").CargoCancellation);
+        sim.FailAfterStation=-1;s=NewService();await s.RefreshAsync();await s.ApplyAsync();
+        Assert.Equal(33,sim.Weights[5]);Assert.Empty(s.Manifest!.Cargo);Assert.False(CargoJourneyKernel.Occupied(s.World!));
+        var writes=sim.Writes;await s.PrepareCancellationAsync("job-mine");Assert.Equal(writes,sim.Writes);
+    }
+    [Fact] public async Task CancellationOfInterruptedLegAbortsProofButKeepsThroughCargoForANewLeg()
+    {
+        var s=await Create(true);await Handle(s,new(){{"job-mine",10},{"job-community",25}},new CargoStationAllocation(6,35));
+        await Depart(s,A);await Observe(s,Origin.Latitude,Origin.Longitude+.02,false);await s.ObserveAsync(null);
+        sim.Sample=sim.Sample with {IsOnGround=true,GroundSpeedKnots=0};await s.PrepareCancellationAsync("job-mine");await s.ApplyAsync();
+        Assert.NotNull(s.Manifest!.Legs.Single().AbortedUtc);Assert.Null(s.Manifest.Legs.Single().SettledUtc);Assert.Empty(s.World!.FinancialLedger);
+        Assert.Equal(25,Assert.Single(s.Manifest.Cargo).Kilograms);await s.PlanLegAsync(B);Assert.Single(s.Manifest.Legs.Where(CargoJourneyKernel.IsActive));
+    }
+    [Fact] public async Task CancellationRefusesChangedPayloadAircraftAirborneAndUnknownLocation()
+    {
+        var s=await Create();await Handle(s,new(){{"job-mine",10}},new CargoStationAllocation(6,10));
+        sim.Weights[5]=44;await Assert.ThrowsAsync<InvalidOperationException>(()=>s.PrepareCancellationAsync("job-mine"));sim.Weights[5]=43;
+        var wrong=NewService(Guid.NewGuid());await Assert.ThrowsAsync<InvalidOperationException>(()=>wrong.PrepareCancellationAsync("job-mine"));
+        sim.Sample=sim.Sample with {IsOnGround=false};await Assert.ThrowsAsync<InvalidOperationException>(()=>s.PrepareCancellationAsync("job-mine"));
+        sim.Sample=sim.Sample with {IsOnGround=true,Latitude=0,Longitude=0};await Assert.ThrowsAsync<InvalidOperationException>(()=>s.PrepareCancellationAsync("job-mine"));
+        Assert.Null((await Store.LoadAsync())!.Jobs.Single(j=>j.Id=="job-mine").CargoCancellation);
+    }
+    [Fact] public async Task PartiallyLoadedRemoteCancellationReturnsOnlyUnloadedReservationToOrigin()
+    {
+        var s=await Create();await Handle(s,new(){{"job-mine",4}},new CargoStationAllocation(6,4));
+        await Fly(s,Origin,A);await s.PrepareCancellationAsync("job-mine");await s.ApplyAsync();
+        var job=s.World!.Jobs.Single(j=>j.Id=="job-mine");Assert.Equal(6,job.CargoCancellation!.ReturnedToOrigin);Assert.Equal(4,job.CargoCancellation.Abandoned);
+        Assert.Equal(96,s.World.Inventories.Single(i=>i.LocationId==Origin.Id&&i.ResourceId=="medicine").AvailableQuantity);
+        Assert.DoesNotContain(s.World.InventoryLedger,i=>i.JobId==job.Id&&i.Kind==InventoryTransactionKind.DeliveryReceived);
+        Assert.Empty(s.World.FinancialLedger);Assert.Equal(33,sim.Weights[5]);
+    }
+    [Fact] public async Task NeverLoadedCancellationAwayFromOriginRestoresReservationWithoutPayloadWrite()
+    {
+        var s=await Create();sim.Sample=sim.Sample with{Latitude=A.Latitude,Longitude=A.Longitude};
+        await s.PrepareCancellationAsync("job-mine");Assert.Equal(0,sim.Writes);
+        Assert.Equal(10,s.World!.Jobs.Single(j=>j.Id=="job-mine").CargoCancellation!.ReturnedToOrigin);
+        Assert.Equal(100,s.World.Inventories.Single(i=>i.LocationId==Origin.Id&&i.ResourceId=="medicine").AvailableQuantity);
+    }
+    [Fact] public async Task Version16SaveLoadsUnchangedAndCancellationMigratesWithoutLosingOtherJob()
+    {
+        await Create();var original=(await Store.LoadAsync())!;var json=JsonNode.Parse(File.ReadAllText(Store.StoragePath))!;json["SchemaVersion"]=16;
+        foreach(var job in json["World"]!["Jobs"]!.AsArray())job!.AsObject().Remove("CargoCancellation");
+        File.WriteAllText(Store.StoragePath,json.ToJsonString());
+        var before=(await Store.LoadAsync())!;Assert.Equal(original.Jobs,before.Jobs);Assert.Equal(original.Shipments,before.Shipments);Assert.Equal(original.FinancialLedger,before.FinancialLedger);Assert.Equal(original.Inventories,before.Inventories);
+        var s=NewService();await s.PrepareCancellationAsync("job-mine");
+        Assert.Equal(before.Jobs.Single(j=>j.Id=="job-community"),s.World!.Jobs.Single(j=>j.Id=="job-community"));
+        Assert.Equal(17,JsonNode.Parse(File.ReadAllText(Store.StoragePath))!["SchemaVersion"]!.GetValue<int>());
+        Assert.NotNull((await Store.LoadAsync())!.Jobs.Single(j=>j.Id=="job-mine").CargoCancellation);
+    }
+    [Fact] public async Task CancellationAuditRejectsInventedReturnOrMissingPhysicalReceipt()
+    {
+        var s=await Create();await Handle(s,new(){{"job-mine",10}},new CargoStationAllocation(6,10));
+        await s.PrepareCancellationAsync("job-mine");await s.ApplyAsync();var w=s.World!;var job=w.Jobs.Single(j=>j.Id=="job-mine");
+        Assert.Throws<InvalidDataException>(()=>(w with {Jobs=w.Jobs.Select(j=>j.Id==job.Id?j with {CargoCancellation=j.CargoCancellation! with {ReturnedToOrigin=11}}:j).ToArray()}).EnsureValid());
+        Assert.Throws<InvalidDataException>(()=>(w with {CargoAirframes=w.CargoAirframes.Select(m=>m with {History=[]}).ToArray()}).EnsureValid());
+    }
+    [Fact] public async Task CancellationAfterPartialDeliveryPreservesDeliveredInventoryAndAwardsNoCompletionPay()
+    {
+        var s=await Create(true);await Handle(s,new(){{"job-mine",10}},new CargoStationAllocation(6,10));await Fly(s,Origin,A);
+        await Handle(s,new(){{"job-mine",6}},new CargoStationAllocation(6,6));
+        var delivered=s.World!.Inventories.Single(i=>i.LocationId==A.Id&&i.ResourceId=="medicine").AvailableQuantity;
+        await s.PrepareCancellationAsync("job-mine");await s.ApplyAsync();
+        Assert.Equal(4,delivered);Assert.Equal(delivered,s.World!.Inventories.Single(i=>i.LocationId==A.Id&&i.ResourceId=="medicine").AvailableQuantity);
+        Assert.Equal(4,s.World.Shipments.Single(x=>x.JobId=="job-mine").DeliveredQuantity);Assert.Empty(s.World.FinancialLedger);
+        Assert.Equal(6,s.World.Jobs.Single(j=>j.Id=="job-mine").CargoCancellation!.Abandoned);
+    }
     public void Dispose() { if(Directory.Exists(root)) Directory.Delete(root,true); }
 }

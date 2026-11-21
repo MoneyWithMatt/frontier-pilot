@@ -330,3 +330,6 @@ Matt explicitly supersedes aircraft-specific airport suitability: runway size, s
 ## Explicit manual company refresh — 2026-11-04
 
 Matt chose fresh available jobs on each Refresh work click. This supersedes the prior reload-only button policy. Unaccepted generated NPC-company offers can be retired/replaced; accepted custody/proof/wages and player contracts remain intact. Automatic maintenance retains its existing clock. Command receipts prevent lost-response retries rerolling twice. [Scope](specs/manual-company-work-refresh.md).
+
+## 2026-11-21 — Free cargo cancellation during playtesting
+Matt superseded the earlier away-from-origin penalty: no penalty anywhere while bugs may require cancellation. Origin cargo returns to stock; remote cargo physically unloaded is abandoned without delivery credit, and reserved origin stock is released. No completion pay is invented. Existing payload confirmation and identity safeguards remain required. See [specification](cargo-cancellation.md).

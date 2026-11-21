@@ -38,6 +38,7 @@ public sealed record EconomyJob(string Id, string RequirementId, string Employer
     public DateTimeOffset? CancelledUtc { get; init; }
     public string? CancellationReason { get; init; }
     public DateTimeOffset? OfferedUtc { get; init; }
+    public CargoCancellationReceipt? CargoCancellation { get; init; }
     public DateTimeOffset? ExpiresUtc { get; init; }
 }
 public sealed record Shipment(string Id, string JobId, string ResourceId, decimal Quantity, string OriginLocationId,
@@ -426,7 +427,8 @@ public sealed record EconomyWorld(string Id, int Revision, IReadOnlyList<Economi
                 payments[0].CurrencyCode != requirement.CurrencyCode || payments[0].OccurredUtc != job.CompletedUtc)) || shipment.DeliveredUtc != job.CompletedUtc)
                 throw new InvalidDataException("Completed job cargo and payment records are inconsistent.");
         }
-        foreach (var job in Jobs.Where(x => x.State == EconomyJobState.Cancelled && !LogisticsContracts.Any(c => c.JobId == x.Id)))
+        CargoCancellationKernel.Validate(this);
+        foreach (var job in Jobs.Where(x => x.State == EconomyJobState.Cancelled && x.CargoCancellation is null && !LogisticsContracts.Any(c => c.JobId == x.Id)))
         {
             var shipment = shipments[job.ShipmentId];
             var release = InventoryLedger.Where(x => x.Kind == InventoryTransactionKind.ShipmentReservationReleased && x.JobId == job.Id).ToArray();
@@ -608,7 +610,7 @@ public static class EconomyKernel
             kind = ShipmentCargoTransferKind.LoadedToAircraft;
             details = $"{quantity:0.###} kg loaded from reserved origin cargo after verified simulator read-back.";
         }
-        else if (atOrigin && shipment.State != ShipmentState.InTransit)
+        else if (atOrigin && (shipment.State != ShipmentState.InTransit || physicalIntent is not null))
         {
             kind = ShipmentCargoTransferKind.UnloadedAtOrigin;
             details = $"{quantity:0.###} kg unloaded back into the shipment's reserved origin cargo after verified simulator read-back.";
@@ -652,7 +654,8 @@ public static class EconomyKernel
             details = $"{quantity:0.###} kg physically unloaded at an invalid location; the complete active shipment was forfeited without payment.";
         }
 
-        var nextState = kind == ShipmentCargoTransferKind.UnloadedAndForfeited ? ShipmentState.Forfeited :
+        var nextState = kind == ShipmentCargoTransferKind.UnloadedAtOrigin ? shipment.DeliveredQuantity>0 ? ShipmentState.InTransit : supplied.DesiredLoadedQuantity>0 ? ShipmentState.Loaded : ShipmentState.Reserved :
+            kind == ShipmentCargoTransferKind.UnloadedAndForfeited ? ShipmentState.Forfeited :
             shipment.State == ShipmentState.InTransit ? ShipmentState.InTransit : supplied.DesiredLoadedQuantity > 0 ? ShipmentState.Loaded : ShipmentState.Reserved;
         string? currentLocation = nextState switch { ShipmentState.Reserved or ShipmentState.Loaded => shipment.OriginLocationId,
             ShipmentState.InTransit => null, ShipmentState.Forfeited => supplied.CurrentLocationId, _ => shipment.CurrentLocationId };

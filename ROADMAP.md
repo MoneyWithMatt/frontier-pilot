@@ -60,3 +60,5 @@ Airport-level representation knowledge supersedes aircraft-specific suitability 
 ## Immediate work refresh and inline fuel — 2026-11-04
 
 Matt approved immediate replacement of available company offers on Refresh work, retaining accepted custody/wages and the background clock. Schema 16 adds refresh command receipts/route sequence. Cargo fuel mismatch now has an explicit outside recheck preserving station intent and re-verifying before confirmation. Existing fuel controls are visible below the station diagram and share one loading service. Scope/evidence: docs/specs/manual-company-work-refresh.md and docs/handoffs/namibia-playtesting.md. Live fuel/loading acceptance remains separate.
+
+- Cargo recovery playtest: origin return and penalty-free cancellation implementation on codex/cargo-cancellation; hosted verification and live unload acceptance tracked in [handoff](docs/handoffs/cargo-cancellation.md). No player-contract or passenger cancellation added.

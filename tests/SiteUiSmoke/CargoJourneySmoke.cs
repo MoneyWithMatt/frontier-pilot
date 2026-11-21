@@ -87,7 +87,7 @@ Check(vm.IsChoosingStation,"Load opens the station chooser");
         Save(host,Path.Combine(folder,"cargo-click-to-load-plan.png"));
 
         await Click("Confirm loading / unloading plan");Check(vm.ManifestText.Contains("PROPOSED / PENDING"),"Pending printout is distinct from committed cargo: "+vm.Status);
-        Check(physical.Weights[5]==33,"Preview does not write the simulator");Check(!cargoGrid.IsEnabled,"Pending plan locks editable consignment controls");Check(Descendants<Expander>(control).All(e=>!e.IsExpanded),"Station and recovery details are collapsed in the simple flow");Save(host,Path.Combine(folder,"cargo-dispatch-proposed.png"));
+        Check(physical.Weights[5]==33,"Preview does not write the simulator");Check(Descendants<Button>(cargoGrid).Where(b=>b.Style==control.Resources["AssignmentCard"]).All(b=>!b.IsEnabled),"Pending plan locks editable consignment controls");Check(Descendants<Expander>(control).All(e=>!e.IsExpanded),"Station and recovery details are collapsed in the simple flow");Save(host,Path.Combine(folder,"cargo-dispatch-proposed.png"));
         await Click("Apply cargo in cockpit");Check(physical.Weights[5]==68&&service.Manifest!.Cargo.Length==2,"Real bound apply command confirms 35 kg: "+vm.Status);
         foreach(var item in vm.Consignments)
         {
@@ -128,5 +128,48 @@ Check(vm.IsChoosingStation,"Load opens the station chooser");
         Check(physical.Weights[5]==33&&service.Manifest!.Cargo.Length==0,"Second UI delivery restores unrelated station baseline");
         Check((await store.LoadAsync())!.Jobs.Count(j=>j.State==EconomyJobState.Completed)==2,"Both UI consignments complete independently");
         Save(host,Path.Combine(folder,"cargo-dispatch-delivered.png"));host.Close();
+        await CheckCargoCancellation(folder);
+    }
+
+    private static async Task CheckCargoCancellation(string folder)
+    {
+        var store=new MemoryEconomyStateStore();var physical=new SyntheticPassengerAircraft();var id=Guid.NewGuid();
+        var catalogue=NamibiaLocationCatalogue.Load();
+        var world=EmployedCargoPrototype.Create(catalogue,new(UisCargoKilograms:10,ArandisCargoKilograms:25));
+        var origin=catalogue.Get(EmployedCargoPrototype.ErosId);var coordinates=origin.ApproximateCoordinates!;
+        var here=new PassengerEndpoint(EmployedCargoPrototype.ErosId,origin.Name,coordinates.Latitude,coordinates.Longitude);
+        physical.Sample=physical.Sample with{Latitude=here.Latitude,Longitude=here.Longitude};
+        await store.InitializeAsync(world);
+        foreach(var job in world.Jobs)await store.ApplyAsync(w=>EconomyKernel.AcceptJob(w,job.Id,physical.Sample.ObservedUtc));
+        var service=new CargoJourneyService(store,physical,()=>"synthetic",()=>id,(_,_)=>here,()=>physical.Sample.ObservedUtc,physical.WaitForRetentionAsync);
+        var vm=new CargoJourneyViewModel(service,()=>Task.CompletedTask,_=>[here],()=>"SYNTHETIC");
+        var control=new CargoJourneyControl{DataContext=vm};var host=new Window{Content=control,Width=1267,Height=854,ShowInTaskbar=false};host.Show();Pump();
+        await vm.RefreshAsync();
+        var first=vm.Consignments.Single(c=>c.AvailableHere==10).JobId;
+        var other=vm.Consignments.Single(c=>c.AvailableHere==25).JobId;
+        await service.PrepareAsync(new Dictionary<string,decimal>{{first,10},{other,25}},[new CargoStationAllocation(6,35)]);await service.ApplyAsync();await vm.RefreshAsync();Pump();
+        var cards=(ItemsControl)control.FindName("CargoConsignments");
+        void Row(string job,string action)
+        {
+            var b=Descendants<Button>(cards).Single(b=>b.DataContext is CargoConsignmentRow c&&c.JobId==job&&b.Content?.ToString()==action);
+            b.BringIntoView();Pump();Check(b.IsEnabled&&b.IsVisible,"Cancellation/return action accessible: "+action);b.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+        }
+        async Task Command(string label)
+        {
+            var b=Descendants<Button>(control).Single(b=>b.Content?.ToString()==label);
+            Check(b.Command?.CanExecute(null)==true,"Cancellation command bound: "+label);b.Command!.Execute(null);await Task.Delay(120);Pump();
+        }
+        Row(first,"Unload at origin");await vm.HandleCargoAsync();await vm.HandleCargoAsync();Pump();
+        Check(physical.Weights[5]==58&&service.World!.Jobs.Single(j=>j.Id==first).State==EconomyJobState.Accepted,"Origin return unloads only selected cargo and retains accepted job");
+        Row(first,"Cancel job…");Check(vm.HasCancellationPreview&&vm.CancellationPreview.Contains("No financial penalty"),"Inline cancellation shows free playtest policy");
+        await Command("Keep job");Check(!vm.HasCancellationPreview,"Keep job dismisses without mutation");
+        Row(first,"Cancel job…");await Command("Confirm cancellation");
+        Check(service.World!.Jobs.Single(j=>j.Id==first).State==EconomyJobState.Cancelled&&physical.Weights[5]==58,"Returned job cancellation releases stock without touching through-cargo");
+        Row(other,"Cancel job…");Save(host,Path.Combine(folder,"cargo-cancellation-preview.png"));
+        await Command("Prepare cancellation (outside)");Check(service.Manifest!.Pending?.CancelJobId==other&&physical.Weights[5]==58,"Loaded cancellation prepares guarded intent before payload write");
+        await Command("Apply cargo in cockpit");
+        Check(physical.Weights[5]==33&&service.Manifest!.Cargo.Length==0&&service.World!.Jobs.All(j=>j.State==EconomyJobState.Cancelled),"Confirmed unload cancels selected job and preserves unrelated baseline");
+        Check(!service.World!.FinancialLedger.Any(t=>t.JobId==first||t.JobId==other),"UI cancellation adds no delivery pay or penalty");
+        Save(host,Path.Combine(folder,"cargo-cancellation-complete.png"));host.Close();
     }
 }
