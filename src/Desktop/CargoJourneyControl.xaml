@@ -38,7 +38,7 @@
     <Button Content="Cancel job…" Click="CancelCargo_Click" Visibility="{Binding CanCancelJob, Converter={StaticResource VisibleWhenTrue}}"/>
    </StackPanel></DataTemplate></ItemsControl.ItemTemplate>
   </ItemsControl>
-  <Border Style="{StaticResource Card}" Padding="10" Visibility="{Binding HasCancellationPreview, Converter={StaticResource VisibleWhenTrue}}"><StackPanel>
+  <Border x:Name="CancellationPanel" Style="{StaticResource Card}" Padding="10" Visibility="{Binding HasCancellationPreview, Converter={StaticResource VisibleWhenTrue}}"><StackPanel>
    <TextBlock Text="{Binding CancellationPreview}" TextWrapping="Wrap"/>
    <WrapPanel><Button Content="{Binding CancellationActionText}" Command="{Binding ConfirmCancellationCommand}"/><Button Content="Keep job" Command="{Binding KeepJobCommand}"/></WrapPanel>
   </StackPanel></Border>
