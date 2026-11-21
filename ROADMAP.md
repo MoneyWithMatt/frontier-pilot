@@ -1,6 +1,6 @@
 # Frontier Pilot roadmap and current status
 
-Live loading follow-up (2026-11-04): cc74814 C152/FYWE readback worked; preview recovery exposed missing relocation acknowledgement in Career Hub. [Existing-action UI repair](docs/specs/career-aircraft-relocation-recovery.md) preserves all fleet/dispatch safeguards. Hosted WPF/package and exact patched-build live retry pending; neither cargo/fuel writes nor seated passengers are newly accepted. [Handoff](docs/handoffs/namibia-playtesting.md).
+Live loading follow-up (2026-11-21): approved bda2749 passed the real MSFS 1.9.24.0 stopped C152/FYWE outside confirmation → cockpit application → retained 10+10 kg baggage readback and committed 20 kg manifest. Fresh refresh retained the same cargo/receipt. Existing Career relocation recovery worked; fuel was read, never written. Delivery/unloading, full multi-stop, restart recovery, fuel writes and seated passengers remain separate pending acceptance. [Evidence and handoff](docs/handoffs/namibia-playtesting.md).
 
 ## Offshore checkpoint — 2026-11-03
 
